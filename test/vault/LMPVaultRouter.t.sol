@@ -130,7 +130,22 @@ contract LMPVaultRouterTest is BaseTest {
         _deposit(lmpVault, amount);
     }
 
-    // TODO: test ETH deposit!
+    function test_deposit_ETH() public {
+        _changeVaultToWETH();
+
+        uint256 amount = depositAmount;
+
+        vm.deal(address(this), amount);
+
+        uint256 ethBefore = address(this).balance;
+        uint256 wethBefore = weth.balanceOf(address(this));
+        uint256 sharesBefore = lmpVault.balanceOf(address(this));
+        uint256 sharesReceived = lmpVaultRouter.deposit{ value: amount }(lmpVault, address(this), amount, 1);
+
+        assertEq(address(this).balance, ethBefore - amount, "ETH not withdrawn as expected");
+        assertEq(lmpVault.balanceOf(address(this)), sharesBefore + sharesReceived, "Insufficient shares received");
+        assertEq(weth.balanceOf(address(this)), wethBefore, "WETH should not change");
+    }
 
     /// @notice Check to make sure that the whole balance gets deposited
     function test_depositMax() public {
@@ -161,6 +176,26 @@ contract LMPVaultRouterTest is BaseTest {
 
         // -- now do a successful mint scenario -- //
         _mint(lmpVault, amount);
+    }
+
+    function test_mint_ETH() public {
+        _changeVaultToWETH();
+
+        uint256 amount = depositAmount;
+
+        vm.deal(address(this), amount);
+
+        uint256 ethBefore = address(this).balance;
+        uint256 wethBefore = weth.balanceOf(address(this));
+        uint256 sharesBefore = lmpVault.balanceOf(address(this));
+
+        uint256 assets = lmpVault.previewMint(amount);
+
+        uint256 sharesReceived = lmpVaultRouter.mint{ value: amount }(lmpVault, address(this), amount, assets);
+
+        assertEq(address(this).balance, ethBefore - amount, "ETH not withdrawn as expected");
+        assertEq(lmpVault.balanceOf(address(this)), sharesBefore + sharesReceived, "Insufficient shares received");
+        assertEq(weth.balanceOf(address(this)), wethBefore, "WETH should not change");
     }
 
     function test_withdraw() public {
@@ -266,5 +301,22 @@ contract LMPVaultRouterTest is BaseTest {
         assertGt(assets, 0);
         assertEq(baseAsset.balanceOf(address(this)), baseAssetBefore - assets);
         assertEq(_lmpVault.balanceOf(address(this)), sharesBefore + shares);
+    }
+
+    // @dev ETH needs special handling, so for a few tests that need to use ETH, this shortcut converts baseAsset to
+    // WETH
+    function _changeVaultToWETH() private {
+        //
+        // Update factory to support WETH instead of regular mock (one time just for this test)
+        //
+        lmpVaultTemplate = address(new LMPVault(systemRegistry, address(weth)));
+        lmpVaultFactory = new LMPVaultFactory(systemRegistry, lmpVaultTemplate, 800, 100);
+        // NOTE: deployer grants factory permission to update the registry
+        accessController.grantRole(Roles.REGISTRY_UPDATER, address(lmpVaultFactory));
+        systemRegistry.setLMPVaultFactory(VaultTypes.LST, address(lmpVaultFactory));
+
+        uint256 limit = type(uint256).max;
+        lmpVault = LMPVault(lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256("weth"), ""));
+        assert(systemRegistry.lmpVaultRegistry().isVault(address(lmpVault)));
     }
 }

@@ -1,5 +1,5 @@
-// forked from https://github.com/fei-protocol/ERC4626/blob/main/src/ERC4626RouterBase.sol
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: UNLICENSED
+// Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
 import { IERC20, SafeERC20, Address } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
@@ -16,6 +16,7 @@ abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multica
     using SafeERC20 for IERC20;
 
     error InvalidAsset();
+    error InvalidEthAmount(uint256 amountNeeded, uint256 amountSent);
 
     constructor(address _weth9) PeripheryPayments(IWETH9(_weth9)) { }
 
@@ -26,12 +27,17 @@ abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multica
         uint256 shares,
         uint256 maxAmountIn
     ) public payable virtual override returns (uint256 amountIn) {
-        // handle possible eth
-        _processEthIn(vault);
-
         IERC20 vaultAsset = IERC20(vault.asset());
         uint256 assets = vault.previewMint(shares);
-        pullToken(vaultAsset, assets, address(this));
+
+        if (msg.value > 0 && address(vaultAsset) == address(weth9)) {
+            if (msg.value != assets) revert InvalidEthAmount(assets, msg.value);
+
+            _processEthIn(vault);
+        } else {
+            pullToken(vaultAsset, assets, address(this));
+        }
+
         vaultAsset.safeApprove(address(vault), assets);
 
         amountIn = vault.mint(shares, to);
@@ -47,11 +53,15 @@ abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multica
         uint256 amount,
         uint256 minSharesOut
     ) public payable virtual override returns (uint256 sharesOut) {
-        // handle possible eth
-        _processEthIn(vault);
-
         IERC20 vaultAsset = IERC20(vault.asset());
-        pullToken(vaultAsset, amount, address(this));
+
+        if (msg.value > 0 && address(vaultAsset) == address(weth9)) {
+            if (msg.value != amount) revert InvalidEthAmount(amount, msg.value);
+
+            _processEthIn(vault);
+        } else {
+            pullToken(vaultAsset, amount, address(this));
+        }
 
         return _deposit(vault, to, amount, minSharesOut);
     }

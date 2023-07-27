@@ -989,6 +989,7 @@ contract LMPVaultMintingTests is Test {
 
         assertEq(_lmpVault.totalIdle(), 800);
 
+        // solhint-disable-next-line no-unused-vars
         uint256 assets = _lmpVault.redeem(1000, address(this), address(this));
 
         assertEq(_lmpVault.totalIdle(), 2000);

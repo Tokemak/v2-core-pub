@@ -30,6 +30,9 @@ import { StatsCalculatorRegistry } from "src/stats/StatsCalculatorRegistry.sol";
 import { GPToke } from "src/staking/GPToke.sol";
 import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
 
+// Libraries
+import { Roles } from "src/libs/Roles.sol";
+
 // Interfaces
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
 
@@ -57,9 +60,19 @@ contract DeploySystem is Script {
     uint256 public defaultRewardBlockDurationLmp = 100;
     uint256 public defaultRewardRatioDest = 1;
     uint256 public defaultRewardBlockDurationDest = 1000;
-    bytes32 public lmpVaultType = keccak256("lmpVault"); // TODO: What value goes here?
+    bytes32 public lmpVaultType = keccak256("lst-weth-v1");
     uint256 public startEpoch = block.timestamp;
     uint256 public minStakeDuration = 30 days;
+    uint256 public lmp1SupplyLimit = type(uint256).max;
+    uint256 public lmp1WalletLimit = type(uint256).max;
+    string public lmp1SymbolSuffix = "EST";
+    string public lmp1DescPrefix = "Established";
+    bytes32 public lmp1Salt = keccak256("established");
+    uint256 public lmp2SupplyLimit = type(uint256).max;
+    uint256 public lmp2WalletLimit = type(uint256).max;
+    string public lmp2SymbolSuffix = "EMRG";
+    string public lmp2DescPrefix = "Emerging";
+    bytes32 public lmp2Salt = keccak256("emerging");
 
     // Set based on MAINNET flag.
     address public wethAddress;
@@ -85,14 +98,15 @@ contract DeploySystem is Script {
 
     CurveResolverMainnet public curveResolver;
 
-    // TODO: Look at Cody script, see what is missing.
     function run() external {
         _getEnv();
 
-        vm.startBroadcast(vm.addr(1));
+        vm.startBroadcast(privateKey);
 
+        // System registry setup
         systemRegistry = new SystemRegistry(tokeAddress, wethAddress);
-        console.log("System registry address: ", address(systemRegistry));
+        systemRegistry.addRewardToken(tokeAddress);
+        console.log("System Registry address: ", address(systemRegistry));
 
         // Access controller setup.
         accessController = new AccessController(address(systemRegistry));
@@ -121,7 +135,16 @@ contract DeploySystem is Script {
           defaultRewardBlockDurationLmp
         );
         systemRegistry.setLMPVaultFactory(lmpVaultType, address(lmpFactory));
+        accessController.setupRole(Roles.REGISTRY_UPDATER, address(lmpFactory));
         console.log("LMP Factory address: ", address(lmpFactory));
+
+        // Initial LMP Vault creation.
+        address establishedLmp =
+            lmpFactory.createVault(lmp1SupplyLimit, lmp1WalletLimit, lmp1SymbolSuffix, lmp1DescPrefix, lmp1Salt, "");
+        address emergingLmp =
+            lmpFactory.createVault(lmp2SupplyLimit, lmp2WalletLimit, lmp2SymbolSuffix, lmp2DescPrefix, lmp2Salt, "");
+        console.log("Established LMP Vault address: ", establishedLmp);
+        console.log("Emerging LMP Vault address: ", emergingLmp);
 
         // LMP router setup.
         lmpRouter = new LMPVaultRouter(systemRegistry, wethAddress);

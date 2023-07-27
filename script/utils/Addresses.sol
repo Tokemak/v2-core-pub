@@ -2,6 +2,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+/// @dev Scripting specific address file.
+
 // Mainnet
 address constant WETH_MAINNET = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 address constant TOKE_MAINNET = 0x2e9d63788249371f1DFC918a52f8d799F4a38C94;

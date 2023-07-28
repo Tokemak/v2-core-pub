@@ -8,6 +8,8 @@ import { Errors } from "src/utils/Errors.sol";
 import { RewardAdapter } from "src/destinations/adapters/rewards/RewardAdapter.sol";
 import { ILiquidityGaugeV2 } from "src/interfaces/external/curve/ILiquidityGaugeV2.sol";
 
+// TODO: remove slither warning on the next line when `IClaimableRewardsAdapter` interface removed
+//slither-disable-next-line missing-inheritance
 library CurveRewardsAdapter {
     // solhint-disable-next-line var-name-mixedcase
     uint256 private constant MAX_REWARDS = 8;

@@ -8,6 +8,8 @@ import { Errors } from "src/utils/Errors.sol";
 import { RewardAdapter } from "src/destinations/adapters/rewards/RewardAdapter.sol";
 import { IConvexRewardPool, RewardType } from "src/interfaces/external/convex/IConvexRewardPool.sol";
 
+// TODO: remove slither warning on the next line when `IClaimableRewardsAdapter` interface removed
+//slither-disable-next-line missing-inheritance
 library ConvexArbitrumRewardsAdapter {
     /**
      * @notice Gets all rewards from the reward pool on Arbitrum

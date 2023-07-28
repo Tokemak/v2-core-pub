@@ -4,15 +4,16 @@
 pragma solidity 0.8.17;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard.sol";
 
-import { IClaimableRewardsAdapter } from "../../../interfaces/destinations/IClaimableRewardsAdapter.sol";
-import { IVoter } from "../../../interfaces/external/velodrome/IVoter.sol";
-import { IVotingEscrow } from "../../../interfaces/external/velodrome/IVotingEscrow.sol";
-import { IGauge } from "../../../interfaces/external/velodrome/IGauge.sol";
-import { IBaseBribe } from "../../../interfaces/external/velodrome/IBaseBribe.sol";
-import { IWrappedExternalBribeFactory } from "../../../interfaces/external/velodrome/IWrappedExternalBribeFactory.sol";
-import { IRewardsDistributor } from "../../../interfaces/external/velodrome/IRewardsDistributor.sol";
+import { Errors } from "src/utils/Errors.sol";
+import { LibAdapter } from "src/libs/LibAdapter.sol";
+import { RewardAdapter } from "src/destinations/adapters/rewards/RewardAdapter.sol";
+import { IVoter } from "src/interfaces/external/velodrome/IVoter.sol";
+import { IVotingEscrow } from "src/interfaces/external/velodrome/IVotingEscrow.sol";
+import { IGauge } from "src/interfaces/external/velodrome/IGauge.sol";
+import { IBaseBribe } from "src/interfaces/external/velodrome/IBaseBribe.sol";
+import { IWrappedExternalBribeFactory } from "src/interfaces/external/velodrome/IWrappedExternalBribeFactory.sol";
+import { IRewardsDistributor } from "src/interfaces/external/velodrome/IRewardsDistributor.sol";
 
 /**
  * @title VelodromeRewardsAdapter
@@ -28,7 +29,7 @@ import { IRewardsDistributor } from "../../../interfaces/external/velodrome/IRew
  *      - _rebase() is used to claim these rewards.
  *      - 🚨This contract does not use rebases yet.🚨
  */
-contract VelodromeRewardsAdapter is IClaimableRewardsAdapter, ReentrancyGuard {
+library VelodromeRewardsAdapter {
     enum ClaimType {
         Bribes,
         Fees
@@ -36,55 +37,51 @@ contract VelodromeRewardsAdapter is IClaimableRewardsAdapter, ReentrancyGuard {
 
     error InvalidClaimType();
 
-    // solhint-disable-next-line var-name-mixedcase
-    IVoter public immutable VOTER;
-    // solhint-disable-next-line var-name-mixedcase
-    IWrappedExternalBribeFactory public immutable WRAPPED_BRIBE_FACTORY;
-    // solhint-disable-next-line var-name-mixedcase
-    IVotingEscrow public immutable VOTING_ESCROW;
-    // solhint-disable-next-line var-name-mixedcase
-    IRewardsDistributor public immutable REWARDS_DISTRIBUTOR;
-
-    constructor(address voter, address wrappedBribeFactory, address votingEscrow, address rewardsDistributor) {
-        if (voter == address(0)) revert TokenAddressZero();
-        if (wrappedBribeFactory == address(0)) revert TokenAddressZero();
-        if (votingEscrow == address(0)) revert TokenAddressZero();
-        if (rewardsDistributor == address(0)) revert TokenAddressZero();
-
-        VOTER = IVoter(voter);
-        WRAPPED_BRIBE_FACTORY = IWrappedExternalBribeFactory(wrappedBribeFactory);
-        VOTING_ESCROW = IVotingEscrow(votingEscrow);
-        REWARDS_DISTRIBUTOR = IRewardsDistributor(rewardsDistributor);
-    }
-
     /**
+     * @param voter Velodrome's Voter contract
+     * @param factory Velodrome's ExternalBribeFactory contract
+     * @param votingEscrow Velodrome's VotingEscrow contract
      * @param pool The pool to claim rewards from
+     * @param claimFor The account to check & claim rewards for (should be a caller)
      */
-    function claimRewards(address pool) public nonReentrant returns (uint256[] memory, IERC20[] memory) {
-        address gaugeAddress = VOTER.gauges(pool);
+    function claimRewards(
+        IVoter voter,
+        IWrappedExternalBribeFactory factory,
+        IVotingEscrow votingEscrow,
+        address pool,
+        address claimFor
+    ) internal returns (uint256[] memory amountsClaimed, IERC20[] memory rewardTokens) {
+        Errors.verifyNotZero(address(voter), "voter");
+        Errors.verifyNotZero(address(factory), "factory");
+        Errors.verifyNotZero(address(votingEscrow), "votingEscrow");
+        Errors.verifyNotZero(pool, "pool");
+        Errors.verifyNotZero(claimFor, "claimFor");
 
-        uint256[] memory tokensIds = _getAccountTokenIds(_getContractAddress());
+        address gaugeAddress = voter.gauges(pool);
 
-        (uint256[] memory amountsFees, IERC20[] memory feesTokens) = _claimFees(gaugeAddress, tokensIds);
+        uint256[] memory tokensIds = _getAccountTokenIds(votingEscrow, claimFor);
 
-        (uint256[] memory amountsBribes, IERC20[] memory bribesTokens) = _claimBribes(gaugeAddress, tokensIds);
+        (uint256[] memory amountsFees, IERC20[] memory feesTokens) =
+            _claimFees(voter, gaugeAddress, tokensIds, claimFor);
 
-        (uint256[] memory amountsEmissions, IERC20[] memory emissionsTokens) = _claimEmissions(gaugeAddress);
+        (uint256[] memory amountsBribes, IERC20[] memory bribesTokens) =
+            _claimBribes(voter, factory, gaugeAddress, tokensIds, claimFor);
+
+        (uint256[] memory amountsEmissions, IERC20[] memory emissionsTokens) = _claimEmissions(gaugeAddress, claimFor);
 
         (uint256[] memory amountsMerged, IERC20[] memory rewardTokensMerged) =
             _mergeArrays(feesTokens, amountsFees, bribesTokens, amountsBribes);
 
-        (uint256[] memory amountsClaimed, IERC20[] memory rewardTokens) =
+        (amountsClaimed, rewardTokens) =
             _mergeArrays(rewardTokensMerged, amountsMerged, emissionsTokens, amountsEmissions);
 
-        emit RewardsClaimed(rewardTokens, amountsClaimed);
-        return (amountsClaimed, rewardTokens);
+        RewardAdapter.emitRewardsClaimed(_convertToAddresses(rewardTokens), amountsClaimed);
     }
 
-    function _claimEmissions(address gaugeAddress)
-        private
-        returns (uint256[] memory amountsClaimed, IERC20[] memory rewards)
-    {
+    function _claimEmissions(
+        address gaugeAddress,
+        address claimFor
+    ) private returns (uint256[] memory amountsClaimed, IERC20[] memory rewards) {
         IGauge gauge = IGauge(gaugeAddress);
         address[] memory gaugeRewards = _getGaugeRewards(gauge);
 
@@ -96,45 +93,50 @@ contract VelodromeRewardsAdapter is IClaimableRewardsAdapter, ReentrancyGuard {
         for (uint256 i = 0; i < count; ++i) {
             IERC20 reward = IERC20(gaugeRewards[i]);
             rewards[i] = reward;
-            balancesBefore[i] = reward.balanceOf(_getContractAddress());
+            balancesBefore[i] = reward.balanceOf(claimFor);
         }
 
-        gauge.getReward(_getContractAddress(), gaugeRewards);
+        gauge.getReward(claimFor, gaugeRewards);
 
         for (uint256 i = 0; i < count; ++i) {
-            uint256 balanceAfter = rewards[i].balanceOf(_getContractAddress());
+            uint256 balanceAfter = rewards[i].balanceOf(claimFor);
             amountsClaimed[i] = balanceAfter - balancesBefore[i];
         }
-
-        return (amountsClaimed, rewards);
     }
 
     function _claimFees(
+        IVoter voter,
         address gaugeAddress,
-        uint256[] memory tokensIds
+        uint256[] memory tokensIds,
+        address claimFor
     ) private returns (uint256[] memory amountsClaimed, IERC20[] memory rewards) {
-        address internalBribes = VOTER.internal_bribes(gaugeAddress);
-        return _claimBribesOrFees(internalBribes, tokensIds, ClaimType.Fees);
+        address internalBribes = voter.internal_bribes(gaugeAddress);
+        return _claimBribesOrFees(voter, internalBribes, tokensIds, ClaimType.Fees, claimFor);
     }
 
     function _claimBribes(
+        IVoter voter,
+        IWrappedExternalBribeFactory factory,
         address gaugeAddress,
-        uint256[] memory tokensIds
+        uint256[] memory tokensIds,
+        address claimFor
     ) private returns (uint256[] memory amountsClaimed, IERC20[] memory rewards) {
-        address externalBribes = VOTER.external_bribes(gaugeAddress);
+        address externalBribes = voter.external_bribes(gaugeAddress);
 
-        address wrappedBribe = WRAPPED_BRIBE_FACTORY.oldBribeToNew(externalBribes);
+        address wrappedBribe = factory.oldBribeToNew(externalBribes);
 
         if (wrappedBribe != address(0)) {
             externalBribes = wrappedBribe;
         }
-        return _claimBribesOrFees(externalBribes, tokensIds, ClaimType.Bribes);
+        return _claimBribesOrFees(voter, externalBribes, tokensIds, ClaimType.Bribes, claimFor);
     }
 
     function _claimBribesOrFees(
+        IVoter voter,
         address bribe,
         uint256[] memory tokensIds,
-        ClaimType claimType
+        ClaimType claimType,
+        address claimFor
     ) private returns (uint256[] memory amountsClaimed, IERC20[] memory rewardTokens) {
         address[] memory rewards = _getBribeRewards(bribe);
         uint256 count = rewards.length;
@@ -145,7 +147,7 @@ contract VelodromeRewardsAdapter is IClaimableRewardsAdapter, ReentrancyGuard {
         for (uint256 i = 0; i < count; ++i) {
             IERC20 reward = IERC20(rewards[i]);
             rewardTokens[i] = IERC20(reward);
-            balancesBefore[i] = reward.balanceOf(_getContractAddress());
+            balancesBefore[i] = reward.balanceOf(claimFor);
         }
 
         address[] memory fees = addressToArray(bribe);
@@ -155,9 +157,9 @@ contract VelodromeRewardsAdapter is IClaimableRewardsAdapter, ReentrancyGuard {
         for (uint256 i = 0; i < tokensIdsLength; ++i) {
             uint256 tokenId = tokensIds[i];
             if (claimType == ClaimType.Bribes) {
-                VOTER.claimBribes(fees, tokens, tokenId);
+                voter.claimBribes(fees, tokens, tokenId);
             } else if (claimType == ClaimType.Fees) {
-                VOTER.claimFees(fees, tokens, tokenId);
+                voter.claimFees(fees, tokens, tokenId);
             } else {
                 revert InvalidClaimType();
             }
@@ -165,17 +167,17 @@ contract VelodromeRewardsAdapter is IClaimableRewardsAdapter, ReentrancyGuard {
 
         for (uint256 i = 0; i < count; ++i) {
             IERC20 reward = rewardTokens[i];
-            uint256 balanceAfter = reward.balanceOf(_getContractAddress());
+            uint256 balanceAfter = reward.balanceOf(claimFor);
             amountsClaimed[i] = balanceAfter - balancesBefore[i];
         }
     }
 
     // @dev This function is used to claim rewards yet as it not only claims rewards but also stack the tokens
     // slither-disable-next-line dead-code
-    function _rebase(uint256[] memory tokensIds) private {
-        bool success = REWARDS_DISTRIBUTOR.claim_many(tokensIds);
+    function _rebase(IRewardsDistributor rewardsDistributor, uint256[] memory tokensIds) private {
+        bool success = rewardsDistributor.claim_many(tokensIds);
         if (!success) {
-            revert ClaimRewardsFailed();
+            revert RewardAdapter.ClaimRewardsFailed();
         }
     }
 
@@ -188,16 +190,17 @@ contract VelodromeRewardsAdapter is IClaimableRewardsAdapter, ReentrancyGuard {
             address reward = gauge.rewards(i);
             rewards[i] = reward;
         }
-
-        return rewards;
     }
 
-    function _getAccountTokenIds(address account) private view returns (uint256[] memory tokensIds) {
-        uint256 balance = VOTING_ESCROW.balanceOf(_getContractAddress());
+    function _getAccountTokenIds(
+        IVotingEscrow votingEscrow,
+        address claimFor
+    ) private view returns (uint256[] memory tokensIds) {
+        uint256 balance = votingEscrow.balanceOf(claimFor);
         tokensIds = new uint256[](balance);
 
         for (uint256 i = 0; i < balance; ++i) {
-            uint256 tokenId = VOTING_ESCROW.tokenOfOwnerByIndex(account, i);
+            uint256 tokenId = votingEscrow.tokenOfOwnerByIndex(claimFor, i);
             tokensIds[i] = tokenId;
         }
     }
@@ -212,7 +215,6 @@ contract VelodromeRewardsAdapter is IClaimableRewardsAdapter, ReentrancyGuard {
             address reward = internalBribe.rewards(i);
             rewards[i] = reward;
         }
-        return rewards;
     }
 
     /// @dev Converts an array to a matrix of length one for use with the Voter interface claimFees and claimBribes
@@ -280,10 +282,10 @@ contract VelodromeRewardsAdapter is IClaimableRewardsAdapter, ReentrancyGuard {
     function _concatenateUint256Arrays(
         uint256[] memory arr1,
         uint256[] memory arr2
-    ) private pure returns (uint256[] memory) {
+    ) private pure returns (uint256[] memory result) {
         uint256 len1 = arr1.length;
         uint256 len2 = arr2.length;
-        uint256[] memory result = new uint256[](len1 + len2);
+        result = new uint256[](len1 + len2);
 
         for (uint256 i = 0; i < len1; ++i) {
             result[i] = arr1[i];
@@ -292,17 +294,15 @@ contract VelodromeRewardsAdapter is IClaimableRewardsAdapter, ReentrancyGuard {
         for (uint256 i = 0; i < len2; ++i) {
             result[len1 + i] = arr2[i];
         }
-
-        return result;
     }
 
     function _concatenateAddressesArrays(
         IERC20[] memory arr1,
         IERC20[] memory arr2
-    ) private pure returns (IERC20[] memory) {
+    ) private pure returns (IERC20[] memory result) {
         uint256 len1 = arr1.length;
         uint256 len2 = arr2.length;
-        IERC20[] memory result = new IERC20[](len1 + len2);
+        result = new IERC20[](len1 + len2);
 
         for (uint256 i = 0; i < len1; ++i) {
             result[i] = arr1[i];
@@ -311,8 +311,6 @@ contract VelodromeRewardsAdapter is IClaimableRewardsAdapter, ReentrancyGuard {
         for (uint256 i = 0; i < len2; ++i) {
             result[len1 + i] = arr2[i];
         }
-
-        return result;
     }
 
     function _isInArray(IERC20[] memory elements, IERC20 element) private pure returns (bool) {
@@ -325,16 +323,12 @@ contract VelodromeRewardsAdapter is IClaimableRewardsAdapter, ReentrancyGuard {
         return false;
     }
 
-    function _getContractAddress() private view returns (address) {
-        // slither-disable-next-line var-read-using-this
-        return this.getContractAddress();
-    }
-
-    /**
-     * @dev This function adds an extra STATICCALL, but it is very helpful for testing purposes.
-     *  The function can be easily mocked to impersonate user calls
-     */
-    function getContractAddress() public view returns (address) {
-        return address(this);
+    function _convertToAddresses(IERC20[] memory tokens) internal pure returns (address[] memory assets) {
+        //slither-disable-start assembly
+        //solhint-disable-next-line no-inline-assembly
+        assembly {
+            assets := tokens
+        }
+        //slither-disable-end assembly
     }
 }

@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { IDestinationAdapter } from "./IDestinationAdapter.sol";
+import { IDestinationAdapter } from "src/interfaces/destinations/IDestinationAdapter.sol";
 
 interface IDestinationRegistry {
     event Register(bytes32[] indexed destinationTypes, address[] indexed targets);

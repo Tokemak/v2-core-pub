@@ -6,22 +6,18 @@ import { Test } from "forge-std/Test.sol";
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
-import { ICurveV1StableSwap } from "../../../../src/interfaces/external/curve/ICurveV1StableSwap.sol";
-import { ILiquidityGaugeV2 } from "../../../../src/interfaces/external/curve/ILiquidityGaugeV2.sol";
-import { CurveRewardsAdapter } from "../../../../src/destinations/adapters/rewards/CurveRewardsAdapter.sol";
-import { IClaimableRewardsAdapter } from "../../../../src/interfaces/destinations/IClaimableRewardsAdapter.sol";
-import { LDO_MAINNET, RETH_MAINNET, WSTETH_MAINNET, STETH_MAINNET } from "../../../utils/Addresses.sol";
+import { ICurveV1StableSwap } from "src/interfaces/external/curve/ICurveV1StableSwap.sol";
+import { ILiquidityGaugeV2 } from "src/interfaces/external/curve/ILiquidityGaugeV2.sol";
+import { CurveRewardsAdapter } from "src/destinations/adapters/rewards/CurveRewardsAdapter.sol";
+import { Errors } from "src/utils/Errors.sol";
+import { LDO_MAINNET, RETH_MAINNET, WSTETH_MAINNET, STETH_MAINNET } from "test/utils/Addresses.sol";
 
 // solhint-disable func-name-mixedcase
 contract CurveRewardsAdapterTest is Test {
-    CurveRewardsAdapter private adapter;
-
     function setUp() public {
         string memory endpoint = vm.envString("MAINNET_RPC_URL");
         uint256 forkId = vm.createFork(endpoint, 16_699_085);
         vm.selectFork(forkId);
-
-        adapter = new CurveRewardsAdapter();
     }
 
     function addLiquidityETH(address curvePool, uint256 amountEth, address tokenAddress, uint256 tokenAmount) private {
@@ -44,9 +40,9 @@ contract CurveRewardsAdapterTest is Test {
     }
 
     function deposit(address curveGauge, address curveLpToken) private {
-        uint256 curveLpTokenBalance = IERC20(curveLpToken).balanceOf(address(adapter));
+        uint256 curveLpTokenBalance = IERC20(curveLpToken).balanceOf(address(this));
         IERC20(curveLpToken).approve(curveGauge, curveLpTokenBalance);
-        ILiquidityGaugeV2(curveGauge).deposit(curveLpTokenBalance, address(adapter));
+        ILiquidityGaugeV2(curveGauge).deposit(curveLpTokenBalance, address(this));
     }
 
     function increaseTime() private {
@@ -65,8 +61,8 @@ contract CurveRewardsAdapterTest is Test {
     }
 
     function test_Revert_IfAddressZero() public {
-        vm.expectRevert(IClaimableRewardsAdapter.TokenAddressZero.selector);
-        adapter.claimRewards(address(0));
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "gauge"));
+        CurveRewardsAdapter.claimRewards(address(0));
     }
 
     // Pool stETH + ETH
@@ -77,24 +73,20 @@ contract CurveRewardsAdapterTest is Test {
 
         address stEthWhale = 0x41318419CFa25396b47A94896FfA2C77c6434040;
 
-        uint256 stETHBalance = transferToken(STETH_MAINNET, stEthWhale, address(adapter));
+        uint256 stETHBalance = transferToken(STETH_MAINNET, stEthWhale, address(this));
 
-        vm.deal(address(adapter), stETHBalance);
-
-        vm.startPrank(address(adapter));
+        vm.deal(address(this), stETHBalance);
 
         addLiquidityETH(curvePool, stETHBalance, STETH_MAINNET, stETHBalance);
         deposit(curveGauge, curveLp);
         increaseTime();
-        (uint256[] memory amountsClaimed, IERC20[] memory rewardsToken) = adapter.claimRewards(curveGauge);
+        (uint256[] memory amountsClaimed, address[] memory rewardTokens) = CurveRewardsAdapter.claimRewards(curveGauge);
 
-        vm.stopPrank();
-
-        assertEq(amountsClaimed.length, rewardsToken.length);
+        assertEq(amountsClaimed.length, rewardTokens.length);
         assertTrue(amountsClaimed.length > 0);
 
-        assertEq(rewardsToken.length, 1);
-        assertEq(address(rewardsToken[0]), LDO_MAINNET);
+        assertEq(rewardTokens.length, 1);
+        assertEq(rewardTokens[0], LDO_MAINNET);
         assertTrue(amountsClaimed[0] > 0);
     }
 
@@ -107,19 +99,15 @@ contract CurveRewardsAdapterTest is Test {
         address rEthWhale = 0xEADB3840596cabF312F2bC88A4Bb0b93A4E1FF5F;
         address wstEthWhale = 0x5fEC2f34D80ED82370F733043B6A536d7e9D7f8d;
 
-        uint256 rEthBalance = transferToken(RETH_MAINNET, rEthWhale, address(adapter));
-        uint256 wstETHBalance = transferToken(WSTETH_MAINNET, wstEthWhale, address(adapter));
-
-        vm.startPrank(address(adapter));
+        uint256 rEthBalance = transferToken(RETH_MAINNET, rEthWhale, address(this));
+        uint256 wstETHBalance = transferToken(WSTETH_MAINNET, wstEthWhale, address(this));
 
         addLiquidity(curvePool, RETH_MAINNET, rEthBalance, WSTETH_MAINNET, wstETHBalance);
         deposit(curveGauge, curveLp);
         increaseTime();
-        (uint256[] memory amountsClaimed, IERC20[] memory rewardsToken) = adapter.claimRewards(curveGauge);
+        (uint256[] memory amountsClaimed, address[] memory rewardTokens) = CurveRewardsAdapter.claimRewards(curveGauge);
 
-        vm.stopPrank();
-
-        assertEq(amountsClaimed.length, rewardsToken.length);
-        assertEq(rewardsToken.length, 0);
+        assertEq(amountsClaimed.length, rewardTokens.length);
+        assertEq(rewardTokens.length, 0);
     }
 }

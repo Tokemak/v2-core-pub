@@ -6,30 +6,25 @@ import { Test } from "forge-std/Test.sol";
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
-import { ConvexArbitrumRewardsAdapter } from
-    "../../../../src/destinations/adapters/rewards/ConvexArbitrumRewardsAdapter.sol";
-import { IClaimableRewardsAdapter } from "../../../../src/interfaces/destinations/IClaimableRewardsAdapter.sol";
-import { IConvexBoosterArbitrum } from "../../../../src/interfaces/external/convex/IConvexBoosterArbitrum.sol";
-import { IConvexRewardPool } from "../../../../src/interfaces/external/convex/IConvexRewardPool.sol";
-import { CRV_ARBITRUM, CVX_ARBITRUM, CONVEX_BOOSTER } from "../../../utils/Addresses.sol";
+import { ConvexArbitrumRewardsAdapter } from "src/destinations/adapters/rewards/ConvexArbitrumRewardsAdapter.sol";
+import { IConvexBoosterArbitrum } from "src/interfaces/external/convex/IConvexBoosterArbitrum.sol";
+import { IConvexRewardPool } from "src/interfaces/external/convex/IConvexRewardPool.sol";
+import { Errors } from "src/utils/Errors.sol";
+import { CRV_ARBITRUM, CVX_ARBITRUM, CONVEX_BOOSTER } from "test/utils/Addresses.sol";
 
 // solhint-disable func-name-mixedcase
 contract ConvexArbitrumRewardsAdapterTest is Test {
-    ConvexArbitrumRewardsAdapter private adapter;
-
     IConvexBoosterArbitrum private convexBooster = IConvexBoosterArbitrum(CONVEX_BOOSTER);
 
     function setUp() public {
         string memory endpoint = vm.envString("ARBITRUM_MAINNET_RPC_URL");
         uint256 forkId = vm.createFork(endpoint, 65_506_618);
         vm.selectFork(forkId);
-
-        adapter = new ConvexArbitrumRewardsAdapter();
     }
 
     function test_Revert_IfAddressZero() public {
-        vm.expectRevert(IClaimableRewardsAdapter.TokenAddressZero.selector);
-        adapter.claimRewards(address(0));
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "gauge"));
+        ConvexArbitrumRewardsAdapter.claimRewards(address(0));
     }
 
     function transferCurveLpTokenAndDepositToConvex(
@@ -61,14 +56,15 @@ contract ConvexArbitrumRewardsAdapterTest is Test {
         address curveLpWhale = 0x279818c822E5c6135D989Df50d0bBA96e9564cE5;
         address gauge = 0x90927a78ad13C0Ec9ACf546cE0C16248A7E7a86D;
 
-        transferCurveLpTokenAndDepositToConvex(curveLp, gauge, curveLpWhale, address(adapter));
+        transferCurveLpTokenAndDepositToConvex(curveLp, gauge, curveLpWhale, address(this));
 
-        (uint256[] memory amountsClaimed, IERC20[] memory rewardsToken) = adapter.claimRewards(gauge);
+        (uint256[] memory amountsClaimed, address[] memory rewardsToken) =
+            ConvexArbitrumRewardsAdapter.claimRewards(gauge);
 
         assertEq(amountsClaimed.length, rewardsToken.length);
         assertEq(rewardsToken.length, 2);
-        assertEq(address(rewardsToken[0]), CRV_ARBITRUM);
-        assertEq(address(rewardsToken[1]), CVX_ARBITRUM);
+        assertEq(rewardsToken[0], CRV_ARBITRUM);
+        assertEq(rewardsToken[1], CVX_ARBITRUM);
         assertEq(amountsClaimed[0] > 0, true);
         assertEq(amountsClaimed[1], 0);
     }
@@ -79,14 +75,15 @@ contract ConvexArbitrumRewardsAdapterTest is Test {
         address curveLpWhale = 0xbF7E49483881C76487b0989CD7d9A8239B20CA41;
         address gauge = 0x63F00F688086F0109d586501E783e33f2C950e78;
 
-        transferCurveLpTokenAndDepositToConvex(curveLp, gauge, curveLpWhale, address(adapter));
+        transferCurveLpTokenAndDepositToConvex(curveLp, gauge, curveLpWhale, address(this));
 
-        (uint256[] memory amountsClaimed, IERC20[] memory rewardsToken) = adapter.claimRewards(gauge);
+        (uint256[] memory amountsClaimed, address[] memory rewardsToken) =
+            ConvexArbitrumRewardsAdapter.claimRewards(gauge);
 
         assertEq(amountsClaimed.length, rewardsToken.length);
         assertEq(rewardsToken.length, 2);
-        assertEq(address(rewardsToken[0]), CRV_ARBITRUM);
-        assertEq(address(rewardsToken[1]), CVX_ARBITRUM);
+        assertEq(rewardsToken[0], CRV_ARBITRUM);
+        assertEq(rewardsToken[1], CVX_ARBITRUM);
         assertTrue(amountsClaimed[0] > 0);
         assertEq(amountsClaimed[1], 0);
     }

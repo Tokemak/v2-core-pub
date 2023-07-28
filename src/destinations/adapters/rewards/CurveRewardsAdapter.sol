@@ -1,25 +1,30 @@
 // SPDX-License-Identifier: UNLICENSED
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
-
 pragma solidity 0.8.17;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard.sol";
 
-import { ILiquidityGaugeV2 } from "../../../interfaces/external/curve/ILiquidityGaugeV2.sol";
-import { IClaimableRewardsAdapter } from "../../../interfaces/destinations/IClaimableRewardsAdapter.sol";
+import { Errors } from "src/utils/Errors.sol";
+import { RewardAdapter } from "src/destinations/adapters/rewards/RewardAdapter.sol";
+import { ILiquidityGaugeV2 } from "src/interfaces/external/curve/ILiquidityGaugeV2.sol";
 
-contract CurveRewardsAdapter is IClaimableRewardsAdapter, ReentrancyGuard {
+library CurveRewardsAdapter {
     // solhint-disable-next-line var-name-mixedcase
     uint256 private constant MAX_REWARDS = 8;
 
     /**
+     * @notice Gets all rewards from the reward pool
+     * @dev Calls into external contract. Should be guarded with
+     * non-reentrant flags in a used contract
      * @param gauge The gauge to claim rewards from
+     * @return amountsClaimed Quantity of reward tokens
+     * @return rewardTokens Addresses of claimed reward tokens
      */
-    function claimRewards(address gauge) public nonReentrant returns (uint256[] memory, IERC20[] memory) {
-        if (gauge == address(0)) revert TokenAddressZero();
-
-        address account = address(this);
+    function claimRewards(address gauge)
+        public
+        returns (uint256[] memory amountsClaimed, address[] memory rewardTokens)
+    {
+        Errors.verifyNotZero(gauge, "gauge");
 
         ILiquidityGaugeV2 rewardPool = ILiquidityGaugeV2(gauge);
 
@@ -40,31 +45,26 @@ contract CurveRewardsAdapter is IClaimableRewardsAdapter, ReentrancyGuard {
         }
 
         // resize the tokens array to the correct size
-        IERC20[] memory rewardTokens = new IERC20[](rewardsLength);
+        rewardTokens = new address[](rewardsLength);
         for (uint256 i = 0; i < rewardsLength; ++i) {
-            rewardTokens[i] = tempRewardTokens[i];
+            rewardTokens[i] = address(tempRewardTokens[i]);
         }
-
         uint256[] memory balancesBefore = new uint256[](rewardsLength);
-        uint256[] memory amountsClaimed = new uint256[](rewardsLength);
+        amountsClaimed = new uint256[](rewardsLength);
 
         // get balances before
+        address account = address(this);
         for (uint256 i = 0; i < rewardsLength; ++i) {
-            balancesBefore[i] = rewardTokens[i].balanceOf(account);
+            balancesBefore[i] = IERC20(rewardTokens[i]).balanceOf(account);
         }
-
         // claim rewards
         rewardPool.claim_rewards(account);
 
         // get balances after and calculate amounts claimed
         for (uint256 i = 0; i < rewardsLength; ++i) {
-            uint256 balance = rewardTokens[i].balanceOf(account);
-
+            uint256 balance = IERC20(rewardTokens[i]).balanceOf(account);
             amountsClaimed[i] = balance - balancesBefore[i];
         }
-
-        emit RewardsClaimed(rewardTokens, amountsClaimed);
-
-        return (amountsClaimed, rewardTokens);
+        RewardAdapter.emitRewardsClaimed(rewardTokens, amountsClaimed);
     }
 }

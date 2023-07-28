@@ -1,39 +1,41 @@
 // SPDX-License-Identifier: UNLICENSED
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
-
 pragma solidity 0.8.17;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard.sol";
 
-import { INFTPool } from "../../../interfaces/external/camelot/INFTPool.sol";
-import { INFTHandler } from "../../../interfaces/external/camelot/INFTHandler.sol";
-import { IClaimableRewardsAdapter } from "../../../interfaces/destinations/IClaimableRewardsAdapter.sol";
+import { Errors } from "src/utils/Errors.sol";
+import { INFTPool } from "src/interfaces/external/camelot/INFTPool.sol";
+import { RewardAdapter } from "src/destinations/adapters/rewards/RewardAdapter.sol";
 
-contract CamelotRewardsAdapter is IClaimableRewardsAdapter, INFTHandler, ReentrancyGuard {
+/**
+ * @dev Calling contract should implement `onNFTHarvest` function with the same signature as present in the library.
+ * `onNFTHarvest` library function can be wrapped by the caller for a proper work of rewards claiming.
+ */
+library CamelotRewardsAdapter {
     error WrongOperator(address expected, address actual);
     error WrongTo(address expected, address actual);
 
     event OnNFTHarvest(address operator, address to, uint256 tokenId, uint256 grailAmount, uint256 xGrailAmount);
 
-    // slither-disable-start similar-names
-    IERC20 public immutable grailToken;
-    IERC20 public immutable xGrailToken;
-    // slither-disable-end similar-names
-
-    constructor(IERC20 _grailToken, IERC20 _xGrailToken) {
-        if (address(_grailToken) == address(0)) revert TokenAddressZero();
-        if (address(_xGrailToken) == address(0)) revert TokenAddressZero();
-
-        grailToken = _grailToken;
-        xGrailToken = _xGrailToken;
-    }
-
     /**
+     * @notice Gets rewards from the given NFT pool
+     * @dev Calls into external contract. Should be guarded with
+     * non-reentrant flags in a used contract
+     * @param grailToken 1st reward token address
+     * @param xGrailToken 2nd reward token address
      * @param nftPoolAddress The NFT pool to claim rewards from
+     * @return amountsClaimed Quantity of reward tokens received
+     * @return rewardTokens Addresses of received reward tokens
      */
-    function claimRewards(address nftPoolAddress) public nonReentrant returns (uint256[] memory, IERC20[] memory) {
-        if (nftPoolAddress == address(0)) revert TokenAddressZero();
+    function claimRewards(
+        IERC20 grailToken,
+        IERC20 xGrailToken,
+        address nftPoolAddress
+    ) public returns (uint256[] memory amountsClaimed, address[] memory rewardTokens) {
+        Errors.verifyNotZero(address(grailToken), "grailToken");
+        Errors.verifyNotZero(address(xGrailToken), "xGrailToken");
+        Errors.verifyNotZero(nftPoolAddress, "nftPoolAddress");
 
         address account = address(this);
 
@@ -54,22 +56,21 @@ contract CamelotRewardsAdapter is IClaimableRewardsAdapter, INFTHandler, Reentra
         uint256 grailTokenBalanceAfter = grailToken.balanceOf(account);
         uint256 xGrailTokenBalanceAfter = xGrailToken.balanceOf(account);
 
-        IERC20[] memory rewardTokens = new IERC20[](2);
-        uint256[] memory amountsClaimed = new uint256[](2);
+        rewardTokens = new address[](2);
+        amountsClaimed = new uint256[](2);
 
-        rewardTokens[0] = grailToken;
+        rewardTokens[0] = address(grailToken);
         amountsClaimed[0] = grailTokenBalanceAfter - grailTokenBalanceBefore;
-        rewardTokens[1] = xGrailToken;
+        rewardTokens[1] = address(xGrailToken);
         amountsClaimed[1] = xGrailTokenBalanceAfter - xGrailTokenBalanceBefore;
 
-        emit RewardsClaimed(rewardTokens, amountsClaimed);
-
-        return (amountsClaimed, rewardTokens);
+        RewardAdapter.emitRewardsClaimed(rewardTokens, amountsClaimed);
     }
 
     /**
-     * @notice This function is required by Camelot NFTPool if the msg.sender is a contract, to confirm whether it is
-     * able to handle reward harvesting.
+     * @notice This function is required by Camelot NFTPool if the msg.sender is a contract,
+     * to confirm whether it is able to handle reward harvesting.
+     * @dev This function can be wrapped in the calling contract with the same signature.
      */
     function onNFTHarvest(
         address operator,

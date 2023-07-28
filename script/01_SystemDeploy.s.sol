@@ -5,12 +5,7 @@ pragma solidity 0.8.17;
 // solhint-disable max-states-count
 // solhint-disable no-console
 
-import { Script } from "forge-std/Script.sol";
-import { console } from "forge-std/console.sol";
-
-import {
-    WETH_MAINNET, TOKE_MAINNET, CURVE_META_REGISTRY_MAINNET, WETH_GOERLI, TOKE_GOERLI
-} from "./utils/Addresses.sol";
+import { BaseScript, console } from "./BaseScript.sol";
 
 // Contracts
 import { SystemRegistry } from "src/SystemRegistry.sol";
@@ -53,9 +48,8 @@ import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegi
  *
  *      To verify these contracts on Etherscan, add the `--verify` flag.
  */
-contract DeploySystem is Script {
+contract DeploySystem is BaseScript {
     /// @dev Manually set variables below.
-    bool public constant MAINNET = false;
     uint256 public defaultRewardRatioLmp = 800;
     uint256 public defaultRewardBlockDurationLmp = 100;
     uint256 public defaultRewardRatioDest = 1;
@@ -73,12 +67,6 @@ contract DeploySystem is Script {
     string public lmp2SymbolSuffix = "EMRG";
     string public lmp2DescPrefix = "Emerging";
     bytes32 public lmp2Salt = keccak256("emerging");
-
-    // Set based on MAINNET flag.
-    address public wethAddress;
-    address public tokeAddress;
-    address public curveMetaRegistryAddress;
-    uint256 public privateKey; // TODO: Pass in private key on command line?
 
     SystemRegistry public systemRegistry;
     AccessController public accessController;
@@ -99,6 +87,7 @@ contract DeploySystem is Script {
     CurveResolverMainnet public curveResolver;
 
     function run() external {
+        mainnet = false;
         _getEnv();
 
         vm.startBroadcast(privateKey);
@@ -200,18 +189,5 @@ contract DeploySystem is Script {
         }
 
         vm.stopBroadcast();
-    }
-
-    function _getEnv() private {
-        if (MAINNET) {
-            wethAddress = WETH_MAINNET;
-            tokeAddress = TOKE_MAINNET;
-            curveMetaRegistryAddress = CURVE_META_REGISTRY_MAINNET;
-            privateKey = vm.envUint("MAINNET_PRIVATE_KEY");
-        } else {
-            wethAddress = WETH_GOERLI;
-            tokeAddress = TOKE_GOERLI;
-            privateKey = vm.envUint("GOERLI_PRIVATE_KEY");
-        }
     }
 }

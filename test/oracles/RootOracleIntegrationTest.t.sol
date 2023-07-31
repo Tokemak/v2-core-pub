@@ -112,7 +112,7 @@ import { IswETH } from "src/interfaces/external/swell/IswETH.sol";
  *      2) Register new pool with `priceOracle`, check to see if individual tokens need to be registered with Chainlink
  *            or Tellor, and if lp token needs to be registered with a specific lp token oracle.
  *      3) Using an external source (coingecko, protocol UI, Etherscan), retrieve total value of the pool in USD.
- *            Dividethis value by the current price of Eth in USD to get the total value of the pool in Eth.
+ *            Divide this value by the current price of Eth in USD to get the total value of the pool in Eth.
  *      4) Normalize value of pool in Eth to e18, divide by total number of lp tokens (will already be in e18 in most
  *            cases). Normalize value returned to e18 decimals, this will be the value expected to be returned by
  *            the safe price contract.

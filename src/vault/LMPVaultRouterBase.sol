@@ -119,16 +119,13 @@ abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multica
     }
 
     function _processEthIn(ILMPVault vault) internal {
-        // if any eth sent, wrap it first
-        if (msg.value > 0) {
-            // if asset is not weth, revert
-            if (address(vault.asset()) != address(weth9)) {
-                revert InvalidAsset();
-            }
-
-            // wrap eth
-            weth9.deposit{ value: msg.value }();
+        // if asset is not weth, revert
+        if (address(vault.asset()) != address(weth9)) {
+            revert InvalidAsset();
         }
+
+        // wrap eth
+        weth9.deposit{ value: msg.value }();
     }
 
     function _processWethOut(address to) internal {

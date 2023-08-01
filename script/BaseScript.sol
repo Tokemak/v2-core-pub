@@ -14,9 +14,12 @@ import {
     CURVE_META_REGISTRY_MAINNET,
     WETH_GOERLI,
     TOKE_GOERLI,
-    ACCESS_CONTROLLER_MAINNET,
-    ACCESS_CONTROLLER_GOERLI
+    SYSTEM_REGISTRY_MAINNET,
+    SYSTEM_REGISTRY_GOERLI
 } from "./utils/Addresses.sol";
+
+// Interfaces
+import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
 /**
  * @dev Base contract for scripting.  Sets env to either Goerli or Mainnet values.  As of
@@ -32,19 +35,29 @@ contract BaseScript is Script {
     address public tokeAddress;
     address public curveMetaRegistryAddress;
     address public accessControllerAddress;
+    address public destinationTemplateRegistry;
     uint256 public privateKey;
 
     function _getEnv() internal {
         if (mainnet) {
             wethAddress = WETH_MAINNET;
             tokeAddress = TOKE_MAINNET;
-            curveMetaRegistryAddress = CURVE_META_REGISTRY_MAINNET;
-            accessControllerAddress = ACCESS_CONTROLLER_MAINNET;
+
+            ISystemRegistry registry = ISystemRegistry(SYSTEM_REGISTRY_MAINNET);
+
+            // TODO: Add reverts? Probably not needed, calls to these functions will fail.
+            accessControllerAddress = address(registry.accessController());
+            destinationTemplateRegistry = address(registry.destinationTemplateRegistry());
             privateKey = vm.envUint("MAINNET_PRIVATE_KEY");
+            curveMetaRegistryAddress = CURVE_META_REGISTRY_MAINNET;
         } else {
             wethAddress = WETH_GOERLI;
             tokeAddress = TOKE_GOERLI;
-            accessControllerAddress = ACCESS_CONTROLLER_GOERLI;
+
+            ISystemRegistry registry = ISystemRegistry(SYSTEM_REGISTRY_GOERLI);
+
+            accessControllerAddress = address(registry.accessController());
+            destinationTemplateRegistry = address(registry.destinationTemplateRegistry());
             privateKey = vm.envUint("GOERLI_PRIVATE_KEY");
         }
     }

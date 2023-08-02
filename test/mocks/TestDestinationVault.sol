@@ -45,8 +45,9 @@ contract TestDestinationVault is DestinationVault {
         return "test";
     }
 
-    function underlyingTokens() external pure override returns (address[] memory) {
-        return new address[](0);
+    function underlyingTokens() external view override returns (address[] memory tokens) {
+        tokens = new address[](1);
+        tokens[0] = _underlying;
     }
 
     function setDebtValue(uint256 val) public {

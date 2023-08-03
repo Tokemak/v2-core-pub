@@ -79,8 +79,13 @@ jobs:
           solc-select use 0.8.17
           slither .
 
+      - name: Build package
+        run: npm run build
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
       - name: Publish Release
         run: npx semantic-release
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          NPM_TOKEN: ${{ secrets.GH_TOKEN }}
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}

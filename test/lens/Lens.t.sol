@@ -3,7 +3,6 @@
 pragma solidity 0.8.17;
 
 import { BaseTest } from "test/BaseTest.t.sol";
-import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Lens } from "src/lens/Lens.sol";
@@ -19,9 +18,9 @@ contract LensTest is BaseTest {
     function setUp() public virtual override {
         super._setUp(false);
 
-        address baseAsset = address(new TestERC20("baseAsset", "baseAsset"));
-        address underlyer = address(new TestERC20("underlyer", "underlyer"));
-        testDestinationVault = new TestDestinationVault(systemRegistry,vm.addr(34343), baseAsset, underlyer);
+        address underlyer = address(BaseTest.mockAsset("underlyer", "underlyer", 0));
+
+        testDestinationVault = new TestDestinationVault(systemRegistry,vm.addr(34343), address(baseAsset), underlyer);
         address[] memory destinations = new address[](1);
         destinations[0] = address(testDestinationVault);
 

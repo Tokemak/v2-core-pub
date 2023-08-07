@@ -637,7 +637,7 @@ contract LMPVault is
     //							  Destinations     							//
     //////////////////////////////////////////////////////////////////////////
 
-    function getDestinations() public view override returns (address[] memory) {
+    function getDestinations() public view override(ILMPVault, IStrategy) returns (address[] memory) {
         return destinations.values();
     }
 

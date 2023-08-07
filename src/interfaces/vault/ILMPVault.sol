@@ -70,12 +70,4 @@ interface ILMPVault is IERC4626, IERC20Permit {
     /// @notice gets the list of supported destination vaults for the LMP/Strategy
     /// @return _destinations List of supported destination vaults
     function getDestinations() external view returns (address[] memory _destinations);
-
-    /// @notice add supported destination vaults for the LMP/Strategy
-    /// @param _destinations The list of destination vaults to add
-    function addDestinations(address[] memory _destinations) external;
-
-    /// @notice remove supported destination vaults for the LMP/Strategy
-    /// @param _destinations The list of destination vaults to remove
-    function removeDestinations(address[] calldata _destinations) external;
 }

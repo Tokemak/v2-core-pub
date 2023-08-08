@@ -7,11 +7,9 @@ interface ILens {
     struct LMPVault {
         string name;
         string symbol;
-        address vaultAddress;
     }
 
     struct DestinationVault {
-        address vaultAddress;
         string exchangeName;
     }
 
@@ -23,15 +21,20 @@ interface ILens {
     /**
      * @notice Gets LMPVault data
      * @return lmpVaults an array of `LMPVault`
+     * @return vaultAddresses an array of addresses for corresponding vaults
      */
-    function getVaults() external view returns (ILens.LMPVault[] memory lmpVaults);
+    function getVaults() external view returns (ILens.LMPVault[] memory lmpVaults, address[] memory vaultAddresses);
 
     /**
      * @notice Gets DestinationVaults from the given LMPVault
      * @param lmpVault address to query DestinationVaults from
      * @return destinations an array of `DestinationVault`
+     * @return destinationAddresses an array of addresses for corresponding vaults
      */
-    function getDestinations(address lmpVault) external view returns (ILens.DestinationVault[] memory destinations);
+    function getDestinations(address lmpVault)
+        external
+        view
+        returns (ILens.DestinationVault[] memory destinations, address[] memory destinationAddresses);
 
     /**
      * @notice Gets UnderlyingTokens from the given DestinationVault

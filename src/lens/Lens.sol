@@ -25,14 +25,21 @@ contract Lens is ILens, SystemComponent {
     }
 
     /// @inheritdoc ILens
-    function getVaults() external view override returns (ILens.LMPVault[] memory lmpVaults) {
+    function getVaults()
+        external
+        view
+        override
+        returns (ILens.LMPVault[] memory lmpVaults, address[] memory vaultAddresses)
+    {
         address[] memory lmpAddresses = lmpRegistry.listVaults();
         lmpVaults = new ILens.LMPVault[](lmpAddresses.length);
+        vaultAddresses = new address[](lmpAddresses.length);
 
         for (uint256 i = 0; i < lmpAddresses.length; ++i) {
             address vaultAddress = lmpAddresses[i];
             ILMPVault vault = ILMPVault(vaultAddress);
-            lmpVaults[i] = ILens.LMPVault(vault.name(), vault.symbol(), vaultAddress);
+            lmpVaults[i] = ILens.LMPVault(vault.name(), vault.symbol());
+            vaultAddresses[i] = vaultAddress;
         }
     }
 
@@ -41,14 +48,17 @@ contract Lens is ILens, SystemComponent {
         external
         view
         override
-        returns (ILens.DestinationVault[] memory destinations)
+        returns (ILens.DestinationVault[] memory destinations, address[] memory destinationAddresses)
     {
         address[] memory vaults = ILMPVault(lmpVault).getDestinations();
         destinations = new ILens.DestinationVault[](vaults.length);
+        destinationAddresses = new address[](vaults.length);
 
         for (uint256 i = 0; i < vaults.length; ++i) {
-            IDestinationVault destination = IDestinationVault(vaults[i]);
-            destinations[i] = ILens.DestinationVault(vaults[i], destination.exchangeName());
+            address vaultAddress = vaults[i];
+            IDestinationVault destination = IDestinationVault(vaultAddress);
+            destinations[i] = ILens.DestinationVault(destination.exchangeName());
+            destinationAddresses[i] = vaultAddress;
         }
     }
 

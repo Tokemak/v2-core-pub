@@ -51,18 +51,20 @@ contract LensTest is BaseTest {
     }
 
     function testLens() public {
-        (ILens.LMPVault[] memory lmpVaults, address[] memory lmpAddresses) = lens.getVaults();
+        (ILens.LMPVault[] memory lmpVaults) = lens.getVaults();
+        assertFalse(lmpVaults[0].vaultAddress == address(0));
         assertEq(lmpVaults[0].name, "y Pool Token");
         assertEq(lmpVaults[0].symbol, "lmpx");
-        assertFalse(lmpAddresses[0] == address(0));
 
-        (ILens.DestinationVault[] memory destinations, address[] memory destinationAddresses) =
-            lens.getDestinations(lmpAddresses[0]);
-        assertEq(destinations[0].exchangeName, "test");
-        assertFalse(destinationAddresses[0] == address(0));
+        (address[] memory lmpVaults2, ILens.DestinationVault[][] memory destinations) = lens.getVaultDestinations();
+        assertEq(lmpVaults[0].vaultAddress, lmpVaults2[0]);
+        assertEq(lmpVaults[0].symbol, "lmpx");
+        assertFalse(destinations[0][0].vaultAddress == address(0));
+        assertEq(destinations[0][0].exchangeName, "test");
 
-        ILens.UnderlyingToken[] memory underlyingTokens = lens.getUnderlyingTokens(destinationAddresses[0]);
-        assertEq(underlyingTokens[0].symbol, "underlyer");
-        assertFalse(underlyingTokens[0].tokenAddress == address(0));
+        (address[] memory destinations2, ILens.UnderlyingToken[][] memory tokens) = lens.getVaultDestinationTokens();
+        assertEq(destinations2[0], destinations[0][0].vaultAddress);
+        assertEq(tokens[0][0].symbol, "underlyer");
+        assertFalse(tokens[0][0].tokenAddress == address(0));
     }
 }

@@ -25,56 +25,83 @@ contract Lens is ILens, SystemComponent {
     }
 
     /// @inheritdoc ILens
-    function getVaults()
-        external
-        view
-        override
-        returns (ILens.LMPVault[] memory lmpVaults, address[] memory vaultAddresses)
-    {
+    function getVaults() external view override returns (ILens.LMPVault[] memory lmpVaults) {
         address[] memory lmpAddresses = lmpRegistry.listVaults();
         lmpVaults = new ILens.LMPVault[](lmpAddresses.length);
-        vaultAddresses = new address[](lmpAddresses.length);
 
         for (uint256 i = 0; i < lmpAddresses.length; ++i) {
             address vaultAddress = lmpAddresses[i];
             ILMPVault vault = ILMPVault(vaultAddress);
-            lmpVaults[i] = ILens.LMPVault(vault.name(), vault.symbol());
-            vaultAddresses[i] = vaultAddress;
+            lmpVaults[i] = ILens.LMPVault(vaultAddress, vault.name(), vault.symbol());
         }
     }
 
     /// @inheritdoc ILens
-    function getDestinations(address lmpVault)
+    function getVaultDestinations()
         external
         view
         override
-        returns (ILens.DestinationVault[] memory destinations, address[] memory destinationAddresses)
+        returns (address[] memory lmpVaults, ILens.DestinationVault[][] memory destinations)
     {
-        address[] memory vaults = ILMPVault(lmpVault).getDestinations();
-        destinations = new ILens.DestinationVault[](vaults.length);
-        destinationAddresses = new address[](vaults.length);
+        lmpVaults = lmpRegistry.listVaults();
+        destinations = new ILens.DestinationVault[][](lmpVaults.length);
 
-        for (uint256 i = 0; i < vaults.length; ++i) {
-            address vaultAddress = vaults[i];
-            IDestinationVault destination = IDestinationVault(vaultAddress);
-            destinations[i] = ILens.DestinationVault(destination.exchangeName());
-            destinationAddresses[i] = vaultAddress;
+        for (uint256 i = 0; i < lmpVaults.length; ++i) {
+            destinations[i] = _getDestinations(lmpVaults[i]);
         }
     }
 
     /// @inheritdoc ILens
-    function getUnderlyingTokens(address destination)
+    function getVaultDestinationTokens()
         external
         view
         override
-        returns (ILens.UnderlyingToken[] memory underlyingTokens)
+        returns (address[] memory destinationVaults, ILens.UnderlyingToken[][] memory tokens)
     {
-        address[] memory tokens = IDestinationVault(destination).underlyingTokens();
-        underlyingTokens = new ILens.UnderlyingToken[](tokens.length);
+        destinationVaults = new address[](_getDestinationsCount());
+        address[] memory lmpVaults = lmpRegistry.listVaults();
 
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            address tokenAddress = tokens[i];
-            underlyingTokens[i] = ILens.UnderlyingToken(tokenAddress, IERC20Metadata(tokenAddress).symbol());
+        uint256 destArrPointer = 0;
+        for (uint256 i = 0; i < lmpVaults.length; ++i) {
+            address[] memory lmpDestinations = ILMPVault(lmpVaults[i]).getDestinations();
+
+            for (uint256 j = 0; j < lmpDestinations.length; ++j) {
+                destinationVaults[destArrPointer++] = lmpDestinations[j];
+            }
+        }
+
+        tokens = new ILens.UnderlyingToken[][](destinationVaults.length);
+
+        for (uint256 i = 0; i < destinationVaults.length; ++i) {
+            tokens[i] = _getTokens(destinationVaults[i]);
+        }
+    }
+
+    function _getDestinations(address lmpVault) private view returns (ILens.DestinationVault[] memory destinations) {
+        address[] memory vaultDestinations = ILMPVault(lmpVault).getDestinations();
+        destinations = new ILens.DestinationVault[](vaultDestinations.length);
+        for (uint256 i = 0; i < vaultDestinations.length; ++i) {
+            address destinationAddress = vaultDestinations[i];
+            IDestinationVault destination = IDestinationVault(destinationAddress);
+            destinations[i] = ILens.DestinationVault(destinationAddress, destination.exchangeName());
+        }
+    }
+
+    function _getDestinationsCount() private view returns (uint256 count) {
+        address[] memory lmpVaults = lmpRegistry.listVaults();
+
+        for (uint256 i = 0; i < lmpVaults.length; ++i) {
+            address[] memory lmpDestinations = ILMPVault(lmpVaults[i]).getDestinations();
+            count += lmpDestinations.length;
+        }
+    }
+
+    function _getTokens(address destinationVault) private view returns (ILens.UnderlyingToken[] memory tokens) {
+        address[] memory destinationTokens = IDestinationVault(destinationVault).underlyingTokens();
+        tokens = new ILens.UnderlyingToken[](destinationTokens.length);
+        for (uint256 i = 0; i < destinationTokens.length; ++i) {
+            address tokenAddress = destinationTokens[i];
+            tokens[i] = ILens.UnderlyingToken(tokenAddress, IERC20Metadata(tokenAddress).symbol());
         }
     }
 }

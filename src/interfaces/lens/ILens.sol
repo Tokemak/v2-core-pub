@@ -5,11 +5,13 @@ pragma solidity 0.8.17;
 /// @notice Queries the system to get the Vaults data in convenient representable way
 interface ILens {
     struct LMPVault {
+        address vaultAddress;
         string name;
         string symbol;
     }
 
     struct DestinationVault {
+        address vaultAddress;
         string exchangeName;
     }
 
@@ -19,30 +21,28 @@ interface ILens {
     }
 
     /**
-     * @notice Gets LMPVault data
-     * @return lmpVaults an array of `LMPVault`
-     * @return vaultAddresses an array of addresses for corresponding vaults
+     * @notice Gets LMPVaults
+     * @return lmpVaults an array of `LMPVault` data
      */
-    function getVaults() external view returns (ILens.LMPVault[] memory lmpVaults, address[] memory vaultAddresses);
+    function getVaults() external view returns (ILens.LMPVault[] memory lmpVaults);
 
     /**
-     * @notice Gets DestinationVaults from the given LMPVault
-     * @param lmpVault address to query DestinationVaults from
-     * @return destinations an array of `DestinationVault`
-     * @return destinationAddresses an array of addresses for corresponding vaults
+     * @notice Gets DestinationVaults and corresponding LMPVault addresses
+     * @return lmpVaults an array of addresses for corresponding destinations
+     * @return destinations a matrix of `DestinationVault` data
      */
-    function getDestinations(address lmpVault)
+    function getVaultDestinations()
         external
         view
-        returns (ILens.DestinationVault[] memory destinations, address[] memory destinationAddresses);
+        returns (address[] memory lmpVaults, ILens.DestinationVault[][] memory destinations);
 
     /**
-     * @notice Gets UnderlyingTokens from the given DestinationVault
-     * @param destination address to query UnderlyingTokens from
-     * @return underlyingTokens an array of ERC-20s wrapped to `UnderlyingToken`
+     * @notice Gets UnderlyingTokens and corresponding DestinationVault addresses
+     * @return destinationVaults an array of addresses for corresponding tokens
+     * @return tokens a matrix of of ERC-20s wrapped to `UnderlyingToken`
      */
-    function getUnderlyingTokens(address destination)
+    function getVaultDestinationTokens()
         external
         view
-        returns (ILens.UnderlyingToken[] memory underlyingTokens);
+        returns (address[] memory destinationVaults, ILens.UnderlyingToken[][] memory tokens);
 }

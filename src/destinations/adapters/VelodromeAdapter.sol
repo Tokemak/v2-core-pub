@@ -34,7 +34,7 @@ library VelodromeAdapter {
     /**
      * @notice A struct used to pass Velodrome params
      * @dev Used to avoid stack-too-deep-errors
-     * @param tokenA Firs pool token
+     * @param tokenA First pool token
      * @param tokenB Second pool token
      * @param stable A flag that indicates pool type
      * @param amountAMin Minimum amount of the first token to deposit/receive

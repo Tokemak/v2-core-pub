@@ -13,7 +13,7 @@ interface ILMPVault is IERC4626, IERC20Permit {
     /* ******************************** */
     event TokensPulled(address[] tokens, uint256[] amounts, address[] destinations);
     event TokensRecovered(address[] tokens, uint256[] amounts, address[] destinations);
-    event DebtUpdated(uint256 oldDebt, uint256 newDebt);
+    event Nav(uint256 idle, uint256 debt, uint256 totalSupply);
     event RewarderSet(address rewarder);
     event DestinationDebtReporting(address destination, uint256 debtValue, uint256 claimed, uint256 claimGasUsed);
     event FeeCollected(uint256 fees, address feeSink, uint256 mintedShares, uint256 profit, uint256 idle, uint256 debt);

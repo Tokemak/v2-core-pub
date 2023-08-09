@@ -532,6 +532,8 @@ contract LMPVault is
 
         emit Withdraw(msg.sender, receiver, owner, returnedAssets, shares);
 
+        emit Nav(totalIdle, totalDebt, totalSupply());
+
         _baseAsset.safeTransfer(receiver, returnedAssets);
 
         return returnedAssets;
@@ -618,6 +620,8 @@ contract LMPVault is
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
+
+        emit Nav(totalIdle, totalDebt, totalSupply());
     }
 
     ///@dev Checks if vault is "healthy" in the sense of having assets backing the circulating shares.
@@ -701,6 +705,8 @@ contract LMPVault is
         totalIdle = idle;
         totalDebt = debt;
         _collectFees(idle, debt, totalSupply());
+
+        emit Nav(totalIdle, totalDebt, totalSupply());
     }
 
     /// @inheritdoc IStrategy
@@ -725,6 +731,8 @@ contract LMPVault is
         totalIdle = idle;
         totalDebt = debt;
         _collectFees(idle, debt, totalSupply());
+
+        emit Nav(totalIdle, totalDebt, totalSupply());
     }
 
     /// @inheritdoc IStrategy
@@ -795,6 +803,8 @@ contract LMPVault is
         totalDebt = debt;
 
         _collectFees(idle, debt, totalSupply());
+
+        emit Nav(totalIdle, totalDebt, totalSupply());
     }
 
     function _collectFees(uint256 idle, uint256 debt, uint256 totalSupply) internal {
@@ -829,6 +839,8 @@ contract LMPVault is
             emit NewNavHighWatermark(currentNavPerShare, block.timestamp);
         }
         emit FeeCollected(fees, sink, shares, profit, idle, debt);
+
+        // NOTE: NavChanged event thrown in higher level caller
     }
 
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override whenNotPaused {

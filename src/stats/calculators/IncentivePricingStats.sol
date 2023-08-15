@@ -153,7 +153,7 @@ contract IncentivePricingStats is IIncentivesPricingStats, SecurityBase {
             if (existing._initCount == INIT_SAMPLE_COUNT) {
                 // if this sample hits the target number, then complete initialize and set the filters
                 existing._initComplete = true;
-                uint256 averagePrice = existing._initAcc * 1e18 / INIT_SAMPLE_COUNT;
+                uint256 averagePrice = existing._initAcc / INIT_SAMPLE_COUNT;
                 existing.fastFilterPrice = averagePrice;
                 existing.slowFilterPrice = averagePrice;
             }

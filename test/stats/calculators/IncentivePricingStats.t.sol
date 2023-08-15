@@ -243,7 +243,10 @@ contract IncentivePricingTest is Test {
         assertEq(tokens.length, 1);
         assertEq(tokens[0], token);
         assertEq(allInfo.length, 1);
-        uint256 expectedPriceSum = calcSumPrice(startingPrice, prices);
+
+        // calculated manually
+        uint256 expectedPriceSum = 42_300_000_000_000_000_000;
+
         assertEq(allInfo[0]._initCount, 9);
         assertEq(allInfo[0]._initAcc, expectedPriceSum);
         assertEq(allInfo[0].fastFilterPrice, 0);
@@ -265,8 +268,12 @@ contract IncentivePricingTest is Test {
 
         // at this point we just completed the init phase
         (tokens, allInfo) = pricingStats.getTokenPricingInfo();
-        expectedPriceSum += calcSumPrice(0, prices);
-        uint256 expectedPrice = expectedPriceSum * 1e18 / 18;
+
+        // calculated manually
+        expectedPriceSum += 34_900_000_000_000_000_000;
+        uint256 expectedPrice = 4_288_888_888_888_888_888;
+        assertEq(expectedPrice, expectedPriceSum / 18);
+
         assertEq(allInfo[0]._initCount, 18);
         assertEq(allInfo[0]._initAcc, expectedPriceSum);
         assertEq(allInfo[0].fastFilterPrice, expectedPrice);
@@ -345,7 +352,8 @@ contract IncentivePricingTest is Test {
 
         uint256 timestamp = updateTokenPrice(TARGET_BLOCK_TIMESTAMP, token, prices);
 
-        uint256 expectedPrice = calcAvgPrice(startingPrice, prices);
+        // manually calculated
+        uint256 expectedPrice = 4_288_888_888_888_888_888;
 
         (uint256 fastPrice, uint256 slowPrice) = pricingStats.getPrice(token, 100);
         assertEq(fastPrice, expectedPrice);
@@ -365,6 +373,24 @@ contract IncentivePricingTest is Test {
 
         uint256 expectedSlow = Stats.getFilteredValue(slowAlpha, expectedPrice, prices[0]);
         assertEq(slowPrice, expectedSlow);
+    }
+
+    function testSetPriceCalcsAreAccurate() public {
+        address token = vm.addr(1);
+        uint256 startingPrice = 45e17;
+        registerToken(token, startingPrice);
+
+        uint256[] memory prices = new uint256[](17);
+        // put in the same number repeatedly
+        // expected ending average will be the startingPrice
+        for (uint256 i = 0; i < prices.length; ++i) {
+            prices[i] = startingPrice;
+        }
+
+        updateTokenPrice(TARGET_BLOCK_TIMESTAMP, token, prices);
+        (uint256 fastPrice, uint256 slowPrice) = pricingStats.getPrice(token, 100);
+        assertEq(fastPrice, startingPrice);
+        assertEq(slowPrice, startingPrice);
     }
 
     function registerToken(address token, uint256 initialPrice) internal {
@@ -410,19 +436,5 @@ contract IncentivePricingTest is Test {
 
         string memory addr = Strings.toHexString(uint160(target), 20);
         fail(string.concat(addr, " not in list"));
-    }
-
-    function calcAvgPrice(uint256 starting, uint256[] memory next) internal pure returns (uint256) {
-        uint256 total = calcSumPrice(starting, next);
-        return total * 1e18 / (next.length + 1);
-    }
-
-    function calcSumPrice(uint256 starting, uint256[] memory next) internal pure returns (uint256) {
-        uint256 numItems = next.length;
-        uint256 total = starting;
-        for (uint256 i = 0; i < numItems; ++i) {
-            total += next[i];
-        }
-        return total;
     }
 }

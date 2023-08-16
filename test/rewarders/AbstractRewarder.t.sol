@@ -547,8 +547,9 @@ contract NotifyRewardAmount is AbstractRewarderTest {
             newReward * 2
         );
 
-        vm.prank(operator);
+        vm.startPrank(operator);
         rewarder.exposed_notifyRewardAmount(newReward);
+        vm.stopPrank();
     }
 }
 
@@ -695,8 +696,9 @@ contract _getReward is AbstractRewarderTest {
         GPToke gPToke = _setupGpTokeAndTokeRewarder();
         _runDefaultScenarioGpToke();
 
-        vm.prank(operator);
+        vm.startPrank(operator);
         rewarder.setTokeLockDuration(30 days);
+        vm.stopPrank();
 
         uint256 balanceBefore = gPToke.balanceOf(RANDOM);
         rewarder.exposed_getRewardWrapper(RANDOM);

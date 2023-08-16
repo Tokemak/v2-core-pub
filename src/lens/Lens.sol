@@ -58,18 +58,7 @@ contract Lens is ILens, SystemComponent {
         override
         returns (address[] memory destinationVaults, ILens.UnderlyingToken[][] memory tokens)
     {
-        destinationVaults = new address[](_getDestinationsCount());
-        address[] memory lmpVaults = lmpRegistry.listVaults();
-
-        uint256 destArrPointer = 0;
-        for (uint256 i = 0; i < lmpVaults.length; ++i) {
-            address[] memory lmpDestinations = ILMPVault(lmpVaults[i]).getDestinations();
-
-            for (uint256 j = 0; j < lmpDestinations.length; ++j) {
-                destinationVaults[destArrPointer++] = lmpDestinations[j];
-            }
-        }
-
+        destinationVaults = systemRegistry.destinationVaultRegistry().listVaults();
         tokens = new ILens.UnderlyingToken[][](destinationVaults.length);
 
         for (uint256 i = 0; i < destinationVaults.length; ++i) {
@@ -84,15 +73,6 @@ contract Lens is ILens, SystemComponent {
             address destinationAddress = vaultDestinations[i];
             IDestinationVault destination = IDestinationVault(destinationAddress);
             destinations[i] = ILens.DestinationVault(destinationAddress, destination.exchangeName());
-        }
-    }
-
-    function _getDestinationsCount() private view returns (uint256 count) {
-        address[] memory lmpVaults = lmpRegistry.listVaults();
-
-        for (uint256 i = 0; i < lmpVaults.length; ++i) {
-            address[] memory lmpDestinations = ILMPVault(lmpVaults[i]).getDestinations();
-            count += lmpDestinations.length;
         }
     }
 

@@ -95,6 +95,24 @@ contract DestinationVaultRegistryBaseTests is Test {
         assertEq(notRegistered, false, "notRegistered");
     }
 
+    function testListValuesReturnsAllValues() public {
+        address[] memory vaults = registry.listVaults();
+        assertEq(vaults.length, 0);
+
+        address newVault = generateDestinationVault(systemRegistry);
+        address newVault2 = generateDestinationVault(systemRegistry);
+        vm.startPrank(factory);
+        registry.register(newVault);
+        registry.register(newVault2);
+        vm.stopPrank();
+
+        vaults = registry.listVaults();
+
+        assertEq(vaults.length, 2);
+        assertEq(vaults[0], address(newVault));
+        assertEq(vaults[1], address(newVault2));
+    }
+
     function testOnlyOwnerCanSetFactory() public {
         vm.startPrank(factory);
         address newFactory = generateFactory(new SystemRegistry(TOKE_MAINNET, WETH_MAINNET));

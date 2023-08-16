@@ -58,6 +58,11 @@ contract DestinationVaultRegistry is SystemComponent, IDestinationVaultRegistry,
         emit DestinationVaultRegistered(newDestinationVault, msg.sender);
     }
 
+    /// @inheritdoc IDestinationVaultRegistry
+    function listVaults() external view returns (address[] memory) {
+        return vaults.values();
+    }
+
     /// @notice Changes the factory that is allowed to register new vaults
     /// @dev Systems must match
     /// @param newAddress Address of the new factory

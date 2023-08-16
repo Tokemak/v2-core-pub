@@ -17,4 +17,7 @@ interface IDestinationVaultRegistry {
     /// @notice Checks if an address is a valid Destination Vault and reverts if not
     /// @param destinationVault Destination Vault address to checked
     function verifyIsRegistered(address destinationVault) external view;
+
+    /// @notice Returns a list of all registered vaults
+    function listVaults() external view returns (address[] memory);
 }

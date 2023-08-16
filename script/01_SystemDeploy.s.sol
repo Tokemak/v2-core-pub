@@ -24,6 +24,9 @@ import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { StatsCalculatorRegistry } from "src/stats/StatsCalculatorRegistry.sol";
 import { GPToke } from "src/staking/GPToke.sol";
 import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
+import { Systems } from "./utils/Constants.sol";
+import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
+import { Lens } from "src/lens/Lens.sol";
 
 // Libraries
 import { Roles } from "src/libs/Roles.sol";
@@ -38,7 +41,7 @@ import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegi
  * @dev Check `.env.example` for environment variables that need are needed for this script to run.
  *
  * @dev This script sets up base functionality for TokemakV2.  This includes setting up the system registry, all
- *      contracts that are set on the system regsitry, and their dependencies.  All other actions within the system
+ *      contracts that are set on the system registry, and their dependencies.  All other actions within the system
  *      will be handled via other scripts.
  *
  * @dev To deploy test this script locally against a fork, run the following:
@@ -87,8 +90,7 @@ contract DeploySystem is BaseScript {
     CurveResolverMainnet public curveResolver;
 
     function run() external {
-        mainnet = false;
-        _getEnv();
+        setUp(Systems.LST_GEN1_GOERLI);
 
         vm.startBroadcast(privateKey);
 
@@ -187,6 +189,16 @@ contract DeploySystem is BaseScript {
             systemRegistry.setCurveResolver(address(curveResolver));
             console.log("Curve Resolver Address: ", address(curveResolver));
         }
+
+        // Setup the 0x swapper
+        accessController.grantRole(Roles.REGISTRY_UPDATER, 0xec19A67D0332f3b188740A2ea96F84CA3a17D73a);
+        BaseAsyncSwapper zeroExSwapper = new BaseAsyncSwapper(constants.zeroExProxy);
+        asyncSwapperRegistry.register(address(zeroExSwapper));
+        console.log("Base Async Swapper: ", address(zeroExSwapper));
+
+        // Lens
+        Lens lens = new Lens(systemRegistry);
+        console.log("Lens: ", address(lens));
 
         vm.stopBroadcast();
     }

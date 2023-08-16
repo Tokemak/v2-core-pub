@@ -8,15 +8,7 @@ import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 
 // Addresses
-import {
-    WETH_MAINNET,
-    TOKE_MAINNET,
-    CURVE_META_REGISTRY_MAINNET,
-    WETH_GOERLI,
-    TOKE_GOERLI,
-    SYSTEM_REGISTRY_MAINNET,
-    SYSTEM_REGISTRY_GOERLI
-} from "./utils/Addresses.sol";
+import { Constants, Systems } from "./utils/Constants.sol";
 
 // Interfaces
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -27,8 +19,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
  *      them or not.
  */
 contract BaseScript is Script {
-    ///@dev Must be set in inheriting script before `_getEnv()` is called. Default is Goerli
-    bool public mainnet;
+    Constants.Values public constants;
 
     // Set based on MAINNET flag.
     address public wethAddress;
@@ -38,27 +29,15 @@ contract BaseScript is Script {
     address public destinationTemplateRegistry;
     uint256 public privateKey;
 
-    function _getEnv() internal {
-        if (mainnet) {
-            wethAddress = WETH_MAINNET;
-            tokeAddress = TOKE_MAINNET;
+    function setUp(Systems system) internal {
+        constants = Constants.get(system);
+        wethAddress = constants.weth;
+        tokeAddress = constants.toke;
+        curveMetaRegistryAddress = constants.curveMetaRegistry;
+        privateKey = vm.envUint(constants.privateKeyEnvVar);
 
-            ISystemRegistry registry = ISystemRegistry(SYSTEM_REGISTRY_MAINNET);
-
-            // TODO: Add reverts? Probably not needed, calls to these functions will fail.
-            accessControllerAddress = address(registry.accessController());
-            destinationTemplateRegistry = address(registry.destinationTemplateRegistry());
-            privateKey = vm.envUint("MAINNET_PRIVATE_KEY");
-            curveMetaRegistryAddress = CURVE_META_REGISTRY_MAINNET;
-        } else {
-            wethAddress = WETH_GOERLI;
-            tokeAddress = TOKE_GOERLI;
-
-            ISystemRegistry registry = ISystemRegistry(SYSTEM_REGISTRY_GOERLI);
-
-            accessControllerAddress = address(registry.accessController());
-            destinationTemplateRegistry = address(registry.destinationTemplateRegistry());
-            privateKey = vm.envUint("GOERLI_PRIVATE_KEY");
-        }
+        ISystemRegistry registry = ISystemRegistry(constants.systemRegistry);
+        accessControllerAddress = address(registry.accessController());
+        destinationTemplateRegistry = address(registry.destinationTemplateRegistry());
     }
 }

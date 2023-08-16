@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import { BaseScript } from "./BaseScript.sol";
-
+import { Systems } from "./utils/Constants.sol";
 import { IDestinationRegistry } from "src/interfaces/destinations/IDestinationRegistry.sol";
 
 /**
@@ -30,8 +30,7 @@ contract DestinationTemplateScripts is BaseScript {
     address[] public destinationAddresses = [address(0)];
 
     function run() external {
-        mainnet = false;
-        _getEnv();
+        setUp(Systems.LST_GEN1_GOERLI);
 
         IDestinationRegistry destinationRegistry = IDestinationRegistry(destinationTemplateRegistry);
 

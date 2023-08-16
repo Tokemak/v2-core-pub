@@ -13,20 +13,11 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { Errors } from "src/utils/Errors.sol";
 
 contract Lens is ILens, SystemComponent {
-    ILMPVaultRegistry public immutable lmpRegistry;
-
-    constructor(ISystemRegistry _systemRegistry) SystemComponent(_systemRegistry) {
-        ILMPVaultRegistry _lmpRegistry = _systemRegistry.lmpVaultRegistry();
-
-        // System registry must be properly initialized first
-        Errors.verifyNotZero(address(_lmpRegistry), "lmpRegistry");
-
-        lmpRegistry = _lmpRegistry;
-    }
+    constructor(ISystemRegistry _systemRegistry) SystemComponent(_systemRegistry) { }
 
     /// @inheritdoc ILens
     function getVaults() external view override returns (ILens.LMPVault[] memory lmpVaults) {
-        address[] memory lmpAddresses = lmpRegistry.listVaults();
+        address[] memory lmpAddresses = systemRegistry.lmpVaultRegistry().listVaults();
         lmpVaults = new ILens.LMPVault[](lmpAddresses.length);
 
         for (uint256 i = 0; i < lmpAddresses.length; ++i) {
@@ -43,7 +34,7 @@ contract Lens is ILens, SystemComponent {
         override
         returns (address[] memory lmpVaults, ILens.DestinationVault[][] memory destinations)
     {
-        lmpVaults = lmpRegistry.listVaults();
+        lmpVaults = systemRegistry.lmpVaultRegistry().listVaults();
         destinations = new ILens.DestinationVault[][](lmpVaults.length);
 
         for (uint256 i = 0; i < lmpVaults.length; ++i) {

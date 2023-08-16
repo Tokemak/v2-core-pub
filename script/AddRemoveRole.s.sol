@@ -2,6 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+import { Systems } from "./utils/Constants.sol";
 import { BaseScript } from "./BaseScript.sol";
 
 // Libraries
@@ -25,8 +26,7 @@ contract AddRemoveRole is BaseScript {
     address public roleAddress = address(0);
 
     function run() external {
-        mainnet = false;
-        _getEnv();
+        setUp(Systems.LST_GEN1_GOERLI);
 
         IAccessController accessControl = IAccessController(accessControllerAddress);
 

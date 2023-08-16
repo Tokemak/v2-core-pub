@@ -27,7 +27,7 @@ library Constants {
         } else if (system == Systems.LST_GEN1_MAINNET) {
             return getLstGen1Mainnet();
         } else {
-            revert();
+            revert("address not found");
         }
     }
 

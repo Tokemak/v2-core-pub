@@ -19,7 +19,7 @@ contract DeploySystem is Script {
 
         console.log(allowance);
 
-        LMPVaultRouter router = LMPVaultRouter(payable(0x6b473f966de102fE733cF5ed7163EbB7B13Ad889));
+        //LMPVaultRouter router = LMPVaultRouter(payable(0x6b473f966de102fE733cF5ed7163EbB7B13Ad889));
 
         // vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
         // router.approve(IERC20(address(weth)), 0x793361c56d86C94343248e6EDCb1cF41fC85AddE, 0);

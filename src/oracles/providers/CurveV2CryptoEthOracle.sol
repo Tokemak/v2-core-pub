@@ -125,8 +125,7 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
 
         /**
          * Curve V2 pools always price second token in `coins` array in first token in `coins` array.  This means that
-         *    if `coins[0]` is Weth, and `coins[1]` is rEth, the price will be rEth as base and weth as quote.  Hence
-         *    to get lp price we will always want to use the second token in the array, priced in eth.
+         *    if `coins[0]` is Weth, and `coins[1]` is rEth, the price will be rEth as base and weth as quote.
          */
         lpTokenToPool[lpToken] = PoolData({
             pool: curvePool,
@@ -168,7 +167,7 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         }
 
         uint256 virtualPrice = cryptoPool.get_virtual_price();
-        uint256 assetPrice = systemRegistry.rootPriceOracle().getPriceInEth(poolInfo.tokenToPrice);
+        uint256 assetPrice = systemRegistry.rootPriceOracle().getPriceInEth(poolInfo.base);
 
         return (2 * virtualPrice * sqrt(assetPrice)) / 10 ** 18;
     }

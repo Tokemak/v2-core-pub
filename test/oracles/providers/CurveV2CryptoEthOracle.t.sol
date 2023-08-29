@@ -20,8 +20,7 @@ import {
     WETH9_ADDRESS,
     RETH_WETH_CURVE_POOL,
     RETH_ETH_CURVE_LP,
-    RETH_MAINNET,
-    WETH9_ADDRESS
+    RETH_MAINNET
 } from "test/utils/Addresses.sol";
 
 import { CurveV2CryptoEthOracle } from "src/oracles/providers/CurveV2CryptoEthOracle.sol";

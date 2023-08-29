@@ -159,6 +159,8 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         if (poolInfo.pool == address(0)) revert NotRegistered(token);
 
         ICryptoSwapPool cryptoPool = ICryptoSwapPool(poolInfo.pool);
+        address base = poolInfo.base;
+        address quote = poolInfo.quote;
 
         // Checking for read only reentrancy scenario.
         if (poolInfo.checkReentrancy == 1) {
@@ -167,9 +169,11 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         }
 
         uint256 virtualPrice = cryptoPool.get_virtual_price();
-        uint256 assetPrice = systemRegistry.rootPriceOracle().getPriceInEth(poolInfo.base);
+        // `getPriceInQuote` works for both eth pegged and non eth pegged assets.
+        uint256 basePrice = systemRegistry.rootPriceOracle().getPriceInQuote(base, quote);
+        uint256 ethInQuote = systemRegistry.rootPriceOracle().getPriceInQuote(ETH, quote);
 
-        return (2 * virtualPrice * sqrt(assetPrice)) / 10 ** 18;
+        return (2 * virtualPrice * sqrt(basePrice)) / ethInQuote;
     }
 
     // solhint-disable max-line-length

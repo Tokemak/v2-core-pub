@@ -15,4 +15,11 @@ interface IRootPriceOracle {
     /// @param pool liquidity pool to be used for price determination
     /// @return price the spot price of the token in ETH based on the provided pool
     function getSpotPriceInEth(address token, address pool) external returns (uint256);
+    
+    /// @notice Returns a price for base token in quote token.
+    /// @dev Requires both tokens to be registered.
+    /// @param base Address of base token.
+    /// @param quote Address of quote token.
+    /// @return price Price of the base token in quote token.
+    function getPriceInQuote(address base, address quote) external returns (uint256 price);
 }

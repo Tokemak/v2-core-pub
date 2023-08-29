@@ -196,4 +196,19 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
 
         return price;
     }
+    
+    function getPriceInQuote(address base, address quote) external returns (uint256) {
+        IPriceOracle baseOracle = tokenMappings[base];
+        IPriceOracle quoteOracle = tokenMappings[quote];
+
+        if (address(baseOracle) == address(0) || address(quoteOracle) == address(0)) {
+            // Revert token being priced.
+            revert MissingTokenOracle(base);
+        }
+
+        uint256 basePriceInEth = baseOracle.getPriceInEth(base);
+        uint256 quotePriceInEth = quoteOracle.getPriceInEth(quote);
+
+        return (basePriceInEth * (10 ** 18)) / quotePriceInEth;
+    }
 }

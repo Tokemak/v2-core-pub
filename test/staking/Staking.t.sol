@@ -161,6 +161,21 @@ contract StakingTest is BaseTest {
         assertEq(gpToke.balanceOf(address(this)), 0);
     }
 
+    function testReceive() public {
+        // ensure gpToke.totalSupply() > 0 (otherwise just reverts)
+        stake(stakeAmount, ONE_YEAR);
+
+        uint256 balanceBefore = address(this).balance;
+        uint256 gpTokeBefore = weth.balanceOf(address(gpToke));
+
+        // send eth to gpToke
+        (bool success,) = payable(gpToke).call{ value: stakeAmount }("");
+        assertTrue(success);
+
+        assertEq(address(this).balance, balanceBefore - stakeAmount);
+        assertEq(weth.balanceOf(address(gpToke)), gpTokeBefore + stakeAmount);
+    }
+
     function testExtend(uint256 amount) public {
         _checkFuzz(amount);
         prepareFunds(address(this), amount);

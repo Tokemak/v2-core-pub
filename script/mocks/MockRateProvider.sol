@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { IRateProvider } from "script/interfaces/external/IRateProvider.sol";
+import { IRateProvider } from "script/interfaces/balancer/IRateProvider.sol";
 
 import { Ownable } from "openzeppelin-contracts/access/Ownable.sol";
 

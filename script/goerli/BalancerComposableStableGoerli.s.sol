@@ -104,17 +104,12 @@ contract BalancerComposableStableGoerli is BaseScript {
         // If the token at the second index is larger than the token at the final index, swap.
         if (tokens[1] > tokens[2]) {
             IERC20 larger = tokens[1];
-<<<<<<< HEAD
             IRateProvider largerRateProviderIndexMatch = rateProviders[1];
-=======
-            IRateProvider largerRateProviderIndexmatch = rateProviders[1];
->>>>>>> a4c93b4 (feat(script): Balancer ComposableStablePool deploy script for Goerli)
 
             tokens[1] = tokens[2];
             rateProviders[1] = rateProviders[2];
 
             tokens[2] = larger;
-<<<<<<< HEAD
             rateProviders[2] = largerRateProviderIndexMatch;
         }
 
@@ -135,26 +130,6 @@ contract BalancerComposableStableGoerli is BaseScript {
         );
 
         console.log("Pool created: ", address(pool));
-=======
-            rateProviders[2] = largerRateProviderIndexmatch;
-        }
-
-        // Create pool.
-        address pool = IBalancerComposableStableFactory(BALANCER_COMPOSABLE_FACTORY_GOERLI).create(
-            poolName,
-            poolSymbol,
-            tokens,
-            amplification,
-            rateProviders,
-            tokenCacheDurations,
-            exemptFromYieldFee,
-            swapFeePercentage,
-            owner,
-            bytes32("1") // TODO: Any specific salt we should be using?
-        );
-
-        console.log("Pool created: ", pool);
->>>>>>> a4c93b4 (feat(script): Balancer ComposableStablePool deploy script for Goerli)
 
         vm.stopBroadcast();
     }

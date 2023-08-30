@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import { IRateProvider } from "script/interfaces/external/IRateProvider.sol";
+import { IRateProvider } from "script/interfaces/balancer/IRateProvider.sol";
 
 interface IBalancerComposableStableFactory {
     /// @dev Creates a Balancer composable stable pool.

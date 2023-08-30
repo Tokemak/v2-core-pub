@@ -18,4 +18,6 @@ interface IBalancerComposableStableFactory {
         address owner,
         bytes32 salt
     ) external returns (address);
+
+    function getCreationCode() external returns (bytes memory);
 }

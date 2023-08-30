@@ -71,7 +71,6 @@ contract DeploySystem is BaseScript {
     string public lmp2DescPrefix = "Emerging";
     bytes32 public lmp2Salt = keccak256("emerging");
 
-    SystemRegistry public systemRegistry;
     AccessController public accessController;
     SystemSecurity public systemSecurity;
     LMPVaultRegistry public lmpRegistry;
@@ -192,13 +191,17 @@ contract DeploySystem is BaseScript {
 
         // Setup the 0x swapper
         accessController.grantRole(Roles.REGISTRY_UPDATER, 0xec19A67D0332f3b188740A2ea96F84CA3a17D73a);
-        BaseAsyncSwapper zeroExSwapper = new BaseAsyncSwapper(constants.zeroExProxy);
+        BaseAsyncSwapper zeroExSwapper = new BaseAsyncSwapper(constants.ext.zeroExProxy);
         asyncSwapperRegistry.register(address(zeroExSwapper));
         console.log("Base Async Swapper: ", address(zeroExSwapper));
 
         // Lens
         Lens lens = new Lens(systemRegistry);
         console.log("Lens: ", address(lens));
+
+        // Setup our core reward tokens
+        systemRegistry.addRewardToken(constants.tokens.weth);
+        systemRegistry.addRewardToken(constants.tokens.toke);
 
         vm.stopBroadcast();
     }

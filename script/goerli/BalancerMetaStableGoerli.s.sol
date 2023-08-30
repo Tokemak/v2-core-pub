@@ -11,11 +11,12 @@ import { console } from "forge-std/console.sol";
 import { ERC20Mock } from "script/mocks/ERC20Mock.sol";
 import { MockRateProvider, IRateProvider } from "script/mocks/MockRateProvider.sol";
 import { IBalancerMetaStableFactory } from "script/interfaces/external/IBalancerMetaStableFactory.sol";
-import { BALANCER_METASTABLE_FACTORY_GOERLI } from "script/utils/Addresses.sol";
+import { BaseScript } from "../BaseScript.sol";
+import { Systems } from "../utils/Constants.sol";
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
-contract BalancerMetaStableGoerli is Script {
+contract BalancerMetaStableGoerli is BaseScript {
     // Tokens
     IERC20 public weth;
     IERC20 public wstEth;
@@ -38,17 +39,23 @@ contract BalancerMetaStableGoerli is Script {
     uint256[] public rateDurations = [0, 10_800]; // Set this here because values, order of other arrays known
     uint256 public swapFeePercentage = 400_000_000_000_000;
     bool public oracleEnabled = true;
-    address public owner = vm.addr(vm.envUint("GOERLI_PRIVATE_KEY"));
+    address public owner;
 
     function run() external {
-        vm.startBroadcast(vm.envUint("GOERLI_PRIVATE_KEY"));
+        setUp(Systems.LST_GEN1_GOERLI);
+
+        owner = vm.addr(vm.envUint(constants.privateKeyEnvVar));
+        vm.startBroadcast(vm.envUint(constants.privateKeyEnvVar));
 
         console.log("Owner: ", owner);
 
         // Create tokens that need to be created, wrap others that do not - ERC20 mocks
-        weth = IERC20(new ERC20Mock("Tokemak Controllred Weth - Mock", "tcWeth"));
+        weth = IERC20(constants.tokens.weth);
         // TODO: Change to deployed wstEth address once composable stable deployed.
-        wstEth = IERC20(new ERC20Mock("Mock wstEth", "mWstEth"));
+        wstEth = IERC20(0xa0494a297434eBa30e807D983605e8B12259CC21);
+
+        // ERC20Mock(address(weth)).mint(owner, 10_000e18);
+        // ERC20Mock(address(wstEth)).mint(owner, 10_000e18);
 
         console.log("Weth address: ", address(weth));
         console.log("wstEth address: ", address(wstEth));
@@ -68,7 +75,7 @@ contract BalancerMetaStableGoerli is Script {
         rateProviders.push(wethRateProvider);
         rateProviders.push(wstEthRateProvider);
 
-        // Sort arrays.  Balancer requiers pool tokens in numerical order.
+        // Sort arrays.  Balancer requires pool tokens in numerical order.
         if (tokens[0] > tokens[1]) {
             IERC20 largerToken = tokens[0];
             IRateProvider matchingIndexRateProvider = rateProviders[0];
@@ -85,7 +92,7 @@ contract BalancerMetaStableGoerli is Script {
         }
 
         // Create pool.
-        address pool = IBalancerMetaStableFactory(BALANCER_METASTABLE_FACTORY_GOERLI).create(
+        address pool = IBalancerMetaStableFactory(constants.ext.balancerMetaStableFactor).create(
             name, symbol, tokens, amplification, rateProviders, rateDurations, swapFeePercentage, oracleEnabled, owner
         );
 

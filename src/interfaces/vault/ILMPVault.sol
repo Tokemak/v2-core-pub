@@ -70,4 +70,13 @@ interface ILMPVault is IERC4626, IERC20Permit {
     /// @notice gets the list of supported destination vaults for the LMP/Strategy
     /// @return _destinations List of supported destination vaults
     function getDestinations() external view returns (address[] memory _destinations);
+
+    /// @notice Current performance fee taken on profit. 100% == 10000
+    function performanceFeeBps() external view returns (uint256);
+
+    /// @notice The amount of baseAsset deposited into the contract pending deployment
+    function totalIdle() external view returns (uint256);
+
+    /// @notice The current (though cached) value of assets we've deployed
+    function totalDebt() external view returns (uint256);
 }

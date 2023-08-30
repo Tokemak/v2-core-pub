@@ -23,7 +23,18 @@ contract Lens is ILens, SystemComponent {
         for (uint256 i = 0; i < lmpAddresses.length; ++i) {
             address vaultAddress = lmpAddresses[i];
             ILMPVault vault = ILMPVault(vaultAddress);
-            lmpVaults[i] = ILens.LMPVault(vaultAddress, vault.name(), vault.symbol());
+            lmpVaults[i] = ILens.LMPVault({
+                vaultAddress: vaultAddress,
+                name: vault.name(),
+                symbol: vault.symbol(),
+                vaultType: vault.vaultType(),
+                baseAsset: vault.asset(),
+                performanceFeeBps: vault.performanceFeeBps(),
+                totalSupply: vault.totalSupply(),
+                totalAssets: vault.totalAssets(),
+                totalIdle: vault.totalIdle(),
+                totalDebt: vault.totalDebt()
+            });
         }
     }
 

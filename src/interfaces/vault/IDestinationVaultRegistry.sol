@@ -2,6 +2,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+import { IDestinationVaultFactory } from "src/interfaces/vault/IDestinationVaultFactory.sol";
+
 /// @notice Tracks valid Destination Vaults for the system
 interface IDestinationVaultRegistry {
     /// @notice Determines if a given address is a valid Destination Vault in the system
@@ -20,4 +22,7 @@ interface IDestinationVaultRegistry {
 
     /// @notice Returns a list of all registered vaults
     function listVaults() external view returns (address[] memory);
+
+    /// @notice Factory that is allowed to create and registry Destination Vaults
+    function factory() external view returns (IDestinationVaultFactory);
 }

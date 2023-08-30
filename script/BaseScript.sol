@@ -11,7 +11,7 @@ import { console } from "forge-std/console.sol";
 import { Constants, Systems } from "./utils/Constants.sol";
 
 // Interfaces
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { SystemRegistry } from "src/SystemRegistry.sol";
 
 /**
  * @dev Base contract for scripting.  Sets env to either Goerli or Mainnet values.  As of
@@ -20,6 +20,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
  */
 contract BaseScript is Script {
     Constants.Values public constants;
+    SystemRegistry public systemRegistry;
 
     // Set based on MAINNET flag.
     address public wethAddress;
@@ -31,13 +32,13 @@ contract BaseScript is Script {
 
     function setUp(Systems system) internal {
         constants = Constants.get(system);
-        wethAddress = constants.weth;
-        tokeAddress = constants.toke;
-        curveMetaRegistryAddress = constants.curveMetaRegistry;
+        wethAddress = constants.tokens.weth;
+        tokeAddress = constants.tokens.toke;
+        curveMetaRegistryAddress = constants.ext.curveMetaRegistry;
         privateKey = vm.envUint(constants.privateKeyEnvVar);
 
-        ISystemRegistry registry = ISystemRegistry(constants.systemRegistry);
-        accessControllerAddress = address(registry.accessController());
-        destinationTemplateRegistry = address(registry.destinationTemplateRegistry());
+        systemRegistry = SystemRegistry(constants.sys.systemRegistry);
+        accessControllerAddress = address(systemRegistry.accessController());
+        destinationTemplateRegistry = address(systemRegistry.destinationTemplateRegistry());
     }
 }

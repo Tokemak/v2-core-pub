@@ -11,11 +11,13 @@ import { console } from "forge-std/console.sol";
 import { ERC20Mock } from "script/mocks/ERC20Mock.sol";
 import { MockRateProvider, IRateProvider } from "script/mocks/MockRateProvider.sol";
 import { IBalancerComposableStableFactory } from "script/interfaces/external/IBalancerComposableStableFactory.sol";
-import { BALANCER_COMPOSABLE_FACTORY_GOERLI } from "script/utils/Addresses.sol";
-
+import { BaseScript } from "../BaseScript.sol";
+import { Systems } from "../utils/Constants.sol";
+import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
+import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
-contract BalancerComposableStableGoerli is Script {
+contract BalancerComposableStableGoerli is BaseScript {
     // Tokens
     IERC20 public mockSfrxEth;
     IERC20 public mockWstEth;
@@ -35,10 +37,13 @@ contract BalancerComposableStableGoerli is Script {
     IERC20[] public tokens;
     bool public exemptFromYieldFee = false;
     uint256 public swapFeePercentage = 400_000_000_000_000;
-    address public owner = vm.addr(vm.envUint("GOERLI_PRIVATE_KEY"));
+    address public owner;
 
     function run() external {
-        vm.startBroadcast(vm.envUint("GOERLI_PRIVATE_KEY"));
+        setUp(Systems.LST_GEN1_GOERLI);
+
+        owner = vm.addr(vm.envUint(constants.privateKeyEnvVar));
+        vm.startBroadcast(vm.envUint(constants.privateKeyEnvVar));
 
         console.log("Owner: ", owner);
 
@@ -46,6 +51,10 @@ contract BalancerComposableStableGoerli is Script {
         mockSfrxEth = new ERC20Mock("Mock sfrxEth", "mSfrxEth");
         mockWstEth = new ERC20Mock("Mock wstEth", "mWstEth");
         mockREth = new ERC20Mock("Mock rEth", "mREth");
+
+        ERC20Mock(address(mockSfrxEth)).mint(owner, 100_000e18);
+        ERC20Mock(address(mockWstEth)).mint(owner, 100_000e18);
+        ERC20Mock(address(mockREth)).mint(owner, 100_000e18);
 
         console.log("sfrxEth: ", address(mockSfrxEth));
         console.log("wstEth: ", address(mockWstEth));
@@ -97,30 +106,32 @@ contract BalancerComposableStableGoerli is Script {
         // If the token at the second index is larger than the token at the final index, swap.
         if (tokens[1] > tokens[2]) {
             IERC20 larger = tokens[1];
-            IRateProvider largerRateProviderIndexmatch = rateProviders[1];
+            IRateProvider largerRateProviderIndexMatch = rateProviders[1];
 
             tokens[1] = tokens[2];
             rateProviders[1] = rateProviders[2];
 
             tokens[2] = larger;
-            rateProviders[2] = largerRateProviderIndexmatch;
+            rateProviders[2] = largerRateProviderIndexMatch;
         }
 
         // Create pool.
-        address pool = IBalancerComposableStableFactory(BALANCER_COMPOSABLE_FACTORY_GOERLI).create(
-            poolName,
-            poolSymbol,
-            tokens,
-            amplification,
-            rateProviders,
-            tokenCacheDurations,
-            exemptFromYieldFee,
-            swapFeePercentage,
-            owner,
-            bytes32("1") // TODO: Any specific salt we should be using?
+        IBalancerComposableStablePool pool = IBalancerComposableStablePool(
+            IBalancerComposableStableFactory(constants.ext.balancerComposableStableFactory).create(
+                poolName,
+                poolSymbol,
+                tokens,
+                amplification,
+                rateProviders,
+                tokenCacheDurations,
+                exemptFromYieldFee,
+                swapFeePercentage,
+                owner,
+                keccak256("alskdjflasdkjf234")
+            )
         );
 
-        console.log("Pool created: ", pool);
+        console.log("Pool created: ", address(pool));
 
         vm.stopBroadcast();
     }

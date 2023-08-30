@@ -7,7 +7,6 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { RewardAdapter } from "src/destinations/adapters/rewards/RewardAdapter.sol";
 import { IBaseRewardPool } from "src/interfaces/external/convex/IBaseRewardPool.sol";
-import { IClaimableRewardsAdapter } from "src/interfaces/destinations/IClaimableRewardsAdapter.sol";
 
 //slither-disable-next-line missing-inheritance
 library ConvexRewards {

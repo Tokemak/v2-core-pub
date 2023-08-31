@@ -9,7 +9,7 @@ import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSe
 import { Address } from "openzeppelin-contracts/utils/Address.sol";
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IAsyncSwapper, SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
+import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 import { ILiquidationRow } from "src/interfaces/liquidation/ILiquidationRow.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
@@ -248,7 +248,10 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
     ) private {
         uint256 length = vaultsToLiquidate.length;
         // the swapper checks that the amount received is greater or equal than the params.buyAmount
-        uint256 amountReceived = IAsyncSwapper(asyncSwapper).swap(params);
+        bytes memory data = asyncSwapper.functionDelegateCall(
+            abi.encodeWithSignature("swap((address,uint256,address,uint256,bytes,bytes))", params), "SwapFailed"
+        );
+        uint256 amountReceived = abi.decode(data, (uint256));
 
         // if the fee feature is turned on, send the fee to the fee receiver
         if (feeReceiver != address(0) && feeBps > 0) {

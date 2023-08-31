@@ -3,6 +3,8 @@
 pragma solidity 0.8.17;
 
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
+import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard.sol";
+
 import { Address } from "openzeppelin-contracts/utils/Address.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -11,7 +13,7 @@ import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 import { LMPVaultRouterBase } from "src/vault/LMPVaultRouterBase.sol";
 
 /// @title ERC4626Router contract
-contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase {
+contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -43,7 +45,7 @@ contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase {
         ILMPVault vault,
         address to,
         uint256 minSharesOut
-    ) external returns (uint256 sharesOut) {
+    ) external nonReentrant returns (uint256 sharesOut) {
         systemRegistry.asyncSwapperRegistry().verifyIsRegistered(swapper);
         pullToken(IERC20(swapParams.sellTokenAddress), swapParams.sellAmount, address(this));
 

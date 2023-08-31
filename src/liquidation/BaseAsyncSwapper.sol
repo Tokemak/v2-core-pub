@@ -3,11 +3,18 @@
 pragma solidity 0.8.17;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { IAsyncSwapper, SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 
-contract BaseAsyncSwapper is IAsyncSwapper, ReentrancyGuard {
+/**
+ * @title BaseAsyncSwapper
+ * @notice This contract is designed to be invoked via delegatecall. It does not implement its own reentrancy
+ * protection.
+ *
+ * @dev WARNING: Any contract delegatecalling into this MUST implement its own ReentrancyGuard protection mechanism to
+ * prevent potential reentrancy attacks.
+ */
+contract BaseAsyncSwapper is IAsyncSwapper {
     // solhint-disable-next-line var-name-mixedcase
     address public immutable AGGREGATOR;
 
@@ -16,7 +23,8 @@ contract BaseAsyncSwapper is IAsyncSwapper, ReentrancyGuard {
         AGGREGATOR = aggregator;
     }
 
-    function swap(SwapParams memory swapParams) public virtual nonReentrant returns (uint256 buyTokenAmountReceived) {
+    function swap(SwapParams memory swapParams) public virtual returns (uint256 buyTokenAmountReceived) {
+        //slither-disable-start reentrancy-events
         if (swapParams.buyTokenAddress == address(0)) revert TokenAddressZero();
         if (swapParams.sellTokenAddress == address(0)) revert TokenAddressZero();
         if (swapParams.sellAmount == 0) revert InsufficientSellAmount();
@@ -61,5 +69,6 @@ contract BaseAsyncSwapper is IAsyncSwapper, ReentrancyGuard {
         );
 
         return buyTokenAmountReceived;
+        //slither-disable-end reentrancy-events
     }
 }

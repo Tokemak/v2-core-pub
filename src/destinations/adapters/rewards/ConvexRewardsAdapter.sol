@@ -3,6 +3,7 @@
 pragma solidity 0.8.17;
 
 import { Errors } from "src/utils/Errors.sol";
+import { Address } from "openzeppelin-contracts/utils/Address.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { RewardAdapter } from "src/destinations/adapters/rewards/RewardAdapter.sol";
@@ -10,6 +11,7 @@ import { IBaseRewardPool } from "src/interfaces/external/convex/IBaseRewardPool.
 
 //slither-disable-next-line missing-inheritance
 library ConvexRewards {
+    using Address for address;
     using SafeERC20 for IERC20;
 
     /// @notice Claim rewards for Convex staked LP tokens
@@ -77,16 +79,14 @@ library ConvexRewards {
 
         // get balances before
         for (uint256 i = 0; i < totalLength; ++i) {
-            // Using the totalSupply check to represent stash tokens. They sometimes
-            // stand in as the rewardToken but they don't have a "balanceOf()"
-            if (IERC20(rewardTokens[i]).totalSupply() > 0) {
-                balancesBefore[i] = IERC20(rewardTokens[i]).balanceOf(account);
+            (bool success, uint256 bal) = _hasBalance(rewardTokens[i], account);
+            if (success) {
+                balancesBefore[i] = bal;
             }
         }
 
         // claim rewards
-        bool result = rewardPool.getReward(account, true);
-        if (!result) {
+        if (!rewardPool.getReward(account, true)) {
             revert RewardAdapter.ClaimRewardsFailed();
         }
 
@@ -94,8 +94,9 @@ library ConvexRewards {
         for (uint256 i = 0; i < totalLength; ++i) {
             uint256 balance = 0;
             // Same check for "stash tokens"
-            if (IERC20(rewardTokens[i]).totalSupply() > 0) {
-                balance = IERC20(rewardTokens[i]).balanceOf(account);
+            (bool success2, uint256 bal2) = _hasBalance(rewardTokens[i], account);
+            if (success2) {
+                balance = bal2;
             }
 
             amountsClaimed[i] = balance - balancesBefore[i];
@@ -108,5 +109,14 @@ library ConvexRewards {
         RewardAdapter.emitRewardsClaimed(rewardTokens, amountsClaimed);
 
         return (amountsClaimed, rewardTokens);
+    }
+
+    ///@dev Sometimes addresses stand in as the rewardToken but they don't have a `balanceOf()`, so we verify
+    function _hasBalance(address token, address account) private returns (bool hasBalance, uint256 bal) {
+        (bool success, bytes memory returnData) = token.call(abi.encodeWithSignature("balanceOf(address)", account));
+        if (success && returnData.length > 0) {
+            bal = abi.decode(returnData, (uint256));
+        }
+        hasBalance = success;
     }
 }

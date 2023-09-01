@@ -13,21 +13,41 @@ import { IAccessController, AccessController } from "src/security/AccessControll
 import { LiquidationRow } from "src/liquidation/LiquidationRow.sol";
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 import { ILiquidationRow } from "src/interfaces/liquidation/ILiquidationRow.sol";
+import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
 import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
+import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
+import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { StakeTrackingMock } from "test/mocks/StakeTrackingMock.sol";
-import { MainRewarder } from "src/rewarders/MainRewarder.sol";
+import { MainRewarder, IMainRewarder } from "src/rewarders/MainRewarder.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import {
-    ZERO_EX_MAINNET, PRANK_ADDRESS, CVX_MAINNET, WETH_MAINNET, TOKE_MAINNET, RANDOM
+    ZERO_EX_MAINNET,
+    PRANK_ADDRESS,
+    CVX_MAINNET,
+    WETH_MAINNET,
+    TOKE_MAINNET,
+    RANDOM,
+    ST_ETH_CURVE_LP_TOKEN_MAINNET,
+    CURVE_STETH_ETH_WHALE,
+    WETH_MAINNET,
+    CONVEX_BOOSTER,
+    STETH_ETH_CURVE_POOL,
+    CURVE_META_REGISTRY_MAINNET,
+    LDO_MAINNET,
+    CRV_MAINNET
 } from "test/utils/Addresses.sol";
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
+
+import { CurveConvexDestinationVault } from "src/vault/CurveConvexDestinationVault.sol";
+import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
+import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
 
 /**
  * @dev This contract represents a mock of the actual AsyncSwapper to be used in tests. It simulates the swapping
@@ -72,6 +92,7 @@ contract LiquidationRowTest is Test {
     SystemRegistry internal systemRegistry;
     DestinationVaultRegistry internal destinationVaultRegistry;
     DestinationVaultFactory internal destinationVaultFactory;
+    DestinationRegistry internal destinationTemplateRegistry;
     IAccessController internal accessController;
     LiquidationRowWrapper internal liquidationRow;
     AsyncSwapperMock internal asyncSwapper;
@@ -86,7 +107,7 @@ contract LiquidationRowTest is Test {
     TestERC20 internal rewardToken4;
     TestERC20 internal rewardToken5;
 
-    function setUp() public {
+    function setUp() public virtual {
         // Initialize the ERC20 tokens that will be used as rewards to be claimed in the tests
         rewardToken = new TestERC20("rewardToken", "rewardToken");
         rewardToken2 = new TestERC20("rewardToken2", "rewardToken2");
@@ -104,15 +125,14 @@ contract LiquidationRowTest is Test {
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
 
+        // Set up destination template registry
+        destinationTemplateRegistry = new DestinationRegistry(systemRegistry);
+        systemRegistry.setDestinationTemplateRegistry(address(destinationTemplateRegistry));
+
         // Set up destination vault registry and factory
         destinationVaultRegistry = new DestinationVaultRegistry(systemRegistry);
         systemRegistry.setDestinationVaultRegistry(address(destinationVaultRegistry));
-        // we mock this part as be do not use it in destinationVaultFactory
-        vm.mockCall(
-            address(systemRegistry),
-            abi.encodeWithSelector(ISystemRegistry.destinationTemplateRegistry.selector),
-            abi.encode(address(1))
-        );
+
         destinationVaultFactory = new DestinationVaultFactory(systemRegistry, 1, 1000);
         destinationVaultRegistry.setVaultFactory(address(destinationVaultFactory));
 
@@ -179,7 +199,7 @@ contract LiquidationRowTest is Test {
     }
 
     /**
-     * @dev Sets up a more complex mock scenariO.
+     * @dev Sets up a more complex mock scenario.
      * In this case, we setup five different types of reward tokens
      * (`rewardToken`, `rewardToken2`, `rewardToken3`, `rewardToken4`, `rewardToken5`) each with an amount of 100.
      * These tokens will be collected by the vault during the liquidation process.
@@ -634,5 +654,144 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
         uint256 balanceAfter = IERC20(targetToken).balanceOf(address(mainRewarder));
 
         assertTrue(balanceAfter - balanceBefore == buyAmount - expectedfeesTransfered);
+    }
+}
+
+/// @dev Contract for integration testing
+contract IntegrationTest is LiquidationRowTest {
+    CurveConvexDestinationVault private _vault;
+    IERC20 private _underlyer;
+    IWETH9 private _asset;
+    BaseAsyncSwapper private _swapper;
+
+    // Function to set up the test environment
+    function setUp() public virtual override {
+        // Create a fork for mainnet environment
+        uint256 _mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), 18_043_597);
+        vm.selectFork(_mainnetFork);
+        super.setUp();
+
+        // Grant CREATE_DESTINATION_VAULT_ROLE to this contract
+        accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
+
+        // Initialize contract instances
+        _underlyer = IERC20(ST_ETH_CURVE_LP_TOKEN_MAINNET);
+        _asset = IWETH9(WETH_MAINNET);
+
+        // Add reward token to the system registry
+        systemRegistry.addRewardToken(WETH_MAINNET);
+
+        // Initialize CurveConvexDestinationVault parameters
+        CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
+            curvePool: STETH_ETH_CURVE_POOL,
+            convexStaking: 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03,
+            convexBooster: CONVEX_BOOSTER,
+            convexPoolId: 25,
+            baseAssetBurnTokenIndex: 0
+        });
+        bytes memory initParamBytes = abi.encode(initParams);
+
+        // Create CurveConvexDestinationVault template
+        CurveConvexDestinationVault dvTemplate = new CurveConvexDestinationVault(systemRegistry, CVX_MAINNET);
+        bytes32[] memory dvTypes = new bytes32[](1);
+        dvTypes[0] = keccak256(abi.encode("template"));
+        destinationTemplateRegistry.addToWhitelist(dvTypes);
+        address[] memory dvAddresses = new address[](1);
+        dvAddresses[0] = address(dvTemplate);
+        destinationTemplateRegistry.register(dvTypes, dvAddresses);
+
+        // Set Curve resolver and create new destination vault
+        CurveResolverMainnet curveResolver = new CurveResolverMainnet(ICurveMetaRegistry(CURVE_META_REGISTRY_MAINNET));
+        systemRegistry.setCurveResolver(address(curveResolver));
+        address payable newVault = payable(
+            destinationVaultFactory.create(
+                "template",
+                address(_asset),
+                address(_underlyer),
+                new address[](0), // additionalTrackedTokens
+                keccak256("salt1"),
+                initParamBytes
+            )
+        );
+
+        // Set _vault variable to the newly created CurveConvexDestinationVault
+        _vault = CurveConvexDestinationVault(newVault);
+
+        // Create a new instance of BaseAsyncSwapper and add it to liquidationRow whitelist
+        _swapper = new BaseAsyncSwapper(ZERO_EX_MAINNET);
+        liquidationRow.addToWhitelist(address(_swapper));
+    }
+
+    /**
+     * @dev This test covers the following scenarios:
+     * (1) Claim rewards for vaults:
+     *   - LiquidationRow.claimsVaultRewards(vaults)
+     *
+     * (2) Liquidate CVX from vaults to WETH and add it as a reward to Vault.mainRewarder:
+     *   - LiquidationRow.liquidateVaultsForToken
+     *     - DestinationVault.collectRewards()
+     *     - BaseAsyncSwapper.swap()
+     *     - DestinationVault.mainRewarder.queueNewRewards()
+     */
+    function test_IntegrationWorks() public {
+        // Initialize ERC20 instances for tokens
+        IERC20 cvx = IERC20(CVX_MAINNET);
+
+        // Transfer some tokens to the contract for testing
+        vm.prank(0x1C3CB7e3920C77EBA162Cf044F418a854C12fFEf);
+        _underlyer.transfer(address(this), 200e18);
+
+        // Mock the Vault Registry and grant deposit rights
+        address lmpVaultRegistry = vm.addr(10_000);
+        vm.mockCall(
+            address(systemRegistry),
+            abi.encodeWithSelector(ISystemRegistry.lmpVaultRegistry.selector),
+            abi.encode(lmpVaultRegistry)
+        );
+        vm.mockCall(
+            address(lmpVaultRegistry), abi.encodeWithSelector(ILMPVaultRegistry.isVault.selector), abi.encode(true)
+        );
+
+        // Deposit tokens into the vault
+        _underlyer.approve(address(_vault), 100e18);
+        _vault.depositUnderlying(100e18);
+
+        // Move 7 days later
+        vm.roll(block.number + 7200 * 7);
+        // solhint-disable-next-line not-rely-on-time
+        vm.warp(block.timestamp + 7 days);
+
+        // Grant LIQUIDATOR_ROLE to this contract
+        accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
+
+        // Prepare vaults array and claim rewards from the vault
+        IDestinationVault[] memory vaults = new IDestinationVault[](1);
+        vaults[0] = _vault;
+        liquidationRow.claimsVaultRewards(vaults);
+
+        // Check CVX balance // 503687657840562
+        uint256 cvxBalance = liquidationRow.totalBalanceOf(address(cvx));
+
+        // solhint-disable max-line-length
+        // Prepare data for token swap
+        // `data` come from the following query at block 18_043_597:
+        // https://api.0x.org/swap/v1/quote?sellToken=0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b&buyToken=0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2&sellAmount=503687657840562
+        bytes memory data =
+            hex"6af479b200000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000001ca19ebec5fb200000000000000000000000000000000000000000000000000000196c07c6ad0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000424e3fbd56cd56c3e72c1403e103b45db9da5b9d2b0001f46b175474e89094c44da98b954eedeac495271d0f0001f4c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000000000000000000000000000000000000000869584cd0000000000000000000000001000000000000000000000000000000000000011000000000000000000000000000000007e318bba9ae117b36f9c30ef2fbefdc8";
+
+        // Expected reward amount based on data above
+        uint256 expectedRewards = 1_762_864_930_259;
+
+        // Prepare swap parameters
+        SwapParams memory swapParams =
+            SwapParams(address(cvx), cvxBalance, WETH_MAINNET, expectedRewards, data, new bytes(0));
+
+        // Perform token swap
+        liquidationRow.liquidateVaultsForToken(address(cvx), address(_swapper), vaults, swapParams);
+
+        uint256 rewards = MainRewarder(_vault.rewarder()).currentRewards();
+
+        // Assert that liquidated amount has been added to rewarder
+        assertTrue(expectedRewards == rewards);
     }
 }

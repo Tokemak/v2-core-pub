@@ -5,11 +5,8 @@ pragma solidity 0.8.17;
 // solhint-disable no-console
 // solhint-disable max-states-count
 
-import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 
-import { ERC20Mock } from "script/mocks/ERC20Mock.sol";
-import { MockRateProvider, IRateProvider } from "script/mocks/MockRateProvider.sol";
 import { BaseScript } from "../BaseScript.sol";
 import { Systems } from "../utils/Constants.sol";
 import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
@@ -28,7 +25,7 @@ contract BalancerMetaStableGoerliLiquidity is BaseScript {
         console.log("Owner: ", owner);
 
         // Create pool.
-        IBalancerMetaStablePool pool = IBalancerMetaStablePool(0x26B8Cf12405861e68230154674cE49253C3ee19b);
+        IBalancerMetaStablePool pool = IBalancerMetaStablePool(constants.pools.balMetaWethWsteth);
 
         bytes32 poolId = pool.getPoolId();
         (IERC20[] memory addrs,,) = IBalancerVault(constants.ext.balancerVault).getPoolTokens(poolId);

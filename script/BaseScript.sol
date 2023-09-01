@@ -5,6 +5,8 @@ pragma solidity 0.8.17;
 // solhint-disable no-console
 
 import { Script } from "forge-std/Script.sol";
+
+// solhint-disable-next-line no-unused-import
 import { console } from "forge-std/console.sol";
 
 // Addresses

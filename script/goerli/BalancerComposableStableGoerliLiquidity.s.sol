@@ -5,11 +5,8 @@ pragma solidity 0.8.17;
 // solhint-disable no-console
 // solhint-disable max-states-count
 
-import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 
-import { ERC20Mock } from "script/mocks/ERC20Mock.sol";
-import { MockRateProvider, IRateProvider } from "script/mocks/MockRateProvider.sol";
 import { BaseScript } from "../BaseScript.sol";
 import { Systems } from "../utils/Constants.sol";
 import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
@@ -27,7 +24,7 @@ contract BalancerComposableStableGoerliLiquidity is BaseScript {
 
         console.log("Owner: ", owner);
         // Create pool.
-        IBalancerComposableStablePool pool = IBalancerComposableStablePool(0x9d6d991f9dd88a93F31C1a61BccdbbC9abCF5657);
+        IBalancerComposableStablePool pool = IBalancerComposableStablePool(constants.pools.balCompSfrxethWstethRethV1);
 
         bytes32 poolId = pool.getPoolId();
         uint256 bptIndex = pool.getBptIndex();
@@ -38,7 +35,6 @@ contract BalancerComposableStableGoerliLiquidity is BaseScript {
         address[] memory addresses = new address[](4);
         for (uint256 i = 0; i < 4; i++) {
             if (i != bptIndex) {
-                //userAmounts[i] = 9e17;
                 userAmounts[i] = 1e18;
                 IERC20(address(addrs[i])).approve(constants.ext.balancerVault, 1000e18);
             }

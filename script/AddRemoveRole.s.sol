@@ -6,6 +6,7 @@ import { Systems } from "./utils/Constants.sol";
 import { BaseScript } from "./BaseScript.sol";
 
 // Libraries
+// solhint-disable-next-line no-unused-import
 import { Roles } from "src/libs/Roles.sol";
 
 // Interfaces

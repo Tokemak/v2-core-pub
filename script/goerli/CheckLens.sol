@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 // solhint-disable no-console
 // solhint-disable max-states-count
 
-import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 import { BaseScript } from "../BaseScript.sol";
 import { Systems } from "../utils/Constants.sol";

@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 // solhint-disable no-console
 // solhint-disable max-states-count
 
-import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 
 import { ERC20Mock } from "script/mocks/ERC20Mock.sol";
@@ -13,7 +12,6 @@ import { MockRateProvider, IRateProvider } from "script/mocks/MockRateProvider.s
 import { IBalancerComposableStableFactory } from "script/interfaces/external/IBalancerComposableStableFactory.sol";
 import { BaseScript } from "../BaseScript.sol";
 import { Systems } from "../utils/Constants.sol";
-import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
@@ -127,7 +125,7 @@ contract BalancerComposableStableGoerli is BaseScript {
                 exemptFromYieldFee,
                 swapFeePercentage,
                 owner,
-                keccak256("alskdjflasdkjf234")
+                keccak256("toke-bal-comp-1")
             )
         );
 

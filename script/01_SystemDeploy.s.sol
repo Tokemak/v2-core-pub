@@ -24,12 +24,13 @@ import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { StatsCalculatorRegistry } from "src/stats/StatsCalculatorRegistry.sol";
 import { GPToke } from "src/staking/GPToke.sol";
 import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
-import { Systems } from "./utils/Constants.sol";
 import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { Lens } from "src/lens/Lens.sol";
+import { CustomSetOracle } from "src/oracles/providers/CustomSetOracle.sol";
 
 // Libraries
 import { Roles } from "src/libs/Roles.sol";
+import { Systems } from "./utils/Constants.sol";
 
 // Interfaces
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
@@ -90,6 +91,8 @@ contract DeploySystem is BaseScript {
 
     function run() external {
         setUp(Systems.LST_GEN1_GOERLI);
+
+        address owner = vm.addr(vm.envUint(constants.privateKeyEnvVar));
 
         vm.startBroadcast(privateKey);
 
@@ -165,7 +168,7 @@ contract DeploySystem is BaseScript {
         // Async swapper setup.
         asyncSwapperRegistry = new AsyncSwapperRegistry(systemRegistry);
         systemRegistry.setAsyncSwapperRegistry(address(asyncSwapperRegistry));
-        console.log("Async Swapper Regsitry address: ", address(asyncSwapperRegistry));
+        console.log("Async Swapper Registry address: ", address(asyncSwapperRegistry));
 
         // Price oracle setup.
         priceOracle = new RootPriceOracle(systemRegistry);
@@ -190,14 +193,19 @@ contract DeploySystem is BaseScript {
         }
 
         // Setup the 0x swapper
-        accessController.grantRole(Roles.REGISTRY_UPDATER, 0xec19A67D0332f3b188740A2ea96F84CA3a17D73a);
+        accessController.grantRole(Roles.REGISTRY_UPDATER, owner);
         BaseAsyncSwapper zeroExSwapper = new BaseAsyncSwapper(constants.ext.zeroExProxy);
         asyncSwapperRegistry.register(address(zeroExSwapper));
         console.log("Base Async Swapper: ", address(zeroExSwapper));
+        accessController.revokeRole(Roles.REGISTRY_UPDATER, owner);
 
         // Lens
         Lens lens = new Lens(systemRegistry);
         console.log("Lens: ", address(lens));
+
+        // Custom Oracle
+        CustomSetOracle customSetOracle = new CustomSetOracle(systemRegistry, 86400);
+        console.log("Custom Set Oracle: %s", address(customSetOracle));
 
         // Setup our core reward tokens
         systemRegistry.addRewardToken(constants.tokens.weth);

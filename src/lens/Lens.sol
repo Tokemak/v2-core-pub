@@ -5,12 +5,10 @@ pragma solidity 0.8.17;
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
-import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
 import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
 import { ILens } from "src/interfaces/lens/ILens.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { Errors } from "src/utils/Errors.sol";
 
 contract Lens is ILens, SystemComponent {
     constructor(ISystemRegistry _systemRegistry) SystemComponent(_systemRegistry) { }

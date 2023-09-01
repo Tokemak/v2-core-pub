@@ -5,10 +5,8 @@ pragma solidity 0.8.17;
 // solhint-disable no-console
 // solhint-disable max-states-count
 
-import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 
-import { ERC20Mock } from "script/mocks/ERC20Mock.sol";
 import { MockRateProvider, IRateProvider } from "script/mocks/MockRateProvider.sol";
 import { IBalancerMetaStableFactory } from "script/interfaces/external/IBalancerMetaStableFactory.sol";
 import { BaseScript } from "../BaseScript.sol";
@@ -51,11 +49,7 @@ contract BalancerMetaStableGoerli is BaseScript {
 
         // Create tokens that need to be created, wrap others that do not - ERC20 mocks
         weth = IERC20(constants.tokens.weth);
-        // TODO: Change to deployed wstEth address once composable stable deployed.
-        wstEth = IERC20(0xa0494a297434eBa30e807D983605e8B12259CC21);
-
-        // ERC20Mock(address(weth)).mint(owner, 10_000e18);
-        // ERC20Mock(address(wstEth)).mint(owner, 10_000e18);
+        wstEth = IERC20(constants.tokens.wstETH);
 
         console.log("Weth address: ", address(weth));
         console.log("wstEth address: ", address(wstEth));

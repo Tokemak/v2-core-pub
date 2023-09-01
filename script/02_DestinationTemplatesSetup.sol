@@ -8,18 +8,11 @@ pragma solidity 0.8.17;
 import { BaseScript, console } from "./BaseScript.sol";
 
 // Contracts
-import { SystemRegistry } from "src/SystemRegistry.sol";
-import { AccessController } from "src/security/AccessController.sol";
 import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
-import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
 import { Systems } from "./utils/Constants.sol";
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
 import { CurveConvexDestinationVault } from "src/vault/CurveConvexDestinationVault.sol";
 import { MaverickDestinationVault } from "src/vault/MaverickDestinationVault.sol";
-import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
-
-// Libraries
-import { Roles } from "src/libs/Roles.sol";
 
 contract DestinationTemplatesSetupScript is BaseScript {
     function run() external {

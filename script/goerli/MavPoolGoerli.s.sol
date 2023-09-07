@@ -12,7 +12,7 @@ import { IPoolPositionAndRewardFactorySlim } from "script/interfaces/mav/IPoolPo
 import { IPool } from "script/interfaces/mav/IPool.sol";
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import { ERC20Mock } from "script/mocks/ERC20Mock.sol";
+import { ERC20Mock } from "script/contracts/mocks/ERC20Mock.sol";
 
 import { MAV_POOL_FACTORY_GOERLI, MAV_BOOSTED_POSITION_FACTORY_GOERLI } from "script/utils/Addresses.sol";
 

@@ -297,8 +297,6 @@ library BalancerBeethovenAdapter {
             revert ArraysLengthMismatch();
         }
 
-        _verifyPoolTokensMatch(tokens, poolTokens);
-
         // Record balance before withdraw
         uint256 bptBalanceBefore = poolInterface.balanceOf(address(this));
 
@@ -349,17 +347,6 @@ library BalancerBeethovenAdapter {
             poolId
         );
         //slither-disable-end reentrancy-events
-    }
-
-    // run through tokens and make sure it matches the pool's assets
-    function _verifyPoolTokensMatch(address[] memory tokens, IERC20[] memory poolTokens) private pure {
-        uint256 nTokens = tokens.length;
-        for (uint256 i = 0; i < nTokens; ++i) {
-            IERC20 currentToken = IERC20(tokens[i]);
-            if (currentToken != poolTokens[i]) {
-                revert TokenPoolAssetMismatch();
-            }
-        }
     }
 
     /**

@@ -160,18 +160,18 @@ library BalancerBeethovenAdapter {
             userData = abi.encode(ExitKindComposable.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, maxLpBurnAmount);
         } else {
             userData = abi.encode(ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT, exactAmountsOut, maxLpBurnAmount);
-        }
-
-        bool hasNonZeroAmount = false;
-        uint256 nTokens = exactAmountsOut.length;
-        for (uint256 i = 0; i < nTokens; ++i) {
-            if (exactAmountsOut[i] != 0) {
-                hasNonZeroAmount = true;
-                break;
+            // Verify if at least one non-zero amount is present
+            bool hasNonZeroAmount = false;
+            uint256 nTokens = exactAmountsOut.length;
+            for (uint256 i = 0; i < nTokens; ++i) {
+                if (exactAmountsOut[i] != 0) {
+                    hasNonZeroAmount = true;
+                    break;
+                }
             }
-        }
-        if (!hasNonZeroAmount) {
-            revert NoNonZeroAmountProvided();
+            if (!hasNonZeroAmount) {
+                revert NoNonZeroAmountProvided();
+            }
         }
 
         actualAmounts = _withdraw(

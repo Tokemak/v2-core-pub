@@ -4,12 +4,13 @@ pragma solidity >=0.8.17;
 
 // solhint-disable func-name-mixedcase
 
+import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
+import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
 import { DestinationVault } from "src/vault/DestinationVault.sol";
-import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -39,11 +40,14 @@ import {
     WSTETH_MAINNET,
     WSETH_WETH_BAL_POOL,
     AURA_MAINNET,
-    BAL_WSTETH_SFRX_ETH_RETH_WHALE
+    BAL_WSTETH_SFRX_ETH_RETH_WHALE,
+    SFRXETH_MAINNET,
+    RETH_WETH_BAL_POOL,
+    RETH_MAINNET
 } from "test/utils/Addresses.sol";
 import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
 
-contract BalancerAuraDestinationVaultTests is Test {
+contract BalancerAuraDestinationVaultComposableTests is Test {
     address private constant LP_TOKEN_WHALE = BAL_WSTETH_SFRX_ETH_RETH_WHALE;
 
     uint256 private _mainnetFork;
@@ -92,13 +96,36 @@ contract BalancerAuraDestinationVaultTests is Test {
         balSwapper = new BalancerV2Swap(address(swapRouter), BAL_VAULT);
         // setup input for Bal WSTETH -> WETH
         ISwapRouter.SwapData[] memory wstethSwapRoute = new ISwapRouter.SwapData[](1);
-        wstethSwapRoute[0] = ISwapRouter.SwapData({
+        ISwapRouter.SwapData memory wstEthWethSwapData = ISwapRouter.SwapData({
             token: address(_systemRegistry.weth()),
             pool: WSETH_WETH_BAL_POOL,
             swapper: balSwapper,
             data: abi.encode(0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080) // wstETH/WETH pool
          });
+        wstethSwapRoute[0] = wstEthWethSwapData;
         swapRouter.setSwapRoute(WSTETH_MAINNET, wstethSwapRoute);
+
+        // setup input for Bal SFRXETH -> WETH
+        ISwapRouter.SwapData[] memory sfrxEthSwapRoute = new ISwapRouter.SwapData[](2);
+        sfrxEthSwapRoute[0] = ISwapRouter.SwapData({
+            token: WSTETH_MAINNET,
+            pool: WSETH_RETH_SFRXETH_BAL_POOL,
+            swapper: balSwapper,
+            data: abi.encode(0x5aee1e99fe86960377de9f88689616916d5dcabe000000000000000000000467)
+        });
+        sfrxEthSwapRoute[1] = wstEthWethSwapData;
+        swapRouter.setSwapRoute(SFRXETH_MAINNET, sfrxEthSwapRoute);
+
+        // setup input for Bal RETH -> WETH
+        ISwapRouter.SwapData[] memory rEthSwapRoute = new ISwapRouter.SwapData[](1);
+        rEthSwapRoute[0] = ISwapRouter.SwapData({
+            token: address(_systemRegistry.weth()),
+            pool: RETH_WETH_BAL_POOL,
+            swapper: balSwapper,
+            data: abi.encode(0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112)
+        });
+        swapRouter.setSwapRoute(RETH_MAINNET, rEthSwapRoute);
+
         _systemRegistry.setSwapRouter(address(swapRouter));
         vm.label(address(swapRouter), "swapRouter");
         vm.label(address(balSwapper), "balSwapper");
@@ -293,8 +320,7 @@ contract BalancerAuraDestinationVaultTests is Test {
         // Total Supply of 24059.127967424958374618
         // Eth Price: $1977.44
         // PPS: 1.01 w/10 shares ~= 10
-
-        assertEq(_asset.balanceOf(receiver) - startingBalance, 10_127_213_034_676_345_377);
+        assertEq(_asset.balanceOf(receiver) - startingBalance, 10_128_444_161_444_807_958);
         assertEq(received, _asset.balanceOf(receiver) - startingBalance);
     }
 

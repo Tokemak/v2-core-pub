@@ -176,13 +176,12 @@ contract BalancerAuraDestinationVault is DestinationVault {
         uint256[] memory minAmounts = new uint256[](poolTokens.length);
         tokens = _convertToAddresses(poolTokens);
         amounts = isComposable
-            ? BalancerBeethovenAdapter.removeLiquidityComposableImbalance(
+            ? BalancerBeethovenAdapter.removeLiquidity(
                 balancerVault,
                 balancerPool,
-                underlyerAmount,
                 BalancerUtilities._convertERC20sToAddresses(poolTokens),
                 minAmounts,
-                0 // TODO: Make this configurable in initialization so we can target WETH and avoid a swap
+                underlyerAmount
             )
             : BalancerBeethovenAdapter.removeLiquidityImbalance(
                 balancerVault,

@@ -39,6 +39,9 @@ contract BalancerAuraDestinationVault is DestinationVault {
     /// @notice Token minted during reward claiming. Specific to Convex-style rewards. Aura in this case.
     address public immutable defaultStakingRewardToken;
 
+    /// @notice Pool tokens changed – possible for Balancer pools with no liquidity
+    error PoolTokensChanged(address[] cachedTokens, address[] actualTokens);
+
     /* ******************************** */
     /* State Variables                  */
     /* ******************************** */
@@ -102,15 +105,11 @@ contract BalancerAuraDestinationVault is DestinationVault {
 
         // Tokens that are used by the proxied pool cannot be removed from the vault
         // via recover(). Make sure we track those tokens here.
-        bytes32 poolId = IBalancerPool(initParams.balancerPool).getPoolId();
-        // Partial return values are intentionally ignored. This call provides the most efficient way to get the data.
-        // slither-disable-next-line unused-return
-        (IERC20[] memory balancerPoolTokens,,) = balancerVault.getPoolTokens(poolId);
-        if (balancerPoolTokens.length == 0) revert ArrayLengthMismatch();
-        poolTokens = balancerPoolTokens;
+        poolTokens = BalancerUtilities._getPoolTokens(balancerVault, balancerPool);
+        if (poolTokens.length == 0) revert ArrayLengthMismatch();
 
-        for (uint256 i = 0; i < balancerPoolTokens.length; ++i) {
-            _addTrackedToken(address(balancerPoolTokens[i]));
+        for (uint256 i = 0; i < poolTokens.length; ++i) {
+            _addTrackedToken(address(poolTokens[i]));
         }
     }
 
@@ -138,12 +137,30 @@ contract BalancerAuraDestinationVault is DestinationVault {
                 }
             }
         } else {
-            ret = _convertToAddresses(poolTokens);
+            ret = BalancerUtilities._convertERC20sToAddresses(poolTokens);
         }
     }
 
     /// @inheritdoc DestinationVault
     function _onDeposit(uint256 amount) internal virtual override {
+        // We should verify if pool tokens didn't change before staking to make sure we're staking for the same tokens
+        IERC20[] memory queriedPoolTokens = BalancerUtilities._getPoolTokens(balancerVault, balancerPool);
+
+        address[] memory cachedTokens = BalancerUtilities._convertERC20sToAddresses(poolTokens);
+        address[] memory actualTokens = BalancerUtilities._convertERC20sToAddresses(queriedPoolTokens);
+
+        uint256 nTokens = poolTokens.length;
+        if (nTokens != queriedPoolTokens.length) {
+            revert PoolTokensChanged(cachedTokens, actualTokens);
+        }
+
+        for (uint256 i = 0; i < nTokens; ++i) {
+            if (address(poolTokens[i]) != address(queriedPoolTokens[i])) {
+                revert PoolTokensChanged(cachedTokens, actualTokens);
+            }
+        }
+
+        // Stake LPs into Aura
         AuraStaking.depositAndStake(IConvexBooster(auraBooster), _underlying, auraStaking, auraPoolId, amount);
     }
 
@@ -174,30 +191,11 @@ contract BalancerAuraDestinationVault is DestinationVault {
         // user initiated withdrawal where they've accounted for slippage
         // at the router or otherwise
         uint256[] memory minAmounts = new uint256[](poolTokens.length);
-        tokens = _convertToAddresses(poolTokens);
+        tokens = BalancerUtilities._convertERC20sToAddresses(poolTokens);
         amounts = isComposable
-            ? BalancerBeethovenAdapter.removeLiquidity(
-                balancerVault,
-                balancerPool,
-                BalancerUtilities._convertERC20sToAddresses(poolTokens),
-                minAmounts,
-                underlyerAmount
-            )
+            ? BalancerBeethovenAdapter.removeLiquidity(balancerVault, balancerPool, tokens, minAmounts, underlyerAmount)
             : BalancerBeethovenAdapter.removeLiquidityImbalance(
-                balancerVault,
-                balancerPool,
-                underlyerAmount,
-                BalancerUtilities._convertERC20sToAddresses(poolTokens),
-                minAmounts
+                balancerVault, balancerPool, underlyerAmount, tokens, minAmounts
             );
-    }
-
-    function _convertToAddresses(IERC20[] memory tokens) internal pure returns (address[] memory assets) {
-        //slither-disable-start assembly
-        //solhint-disable-next-line no-inline-assembly
-        assembly {
-            assets := tokens
-        }
-        //slither-disable-end assembly
     }
 }

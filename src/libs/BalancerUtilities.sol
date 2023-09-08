@@ -3,8 +3,10 @@
 
 pragma solidity 0.8.17;
 
-import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+
+import { IVault } from "src/interfaces/external/balancer/IVault.sol";
+import { IBalancerPool } from "src/interfaces/external/balancer/IBalancerPool.sol";
 
 library BalancerUtilities {
     error BalancerVaultReentrancy();
@@ -52,5 +54,20 @@ library BalancerUtilities {
             assets := tokens
         }
         //slither-disable-end assembly
+    }
+
+    /**
+     * @dev This helper function to retrieve Balancer pool tokens
+     */
+    function _getPoolTokens(
+        IVault balancerVault,
+        address balancerPool
+    ) internal view returns (IERC20[] memory assets) {
+        bytes32 poolId = IBalancerPool(balancerPool).getPoolId();
+
+        // slither-disable-next-line unused-return
+        (IERC20[] memory balancerPoolTokens,,) = balancerVault.getPoolTokens(poolId);
+
+        assets = balancerPoolTokens;
     }
 }

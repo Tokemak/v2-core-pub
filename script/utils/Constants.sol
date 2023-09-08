@@ -26,6 +26,7 @@ library Constants {
         address accessController;
         address destinationTemplateRegistry;
         address destinationVaultFactory;
+        address swapRouter;
         address lens;
     }
 
@@ -69,6 +70,7 @@ library Constants {
                 accessController: address(registry.accessController()),
                 destinationTemplateRegistry: address(registry.destinationTemplateRegistry()),
                 destinationVaultFactory: address(registry.destinationVaultRegistry().factory()),
+                swapRouter: address(registry.swapRouter()),
                 lens: 0xbE87fb643fF79B427C42baCf5D49DC743Cc8bF3a
             }),
             ext: External({
@@ -95,6 +97,7 @@ library Constants {
                 accessController: address(0),
                 destinationTemplateRegistry: address(0),
                 destinationVaultFactory: address(0),
+                swapRouter: address(0),
                 lens: address(0)
             }),
             ext: External({

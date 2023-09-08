@@ -13,6 +13,9 @@ import { ERC20Mock } from "script/contracts/mocks/ERC20Mock.sol";
 import { VyperDeployer } from "script/utils/VyperDeployer.sol";
 import { MockCurveRegistry } from "script/contracts/mocks/MockCurveRegistry.sol";
 
+import { ICurvePool } from "script/interfaces/curve/ICurvePool.sol";
+import { ICurvePoolNG } from "script/interfaces/curve/ICurvePoolNG.sol";
+import { ICurveTokenV5 } from "script/interfaces/curve/ICurveTokenV5.sol";
 import { IStableSwapInitializable } from "script/interfaces/curve/IStableSwapInitializable.sol";
 
 /**
@@ -23,6 +26,7 @@ import { IStableSwapInitializable } from "script/interfaces/curve/IStableSwapIni
  *      the same contract as the cbEth / Eth pool.
  */
 contract CurveGoerli is Script {
+    uint256 public constant LIQUIDITY_AMOUNT = 5e18;
     // TODO: Replace all with constants when merged.
     address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     ERC20Mock public weth;
@@ -98,6 +102,12 @@ contract CurveGoerli is Script {
         console.log("stEth: ", address(stEth));
         console.log("cbEth: ", address(cbEth));
 
+        // TODO: May be able to be deleted depending on tokens in Constants.sol, amounts already minted.
+        // Mint 15 tokens a piece
+        weth.mint(goerliOwner, LIQUIDITY_AMOUNT * 3);
+        stEth.mint(goerliOwner, LIQUIDITY_AMOUNT * 3);
+        cbEth.mint(goerliOwner, LIQUIDITY_AMOUNT * 3);
+
         originalStableSwapTokensArr[0] = ETH;
         originalStableSwapTokensArr[1] = address(stEth);
 
@@ -108,16 +118,19 @@ contract CurveGoerli is Script {
         stableSwapNgTokensArr[1] = address(stEth);
 
         cryptoTokensArr[0] = address(weth);
-        cryptoTokensArr[1] = address(stEth);
+        cryptoTokensArr[1] = address(cbEth);
 
         //
         // Launch LP tokens.
         //
-        originalStableSwapLp =
-            VyperDeployer.deployVyperContract("script/contracts/compiled/CurveTokenV5.json", bytes(""));
+        originalStableSwapLp = VyperDeployer.deployVyperContract(
+            "script/contracts/compiled/CurveTokenV5.json", abi.encode("Original stableswap lp", "lp")
+        );
         console.log("Stableswap LP: ", originalStableSwapLp);
 
-        curveCryptoSwapLP = VyperDeployer.deployVyperContract("script/contracts/compiled/CurveTokenV5.json", bytes(""));
+        curveCryptoSwapLP = VyperDeployer.deployVyperContract(
+            "script/contracts/compiled/CurveTokenV5.json", abi.encode("Cryptoswap lp", "lp")
+        );
         console.log("CryptoSwap LP: ", curveCryptoSwapLP);
 
         //
@@ -198,6 +211,36 @@ contract CurveGoerli is Script {
             "script/contracts/compiled/CurveCryptoSwapv031.json", abi.encodePacked(abiEncodeOne, abiEncodeTwo)
         );
         console.log("CryptoSwap: ", deployedAddressCryptoSwap);
+
+        //
+        // Supply liquidity to pools.
+        //
+
+        // Original stable swap.
+        stEth.approve(deployedAddressStableSwap, LIQUIDITY_AMOUNT);
+        ICurveTokenV5(originalStableSwapLp).set_minter(deployedAddressStableSwap);
+        ICurvePool(deployedAddressStableSwap).add_liquidity{ value: LIQUIDITY_AMOUNT }(
+            [LIQUIDITY_AMOUNT, LIQUIDITY_AMOUNT], 0
+        );
+
+        // Concentrated stable swap.
+        stEth.approve(deployedAddressStableSwapConcentrated, LIQUIDITY_AMOUNT);
+        weth.approve(deployedAddressStableSwapConcentrated, LIQUIDITY_AMOUNT);
+        ICurvePool(deployedAddressStableSwapConcentrated).add_liquidity([LIQUIDITY_AMOUNT, LIQUIDITY_AMOUNT], 0);
+
+        // Ng stable swap
+        stEth.approve(deployedAddressStableSwapNg, LIQUIDITY_AMOUNT);
+        ICurvePoolNG(deployedAddressStableSwapNg).set_oracle(bytes4(""), address(0)); // Set as zero on mainnet
+        ICurvePool(deployedAddressStableSwapNg).add_liquidity{ value: LIQUIDITY_AMOUNT }(
+            [LIQUIDITY_AMOUNT, LIQUIDITY_AMOUNT], 0
+        );
+
+        // Crypto
+        cbEth.approve(deployedAddressCryptoSwap, LIQUIDITY_AMOUNT);
+        weth.approve(deployedAddressCryptoSwap, LIQUIDITY_AMOUNT);
+        ICurveTokenV5(curveCryptoSwapLP).set_minter(deployedAddressCryptoSwap);
+        // Operates in Eth, can deposit weth.
+        ICurvePool(deployedAddressCryptoSwap).add_liquidity([LIQUIDITY_AMOUNT, LIQUIDITY_AMOUNT], 0);
 
         //
         // Launch registry

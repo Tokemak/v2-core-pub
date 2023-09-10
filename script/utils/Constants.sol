@@ -27,6 +27,7 @@ library Constants {
         address destinationTemplateRegistry;
         address destinationVaultFactory;
         address swapRouter;
+        address customSetOracle;
         address lens;
     }
 
@@ -71,6 +72,7 @@ library Constants {
                 destinationTemplateRegistry: address(registry.destinationTemplateRegistry()),
                 destinationVaultFactory: address(registry.destinationVaultRegistry().factory()),
                 swapRouter: address(registry.swapRouter()),
+                customSetOracle: address(0),
                 lens: 0xbE87fb643fF79B427C42baCf5D49DC743Cc8bF3a
             }),
             ext: External({
@@ -98,6 +100,7 @@ library Constants {
                 destinationTemplateRegistry: address(0),
                 destinationVaultFactory: address(0),
                 swapRouter: address(0),
+                customSetOracle: address(0),
                 lens: address(0)
             }),
             ext: External({

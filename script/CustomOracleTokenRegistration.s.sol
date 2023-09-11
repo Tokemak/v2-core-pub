@@ -16,8 +16,8 @@ import { RootPriceOracle, IPriceOracle } from "src/oracles/RootPriceOracle.sol";
  */
 contract CustomSetOracleTokenRegistration is BaseScript {
     /// @dev Set tokens and max ages here.
-    address[] public tokens = [address(0)];
-    uint256[] public maxAges = [0];
+    address[] public tokens = [address(1)];
+    uint256[] public maxAges = [1 days];
 
     function run() external {
         setUp(Systems.LST_GEN1_GOERLI);

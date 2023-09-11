@@ -72,7 +72,7 @@ library Constants {
                 destinationTemplateRegistry: address(registry.destinationTemplateRegistry()),
                 destinationVaultFactory: address(registry.destinationVaultRegistry().factory()),
                 swapRouter: address(registry.swapRouter()),
-                customSetOracle: address(0),
+                customSetOracle: 0x8A1de606ceF7Df46E577e9e1C3c6B45712Ce65d1,
                 lens: 0xbE87fb643fF79B427C42baCf5D49DC743Cc8bF3a
             }),
             ext: External({

@@ -23,15 +23,16 @@ import { IAccessController } from "src/interfaces/security/IAccessController.sol
 contract AddRemoveRole is BaseScript {
     ///@dev Manually set variables below.
     bool public constant ADD_ROLE = true; // True to add role, false to remove.
-    bytes32[] public rolesToGrantOrRemove = [bytes32(0)];
+    bytes32[] public rolesToGrantOrRemove = [Roles.ORACLE_MANAGER_ROLE];
     address public roleAddress = address(0);
 
     function run() external {
         setUp(Systems.LST_GEN1_GOERLI);
 
-        IAccessController accessControl = IAccessController(accessControllerAddress);
+        vm.startBroadcast(vm.envUint(constants.privateKeyEnvVar));
+        roleAddress = vm.addr(vm.envUint(constants.privateKeyEnvVar));
 
-        vm.startBroadcast(privateKey);
+        IAccessController accessControl = IAccessController(constants.sys.accessController);
 
         for (uint256 i = 0; i < rolesToGrantOrRemove.length; ++i) {
             bytes32 role = rolesToGrantOrRemove[i];

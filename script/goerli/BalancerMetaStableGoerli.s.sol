@@ -7,7 +7,7 @@ pragma solidity 0.8.17;
 
 import { console } from "forge-std/console.sol";
 
-import { IBalancerMetaStableFactory } from "script/interfaces/external/IBalancerMetaStableFactory.sol";
+import { IBalancerMetaStableFactory } from "script/interfaces/balancer/IBalancerMetaStableFactory.sol";
 import { BaseScript } from "../BaseScript.sol";
 import { Systems } from "../utils/Constants.sol";
 import { ERC20Mock } from "script/contracts/mocks/ERC20Mock.sol";
@@ -50,7 +50,7 @@ contract BalancerMetaStableGoerli is BaseScript {
 
         // Create tokens that need to be created, wrap others that do not - ERC20 mocks
         weth = IERC20(constants.tokens.weth);
-        wstEth = IERC20(constants.tokens.wstETH);
+        wstEth = IERC20(constants.tokens.wstEth);
 
         console.log("Weth address: ", address(weth));
         console.log("wstEth address: ", address(wstEth));

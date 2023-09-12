@@ -35,7 +35,7 @@ contract SetupDestinationVaults is BaseScript {
         //systemRegistry.addRewardToken(constants.tokens.toke);
 
         // Composable
-        address poolAddress = 0x9d6d991f9dd88a93F31C1a61BccdbbC9abCF5657;
+        address poolAddress = constants.pools.balCompSfrxethWstethRethV1;
         address[] memory additionalTrackTokens = new address[](0);
         bytes32 salt = keccak256("gp1");
         BalancerAuraDestinationVault.InitParams memory initParams = BalancerAuraDestinationVault.InitParams({
@@ -51,7 +51,7 @@ contract SetupDestinationVaults is BaseScript {
         console.log("Composable Destination Vault: ", newVault);
 
         // Meta
-        poolAddress = 0x26B8Cf12405861e68230154674cE49253C3ee19b;
+        poolAddress = constants.pools.balMetaWethWsteth;
         salt = keccak256("gp2");
         initParams = BalancerAuraDestinationVault.InitParams({
             balancerPool: poolAddress,

@@ -7,9 +7,9 @@ pragma solidity 0.8.17;
 
 import { console } from "forge-std/console.sol";
 
-import { ERC20Mock } from "script/mocks/ERC20Mock.sol";
-import { MockRateProvider, IRateProvider } from "script/mocks/MockRateProvider.sol";
-import { IBalancerComposableStableFactory } from "script/interfaces/external/IBalancerComposableStableFactory.sol";
+import { ERC20Mock } from "script/contracts/mocks/ERC20Mock.sol";
+import { MockRateProvider, IRateProvider } from "script/contracts/mocks/MockRateProvider.sol";
+import { IBalancerComposableStableFactory } from "script/interfaces/balancer/IBalancerComposableStableFactory.sol";
 import { BaseScript } from "../BaseScript.sol";
 import { Systems } from "../utils/Constants.sol";
 import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
@@ -47,7 +47,7 @@ contract BalancerComposableStableGoerli is BaseScript {
 
         // Create tokens, ERC20 mocks.
         mockSfrxEth = new ERC20Mock("Mock sfrxEth", "mSfrxEth");
-        mockWstEth = new ERC20Mock("Mock wstEth", "mWstEth");
+        mockWstEth = ERC20Mock(constants.tokens.wstEth);
         mockREth = new ERC20Mock("Mock rEth", "mREth");
 
         ERC20Mock(address(mockSfrxEth)).mint(owner, 100_000e18);

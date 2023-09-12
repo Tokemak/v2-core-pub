@@ -4,19 +4,18 @@ pragma solidity 0.8.17;
 
 // solhint-disable no-console
 
-import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 
 import { IMavFactory } from "script/interfaces/mav/IMavFactory.sol";
 import { IPoolPositionAndRewardFactorySlim } from "script/interfaces/mav/IPoolPositionAndRewardFactorySlim.sol";
 import { IPool } from "script/interfaces/mav/IPool.sol";
 
+import { BaseScript, Systems } from "script/BaseScript.sol";
+
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { ERC20Mock } from "script/contracts/mocks/ERC20Mock.sol";
 
-import { MAV_POOL_FACTORY_GOERLI, MAV_BOOSTED_POSITION_FACTORY_GOERLI } from "script/utils/Addresses.sol";
-
-contract MavPoolGoerli is Script {
+contract MavPoolGoerli is BaseScript {
     ERC20Mock public swEth;
     ERC20Mock public weth;
     IERC20 public tokenA;
@@ -35,7 +34,8 @@ contract MavPoolGoerli is Script {
     uint128[] public ratios = [uint128(1_000_000_000_000_000_000)];
 
     function run() external {
-        vm.startBroadcast(vm.envUint("GOERLI_PRIVATE_KEY"));
+        setUp(Systems.LST_GEN1_GOERLI);
+        vm.startBroadcast(vm.envUint(constants.privateKeyEnvVar));
 
         // Deploy tokens.
         // TODO: Replace both of the below with addresses of deployed tokens if / when they are deployed on Goerli.
@@ -51,12 +51,12 @@ contract MavPoolGoerli is Script {
 
         // Create Pool.
         address pool =
-            IMavFactory(MAV_POOL_FACTORY_GOERLI).create(fee, tickSpacing, lookBack, activeTick, tokenA, tokenB);
+            IMavFactory(constants.ext.mavPoolFactory).create(fee, tickSpacing, lookBack, activeTick, tokenA, tokenB);
 
         console.log("Pool address: ", pool);
 
         // Create boosted position.
-        address boostedPosition = IPoolPositionAndRewardFactorySlim(MAV_BOOSTED_POSITION_FACTORY_GOERLI)
+        address boostedPosition = IPoolPositionAndRewardFactorySlim(constants.ext.mavBoostedPositionFactory)
             .createPoolPositionAndRewards(IPool(pool), binIds, ratios, false);
 
         console.log("Boosted position address: ", boostedPosition);

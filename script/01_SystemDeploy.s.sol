@@ -203,10 +203,6 @@ contract DeploySystem is BaseScript {
         Lens lens = new Lens(systemRegistry);
         console.log("Lens: ", address(lens));
 
-        // Custom Oracle
-        CustomSetOracle customSetOracle = new CustomSetOracle(systemRegistry, 86400);
-        console.log("Custom Set Oracle: %s", address(customSetOracle));
-
         // Setup our core reward tokens
         systemRegistry.addRewardToken(constants.tokens.weth);
         systemRegistry.addRewardToken(constants.tokens.toke);

@@ -19,6 +19,10 @@ library Constants {
         address weth;
         address bal;
         address cvx;
+        address wstEth;
+        address swEth;
+        address stEth;
+        address cbEth;
     }
 
     struct System {
@@ -37,12 +41,20 @@ library Constants {
         address balancerComposableStableFactory;
         address balancerMetaStableFactor;
         address balancerVault;
+        address mavPoolFactory;
+        address mavBoostedPositionFactory;
+    }
+
+    struct Pools {
+        address balCompSfrxethWstethRethV1;
+        address balMetaWethWsteth;
     }
 
     struct Values {
         Tokens tokens;
         System sys;
         External ext;
+        Pools pools;
         string privateKeyEnvVar;
     }
 
@@ -64,7 +76,11 @@ library Constants {
                 toke: 0xdcC9439Fe7B2797463507dD8669717786E51a014,
                 weth: 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6,
                 bal: 0xfA8449189744799aD2AcE7e0EBAC8BB7575eff47,
-                cvx: address(1)
+                cvx: address(1),
+                wstEth: 0xa0494a297434eBa30e807D983605e8B12259CC21,
+                swEth: address(1),
+                stEth: address(1),
+                cbEth: address(1)
             }),
             sys: System({
                 systemRegistry: address(registry),
@@ -80,7 +96,13 @@ library Constants {
                 zeroExProxy: 0xF91bB752490473B8342a3E964E855b9f9a2A668e,
                 balancerComposableStableFactory: 0x4bdCc2fb18AEb9e2d281b0278D946445070EAda7,
                 balancerMetaStableFactor: 0xA55F73E2281c60206ba43A3590dB07B8955832Be,
-                balancerVault: 0xBA12222222228d8Ba445958a75a0704d566BF2C8
+                balancerVault: 0xBA12222222228d8Ba445958a75a0704d566BF2C8,
+                mavPoolFactory: 0x6292B737E6640223EB783F1355737315985Ece49,
+                mavBoostedPositionFactory: 0x680ca064ACcEbdF5B7B8079924C5D0bb79302285
+            }),
+            pools: Pools({
+                balCompSfrxethWstethRethV1: 0x9d6d991f9dd88a93F31C1a61BccdbbC9abCF5657,
+                balMetaWethWsteth: 0x26B8Cf12405861e68230154674cE49253C3ee19b
             }),
             privateKeyEnvVar: "GOERLI_PRIVATE_KEY"
         });
@@ -92,7 +114,11 @@ library Constants {
                 toke: 0x2e9d63788249371f1DFC918a52f8d799F4a38C94,
                 weth: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,
                 bal: 0xba100000625a3754423978a60c9317c58a424e3D,
-                cvx: 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B
+                cvx: 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B,
+                wstEth: 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0,
+                swEth: 0xf951E335afb289353dc249e82926178EaC7DEd78,
+                stEth: 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84,
+                cbEth: 0xBe9895146f7AF43049ca1c1AE358B0541Ea49704
             }),
             sys: System({
                 systemRegistry: address(0),
@@ -108,7 +134,13 @@ library Constants {
                 zeroExProxy: 0xDef1C0ded9bec7F1a1670819833240f027b25EfF,
                 balancerComposableStableFactory: address(0),
                 balancerMetaStableFactor: address(0),
-                balancerVault: 0xBA12222222228d8Ba445958a75a0704d566BF2C8
+                balancerVault: 0xBA12222222228d8Ba445958a75a0704d566BF2C8,
+                mavPoolFactory: 0xEb6625D65a0553c9dBc64449e56abFe519bd9c9B,
+                mavBoostedPositionFactory: 0x4F24D73773fCcE560f4fD641125c23A2B93Fcb05
+            }),
+            pools: Pools({
+                balCompSfrxethWstethRethV1: 0x42ED016F826165C2e5976fe5bC3df540C5aD0Af7,
+                balMetaWethWsteth: 0x32296969Ef14EB0c6d29669C550D4a0449130230
             }),
             privateKeyEnvVar: "MAINNET_PRIVATE_KEY"
         });

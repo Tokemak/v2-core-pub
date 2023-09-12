@@ -5,13 +5,13 @@ pragma solidity 0.8.17;
 // solhint-disable no-console
 // solhint-disable max-states-count
 
-import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 
 import { ERC20Mock } from "script/contracts/mocks/ERC20Mock.sol";
 
 import { VyperDeployer } from "script/utils/VyperDeployer.sol";
 import { MockCurveRegistry } from "script/contracts/mocks/MockCurveRegistry.sol";
+import { BaseScript, Systems } from "script/BaseScript.sol";
 
 import { ICurvePool } from "script/interfaces/curve/ICurvePool.sol";
 import { ICurvePoolNG } from "script/interfaces/curve/ICurvePoolNG.sol";
@@ -25,7 +25,7 @@ import { IStableSwapInitializable } from "script/interfaces/curve/IStableSwapIni
  *      stEth / Eth ng (v1), and cbEth / Eth (v2).  The one pool left out is rEth / Eth (v2), this is because it uses
  *      the same contract as the cbEth / Eth pool.
  */
-contract CurveGoerli is Script {
+contract CurveGoerli is BaseScript {
     uint256 public constant LIQUIDITY_AMOUNT = 5e18;
     // TODO: Replace all with constants when merged.
     address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
@@ -35,8 +35,7 @@ contract CurveGoerli is Script {
 
     MockCurveRegistry public curveRegistry;
 
-    uint256 public goerliPrivateKey = vm.envUint("GOERLI_PRIVATE_KEY");
-    address public goerliOwner = vm.addr(goerliPrivateKey);
+    address public goerliOwner;
 
     // Stableswap params
 
@@ -91,7 +90,9 @@ contract CurveGoerli is Script {
     address[2] public cryptoTokensArr; // Set later in script.
 
     function run() external {
-        vm.startBroadcast(goerliPrivateKey);
+        setUp(Systems.LST_GEN1_GOERLI);
+        vm.startBroadcast(vm.envUint(constants.privateKeyEnvVar));
+        goerliOwner = vm.addr(vm.envUint(constants.privateKeyEnvVar));
 
         // Set up tokens
         weth = new ERC20Mock("Wrapped Eth - Mock", "wethMock");

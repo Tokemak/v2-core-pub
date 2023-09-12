@@ -15,6 +15,10 @@ import { BaseScript, Systems } from "script/BaseScript.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { ERC20Mock } from "script/contracts/mocks/ERC20Mock.sol";
 
+/**
+ * @dev This script deploys a Maverick pool and boosted position to Goerli.  The state variables are based on the
+ *      swEth / weth pool on mainnet.
+ */
 contract MavPoolGoerli is BaseScript {
     ERC20Mock public swEth;
     ERC20Mock public weth;

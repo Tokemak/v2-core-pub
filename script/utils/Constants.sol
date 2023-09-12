@@ -23,6 +23,8 @@ library Constants {
         address swEth;
         address stEth;
         address cbEth;
+        address rEth;
+        address sfrxEth;
     }
 
     struct System {
@@ -80,7 +82,9 @@ library Constants {
                 wstEth: 0xa0494a297434eBa30e807D983605e8B12259CC21,
                 swEth: address(1),
                 stEth: address(1),
-                cbEth: address(1)
+                cbEth: address(1),
+                rEth: 0xf7bb4a608F8DFDc1a31A72bFa089c7f57545CeA9,
+                sfrxEth: 0x306C8Ca71f691f7Bb23c14B8fEA13320a35B70A6
             }),
             sys: System({
                 systemRegistry: address(registry),
@@ -118,7 +122,9 @@ library Constants {
                 wstEth: 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0,
                 swEth: 0xf951E335afb289353dc249e82926178EaC7DEd78,
                 stEth: 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84,
-                cbEth: 0xBe9895146f7AF43049ca1c1AE358B0541Ea49704
+                cbEth: 0xBe9895146f7AF43049ca1c1AE358B0541Ea49704,
+                rEth: 0xae78736Cd615f374D3085123A210448E74Fc6393,
+                sfrxEth: 0xac3E018457B222d93114458476f3E3416Abbe38F
             }),
             sys: System({
                 systemRegistry: address(0),

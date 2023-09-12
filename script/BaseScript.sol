@@ -15,9 +15,6 @@ import { Constants, Systems } from "./utils/Constants.sol";
 // Interfaces
 import { SystemRegistry } from "src/SystemRegistry.sol";
 
-// Interfaces
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-
 /**
  * @dev Base contract for scripting.  Sets env to either Goerli or Mainnet values.  As of
  *      right now this contract sets all values regardless of whether the inheriting contract uses

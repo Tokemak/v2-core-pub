@@ -9,6 +9,12 @@ import { console } from "forge-std/console.sol";
 import { BaseScript, Systems } from "script/BaseScript.sol";
 import { CustomSetOracle } from "src/oracles/providers/CustomSetOracle.sol";
 
+/**
+ * @dev This script is used to set token prices on `CustomSetOracle.sol`.  Custom set oracle must
+ *      be deployed and set in `Constants.sol`.
+ *
+ * @dev Make sure to change state variables before running script.
+ */
 contract CustomOracleSetPrice is BaseScript {
     /// @dev Set tokens, prices, timestamps here
     address[] public tokens = [wethAddress];

@@ -13,6 +13,10 @@ import { CurveV1StableSwap } from "src/swapper/adapters/CurveV1StableSwap.sol";
 import { CurveV2Swap } from "src/swapper/adapters/CurveV2Swap.sol";
 import { UniV3Swap } from "src/swapper/adapters/UniV3Swap.sol";
 
+/**
+ * @dev This script deploys all of the sync swappers in the system.  This script does not
+ *      set up swap routes, that must be done through `SetSwapRoute.s.sol`.
+ */
 contract SwapperSetup is BaseScript {
     function run() external {
         setUp(Systems.LST_GEN1_GOERLI);

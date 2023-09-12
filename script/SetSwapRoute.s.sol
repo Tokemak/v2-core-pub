@@ -12,7 +12,7 @@ import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { ISyncSwapper } from "src/interfaces/swapper/ISyncSwapper.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
-/// @notice Sets swap route for tokens on `SwapRouter.sol` contract.
+/// @dev Sets swap route for tokens on `SwapRouter.sol` contract.
 contract SetSwapRoute is BaseScript {
     ISwapRouter.SwapData[] public swapDataArray;
 

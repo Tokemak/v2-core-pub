@@ -13,6 +13,8 @@ import { RootPriceOracle, IPriceOracle } from "src/oracles/RootPriceOracle.sol";
 /**
  * @dev This script sets token addresses and max ages on `CustomSetOracle.sol`, as well as setting
  *      the custom set oracle as the price oracle for the token on `RootPriceOracle.sol`.
+ *
+ * @dev Set state variables before running script against mainnet.
  */
 contract CustomSetOracleTokenRegistration is BaseScript {
     /// @dev Set tokens and max ages here.

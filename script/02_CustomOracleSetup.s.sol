@@ -9,7 +9,9 @@ import { console } from "forge-std/console.sol";
 import { BaseScript, Systems } from "script/BaseScript.sol";
 import { CustomSetOracle } from "src/oracles/providers/CustomSetOracle.sol";
 
+/// @dev Deploys `CustomSetOracle.sol`.  Make sure to set address in `Constants.sol` after launch.
 contract CustomOracleSetup is BaseScript {
+    /// @dev Set to deisred max age for prices.
     uint256 public constant MAX_AGE = 1 weeks; // TODO: Change to desired value.
 
     function run() external {

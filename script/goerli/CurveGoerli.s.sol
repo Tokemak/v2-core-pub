@@ -27,7 +27,6 @@ import { IStableSwapInitializable } from "script/interfaces/curve/IStableSwapIni
  */
 contract CurveGoerli is BaseScript {
     uint256 public constant LIQUIDITY_AMOUNT = 5e18;
-    // TODO: Replace all with constants when merged.
     address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     ERC20Mock public weth;
     ERC20Mock public stEth;

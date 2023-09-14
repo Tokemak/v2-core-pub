@@ -258,7 +258,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
         emit QueuedRewardsUpdated(startingQueuedRewards, startingNewRewards, queuedRewards);
 
         // Transfer the new rewards from the caller to this contract.
-        IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), newRewards);
+        IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), startingNewRewards);
     }
 
     /**

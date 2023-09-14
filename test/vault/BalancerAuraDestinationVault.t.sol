@@ -29,6 +29,7 @@ import { SwapRouter } from "src/swapper/SwapRouter.sol";
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
+import { IBasePool } from "src/interfaces/external/balancer/IBasePool.sol";
 import { BalancerV2Swap } from "src/swapper/adapters/BalancerV2Swap.sol";
 import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 import {
@@ -246,9 +247,9 @@ contract BalancerAuraDestinationVaultTests is Test {
         assertEq(_destVault.externalBalance(), 10e18);
     }
 
-    function test_depositUnderlying_TokensDoNotGoToAuraIfPoolTokensChange() public {
+    function test_depositUnderlying_TokensDoNotGoToAuraIfPoolTokensNumberChange() public {
         IERC20[] memory mockTokens = new IERC20[](1);
-        mockTokens[0] = IERC20(AURA_MAINNET);
+        mockTokens[0] = IERC20(WSTETH_MAINNET);
 
         uint256[] memory balances = new uint256[](1);
         balances[0] = 100;
@@ -275,11 +276,44 @@ contract BalancerAuraDestinationVaultTests is Test {
         cachedTokens[1] = WETH_MAINNET;
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                BalancerAuraDestinationVault.PoolTokensChanged.selector,
-                cachedTokens,
-                BalancerUtilities._convertERC20sToAddresses(mockTokens)
-            )
+            abi.encodeWithSelector(BalancerAuraDestinationVault.PoolTokensChanged.selector, cachedTokens, mockTokens)
+        );
+
+        _destVault.depositUnderlying(10e18);
+    }
+
+    function test_depositUnderlying_TokensDoNotGoToAuraIfPoolTokensChange() public {
+        IERC20[] memory mockTokens = new IERC20[](2);
+        mockTokens[0] = IERC20(AURA_MAINNET);
+        mockTokens[1] = IERC20(BAL_MAINNET);
+
+        uint256[] memory balances = new uint256[](2);
+        balances[0] = 100;
+        balances[1] = 100;
+        uint256 lastChangeBlock = block.timestamp;
+
+        vm.mockCall(
+            BAL_VAULT,
+            abi.encodeWithSelector(IVault.getPoolTokens.selector),
+            abi.encode(mockTokens, balances, lastChangeBlock)
+        );
+
+        // Get some tokens to play with
+        vm.prank(LP_TOKEN_WHALE);
+        _underlyer.transfer(address(this), 10e18);
+
+        // Give us deposit rights
+        _mockIsVault(address(this), true);
+
+        // Approve and try deposit
+        _underlyer.approve(address(_destVault), 10e18);
+
+        address[] memory cachedTokens = new address[](2);
+        cachedTokens[0] = WSTETH_MAINNET;
+        cachedTokens[1] = WETH_MAINNET;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(BalancerAuraDestinationVault.PoolTokensChanged.selector, cachedTokens, mockTokens)
         );
 
         _destVault.depositUnderlying(10e18);
@@ -365,6 +399,35 @@ contract BalancerAuraDestinationVaultTests is Test {
 
         address receiver = vm.addr(555);
         uint256 startingBalance = _asset.balanceOf(receiver);
+
+        uint256 received = _destVault.withdrawBaseAsset(10e18, receiver);
+
+        // Bal pool has a rough pool value of $96,362,068
+        // Total Supply of 50180.410952857663703844
+        // Eth Price: $1855
+        // PPS: 1.035208869 w/10 shares ~= 10.35208869
+
+        assertEq(_asset.balanceOf(receiver) - startingBalance, 10_356_898_854_512_073_834);
+        assertEq(received, _asset.balanceOf(receiver) - startingBalance);
+    }
+
+    function test_withdrawBaseAsset_IsPossibleWhenPoolIsInRecoveryMode() public {
+        // Get some tokens to play with
+        vm.prank(LP_TOKEN_WHALE);
+        _underlyer.transfer(address(this), 10e18);
+
+        // Give us deposit rights
+        _mockIsVault(address(this), true);
+
+        // Deposit
+        _underlyer.approve(address(_destVault), 10e18);
+        _destVault.depositUnderlying(10e18);
+
+        address receiver = vm.addr(555);
+        uint256 startingBalance = _asset.balanceOf(receiver);
+
+        // Mock Pool to be in a Recovery Mode
+        vm.mockCall(WSETH_WETH_BAL_POOL, abi.encodeWithSelector(IBasePool.inRecoveryMode.selector), abi.encode(true));
 
         uint256 received = _destVault.withdrawBaseAsset(10e18, receiver);
 

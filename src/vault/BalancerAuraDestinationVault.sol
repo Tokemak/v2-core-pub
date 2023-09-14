@@ -40,7 +40,7 @@ contract BalancerAuraDestinationVault is DestinationVault {
     address public immutable defaultStakingRewardToken;
 
     /// @notice Pool tokens changed – possible for Balancer pools with no liquidity
-    error PoolTokensChanged(address[] cachedTokens, address[] actualTokens);
+    error PoolTokensChanged(IERC20[] cachedTokens, IERC20[] actualTokens);
 
     /* ******************************** */
     /* State Variables                  */
@@ -146,17 +146,14 @@ contract BalancerAuraDestinationVault is DestinationVault {
         // We should verify if pool tokens didn't change before staking to make sure we're staking for the same tokens
         IERC20[] memory queriedPoolTokens = BalancerUtilities._getPoolTokens(balancerVault, balancerPool);
 
-        address[] memory cachedTokens = BalancerUtilities._convertERC20sToAddresses(poolTokens);
-        address[] memory actualTokens = BalancerUtilities._convertERC20sToAddresses(queriedPoolTokens);
-
         uint256 nTokens = poolTokens.length;
         if (nTokens != queriedPoolTokens.length) {
-            revert PoolTokensChanged(cachedTokens, actualTokens);
+            revert PoolTokensChanged(poolTokens, queriedPoolTokens);
         }
 
         for (uint256 i = 0; i < nTokens; ++i) {
-            if (address(poolTokens[i]) != address(queriedPoolTokens[i])) {
-                revert PoolTokensChanged(cachedTokens, actualTokens);
+            if (poolTokens[i] != queriedPoolTokens[i]) {
+                revert PoolTokensChanged(poolTokens, queriedPoolTokens);
             }
         }
 

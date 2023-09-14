@@ -65,9 +65,6 @@ library BalancerUtilities {
     ) internal view returns (IERC20[] memory assets) {
         bytes32 poolId = IBalancerPool(balancerPool).getPoolId();
 
-        // slither-disable-next-line unused-return
-        (IERC20[] memory balancerPoolTokens,,) = balancerVault.getPoolTokens(poolId);
-
-        assets = balancerPoolTokens;
+        (assets,,) = balancerVault.getPoolTokens(poolId);
     }
 }

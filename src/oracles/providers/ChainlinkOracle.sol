@@ -5,6 +5,8 @@ pragma solidity 0.8.17;
 
 import { BaseOracleDenominations, ISystemRegistry } from "src/oracles/providers/base/BaseOracleDenominations.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
+import { IAccessControlledOffchainAggregator } from
+    "src/interfaces/external/chainlink/IAccessControlledOffchainAggregator.sol";
 import { Errors } from "src/utils/Errors.sol";
 
 /**
@@ -27,6 +29,8 @@ contract ChainlinkOracle is BaseOracleDenominations {
         uint32 pricingTimeout;
         Denomination denomination;
         uint8 decimals;
+        uint256 maxPrice;
+        uint256 minPrice;
     }
 
     /// @dev Mapping of token to ChainlinkInfo struct.  Private to enforce zero address checks.
@@ -73,7 +77,9 @@ contract ChainlinkOracle is BaseOracleDenominations {
             oracle: chainlinkOracle,
             denomination: denomination,
             decimals: oracleDecimals,
-            pricingTimeout: pricingTimeout
+            pricingTimeout: pricingTimeout,
+            maxPrice: uint256(int256(IAccessControlledOffchainAggregator(chainlinkOracle.aggregator()).maxAnswer())),
+            minPrice: uint256(int256(IAccessControlledOffchainAggregator(chainlinkOracle.aggregator()).minAnswer()))
         });
         emit ChainlinkRegistrationAdded(token, address(chainlinkOracle), denomination, oracleDecimals);
     }
@@ -109,14 +115,16 @@ contract ChainlinkOracle is BaseOracleDenominations {
         uint256 timestamp = block.timestamp;
         uint256 oracleStoredTimeout = uint256(chainlinkOracle.pricingTimeout);
         uint256 tokenPricingTimeout = oracleStoredTimeout == 0 ? DEFAULT_PRICING_TIMEOUT : oracleStoredTimeout;
+
+        if (price <= 0) revert InvalidDataReturned(); // Check before conversion from int to uint.
+        uint256 priceUint = uint256(price);
+
         if (
-            roundId == 0 || price <= 0 || updatedAt == 0 || updatedAt > timestamp
-                || updatedAt < timestamp - tokenPricingTimeout
+            roundId == 0 || updatedAt == 0 || updatedAt > timestamp || updatedAt < timestamp - tokenPricingTimeout
+                || priceUint >= chainlinkOracle.maxPrice || priceUint <= chainlinkOracle.minPrice
         ) revert InvalidDataReturned();
 
         uint256 decimals = chainlinkOracle.decimals;
-        // Checked to be > 0 above.
-        uint256 priceUint = uint256(price);
         // Chainlink feeds have certain decimal precisions, does not neccessarily conform to underlying asset.
         uint256 normalizedPrice = decimals == 18 ? priceUint : priceUint * 10 ** (18 - decimals);
 

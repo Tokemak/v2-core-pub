@@ -16,4 +16,7 @@ interface IAggregatorV3Interface {
         external
         view
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+
+    /// @notice Returns address of aggregator contract.  Used to set min and max price when registering oracle.
+    function aggregator() external view returns (address);
 }

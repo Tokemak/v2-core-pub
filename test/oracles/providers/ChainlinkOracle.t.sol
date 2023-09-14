@@ -101,6 +101,8 @@ contract ChainlinkOracleTest is Test {
         assertEq(uint8(clInfo.denomination), uint8(BaseOracleDenominations.Denomination.ETH));
         assertEq(clInfo.decimals, IAggregatorV3Interface(RETH_CL_FEED_MAINNET).decimals());
         assertEq(clInfo.pricingTimeout, uint16(0));
+        assertEq(clInfo.maxPrice, 95_780_971_304_118_053_647_396_689_196_894_323_976_171_195_136_475_135);
+        assertEq(clInfo.minPrice, uint256(1));
     }
 
     // Test `removeChainlinkRegistration()`

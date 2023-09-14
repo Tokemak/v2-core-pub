@@ -55,7 +55,7 @@ interface IGPToke {
         uint256 oldPoints,
         uint256 newPoints
     );
-    event RewardsAdded(uint256 amount);
+    event RewardsAdded(uint256 amount, uint256 accRewardPerShare);
     event RewardsCollected(address indexed user, uint256 amount);
     event RewardsClaimed(address indexed user, uint256 amount);
 

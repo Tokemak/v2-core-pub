@@ -234,7 +234,7 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
         totalRewardsEarned += amount;
         accRewardPerShare += amount * REWARD_FACTOR / supply;
 
-        emit RewardsAdded(amount);
+        emit RewardsAdded(amount, accRewardPerShare);
 
         weth.safeTransferFrom(msg.sender, address(this), amount);
     }

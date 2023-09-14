@@ -21,7 +21,7 @@ contract StakingTest is BaseTest {
         uint256 oldPoints,
         uint256 newPoints
     );
-    event RewardsAdded(uint256 amount);
+    event RewardsAdded(uint256 amount, uint256 accRewardPerShare);
     event RewardsClaimed(address indexed user, uint256 amount);
 
     // solhint-disable-next-line var-name-mixedcase
@@ -358,8 +358,8 @@ contract StakingTest is BaseTest {
 
         weth.approve(address(gpToke), _amount);
 
-        vm.expectEmit(true, false, false, false);
-        emit RewardsAdded(_amount);
+        vm.expectEmit(true, true, false, false);
+        emit RewardsAdded(_amount, 0);
         gpToke.addWETHRewards(_amount);
 
         assertEq(weth.balanceOf(address(gpToke)), wethStakingBalanceBefore + _amount);

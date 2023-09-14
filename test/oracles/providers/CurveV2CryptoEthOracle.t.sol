@@ -118,11 +118,6 @@ contract CurveV2CryptoEthOracleTest is Test {
         curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CVX_ETH_CURVE_V2_LP, false);
     }
 
-    function test_ReentrancyRegistration() external {
-        vm.expectRevert(CurveV2CryptoEthOracle.MustHaveEthForReentrancy.selector);
-        curveOracle.registerPool(STG_USDC_V2_POOL, STG_USDC_CURVE_V2_LP, true);
-    }
-
     function test_ProperRegistration() external {
         vm.expectEmit(false, false, false, true);
         emit TokenRegistered(CRV_ETH_CURVE_V2_LP);

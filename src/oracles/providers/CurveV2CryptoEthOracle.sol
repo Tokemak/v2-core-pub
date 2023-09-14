@@ -71,12 +71,6 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle {
     error InvalidNumTokens(uint256 numTokens);
 
     /**
-     * @notice Thrown when a pool that does not have native Eth as a token in the pair is registered
-     *      for a read only reentrancy check.
-     */
-    error MustHaveEthForReentrancy();
-
-    /**
      * @notice Thrown when y and z values do not converge during square root calculation.
      */
     error SqrtError();
@@ -100,9 +94,15 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle {
 
     /**
      * @notice Allows owner of system to register a pool.
+     * @dev While the reentrancy check implemented in this contact can technically be used with any token,
+     *      it does not make sense to check for reentrancy unless the pool contains ETH or WETH, as the
+     *      known Curve reentrancy vulnerability only works when the caller recieves native ETH.  Therefore,
+     *      reentrancy checks should only be set to `1` when these tokens are present.  Otherwise we
+     *      waste gas claiming admin fees for Curve.
      * @param curvePool Address of CurveV2 pool.
      * @param curveLpToken Address of LP token associated with v2 pool.
-     * @param checkReentrancy Whether to check read-only reentrancy on pool.
+     * @param checkReentrancy Whether to check read-only reentrancy on pool.  Set to true for pools containing
+     *      ETH or WETH.
      */
     function registerPool(address curvePool, address curveLpToken, bool checkReentrancy) external onlyOwner {
         Errors.verifyNotZero(curvePool, "curvePool");
@@ -116,11 +116,6 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle {
         if (numTokens != 2) revert InvalidNumTokens(numTokens);
         if (isStableSwap) revert NotCryptoPool(curvePool);
         if (lpToken != curveLpToken) revert ResolverMismatch(curveLpToken, lpToken);
-
-        // Only need ability to check for read-only reentrancy for pools containing native Eth.
-        if (checkReentrancy) {
-            if (tokens[0] != ETH && tokens[1] != ETH) revert MustHaveEthForReentrancy();
-        }
 
         /**
          * Curve V2 pools always price second token in `coins` array in first token in `coins` array.  This means that

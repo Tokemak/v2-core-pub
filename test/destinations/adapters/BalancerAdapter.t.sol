@@ -237,7 +237,7 @@ contract BalancerAdapterTest is Test {
 
         assert(afterBalance1 > preBalance1);
         assert(afterBalance2 > preBalance2);
-        assert(afterLpBalance < preLpBalance);
+        assert(afterLpBalance == 0);
     }
 
     function testRemoveLiquidityImbalanceWstEthCbEth() public {
@@ -267,7 +267,7 @@ contract BalancerAdapterTest is Test {
         withdrawAmounts[0] = 1 * 1e18;
         withdrawAmounts[1] = 1 * 1e18;
 
-        BalancerBeethovenAdapter.removeLiquidityImbalance(vault, poolAddress, preLpBalance, tokens, withdrawAmounts);
+        BalancerBeethovenAdapter.removeLiquidityImbalance(vault, poolAddress, tokens, withdrawAmounts, preLpBalance);
 
         uint256 afterBalance1 = IERC20(WSTETH_MAINNET).balanceOf(address(this));
         uint256 afterBalance2 = IERC20(CBETH_MAINNET).balanceOf(address(this));
@@ -275,7 +275,7 @@ contract BalancerAdapterTest is Test {
 
         assert(afterBalance1 > preBalance1);
         assert(afterBalance2 > preBalance2);
-        assert(afterLpBalance == 0);
+        assert(afterLpBalance < preLpBalance);
     }
 
     function testAddLiquidityWstEthWeth() public {
@@ -346,7 +346,7 @@ contract BalancerAdapterTest is Test {
 
         assert(afterBalance1 > preBalance1);
         assert(afterBalance2 > preBalance2);
-        assert(afterLpBalance < preLpBalance);
+        assert(afterLpBalance == 0);
     }
 
     function testRemoveLiquidityImbalanceWstEthWeth() public {
@@ -376,7 +376,7 @@ contract BalancerAdapterTest is Test {
         withdrawAmounts[0] = 1 * 1e18;
         withdrawAmounts[1] = 1 * 1e18;
 
-        BalancerBeethovenAdapter.removeLiquidityImbalance(vault, poolAddress, preLpBalance, tokens, withdrawAmounts);
+        BalancerBeethovenAdapter.removeLiquidityImbalance(vault, poolAddress, tokens, withdrawAmounts, preLpBalance);
 
         uint256 afterBalance1 = IERC20(WSTETH_MAINNET).balanceOf(address(this));
         uint256 afterBalance2 = IERC20(WETH_MAINNET).balanceOf(address(this));
@@ -384,7 +384,7 @@ contract BalancerAdapterTest is Test {
 
         assert(afterBalance1 > preBalance1);
         assert(afterBalance2 > preBalance2);
-        assert(afterLpBalance == 0);
+        assert(afterLpBalance < preLpBalance);
     }
 
     function testAddLiquidityRethWeth() public {
@@ -453,7 +453,7 @@ contract BalancerAdapterTest is Test {
 
         assert(afterBalance1 > preBalance1);
         assert(afterBalance2 > preBalance2);
-        assert(afterLpBalance < preLpBalance);
+        assert(afterLpBalance == 0);
     }
 
     function testRemoveLiquidityImbalanceRethWeth() public {
@@ -483,7 +483,7 @@ contract BalancerAdapterTest is Test {
         withdrawAmounts[0] = 1 * 1e18;
         withdrawAmounts[1] = 1 * 1e18;
 
-        BalancerBeethovenAdapter.removeLiquidityImbalance(vault, poolAddress, preLpBalance, tokens, withdrawAmounts);
+        BalancerBeethovenAdapter.removeLiquidityImbalance(vault, poolAddress, tokens, withdrawAmounts, preLpBalance);
 
         uint256 afterBalance1 = IERC20(RETH_MAINNET).balanceOf(address(this));
         uint256 afterBalance2 = IERC20(WETH_MAINNET).balanceOf(address(this));
@@ -491,7 +491,7 @@ contract BalancerAdapterTest is Test {
 
         assert(afterBalance1 > preBalance1);
         assert(afterBalance2 > preBalance2);
-        assert(afterLpBalance == 0);
+        assert(afterLpBalance < preLpBalance);
     }
 
     function testAddLiquidityWstEthSfrxEthREth() public {
@@ -616,15 +616,11 @@ contract BalancerAdapterTest is Test {
 
         uint256[] memory withdrawAmounts = new uint256[](4);
         withdrawAmounts[0] = 0;
-        withdrawAmounts[1] = 0 * 1e18;
-        withdrawAmounts[2] = 0 * 1e18;
-        withdrawAmounts[3] = 0 * 1e18;
+        withdrawAmounts[1] = 1 * 1e18;
+        withdrawAmounts[2] = 1 * 1e18;
+        withdrawAmounts[3] = 1 * 1e18;
 
-        uint256 exitTokenIndex = 0;
-
-        BalancerBeethovenAdapter.removeLiquidityComposableImbalance(
-            vault, address(pool), preLpBalance, tokens, withdrawAmounts, exitTokenIndex
-        );
+        BalancerBeethovenAdapter.removeLiquidityImbalance(vault, address(pool), tokens, withdrawAmounts, preLpBalance);
 
         uint256 afterBalance1 = IERC20(WSTETH_MAINNET).balanceOf(address(this));
         uint256 afterBalance2 = IERC20(SFRXETH_MAINNET).balanceOf(address(this));
@@ -632,8 +628,8 @@ contract BalancerAdapterTest is Test {
         uint256 afterLpBalance = lpToken.balanceOf(address(this));
 
         assert(afterBalance1 > preBalance1);
-        assert(afterBalance2 == preBalance2);
-        assert(afterBalance3 == preBalance3);
+        assert(afterBalance2 > preBalance2);
+        assert(afterBalance3 > preBalance3);
         assert(afterLpBalance < preLpBalance);
     }
 
@@ -708,7 +704,7 @@ contract BalancerAdapterTest is Test {
 
         assert(afterBalance1 > preBalance1);
         assert(afterBalance2 > preBalance2);
-        assert(afterLpBalance < preLpBalance);
+        assert(afterLpBalance == 0);
     }
 
     function testRemoveLiquidityImbalanceWstEthWethArbitrum() public {
@@ -740,7 +736,7 @@ contract BalancerAdapterTest is Test {
         withdrawAmounts[0] = 1 * 1e18;
         withdrawAmounts[1] = 1 * 1e18;
 
-        BalancerBeethovenAdapter.removeLiquidityImbalance(vault, poolAddress, preLpBalance, tokens, withdrawAmounts);
+        BalancerBeethovenAdapter.removeLiquidityImbalance(vault, poolAddress, tokens, withdrawAmounts, preLpBalance);
 
         uint256 afterBalance1 = IERC20(WSTETH_ARBITRUM).balanceOf(address(this));
         uint256 afterBalance2 = IERC20(WETH_ARBITRUM).balanceOf(address(this));
@@ -748,6 +744,6 @@ contract BalancerAdapterTest is Test {
 
         assert(afterBalance1 > preBalance1);
         assert(afterBalance2 > preBalance2);
-        assert(afterLpBalance == 0);
+        assert(afterLpBalance < preLpBalance);
     }
 }

@@ -47,18 +47,21 @@ library BalancerBeethovenAdapter {
         ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
         ADD_TOKEN
     }
+
+    ///@dev For StablePool and MetaStablePool
     enum ExitKind {
         EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
         EXACT_BPT_IN_FOR_TOKENS_OUT,
-        BPT_IN_FOR_EXACT_TOKENS_OUT,
-        REMOVE_TOKEN
+        BPT_IN_FOR_EXACT_TOKENS_OUT
     }
 
+    ///@dev For ComposableStablePool
     enum ExitKindComposable {
         EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
         BPT_IN_FOR_EXACT_TOKENS_OUT,
         EXACT_BPT_IN_FOR_ALL_TOKENS_OUT
     }
+
     /**
      * @param pool address of Balancer Pool
      * @param bptAmount uint256 pool token amount expected back
@@ -66,7 +69,6 @@ library BalancerBeethovenAdapter {
      * @param amountsOut uint256[] min amount of tokens expected on withdrawal
      * @param userData bytes data, used for info about kind of pool exit
      */
-
     struct WithdrawParams {
         address pool;
         uint256 bptAmount;
@@ -148,30 +150,30 @@ library BalancerBeethovenAdapter {
      * @param exactAmountsOut Array of exact amounts of tokens to be withdrawn from pool
      * @param maxLpBurnAmount Max amount of LP tokens to burn in the withdrawal
      */
-    function removeLiquidity(
+    function removeLiquidityImbalance(
         IVault vault,
         address pool,
         address[] calldata tokens,
         uint256[] calldata exactAmountsOut,
         uint256 maxLpBurnAmount
     ) public returns (uint256[] memory actualAmounts) {
-        bytes memory userData;
-        if (BalancerUtilities.isComposablePool(pool)) {
-            userData = abi.encode(ExitKindComposable.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, maxLpBurnAmount);
-        } else {
-            userData = abi.encode(ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT, exactAmountsOut, maxLpBurnAmount);
-            // Verify if at least one non-zero amount is present
-            bool hasNonZeroAmount = false;
-            uint256 nTokens = exactAmountsOut.length;
-            for (uint256 i = 0; i < nTokens; ++i) {
-                if (exactAmountsOut[i] != 0) {
-                    hasNonZeroAmount = true;
-                    break;
-                }
+        bytes memory userData = BalancerUtilities.isComposablePool(pool)
+            ? abi.encode(
+                ExitKindComposable.BPT_IN_FOR_EXACT_TOKENS_OUT, _getUserAmounts(pool, exactAmountsOut), maxLpBurnAmount
+            )
+            : abi.encode(ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT, exactAmountsOut, maxLpBurnAmount);
+
+        // Verify if at least one non-zero amount is present
+        bool hasNonZeroAmount = false;
+        uint256 nTokens = exactAmountsOut.length;
+        for (uint256 i = 0; i < nTokens; ++i) {
+            if (exactAmountsOut[i] != 0) {
+                hasNonZeroAmount = true;
+                break;
             }
-            if (!hasNonZeroAmount) {
-                revert NoNonZeroAmountProvided();
-            }
+        }
+        if (!hasNonZeroAmount) {
+            revert NoNonZeroAmountProvided();
         }
 
         actualAmounts = _withdraw(
@@ -195,47 +197,16 @@ library BalancerBeethovenAdapter {
      * @param exactLpBurnAmount Amount of LP tokens to burn in the withdrawal
      * @param minAmountsOut Array of minimum amounts of tokens to be withdrawn from pool
      */
-    function removeLiquidityImbalance(
+    function removeLiquidity(
         IVault vault,
         address pool,
-        uint256 exactLpBurnAmount,
         address[] memory tokens,
-        uint256[] memory minAmountsOut
+        uint256[] memory minAmountsOut,
+        uint256 exactLpBurnAmount
     ) public returns (uint256[] memory withdrawnAmounts) {
-        bytes memory userData = abi.encode(ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, exactLpBurnAmount);
-
-        withdrawnAmounts = _withdraw(
-            vault,
-            WithdrawParams({
-                pool: pool,
-                bptAmount: exactLpBurnAmount,
-                tokens: tokens,
-                amountsOut: minAmountsOut,
-                userData: userData
-            })
-        );
-    }
-
-    /**
-     * @notice Withdraw liquidity from Balancer V2 pool (specifying exact LP tokens to burn)
-     * @dev Calls into external contract. Should be guarded with
-     * non-reentrant flags in a used contract
-     * @param vault Balancer Vault contract
-     * @param pool Balancer or Beethoven Pool to liquidity withdrawn from
-     * @param exactLpBurnAmount Amount of LP tokens to burn in the withdrawal
-     * @param minAmountsOut Array of minimum amounts of tokens to be withdrawn from pool
-     * @param exitTokenIndex Index of token to withdraw in
-     */
-    function removeLiquidityComposableImbalance(
-        IVault vault,
-        address pool,
-        uint256 exactLpBurnAmount,
-        address[] memory tokens,
-        uint256[] calldata minAmountsOut,
-        uint256 exitTokenIndex
-    ) external returns (uint256[] memory withdrawnAmounts) {
-        bytes memory userData =
-            abi.encode(ExitKindComposable.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, exactLpBurnAmount, exitTokenIndex);
+        bytes memory userData = BalancerUtilities.isComposablePool(pool)
+            ? abi.encode(ExitKindComposable.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, exactLpBurnAmount)
+            : abi.encode(ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, exactLpBurnAmount);
 
         withdrawnAmounts = _withdraw(
             vault,
@@ -307,7 +278,7 @@ library BalancerBeethovenAdapter {
 
         // As we're exiting the pool we need to make an ExitPoolRequest instead
         IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
-            assets: BalancerUtilities._convertERC20sToAddresses(poolTokens),
+            assets: tokens,
             minAmountsOut: amountsOut,
             userData: params.userData,
             toInternalBalance: false
@@ -414,22 +385,7 @@ library BalancerBeethovenAdapter {
         uint256[] calldata amounts,
         uint256 poolAmountOut
     ) private view returns (IVault.JoinPoolRequest memory joinRequest) {
-        uint256[] memory amountsUser;
-
-        if (BalancerUtilities.isComposablePool(pool)) {
-            uint256 nTokens = tokens.length;
-            uint256 uix = 0;
-            uint256 bptIndex = IBalancerComposableStablePool(pool).getBptIndex();
-            amountsUser = new uint256[](nTokens - 1);
-            for (uint256 i = 0; i < nTokens; i++) {
-                if (i != bptIndex) {
-                    amountsUser[uix] = amounts[i];
-                    uix++;
-                }
-            }
-        } else {
-            amountsUser = amounts;
-        }
+        uint256[] memory amountsUser = _getUserAmounts(pool, amounts);
 
         joinRequest = IVault.JoinPoolRequest({
             assets: tokens,
@@ -441,5 +397,30 @@ library BalancerBeethovenAdapter {
                 ),
             fromInternalBalance: false
         });
+    }
+
+    /**
+     * @notice We should exclude BPT amount from amounts array for userData in ComposablePools
+     * @param pool Balancer or Beethoven pool address
+     * @param amountsOut array of pool token amounts that length-equal with IVault#getPoolTokens array
+     */
+    function _getUserAmounts(
+        address pool,
+        uint256[] memory amountsOut
+    ) private view returns (uint256[] memory amountsUser) {
+        if (BalancerUtilities.isComposablePool(pool)) {
+            uint256 uix = 0;
+            uint256 bptIndex = IBalancerComposableStablePool(pool).getBptIndex();
+            uint256 nTokens = amountsOut.length;
+            amountsUser = new uint256[](nTokens - 1);
+            for (uint256 i = 0; i < nTokens; i++) {
+                if (i != bptIndex) {
+                    amountsUser[uix] = amountsOut[i];
+                    uix++;
+                }
+            }
+        } else {
+            amountsUser = amountsOut;
+        }
     }
 }

@@ -189,10 +189,7 @@ contract BalancerAuraDestinationVault is DestinationVault {
         // at the router or otherwise
         uint256[] memory minAmounts = new uint256[](poolTokens.length);
         tokens = BalancerUtilities._convertERC20sToAddresses(poolTokens);
-        amounts = isComposable
-            ? BalancerBeethovenAdapter.removeLiquidity(balancerVault, balancerPool, tokens, minAmounts, underlyerAmount)
-            : BalancerBeethovenAdapter.removeLiquidityImbalance(
-                balancerVault, balancerPool, underlyerAmount, tokens, minAmounts
-            );
+        amounts =
+            BalancerBeethovenAdapter.removeLiquidity(balancerVault, balancerPool, tokens, minAmounts, underlyerAmount);
     }
 }

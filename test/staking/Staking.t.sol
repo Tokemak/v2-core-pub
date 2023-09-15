@@ -169,6 +169,7 @@ contract StakingTest is BaseTest {
         uint256 gpTokeBefore = weth.balanceOf(address(gpToke));
 
         // send eth to gpToke
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success,) = payable(gpToke).call{ value: stakeAmount }("");
         assertTrue(success);
 

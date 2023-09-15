@@ -514,9 +514,9 @@ contract LMPVaultMintingTests is Test {
         _lmpVault.rewarder().addToWhitelist(address(this));
         _toke.mint(address(this), 1000e18);
         _toke.approve(address(_lmpVault.rewarder()), 1000e18);
-        _lmpVault.rewarder().queueNewRewards(1000e18);
 
         uint256 shares = _lmpVault.deposit(1000, address(this));
+        _lmpVault.rewarder().queueNewRewards(1000e18);
 
         vm.roll(block.number + 10_000);
 
@@ -682,9 +682,8 @@ contract LMPVaultMintingTests is Test {
         _lmpVault.rewarder().addToWhitelist(address(this));
         _toke.mint(address(this), 1000e18);
         _toke.approve(address(_lmpVault.rewarder()), 1000e18);
-        _lmpVault.rewarder().queueNewRewards(1000e18);
-
         uint256 assets = _lmpVault.mint(1000, address(this));
+        _lmpVault.rewarder().queueNewRewards(1000e18);
 
         vm.roll(block.number + 10_000);
 
@@ -858,9 +857,9 @@ contract LMPVaultMintingTests is Test {
         _lmpVault.rewarder().addToWhitelist(address(this));
         _toke.mint(address(this), 1000e18);
         _toke.approve(address(_lmpVault.rewarder()), 1000e18);
-        _lmpVault.rewarder().queueNewRewards(1000e18);
 
         uint256 shares = _lmpVault.deposit(1000, address(this));
+        _lmpVault.rewarder().queueNewRewards(1000e18);
 
         vm.roll(block.number + 10_000);
 
@@ -968,10 +967,6 @@ contract LMPVaultMintingTests is Test {
         _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
         _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
 
-        _asset.mint(address(this), 2000);
-        _asset.approve(_destVaultOne.rewarder(), 2000);
-        IMainRewarder(_destVaultOne.rewarder()).queueNewRewards(2000);
-
         // Deployed 200 asset to DV1
         _underlyerOne.mint(address(this), 100);
         _underlyerOne.approve(address(_lmpVault), 100);
@@ -983,6 +978,10 @@ contract LMPVaultMintingTests is Test {
             address(_asset), // baseAsset, tokenOut
             200
         );
+
+        _asset.mint(address(this), 2000);
+        _asset.approve(_destVaultOne.rewarder(), 2000);
+        IMainRewarder(_destVaultOne.rewarder()).queueNewRewards(2000);
 
         // Roll the block so that the rewards we queued earlier will become available
         vm.roll(block.number + 10_000);
@@ -1105,9 +1104,9 @@ contract LMPVaultMintingTests is Test {
         _lmpVault.rewarder().addToWhitelist(address(this));
         _toke.mint(address(this), 1000e18);
         _toke.approve(address(_lmpVault.rewarder()), 1000e18);
-        _lmpVault.rewarder().queueNewRewards(1000e18);
 
         uint256 shares = _lmpVault.deposit(1000, address(this));
+        _lmpVault.rewarder().queueNewRewards(1000e18);
 
         vm.roll(block.number + 10_000);
 
@@ -1248,9 +1247,9 @@ contract LMPVaultMintingTests is Test {
         _lmpVault.rewarder().addToWhitelist(address(this));
         _toke.mint(address(this), 1000e18);
         _toke.approve(address(_lmpVault.rewarder()), 1000e18);
-        _lmpVault.rewarder().queueNewRewards(1000e18);
 
         uint256 shares = _lmpVault.deposit(1000, address(this));
+        _lmpVault.rewarder().queueNewRewards(1000e18);
 
         vm.roll(block.number + 3);
 
@@ -1365,12 +1364,8 @@ contract LMPVaultMintingTests is Test {
         _asset.approve(address(_lmpVault), 1000);
         _lmpVault.deposit(1000, address(this));
 
-        // Queue up some Destination Vault rewards
         _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
         _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
-        _asset.mint(address(this), 2000);
-        _asset.approve(_destVaultOne.rewarder(), 2000);
-        IMainRewarder(_destVaultOne.rewarder()).queueNewRewards(2000);
 
         // At time of writing LMPVault always returned true for verifyRebalance
         // Rebalance 500 baseAsset for 250 underlyerOne+destVaultOne
@@ -1386,6 +1381,11 @@ contract LMPVaultMintingTests is Test {
             500
         );
         uint256 assetBalAfter = _asset.balanceOf(address(this));
+
+        // Queue up some Destination Vault rewards
+        _asset.mint(address(this), 2000);
+        _asset.approve(_destVaultOne.rewarder(), 2000);
+        IMainRewarder(_destVaultOne.rewarder()).queueNewRewards(2000);
 
         // LMP Vault is correctly tracking 500 remaining in idle, 500 out as debt
         uint256 totalIdleAfterFirstRebalance = _lmpVault.totalIdle();
@@ -1740,9 +1740,6 @@ contract LMPVaultMintingTests is Test {
         _lmpVault.deposit(1000, address(this));
 
         _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
-        _asset.mint(address(this), 2000);
-        _asset.approve(_destVaultOne.rewarder(), 2000);
-        IMainRewarder(_destVaultOne.rewarder()).queueNewRewards(2000);
 
         // At time of writing LMPVault always returned true for verifyRebalance
         // Rebalance 500 baseAsset for 250 underlyerOne+destVaultOne
@@ -1766,6 +1763,10 @@ contract LMPVaultMintingTests is Test {
             }),
             abi.encode("")
         );
+
+        _asset.mint(address(this), 2000);
+        _asset.approve(_destVaultOne.rewarder(), 2000);
+        IMainRewarder(_destVaultOne.rewarder()).queueNewRewards(2000);
 
         uint256 assetBalAfter = _asset.balanceOf(address(rebalancer));
 

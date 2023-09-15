@@ -233,6 +233,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
      *      rewards will be added to the queue rather than being immediately distributed.
      */
     function queueNewRewards(uint256 newRewards) external onlyWhitelisted {
+        if (totalSupply() == 0) revert Errors.ZeroAmount();
         uint256 startingQueuedRewards = queuedRewards;
         uint256 startingNewRewards = newRewards;
 

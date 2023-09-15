@@ -378,6 +378,15 @@ contract QueueNewRewards is AbstractRewarderTest {
         rewarder.queueNewRewards(100_000_000);
     }
 
+    function test_RevertIf_TotalSupplyIsZero() public {
+        vm.startPrank(liquidator);
+
+        vm.mockCall(address(stakeTracker), abi.encodeWithSelector(IBaseRewarder.totalSupply.selector), abi.encode(0));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAmount.selector));
+        rewarder.queueNewRewards(100_000_000);
+    }
+
     function test_SetQueuedRewardsToZeroWhen_PeriodIsFinished() public {
         vm.startPrank(liquidator);
 

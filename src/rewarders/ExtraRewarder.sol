@@ -51,6 +51,9 @@ contract ExtraRewarder is AbstractRewarder, IExtraRewarder, ReentrancyGuard {
     }
 
     function getReward(address account) public nonReentrant {
+        if (msg.sender != mainReward && msg.sender != account) {
+            revert Errors.AccessDenied();
+        }
         _updateReward(account);
         _getReward(account);
     }

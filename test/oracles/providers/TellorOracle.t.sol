@@ -8,7 +8,7 @@ pragma solidity 0.8.17;
 import { Test } from "forge-std/Test.sol";
 import { TELLOR_ORACLE, RETH_MAINNET, RETH_CL_FEED_MAINNET } from "test/utils/Addresses.sol";
 
-import { TellorOracle, BaseOracleDenominations } from "src/oracles/providers/TellorOracle.sol";
+import { TellorOracle, BaseOracleDenominations, UsingTellor } from "src/oracles/providers/TellorOracle.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
@@ -113,6 +113,35 @@ contract TellorOracleTest is Test {
     }
 
     // test `getPrice()`
+    function test_RevertInvalidTimestamp() external {
+        _oracle.addTellorRegistration(ETH, QUERY_ID, BaseOracleDenominations.Denomination.ETH, 0);
+
+        // Returns 0
+        vm.mockCall(
+            TELLOR_ORACLE, abi.encodeWithSelector(UsingTellor.getDataBefore.selector), abi.encode(true, bytes(""), 0)
+        );
+        vm.expectRevert(BaseOracleDenominations.InvalidDataReturned.selector);
+        _oracle.getPriceInEth(ETH);
+
+        // Too soon
+        vm.mockCall(
+            TELLOR_ORACLE,
+            abi.encodeWithSelector(UsingTellor.getDataBefore.selector),
+            abi.encode(true, bytes(""), block.timestamp)
+        );
+        vm.expectRevert(BaseOracleDenominations.InvalidDataReturned.selector);
+        _oracle.getPriceInEth(ETH);
+
+        // Too far in past
+        vm.mockCall(
+            TELLOR_ORACLE,
+            abi.encodeWithSelector(UsingTellor.getDataBefore.selector),
+            abi.encode(true, bytes(""), block.timestamp - 1 weeks)
+        );
+        vm.expectRevert(BaseOracleDenominations.InvalidDataReturned.selector);
+        _oracle.getPriceInEth(ETH);
+    }
+
     function test_GetPriceMainnet() external {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_100_000);
 

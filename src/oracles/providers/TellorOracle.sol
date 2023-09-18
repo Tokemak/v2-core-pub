@@ -101,13 +101,19 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
     function getPriceInEth(address tokenToPrice) external returns (uint256) {
         TellorInfo memory tellorInfo = _getQueryInfo(tokenToPrice);
         uint256 timestamp = block.timestamp;
+        uint256 tellorMinAllowableTimestamp = timestamp - 15 minutes;
+
         // Giving time for Tellor network to dispute price
-        (bytes memory value, uint256 timestampRetrieved) = getDataBefore(tellorInfo.queryId, timestamp - 30 minutes);
+        (bytes memory value, uint256 timestampRetrieved) =
+            getDataBefore(tellorInfo.queryId, tellorMinAllowableTimestamp);
         uint256 tellorStoredTimeout = uint256(tellorInfo.pricingTimeout);
         uint256 tokenPricingTimeout = tellorStoredTimeout == 0 ? DEFAULT_PRICING_TIMEOUT : tellorStoredTimeout;
 
         // Check that something was returned and freshness of price.
-        if (timestampRetrieved == 0 || timestamp - timestampRetrieved > tokenPricingTimeout) {
+        if (
+            timestampRetrieved == 0 || timestamp - timestampRetrieved > tokenPricingTimeout
+                || timestampRetrieved > tellorMinAllowableTimestamp
+        ) {
             revert InvalidDataReturned();
         }
 

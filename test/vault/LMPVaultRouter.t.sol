@@ -2,12 +2,6 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity >=0.8.7;
 
-// NOTE: took out 4626 test since due to our setup the tests would have hard time
-//       completing in reasonable time.
-// NOTE: should be put back in once the fuzzing constraints can be implemented
-
-import { Test } from "forge-std/Test.sol";
-
 import { IERC20, ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC4626 } from "openzeppelin-contracts/interfaces/IERC4626.sol";
 
@@ -26,9 +20,9 @@ import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { IAsyncSwapper, SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 
 import { BaseTest } from "test/BaseTest.t.sol";
-import { TOKE_MAINNET, WETH_MAINNET, ZERO_EX_MAINNET, CVX_MAINNET } from "test/utils/Addresses.sol";
+import { WETH_MAINNET, ZERO_EX_MAINNET, CVX_MAINNET } from "test/utils/Addresses.sol";
 
-import { Utils } from "test/utils/common.sol";
+import { ERC2612 } from "test/utils/ERC2612.sol";
 
 // solhint-disable func-name-mixedcase
 contract LMPVaultRouterTest is BaseTest {
@@ -57,23 +51,71 @@ contract LMPVaultRouterTest is BaseTest {
 
         deal(address(baseAsset), address(this), depositAmount * 10);
 
-        lmpVault = _setupVault("");
+        lmpVault = _setupVault("v1");
     }
 
     function _setupVault(bytes memory salt) internal returns (LMPVault _lmpVault) {
         uint256 limit = type(uint256).max;
-
-        if (salt.length == 0) {
-            salt = "v1";
-        }
-
         _lmpVault = LMPVault(lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256(salt), ""));
         assert(systemRegistry.lmpVaultRegistry().isVault(address(_lmpVault)));
+    }
 
-        // do initial deposit so vault is not empty
-        // TODO: what if empty?!
-        baseAsset.approve(address(_lmpVault), depositAmount);
-        IERC4626(_lmpVault).deposit(depositAmount, msg.sender);
+    function test_CanRedeemThroughRouterUsingPermitForApproval() public {
+        uint256 signerKey = 1;
+        address user = vm.addr(signerKey);
+        vm.label(user, "user");
+        uint256 amount = 40e18;
+        address receiver = address(3);
+
+        // Mints to the test contract, shares to go User
+        deal(address(baseAsset), address(this), amount);
+        baseAsset.approve(address(lmpVaultRouter), amount);
+        uint256 sharesReceived = lmpVaultRouter.deposit(lmpVault, user, amount, 0);
+        assertEq(sharesReceived, lmpVault.balanceOf(user));
+
+        // Setup for the Spender to spend the Users tokens
+        uint256 deadline = block.timestamp + 100;
+        (uint8 v, bytes32 r, bytes32 s) = ERC2612.getPermitSignature(
+            lmpVault.DOMAIN_SEPARATOR(), signerKey, user, address(lmpVaultRouter), amount, 0, deadline
+        );
+
+        vm.startPrank(user);
+        lmpVaultRouter.selfPermit(address(lmpVault), amount, deadline, v, r, s);
+        lmpVaultRouter.redeem(lmpVault, receiver, amount, 0, false);
+        vm.stopPrank();
+
+        assertEq(baseAsset.balanceOf(receiver), amount);
+    }
+
+    function test_CanRedeemThroughRouterUsingPermitForApprovalViaMulticall() public {
+        uint256 signerKey = 1;
+        address user = vm.addr(signerKey);
+        vm.label(user, "user");
+        uint256 amount = 40e18;
+        address receiver = address(3);
+
+        // Mints to the test contract, shares to go User
+        deal(address(baseAsset), address(this), amount);
+        baseAsset.approve(address(lmpVaultRouter), amount);
+        uint256 sharesReceived = lmpVaultRouter.deposit(lmpVault, user, amount, 0);
+        assertEq(sharesReceived, lmpVault.balanceOf(user));
+
+        // Setup for the Spender to spend the Users tokens
+        uint256 deadline = block.timestamp + 100;
+        (uint8 v, bytes32 r, bytes32 s) = ERC2612.getPermitSignature(
+            lmpVault.DOMAIN_SEPARATOR(), signerKey, user, address(lmpVaultRouter), amount, 0, deadline
+        );
+
+        bytes[] memory data = new bytes[](2);
+        data[0] =
+            abi.encodeWithSelector(lmpVaultRouter.selfPermit.selector, address(lmpVault), amount, deadline, v, r, s);
+        data[1] = abi.encodeWithSelector(lmpVaultRouter.redeem.selector, lmpVault, receiver, amount, 0, false);
+
+        vm.startPrank(user);
+        lmpVaultRouter.multicall(data);
+        vm.stopPrank();
+
+        assertEq(baseAsset.balanceOf(receiver), amount);
     }
 
     function test_swapAndDepositToVault() public {

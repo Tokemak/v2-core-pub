@@ -20,8 +20,8 @@ library BalancerUtilities {
      */
     function checkReentrancy(address balancerVault) external view {
         // solhint-disable max-line-length
-        // https://github.com/balancer/balancer-v2-monorepo/blob/90f77293fef4b8782feae68643c745c754bac45c/pkg/pool-utils/contracts/lib/VaultReentrancyLib.sol
-        (, bytes memory returnData) = balancerVault.staticcall(
+        // https://github.com/balancer/balancer-v2-monorepo/blob/227683919a7031615c0bc7f144666cdf3883d212/pkg/pool-utils/contracts/lib/VaultReentrancyLib.sol
+        (, bytes memory returnData) = balancerVault.staticcall{ gas: 10_000 }(
             abi.encodeWithSelector(IVault.manageUserBalance.selector, new IVault.UserBalanceOp[](0))
         );
         if (keccak256(returnData) == REENTRANCY_ERROR_HASH) {

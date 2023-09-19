@@ -2,6 +2,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+// solhint-disable func-name-mixedcase
+
 import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
 import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -173,6 +175,19 @@ contract BalancerLPComposableStableEthOracleTests is Test {
         address registry = vm.addr(327_849);
         vm.mockCall(registry, abi.encodeWithSelector(ISystemRegistry.rootPriceOracle.selector), abi.encode(rootOracle));
         return ISystemRegistry(registry);
+    }
+
+    // Test BalancerUtilities.checkReentrancy() gas usage.
+    function test_ReentrancyGasUsage() external {
+        uint256 gasLeftBeforeReentrancy = gasleft();
+        BalancerUtilities.checkReentrancy(BAL_VAULT);
+        uint256 gasleftAfterReentrancy = gasleft();
+
+        /**
+         *  20k gives ample buffer for other operations outside of staticcall to balancer vault, which
+         *        is given 10k gas.  Operation above should take ~17k gas total.
+         */
+        assertLt(gasLeftBeforeReentrancy - gasleftAfterReentrancy, 20_000);
     }
 }
 

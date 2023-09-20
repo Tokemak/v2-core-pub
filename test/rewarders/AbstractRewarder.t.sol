@@ -422,6 +422,43 @@ contract QueueNewRewards is AbstractRewarderTest {
         emit QueuedRewardsUpdated(0, newRewardBatch2, newRewardBatch2);
         rewarder.queueNewRewards(newRewardBatch2);
     }
+
+    /**
+     * @dev
+     * This test ensures that after fixing the logic error in the `queueNewRewards` function,
+     * the right amount of tokens is transferred from the sender even if `queuedRewards` is not 0.
+     * Previously, the call either reverted or more funds were pulled than they should have.
+     * audit report: https://github.com/Tokemak/2023-06-sherlock-judging/blob/main/012-H/379-best.md
+     */
+    function test_TransfersCorrectAmount() public {
+        vm.startPrank(liquidator);
+
+        // Reset approvals to start from a clean slate.
+        rewardToken.approve(address(rewarder), 0);
+
+        // Set up a scenario where `queuedRewards` ends up being non-zero.
+        // Approving only what's needed for each step to prevent any excess transfers.
+        rewardToken.approve(address(rewarder), 100_000_000);
+        rewarder.queueNewRewards(100_000_000);
+        vm.roll(block.number + durationInBlock / 2);
+        rewardToken.approve(address(rewarder), 1000);
+        rewarder.queueNewRewards(1000);
+        vm.roll(block.number + durationInBlock / 2);
+
+        // Assert that `queuedRewards` is not zero, confirming our setup.
+        assertEq(rewarder.queuedRewards(), 1000);
+
+        // Test the fixed logic by checking the token transfer amounts.
+        uint256 balanceBefore = rewardToken.balanceOf(liquidator);
+        rewardToken.approve(address(rewarder), 1000);
+        rewarder.queueNewRewards(1000);
+        uint256 balanceAfter = rewardToken.balanceOf(liquidator);
+
+        // Validate that only the expected amount is transferred.
+        assertEq(balanceBefore - balanceAfter, 1000);
+
+        vm.stopPrank();
+    }
 }
 
 contract SetNewRewardRate is AbstractRewarderTest {

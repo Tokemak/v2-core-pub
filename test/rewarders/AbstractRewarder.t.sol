@@ -28,13 +28,15 @@ import { RANDOM, WETH_MAINNET, TOKE_MAINNET } from "test/utils/Addresses.sol";
 contract Rewarder is AbstractRewarder {
     error NotImplemented();
 
+    uint256 internal _mockBalanceOf;
+    uint256 internal _mockTotalSupply;
+
     constructor(
         ISystemRegistry _systemRegistry,
-        address _stakeTracker,
         address _rewardToken,
         uint256 _newRewardRatio,
         uint256 _durationInBlock
-    ) AbstractRewarder(_systemRegistry, _stakeTracker, _rewardToken, _newRewardRatio, _durationInBlock) { }
+    ) AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock) { }
 
     function getReward() external pure override {
         revert NotImplemented();
@@ -57,17 +59,29 @@ contract Rewarder is AbstractRewarder {
         return true;
     }
 
-    /// @dev This function is used to test the onlyStakeTracker modifier.
-    function useOnlyStakeTracker() external view onlyStakeTracker returns (bool) {
-        return true;
-    }
-
     function exposed_notifyRewardAmount(uint256 reward) external {
         notifyRewardAmount(reward);
     }
 
     function withdraw(address account, uint256 amount) external {
         _withdraw(account, amount);
+    }
+
+    function totalSupply() public view override returns (uint256) {
+        return _mockTotalSupply;
+    }
+
+    function balanceOf(address) public view override returns (uint256) {
+        return _mockBalanceOf;
+    }
+
+    /// we can't mock internal calls, so we expose them using following functions
+    function setBalanceOf(uint256 balance) external {
+        _mockBalanceOf = balance;
+    }
+
+    function setTotalSupply(uint256 mockTotalSupply) external {
+        _mockTotalSupply = mockTotalSupply;
     }
 }
 
@@ -78,7 +92,6 @@ contract AbstractRewarderTest is Test {
     Rewarder public rewarder;
     ERC20Mock public rewardToken;
 
-    address public stakeTracker;
     SystemRegistry public systemRegistry;
 
     uint256 public newRewardRatio = 800;
@@ -116,12 +129,6 @@ contract AbstractRewarderTest is Test {
         accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, operator);
         accessController.grantRole(Roles.LIQUIDATOR_ROLE, liquidator);
 
-        stakeTracker = vm.addr(12);
-        // mock stake tracker totalSupply function by default
-        vm.mockCall(
-            address(stakeTracker), abi.encodeWithSelector(IBaseRewarder.totalSupply.selector), abi.encode(totalSupply)
-        );
-
         rewardToken = new ERC20Mock("MAIN_REWARD", "MAIN_REWARD", address(this), 0);
 
         // We use mock since this function is called not from owner and
@@ -131,7 +138,6 @@ contract AbstractRewarderTest is Test {
         );
         rewarder = new Rewarder(
             systemRegistry,
-            address(stakeTracker),
             address(rewardToken),
             newRewardRatio,
             durationInBlock
@@ -151,7 +157,6 @@ contract AbstractRewarderTest is Test {
         vm.label(TOKE_MAINNET, "TOKE_MAINNET");
         vm.label(address(systemRegistry), "systemRegistry");
         vm.label(address(accessController), "accessController");
-        vm.label(address(stakeTracker), "stakeTracker");
         vm.label(address(rewarder), "rewarder");
     }
 
@@ -173,12 +178,13 @@ contract AbstractRewarderTest is Test {
         rewardToken.approve(address(rewarder), 100_000_000_000);
         rewarder.queueNewRewards(newReward);
 
-        vm.mockCall(
-            address(stakeTracker), abi.encodeWithSelector(IBaseRewarder.balanceOf.selector), abi.encode(balance)
-        );
+        // mock rewarder balanceOf function
+        rewarder.setBalanceOf(balance);
 
         // go to the middle of the period
         vm.roll(block.number + durationInBlock / 2);
+
+        rewarder.setTotalSupply(totalSupply);
 
         return 5;
     }
@@ -203,7 +209,6 @@ contract AbstractRewarderTest is Test {
         // replace the rewarder by a new one with TOKE
         rewarder = new Rewarder(
             systemRegistry,
-            address(stakeTracker),
             TOKE_MAINNET,
             newRewardRatio,
             durationInBlock
@@ -216,21 +221,6 @@ contract AbstractRewarderTest is Test {
         IERC20(TOKE_MAINNET).approve(address(rewarder), 100_000_000_000);
 
         return gpToke;
-    }
-}
-
-contract OnlyStakeTracker is AbstractRewarderTest {
-    function test_RevertIf_SenderIsNotStakeTracker() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-
-        vm.prank(RANDOM);
-        rewarder.useOnlyStakeTracker();
-    }
-
-    function test_AllowStakeTracker() public {
-        vm.prank(address(stakeTracker));
-        bool res = rewarder.useOnlyStakeTracker();
-        assertTrue(res);
     }
 }
 
@@ -260,24 +250,11 @@ contract OnlyWhitelisted is AbstractRewarderTest {
 }
 
 contract Constructor is AbstractRewarderTest {
-    function test_RevertIf_StakeTrackerIsZeroAddress() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_stakeTracker"));
-
-        new Rewarder(
-            systemRegistry,
-            address(0),
-            address(1),
-            newRewardRatio,
-            durationInBlock
-        );
-    }
-
     function test_RevertIf_RewardTokenIsZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_rewardToken"));
 
         new Rewarder(
             systemRegistry,
-            address(1),
             address(0),
             newRewardRatio,
             durationInBlock
@@ -290,7 +267,6 @@ contract Constructor is AbstractRewarderTest {
         new Rewarder(
             systemRegistry,
             address(1),
-            address(2),
             newRewardRatio,
             0
         );
@@ -302,7 +278,6 @@ contract Constructor is AbstractRewarderTest {
         new Rewarder(
             systemRegistry,
             address(1),
-            address(2),
             0,
             durationInBlock
         );
@@ -400,15 +375,6 @@ contract QueueNewRewards is AbstractRewarderTest {
         rewarder.queueNewRewards(100_000_000);
     }
 
-    function test_RevertIf_TotalSupplyIsZero() public {
-        vm.startPrank(liquidator);
-
-        vm.mockCall(address(stakeTracker), abi.encodeWithSelector(IBaseRewarder.totalSupply.selector), abi.encode(0));
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAmount.selector));
-        rewarder.queueNewRewards(100_000_000);
-    }
-
     function test_SetQueuedRewardsToZeroWhen_PeriodIsFinished() public {
         vm.startPrank(liquidator);
 
@@ -480,28 +446,6 @@ contract QueueNewRewards is AbstractRewarderTest {
         assertEq(balanceBefore - balanceAfter, 1000);
 
         vm.stopPrank();
-    }
-}
-
-contract TotalSupply is AbstractRewarderTest {
-    function test_ReturnStakeTrackerTotalSupply() public {
-        uint256 result = rewarder.totalSupply();
-
-        assertEq(result, totalSupply);
-    }
-}
-
-contract BalanceOf is AbstractRewarderTest {
-    function test_ReturnBalanceOfUserInStakeTracker() public {
-        uint256 balanceOf = 100;
-
-        vm.mockCall(
-            address(stakeTracker), abi.encodeWithSelector(IBaseRewarder.balanceOf.selector), abi.encode(balanceOf)
-        );
-
-        uint256 result = rewarder.balanceOf(RANDOM);
-
-        assertEq(result, balanceOf);
     }
 }
 
@@ -688,7 +632,6 @@ contract _getReward is AbstractRewarderTest {
 
     // @dev see above for doc: for gpToke amounts had to be bumped up due to new mins
     function _runDefaultScenarioGpToke() internal returns (uint256) {
-        uint256 balance = 1000;
         uint256 newReward = 50_000;
 
         deal(TOKE_MAINNET, address(rewarder), 100_000_000_000);
@@ -697,12 +640,10 @@ contract _getReward is AbstractRewarderTest {
         rewardToken.approve(address(rewarder), 100_000_000_000);
         rewarder.queueNewRewards(newReward);
 
-        vm.mockCall(
-            address(stakeTracker), abi.encodeWithSelector(IBaseRewarder.balanceOf.selector), abi.encode(balance)
-        );
-
         // go to the middle of the period
         vm.roll(block.number + durationInBlock / 2);
+
+        rewarder.setTotalSupply(totalSupply);
 
         return 5;
     }
@@ -714,6 +655,9 @@ contract _getReward is AbstractRewarderTest {
         vm.startPrank(operator);
         rewarder.setTokeLockDuration(30 days);
         vm.stopPrank();
+
+        // mock rewarder balanceOf function
+        rewarder.setBalanceOf(1000);
 
         uint256 balanceBefore = gPToke.balanceOf(RANDOM);
         rewarder.exposed_getRewardWrapper(RANDOM);

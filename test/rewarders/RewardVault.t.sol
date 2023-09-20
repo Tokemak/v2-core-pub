@@ -79,7 +79,6 @@ contract MainRewarderTest is BaseTest {
 
         extraReward1Vault = new ExtraRewarder(
             systemRegistry,
-            address(stakeTracker),
             address(extraReward1),
             address(mainRewardVault),
             newRewardRatio,
@@ -88,7 +87,6 @@ contract MainRewarderTest is BaseTest {
 
         extraReward2Vault = new ExtraRewarder(
             systemRegistry,
-            address(stakeTracker),
             address(extraReward2),
             address(mainRewardVault),
             newRewardRatio,

@@ -8,7 +8,6 @@ import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.so
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 
-import { IStakeTracking } from "src/interfaces/rewarders/IStakeTracking.sol";
 import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 
 import { IGPToke } from "src/interfaces/staking/IGPToke.sol";
@@ -41,9 +40,6 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
 
     /// @notice The address of the token to be distributed as rewards.
     address public immutable rewardToken;
-
-    /// @notice An instance of the stake tracking contract, for managing staked tokens.
-    IStakeTracking public immutable stakeTracker;
 
     /// @notice The block number when the current reward period ends.
     uint256 public periodInBlockFinish;
@@ -80,19 +76,16 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
 
     /**
      * @param _systemRegistry Address of the system registry.
-     * @param _stakeTracker Address of the stake tracker.
      * @param _rewardToken Address of the reward token.
      * @param _newRewardRatio The new reward rate.
      * @param _durationInBlock The duration of the reward period in blocks.
      */
     constructor(
         ISystemRegistry _systemRegistry,
-        address _stakeTracker,
         address _rewardToken,
         uint256 _newRewardRatio,
         uint256 _durationInBlock
     ) SecurityBase(address(_systemRegistry.accessController())) {
-        Errors.verifyNotZero(_stakeTracker, "_stakeTracker");
         Errors.verifyNotZero(_rewardToken, "_rewardToken");
         Errors.verifyNotZero(_durationInBlock, "_durationInBlock");
         Errors.verifyNotZero(_newRewardRatio, "_newRewardRatio");
@@ -102,17 +95,8 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
             revert Errors.InvalidParam("_rewardToken");
         }
         rewardToken = _rewardToken;
-        stakeTracker = IStakeTracking(_stakeTracker);
         newRewardRatio = _newRewardRatio;
         durationInBlock = _durationInBlock;
-    }
-
-    /// @notice Restricts access to the stake tracker only.
-    modifier onlyStakeTracker() {
-        if (msg.sender != address(stakeTracker)) {
-            revert Errors.AccessDenied();
-        }
-        _;
     }
 
     /// @notice Restricts access to whitelisted addresses or holders of the liquidator role.
@@ -139,23 +123,6 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
         }
 
         emit UserRewardUpdated(account, earnedRewards, rewardPerTokenStored, lastUpdateBlock);
-    }
-
-    /**
-     * @notice Retrieves the total supply of staked tokens.
-     * @return The total supply of staked tokens.
-     */
-    function totalSupply() public view returns (uint256) {
-        return stakeTracker.totalSupply();
-    }
-
-    /**
-     * @notice Retrieves the balance of staked tokens for a specific account.
-     * @param account The address of the account to retrieve the balance for.
-     * @return The balance of staked tokens for the specified account.
-     */
-    function balanceOf(address account) public view returns (uint256) {
-        return stakeTracker.balanceOf(account);
     }
 
     /**
@@ -217,7 +184,6 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
      *      rewards will be added to the queue rather than being immediately distributed.
      */
     function queueNewRewards(uint256 newRewards) external onlyWhitelisted {
-        if (totalSupply() == 0) revert Errors.ZeroAmount();
         uint256 startingQueuedRewards = queuedRewards;
         uint256 startingNewRewards = newRewards;
 
@@ -392,4 +358,8 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
 
         emit Staked(account, amount);
     }
+
+    function totalSupply() public view virtual returns (uint256);
+
+    function balanceOf(address account) public view virtual returns (uint256);
 }

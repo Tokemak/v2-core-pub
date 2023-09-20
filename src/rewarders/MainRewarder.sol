@@ -2,13 +2,11 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard.sol";
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
-import { IStakeTracking } from "src/interfaces/rewarders/IStakeTracking.sol";
+import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IExtraRewarder } from "src/interfaces/rewarders/IExtraRewarder.sol";
 import { AbstractRewarder } from "src/rewarders/AbstractRewarder.sol";
@@ -27,7 +25,13 @@ contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
     /// @dev Destination Vaults should not allow extras. LMP should.
     bool public immutable allowExtraRewards;
 
+    /// @notice An instance of the stake tracking contract
+    address public immutable stakeTracker;
+
     address[] public extraRewards;
+
+    uint256 private _totalSupply;
+    mapping(address => uint256) private _balances;
 
     error ExtraRewardsNotAllowed();
 
@@ -41,8 +45,20 @@ contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
         uint256 _newRewardRatio,
         uint256 _durationInBlock,
         bool _allowExtraRewards
-    ) AbstractRewarder(_systemRegistry, _stakeTracker, _rewardToken, _newRewardRatio, _durationInBlock) {
+    ) AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock) {
+        Errors.verifyNotZero(_stakeTracker, "_stakeTracker");
+
+        // slither-disable-next-line missing-zero-check
+        stakeTracker = _stakeTracker;
         allowExtraRewards = _allowExtraRewards;
+    }
+
+    /// @notice Restricts access to the stake tracker only.
+    modifier onlyStakeTracker() {
+        if (msg.sender != stakeTracker) {
+            revert Errors.AccessDenied();
+        }
+        _;
     }
 
     function extraRewardsLength() external view returns (uint256) {
@@ -75,12 +91,18 @@ contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
         _withdraw(account, amount);
 
         for (uint256 i = 0; i < extraRewards.length; ++i) {
+            // No need to worry about reentrancy here
+            // slither-disable-next-line reentrancy-no-eth
             IExtraRewarder(extraRewards[i]).withdraw(account, amount);
         }
 
         if (claim) {
             _processRewards(account, true);
         }
+
+        // slither-disable-next-line events-maths
+        _totalSupply -= amount;
+        _balances[account] -= amount;
     }
 
     function stake(address account, uint256 amount) public onlyStakeTracker {
@@ -88,8 +110,14 @@ contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
         _stake(account, amount);
 
         for (uint256 i = 0; i < extraRewards.length; ++i) {
+            // No need to worry about reentrancy here
+            // slither-disable-next-line reentrancy-no-eth
             IExtraRewarder(extraRewards[i]).stake(account, amount);
         }
+
+        // slither-disable-next-line events-maths
+        _totalSupply += amount;
+        _balances[account] += amount;
     }
 
     function getReward() external nonReentrant {
@@ -98,11 +126,19 @@ contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
     }
 
     function getReward(address account, bool claimExtras) external nonReentrant {
-        if (msg.sender != address(stakeTracker) && msg.sender != account) {
+        if (msg.sender != stakeTracker && msg.sender != account) {
             revert Errors.AccessDenied();
         }
         _updateReward(account);
         _processRewards(account, claimExtras);
+    }
+
+    function totalSupply() public view override(AbstractRewarder, IBaseRewarder) returns (uint256) {
+        return _totalSupply;
+    }
+
+    function balanceOf(address account) public view override(AbstractRewarder, IBaseRewarder) returns (uint256) {
+        return _balances[account];
     }
 
     function _processRewards(address account, bool claimExtras) internal {

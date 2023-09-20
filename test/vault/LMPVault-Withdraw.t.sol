@@ -988,8 +988,7 @@ contract LMPVaultMintingTests is Test {
 
         assertEq(_lmpVault.totalIdle(), 800);
 
-        // solhint-disable-next-line no-unused-vars
-        uint256 assets = _lmpVault.redeem(1000, address(this), address(this));
+        _lmpVault.redeem(1000, address(this), address(this));
 
         assertEq(_lmpVault.totalIdle(), 2000);
 
@@ -1268,10 +1267,10 @@ contract LMPVaultMintingTests is Test {
 
         vm.roll(block.number + 6);
 
-        assertEq(_lmpVault.rewarder().earned(receiver), 90e18, "recipientEarned");
+        assertEq(_lmpVault.rewarder().earned(receiver), 60e18, "recipientEarned");
         vm.prank(receiver);
         _lmpVault.withdraw(1000, receiver, receiver);
-        assertEq(_toke.balanceOf(receiver), 90e18);
+        assertEq(_toke.balanceOf(receiver), 60e18);
         assertEq(_lmpVault.rewarder().earned(receiver), 0, "recipientEarnedAfter");
     }
 

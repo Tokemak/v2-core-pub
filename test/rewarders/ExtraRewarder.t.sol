@@ -21,7 +21,6 @@ contract ExtraRewarderTest is Test {
     ExtraRewarder public rewarder;
     ERC20Mock public rewardToken;
 
-    address public stakeTracker;
     address public mainRewarder;
     SystemRegistry public systemRegistry;
 
@@ -34,13 +33,10 @@ contract ExtraRewarderTest is Test {
         AccessController accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
         rewardToken = new ERC20Mock("MAIN_REWARD", "MAIN_REWARD", address(this), 0);
-        stakeTracker = makeAddr("STAKE_TRACKER");
         mainRewarder = makeAddr("MAIN_REWARDER");
 
         // mock stake tracker totalSupply function by default
-        vm.mockCall(
-            address(stakeTracker), abi.encodeWithSelector(IBaseRewarder.totalSupply.selector), abi.encode(totalSupply)
-        );
+        vm.mockCall(mainRewarder, abi.encodeWithSelector(IBaseRewarder.totalSupply.selector), abi.encode(totalSupply));
 
         // We use mock since this function is called not from owner and
         // SystemRegistry.addRewardToken is not accessible from the ownership perspective
@@ -50,7 +46,6 @@ contract ExtraRewarderTest is Test {
 
         rewarder = new ExtraRewarder(
             systemRegistry,
-            address(stakeTracker),
             address(rewardToken),
             mainRewarder,
             newRewardRatio,
@@ -66,14 +61,14 @@ contract GetReward is ExtraRewarderTest {
     }
 
     function test_CanClaimForYourself() public {
-        vm.mockCall(address(stakeTracker), abi.encodeWithSelector(IBaseRewarder.balanceOf.selector), abi.encode(10));
+        vm.mockCall(address(mainRewarder), abi.encodeWithSelector(IBaseRewarder.balanceOf.selector), abi.encode(10));
 
         vm.prank(RANDOM);
         rewarder.getReward(RANDOM);
     }
 
     function test_OnlyMainRewarderCanClaimForOther() public {
-        vm.mockCall(address(stakeTracker), abi.encodeWithSelector(IBaseRewarder.balanceOf.selector), abi.encode(10));
+        vm.mockCall(address(mainRewarder), abi.encodeWithSelector(IBaseRewarder.balanceOf.selector), abi.encode(10));
 
         vm.prank(mainRewarder);
         rewarder.getReward(RANDOM);

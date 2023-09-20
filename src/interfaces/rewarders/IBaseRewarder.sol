@@ -37,12 +37,6 @@ interface IBaseRewarder {
     function stake(address account, uint256 amount) external;
 
     /**
-     * @notice Token that is tracked as the deposit token
-     * @dev Rewards don't actually take possession of token
-     */
-    function stakeTracker() external view returns (IStakeTracking);
-
-    /**
      * @notice Calculate the earned rewards for an account.
      * @param account Address of the account.
      * @return The earned rewards for the given account.
@@ -73,17 +67,15 @@ interface IBaseRewarder {
     function lastBlockRewardApplicable() external view returns (uint256);
 
     /**
-     * @notice Proxy function to get the balance of an account from the StakeTracking contract
-     * @param account Address of the account.
-     * @return The balance of staked tokens for the given account.
-     */
-    function balanceOf(address account) external view returns (uint256);
-
-    /**
-     * @notice Proxy function to get the total supply of staked tokens from the StakeTracking contract
-     * @return The total supply of staked tokens.
+     * @notice The total amount of tokens staked
      */
     function totalSupply() external view returns (uint256);
+
+    /**
+     * @notice The amount of tokens staked for the specified account
+     * @param account The address of the account to get the balance of
+     */
+    function balanceOf(address account) external view returns (uint256);
 
     /**
      * @notice Queue new rewards to be distributed.

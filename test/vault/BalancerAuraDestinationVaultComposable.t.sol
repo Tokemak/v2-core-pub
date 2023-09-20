@@ -8,15 +8,12 @@ import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
-import { Errors } from "src/utils/Errors.sol";
-import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { DestinationVault } from "src/vault/DestinationVault.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
-import { TestERC20 } from "test/mocks/TestERC20.sol";
-import { IAccessController, AccessController } from "src/security/AccessController.sol";
+import { AccessController } from "src/security/AccessController.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
@@ -28,14 +25,13 @@ import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { SwapRouter } from "src/swapper/SwapRouter.sol";
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
+import { IRecoveryMode } from "src/interfaces/external/balancer/IRecoveryMode.sol";
 import { BalancerV2Swap } from "src/swapper/adapters/BalancerV2Swap.sol";
 import {
     WETH_MAINNET,
-    STETH_ETH_CURVE_POOL,
     WSETH_RETH_SFRXETH_BAL_POOL,
     STETH_MAINNET,
     BAL_VAULT,
-    BAL_MAINNET,
     AURA_BOOSTER,
     WSTETH_MAINNET,
     WSETH_WETH_BAL_POOL,
@@ -43,9 +39,9 @@ import {
     BAL_WSTETH_SFRX_ETH_RETH_WHALE,
     SFRXETH_MAINNET,
     RETH_WETH_BAL_POOL,
-    RETH_MAINNET
+    RETH_MAINNET,
+    BALANCER_MAINNET_AUTHORIZER
 } from "test/utils/Addresses.sol";
-import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
 
 contract BalancerAuraDestinationVaultComposableTests is Test {
     address private constant LP_TOKEN_WHALE = BAL_WSTETH_SFRX_ETH_RETH_WHALE;
@@ -189,6 +185,15 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
         vm.label(address(_lmpVaultRegistry), "lmpVaultRegistry");
         _mockSystemBound(address(_systemRegistry), address(_lmpVaultRegistry));
         _systemRegistry.setLMPVaultRegistry(address(_lmpVaultRegistry));
+
+        // Disable Pool RecoveryMode
+        // Note: at the forked block pool is in RecoveryMode, we want to use pool without it
+        // but withdrawals from the RecoveryMode tested specifically in
+        // `withdrawBaseAsset_IsPossibleWhenPoolIsInRecoveryMode` scenario.
+        IRecoveryMode pool = IRecoveryMode(WSETH_RETH_SFRXETH_BAL_POOL);
+        vm.prank(BALANCER_MAINNET_AUTHORIZER);
+        pool.disableRecoveryMode();
+        assertFalse(pool.inRecoveryMode());
     }
 
     function test_initializer_ConfiguresVault() public {
@@ -314,6 +319,38 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
         address receiver = vm.addr(555);
         uint256 startingBalance = _asset.balanceOf(receiver);
 
+        uint256 received = _destVault.withdrawBaseAsset(10e18, receiver);
+
+        // Bal pool has a rough pool value of $48,618,767
+        // Total Supply of 24059.127967424958374618
+        // Eth Price: $1977.44
+        // PPS: 1.01 w/10 shares ~= 10
+        assertEq(_asset.balanceOf(receiver) - startingBalance, 10_128_444_161_444_807_958);
+        assertEq(received, _asset.balanceOf(receiver) - startingBalance);
+    }
+
+    function test_withdrawBaseAsset_IsPossibleWhenPoolIsInRecoveryMode() public {
+        // Get some tokens to play with
+        vm.prank(LP_TOKEN_WHALE);
+        _underlyer.transfer(address(this), 10e18);
+
+        // Give us deposit rights
+        _mockIsVault(address(this), true);
+
+        // Deposit
+        _underlyer.approve(address(_destVault), 10e18);
+        _destVault.depositUnderlying(10e18);
+
+        address receiver = vm.addr(555);
+        uint256 startingBalance = _asset.balanceOf(receiver);
+
+        // Put pool into RecoveryMode
+        IRecoveryMode pool = IRecoveryMode(WSETH_RETH_SFRXETH_BAL_POOL);
+        vm.prank(BALANCER_MAINNET_AUTHORIZER);
+        pool.enableRecoveryMode();
+        assertTrue(pool.inRecoveryMode());
+
+        // Run withdrawal
         uint256 received = _destVault.withdrawBaseAsset(10e18, receiver);
 
         // Bal pool has a rough pool value of $48,618,767

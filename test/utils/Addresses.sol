@@ -45,6 +45,11 @@ address constant USDP_MAINNET = 0x8E870D67F660D95d5be530380D0eC0bd388289E1;
 address constant TUSD_MAINNET = 0x0000000000085d4780B73119b644AE5ecd22b376;
 address constant AURA_MAINNET = 0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF;
 
+// This is a Balancer's GnosisSafe proxy – found it through
+// Authorizer(0xA331D84eC860Bf466b4CdCcFb4aC09a1B43F3aE6)#hasRole by the needed actionId found from
+// https://github.com/balancer/balancer-deployments/blob/master/action-ids/mainnet/action-ids.json
+address constant BALANCER_MAINNET_AUTHORIZER = 0xA29F61256e948F3FB707b4b3B138C5cCb9EF9888;
+
 // Mainnet Chainlink feed addresses
 address constant RETH_CL_FEED_MAINNET = 0x536218f9E9Eb48863970252233c8F271f554C2d0;
 address constant USDC_CL_FEED_MAINNET = 0x986b5E1e1755e3C2440e960477f25201B0a8bbD4;

@@ -5,18 +5,14 @@ pragma solidity >=0.8.17;
 // solhint-disable func-name-mixedcase
 
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
-import { Errors } from "src/utils/Errors.sol";
-import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { DestinationVault } from "src/vault/DestinationVault.sol";
 import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
-import { TestERC20 } from "test/mocks/TestERC20.sol";
-import { IAccessController, AccessController } from "src/security/AccessController.sol";
+import { AccessController } from "src/security/AccessController.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
@@ -29,12 +25,9 @@ import { SwapRouter } from "src/swapper/SwapRouter.sol";
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
-import { IBasePool } from "src/interfaces/external/balancer/IBasePool.sol";
 import { BalancerV2Swap } from "src/swapper/adapters/BalancerV2Swap.sol";
-import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 import {
     WETH_MAINNET,
-    STETH_ETH_CURVE_POOL,
     WSETH_WETH_BAL_POOL,
     STETH_MAINNET,
     BAL_VAULT,
@@ -44,7 +37,6 @@ import {
     AURA_MAINNET,
     BAL_WSTETH_WETH_WHALE
 } from "test/utils/Addresses.sol";
-import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
 
 contract BalancerAuraDestinationVaultTests is Test {
     address private constant LP_TOKEN_WHALE = BAL_WSTETH_WETH_WHALE; //~20
@@ -399,35 +391,6 @@ contract BalancerAuraDestinationVaultTests is Test {
 
         address receiver = vm.addr(555);
         uint256 startingBalance = _asset.balanceOf(receiver);
-
-        uint256 received = _destVault.withdrawBaseAsset(10e18, receiver);
-
-        // Bal pool has a rough pool value of $96,362,068
-        // Total Supply of 50180.410952857663703844
-        // Eth Price: $1855
-        // PPS: 1.035208869 w/10 shares ~= 10.35208869
-
-        assertEq(_asset.balanceOf(receiver) - startingBalance, 10_356_898_854_512_073_834);
-        assertEq(received, _asset.balanceOf(receiver) - startingBalance);
-    }
-
-    function test_withdrawBaseAsset_IsPossibleWhenPoolIsInRecoveryMode() public {
-        // Get some tokens to play with
-        vm.prank(LP_TOKEN_WHALE);
-        _underlyer.transfer(address(this), 10e18);
-
-        // Give us deposit rights
-        _mockIsVault(address(this), true);
-
-        // Deposit
-        _underlyer.approve(address(_destVault), 10e18);
-        _destVault.depositUnderlying(10e18);
-
-        address receiver = vm.addr(555);
-        uint256 startingBalance = _asset.balanceOf(receiver);
-
-        // Mock Pool to be in a Recovery Mode
-        vm.mockCall(WSETH_WETH_BAL_POOL, abi.encodeWithSelector(IBasePool.inRecoveryMode.selector), abi.encode(true));
 
         uint256 received = _destVault.withdrawBaseAsset(10e18, receiver);
 

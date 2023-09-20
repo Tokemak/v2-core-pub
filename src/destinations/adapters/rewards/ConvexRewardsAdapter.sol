@@ -113,8 +113,10 @@ library ConvexRewards {
 
     ///@dev Sometimes addresses stand in as the rewardToken but they don't have a `balanceOf()`, so we verify
     function _hasBalance(address token, address account) private returns (bool hasBalance, uint256 bal) {
+        // slither-disable-start low-level-calls
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returnData) = token.call(abi.encodeWithSignature("balanceOf(address)", account));
+        // slither-disable-end low-level-calls
         if (success && returnData.length > 0) {
             bal = abi.decode(returnData, (uint256));
         }

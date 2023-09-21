@@ -67,7 +67,9 @@ contract LMPVaultRegistry is SystemComponent, ILMPVaultRegistry, SecurityBase {
         // remove from vaults list
         if (!_vaults.remove(vaultAddress)) revert VaultNotFound(vaultAddress);
 
-        address asset = ILMPVault(vaultAddress).asset();
+        ILMPVault vault = ILMPVault(vaultAddress);
+        address asset = vault.asset();
+        bytes32 vaultType = vault.vaultType();
 
         // remove from assets list if this was the last vault for that asset
         if (_vaultsByAsset[asset].length() == 1) {
@@ -77,6 +79,9 @@ contract LMPVaultRegistry is SystemComponent, ILMPVaultRegistry, SecurityBase {
 
         // remove from vaultsByAsset mapping
         if (!_vaultsByAsset[asset].remove(vaultAddress)) revert VaultNotFound(vaultAddress);
+
+        // remove from vaultsByType mapping
+        if (!_vaultsByType[vaultType].remove(vaultAddress)) revert VaultNotFound(vaultAddress);
 
         emit VaultRemoved(asset, vaultAddress);
     }

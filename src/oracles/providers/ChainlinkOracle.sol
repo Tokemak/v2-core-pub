@@ -5,8 +5,7 @@ pragma solidity 0.8.17;
 
 import { BaseOracleDenominations, ISystemRegistry } from "src/oracles/providers/base/BaseOracleDenominations.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
-import { IAccessControlledOffchainAggregator } from
-    "src/interfaces/external/chainlink/IAccessControlledOffchainAggregator.sol";
+import { IOffchainAggregator } from "src/interfaces/external/chainlink/IOffchainAggregator.sol";
 import { Errors } from "src/utils/Errors.sol";
 
 /**
@@ -29,8 +28,6 @@ contract ChainlinkOracle is BaseOracleDenominations {
         uint32 pricingTimeout;
         Denomination denomination;
         uint8 decimals;
-        uint256 maxPrice;
-        uint256 minPrice;
     }
 
     /// @dev Mapping of token to ChainlinkInfo struct.  Private to enforce zero address checks.
@@ -77,10 +74,9 @@ contract ChainlinkOracle is BaseOracleDenominations {
             oracle: chainlinkOracle,
             denomination: denomination,
             decimals: oracleDecimals,
-            pricingTimeout: pricingTimeout,
-            maxPrice: uint256(int256(IAccessControlledOffchainAggregator(chainlinkOracle.aggregator()).maxAnswer())),
-            minPrice: uint256(int256(IAccessControlledOffchainAggregator(chainlinkOracle.aggregator()).minAnswer()))
+            pricingTimeout: pricingTimeout
         });
+
         emit ChainlinkRegistrationAdded(token, address(chainlinkOracle), denomination, oracleDecimals);
     }
 
@@ -121,7 +117,8 @@ contract ChainlinkOracle is BaseOracleDenominations {
 
         if (
             roundId == 0 || updatedAt == 0 || updatedAt > timestamp || updatedAt < timestamp - tokenPricingTimeout
-                || priceUint >= chainlinkOracle.maxPrice || priceUint <= chainlinkOracle.minPrice
+                || priceUint == uint256(int256(IOffchainAggregator(chainlinkOracle.oracle.aggregator()).maxAnswer()))
+                || priceUint == uint256(int256(IOffchainAggregator(chainlinkOracle.oracle.aggregator()).minAnswer()))
         ) revert InvalidDataReturned();
 
         uint256 decimals = chainlinkOracle.decimals;

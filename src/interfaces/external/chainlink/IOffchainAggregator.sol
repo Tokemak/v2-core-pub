@@ -6,7 +6,7 @@ pragma solidity 0.8.17;
  *      as circuit breakers by Chainlink to protect against major market fluctuations and
  *      oracle malfunction.
  */
-interface IAccessControlledOffchainAggregator {
+interface IOffchainAggregator {
     /// @notice Minimum answer an oracle can return.
     function minAnswer() external view returns (int192);
 

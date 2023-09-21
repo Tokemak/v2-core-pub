@@ -21,6 +21,7 @@ contract ChainlinkOracleTest is Test {
     ChainlinkOracle private _oracle;
 
     error AccessDenied();
+    error InvalidDataReturned();
 
     event ChainlinkRegistrationAdded(
         address token, address chainlinkOracle, BaseOracleDenominations.Denomination, uint8 decimals
@@ -101,8 +102,6 @@ contract ChainlinkOracleTest is Test {
         assertEq(uint8(clInfo.denomination), uint8(BaseOracleDenominations.Denomination.ETH));
         assertEq(clInfo.decimals, IAggregatorV3Interface(RETH_CL_FEED_MAINNET).decimals());
         assertEq(clInfo.pricingTimeout, uint16(0));
-        assertEq(clInfo.maxPrice, 95_780_971_304_118_053_647_396_689_196_894_323_976_171_195_136_475_135);
-        assertEq(clInfo.minPrice, uint256(1));
     }
 
     // Test `removeChainlinkRegistration()`
@@ -145,6 +144,58 @@ contract ChainlinkOracleTest is Test {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "chainlinkOracle"));
 
         _oracle.getPriceInEth(address(1));
+    }
+
+    function test_OracleRevertsMinPrice() external {
+        _oracle.registerChainlinkOracle(
+            RETH_MAINNET,
+            IAggregatorV3Interface(RETH_CL_FEED_MAINNET),
+            BaseOracleDenominations.Denomination.ETH,
+            52 weeks
+        );
+
+        // roundId = 1.
+        // answer = 1, minPrice for rEth feed.
+        // startedAt = 1680840010, timestamp a few hours before forked block.
+        // updatedAt = 1680840010, same as above line.
+        // answeredInRound = 1.
+        vm.mockCall(
+            RETH_CL_FEED_MAINNET,
+            abi.encodeWithSelector(IAggregatorV3Interface.latestRoundData.selector),
+            abi.encode(1, 1, 1_680_840_010, 1_680_840_010, 1)
+        );
+
+        vm.expectRevert(InvalidDataReturned.selector);
+        _oracle.getPriceInEth(RETH_MAINNET);
+    }
+
+    function test_OracleRevertsMaxPrice() external {
+        _oracle.registerChainlinkOracle(
+            RETH_MAINNET,
+            IAggregatorV3Interface(RETH_CL_FEED_MAINNET),
+            BaseOracleDenominations.Denomination.ETH,
+            52 weeks
+        );
+
+        // roundId = 1.
+        // answer = 95780971304118053647396689196894323976171195136475135, maxPrice for rEth feed.
+        // startedAt = 1680840010, timestamp a few hours before forked block.
+        // updatedAt = 1680840010, same as above line.
+        // answeredInRound = 1.
+        vm.mockCall(
+            RETH_CL_FEED_MAINNET,
+            abi.encodeWithSelector(IAggregatorV3Interface.latestRoundData.selector),
+            abi.encode(
+                1,
+                95_780_971_304_118_053_647_396_689_196_894_323_976_171_195_136_475_135,
+                1_680_840_010,
+                1_680_840_010,
+                1
+            )
+        );
+
+        vm.expectRevert(InvalidDataReturned.selector);
+        _oracle.getPriceInEth(RETH_MAINNET);
     }
 
     function test_ReturnsProperPrice() external {

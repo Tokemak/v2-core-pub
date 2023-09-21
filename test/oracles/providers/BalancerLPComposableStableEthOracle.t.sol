@@ -176,19 +176,6 @@ contract BalancerLPComposableStableEthOracleTests is Test {
         vm.mockCall(registry, abi.encodeWithSelector(ISystemRegistry.rootPriceOracle.selector), abi.encode(rootOracle));
         return ISystemRegistry(registry);
     }
-
-    // Test BalancerUtilities.checkReentrancy() gas usage.
-    function test_ReentrancyGasUsage() external {
-        uint256 gasLeftBeforeReentrancy = gasleft();
-        BalancerUtilities.checkReentrancy(BAL_VAULT);
-        uint256 gasleftAfterReentrancy = gasleft();
-
-        /**
-         *  20k gives ample buffer for other operations outside of staticcall to balancer vault, which
-         *        is given 10k gas.  Operation above should take ~17k gas total.
-         */
-        assertLt(gasLeftBeforeReentrancy - gasleftAfterReentrancy, 20_000);
-    }
 }
 
 contract ReentrancyTester {

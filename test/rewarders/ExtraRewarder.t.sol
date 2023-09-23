@@ -47,7 +47,7 @@ contract ExtraRewarderTest is Test {
         rewarder = new ExtraRewarder(
             systemRegistry,
             address(rewardToken),
-            mainRewarder,
+            address(mainRewarder),
             newRewardRatio,
             durationInBlock
         );

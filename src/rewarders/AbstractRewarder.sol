@@ -114,12 +114,16 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
     function _updateReward(address account) internal {
         uint256 earnedRewards = 0;
         rewardPerTokenStored = rewardPerToken();
-        lastUpdateBlock = lastBlockRewardApplicable();
 
-        if (account != address(0)) {
-            earnedRewards = earned(account);
-            rewards[account] = earnedRewards;
-            userRewardPerTokenPaid[account] = rewardPerTokenStored;
+        // Do not update lastUpdateBlock if rewardPerTokenStored is 0, to prevent the loss of rewards when supply is 0
+        if (rewardPerTokenStored > 0) {
+            lastUpdateBlock = lastBlockRewardApplicable();
+
+            if (account != address(0)) {
+                earnedRewards = earned(account);
+                rewards[account] = earnedRewards;
+                userRewardPerTokenPaid[account] = rewardPerTokenStored;
+            }
         }
 
         emit UserRewardUpdated(account, earnedRewards, rewardPerTokenStored, lastUpdateBlock);
@@ -177,9 +181,9 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
     /**
      * @notice Queues the specified amount of new rewards for distribution to stakers.
      * @param newRewards The amount of new rewards.
-     * @dev First, the function transfers the new rewards from the caller to this contract,
+     * @dev The function transfers the new rewards from the caller to this contract,
      *      ensuring that the deposited amount matches the declared rewards.
-     *      Then, irrespective of whether we're near the start or the end of a reward period, if the accrued rewards
+     *      Irrespective of whether we're near the start or the end of a reward period, if the accrued rewards
      *      are too large relative to the new rewards (i.e., queuedRatio is greater than newRewardRatio), the new
      *      rewards will be added to the queue rather than being immediately distributed.
      */
@@ -223,15 +227,22 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
      *      If the current block number exceeds the reward period, the remaining reward is distributed immediately.
      */
     function notifyRewardAmount(uint256 reward) internal {
-        _updateReward(address(0));
         historicalRewards += reward;
 
-        if (block.number < periodInBlockFinish) {
+        // Correctly calculate leftover reward when totalSupply() is 0.
+        if (totalSupply() == 0) {
+            if (lastUpdateBlock < periodInBlockFinish) {
+                reward += (periodInBlockFinish - lastUpdateBlock) * rewardRate;
+            }
+        } else if (block.number < periodInBlockFinish) {
             uint256 remaining = periodInBlockFinish - block.number;
+
             // slither-disable-next-line divide-before-multiply
             uint256 leftover = remaining * rewardRate;
             reward += leftover;
         }
+
+        _updateReward(address(0));
 
         rewardRate = reward / durationInBlock;
         currentRewards = reward;

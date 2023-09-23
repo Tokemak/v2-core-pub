@@ -13,6 +13,7 @@ import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { MainRewarder } from "src/rewarders/MainRewarder.sol";
+import { Roles } from "src/libs/Roles.sol";
 import { IStakeTracking } from "src/interfaces/rewarders/IStakeTracking.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { RANDOM, WETH_MAINNET, TOKE_MAINNET } from "test/utils/Addresses.sol";
@@ -25,7 +26,7 @@ contract MainRewarderTest is Test {
     SystemRegistry public systemRegistry;
 
     uint256 public newRewardRatio = 800;
-    uint256 public durationInBlock = 100;
+    uint256 public durationInBlock = 100_000;
     uint256 public totalSupply = 100;
 
     function setUp() public {
@@ -35,10 +36,7 @@ contract MainRewarderTest is Test {
         rewardToken = new ERC20Mock("MAIN_REWARD", "MAIN_REWARD", address(this), 0);
         stakeTracker = makeAddr("STAKE_TRACKER");
 
-        // mock stake tracker totalSupply function by default
-        vm.mockCall(
-            address(stakeTracker), abi.encodeWithSelector(IBaseRewarder.totalSupply.selector), abi.encode(totalSupply)
-        );
+        accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
 
         // We use mock since this function is called not from owner and
         // SystemRegistry.addRewardToken is not accessible from the ownership perspective
@@ -111,5 +109,104 @@ contract Withdraw is MainRewarderTest {
         assertEq(rewarder.totalSupply(), deposit * 2);
 
         vm.stopPrank();
+    }
+}
+
+contract EdgeCases is MainRewarderTest {
+    function test_QueueNewRewardsTwice_WhenNoSupply() public {
+        rewardToken.mint(address(this), 100_000_000);
+
+        uint256 newReward = 50_000_000;
+        uint256 newReward2 = 50_000_000;
+
+        rewardToken.approve(address(rewarder), newReward + newReward2);
+        rewarder.queueNewRewards(newReward);
+
+        // advance the blockNumber by durationInBlock / 2 to simulate that the period is almost finished.
+        vm.roll(block.number + durationInBlock / 2);
+
+        rewarder.queueNewRewards(newReward2);
+
+        uint256 currentRewards = rewarder.currentRewards();
+        uint256 durationInBlock = rewarder.durationInBlock();
+
+        assertEq(rewarder.historicalRewards(), newReward + newReward2, "historicalRewards");
+        assertEq(rewarder.rewardPerTokenStored(), 0, "rewardPerTokenStored");
+        assertEq(currentRewards, newReward + newReward2, "currentRewards");
+        // rewardRate = currentRewards / durationInBlock
+        assertEq(rewarder.rewardRate(), currentRewards / durationInBlock, "rewardRate");
+    }
+
+    function test_RewardDistributionForThreeUsersAtDifferentIntervals() public {
+        uint256 deposit = 1000;
+        uint256 totalRewards = 1_000_000;
+
+        address user1 = makeAddr("USER1");
+        address user2 = makeAddr("USER2");
+        address user3 = makeAddr("USER3");
+
+        // Devides the durationInBlock into 10 intervals (100,000 / 10,000)
+        uint256 interval = 10_000;
+
+        // Queue new rewards
+        rewardToken.mint(address(this), totalRewards);
+        rewardToken.approve(address(rewarder), totalRewards);
+        rewarder.queueNewRewards(totalRewards);
+
+        // Wait to 1/10 of the period (block.number + interval) with 0 totalSupply and let user1 and user2 stake
+        vm.roll(block.number + interval);
+        vm.startPrank(stakeTracker);
+        rewarder.stake(user1, deposit);
+        rewarder.stake(user2, deposit);
+
+        // Move to 3/10 of the period (block.number + 3 * interval) and let user3 stake
+        vm.roll(block.number + 3 * interval);
+        rewarder.stake(user3, deposit);
+        vm.stopPrank();
+
+        // Capture the balance of users before the rewards are distributed
+        uint256 balanceBeforeUser1 = rewardToken.balanceOf(user1);
+        uint256 balanceBeforeUser2 = rewardToken.balanceOf(user2);
+        uint256 balanceBeforeUser3 = rewardToken.balanceOf(user3);
+
+        // Move to the end of the period (block.number + 10 * interval + 1)
+        vm.roll(block.number + 10 * interval + 1);
+
+        // Claim rewards for all users
+        vm.prank(user1);
+        rewarder.getReward();
+        vm.prank(user2);
+        rewarder.getReward();
+        vm.prank(user3);
+        rewarder.getReward();
+
+        // Capture the distributed rewards
+        uint256 user1Reward = rewardToken.balanceOf(user1) - balanceBeforeUser1;
+        uint256 user2Reward = rewardToken.balanceOf(user2) - balanceBeforeUser2;
+        uint256 user3Reward = rewardToken.balanceOf(user3) - balanceBeforeUser3;
+
+        assertEq(user1Reward + user2Reward + user3Reward, totalRewards, "Incorrect total rewards");
+    }
+
+    function test_QueueNewRewards_WhenNoSupply_And_Stake_After() public {
+        rewardToken.mint(address(this), 100_000_000);
+
+        uint256 newReward = 50_000_000;
+
+        assertEq(rewarder.totalSupply(), 0, "totalSupply");
+        rewardToken.approve(address(rewarder), newReward);
+        rewarder.queueNewRewards(newReward);
+
+        // Advance the blockNumber by durationInBlock / 2 to simulate that the period is almost finished.
+        vm.roll(block.number + durationInBlock / 2);
+        vm.prank(stakeTracker);
+        rewarder.stake(RANDOM, 1000);
+
+        vm.roll(block.number + durationInBlock + 1);
+        uint256 balanceBefore = rewardToken.balanceOf(RANDOM);
+        vm.prank(RANDOM);
+        rewarder.getReward();
+
+        assertEq(rewardToken.balanceOf(RANDOM) - balanceBefore, newReward, "Incorrect reward");
     }
 }

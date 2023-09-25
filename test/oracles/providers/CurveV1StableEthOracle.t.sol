@@ -28,7 +28,8 @@ import {
     DAI_MAINNET,
     USDT_MAINNET,
     THREE_CURVE_POOL_MAINNET_LP,
-    THREE_CURVE_MAINNET
+    THREE_CURVE_MAINNET,
+    STETH_STABLESWAP_NG_POOL
 } from "test/utils/Addresses.sol";
 
 contract CurveV1StableEthOracleTests is Test {
@@ -200,14 +201,15 @@ contract CurveV1StableEthOracleTests is Test {
         oracle.getPriceInEth(matchingLP);
     }
 
-    function testReentrancy() public {
+    function testReentrancyStethEthPool() public {
         mockRootPrice(CURVE_ETH, 1e18); //ETH
         mockRootPrice(STETH_MAINNET, 1e18); //stETH
 
         oracle.registerPool(STETH_ETH_CURVE_POOL, STETH_ETH_LP_TOKEN, true);
 
         // Create the tester
-        CurveEthStETHReentrancyTest tester = new CurveEthStETHReentrancyTest(oracle);
+        CurveEthStETHReentrancyTest tester =
+            new CurveEthStETHReentrancyTest(oracle, STETH_ETH_LP_TOKEN, STETH_ETH_CURVE_POOL, STETH_MAINNET);
 
         // Make sure the tester has ETH and stETH so it can do an add_liquidity call
         deal(address(tester), 10e18);
@@ -239,6 +241,28 @@ contract CurveV1StableEthOracleTests is Test {
         oracle.getPriceInEth(THREE_CURVE_POOL_MAINNET_LP);
 
         assertEq(pool.admin_balances(0), 0); // Balances transferred out on reentrancy check, should be 0.
+    // Check to make sure that ng pools cannot be reentered despite inability to do standard curve reentrancy check.
+    function testReentrancyStethEthNgPool() external {
+        mockRootPrice(CURVE_ETH, 1e18);
+        mockRootPrice(STETH_MAINNET, 1e18);
+
+        // Owner doesn't exist, cannot check reentrancy for ng pools.
+        oracle.registerPool(STETH_STABLESWAP_NG_POOL, STETH_STABLESWAP_NG_POOL, false);
+
+        CurveEthStETHReentrancyTest tester =
+            new CurveEthStETHReentrancyTest(oracle, STETH_STABLESWAP_NG_POOL, STETH_STABLESWAP_NG_POOL, STETH_MAINNET);
+        deal(address(tester), 10e18);
+        vm.prank(address(tester));
+        STETH_CONTRACT.submit{ value: 1 ether }(address(0));
+
+        tester.run();
+
+        assertEq(tester.priceReceived(), type(uint256).max);
+        assertEq(tester.getPriceFailed(), true);
+
+        uint256 price = oracle.getPriceInEth(STETH_STABLESWAP_NG_POOL);
+
+        assertApproxEqAbs(price, 1 ether, 1e17);
     }
 
     function mockRootPrice(address token, uint256 price) internal {
@@ -268,11 +292,18 @@ contract CurveEthStETHReentrancyTest {
     address private constant STETH_ETH_LP_TOKEN = ST_ETH_CURVE_LP_TOKEN_MAINNET;
 
     CurveV1StableEthOracle private oracle;
+    IERC20 private lpToken;
+    ICurveV1StableSwap private pool;
+    address private token;
+
     uint256 public priceReceived = type(uint256).max;
     bool public getPriceFailed = false;
 
-    constructor(CurveV1StableEthOracle _oracle) {
+    constructor(CurveV1StableEthOracle _oracle, address _lpToken, address _pool, address _token) {
         oracle = _oracle;
+        lpToken = IERC20(_lpToken);
+        pool = ICurveV1StableSwap(_pool);
+        token = _token;
     }
 
     function run() external {
@@ -284,11 +315,9 @@ contract CurveEthStETHReentrancyTest {
         outAmounts[0] = 5e17;
         outAmounts[1] = 5e17;
 
-        IERC20 lpToken = IERC20(STETH_ETH_LP_TOKEN);
-        IERC20 stETH = IERC20(STETH_MAINNET);
-        stETH.approve(STETH_ETH_CURVE_POOL, 1 ether);
+        IERC20 stETH = IERC20(token);
+        stETH.approve(address(pool), 1 ether);
 
-        ICurveV1StableSwap pool = ICurveV1StableSwap(STETH_ETH_CURVE_POOL);
         pool.add_liquidity{ value: 1 ether }(amounts, 0);
 
         uint256 bal = lpToken.balanceOf(address(this));
@@ -296,8 +325,8 @@ contract CurveEthStETHReentrancyTest {
     }
 
     receive() external payable {
-        if (msg.sender == STETH_ETH_CURVE_POOL) {
-            try oracle.getPriceInEth(STETH_ETH_LP_TOKEN) returns (uint256 price) {
+        if (msg.sender == address(pool)) {
+            try oracle.getPriceInEth(address(lpToken)) returns (uint256 price) {
                 priceReceived = price;
             } catch {
                 getPriceFailed = true;

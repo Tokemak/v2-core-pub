@@ -2922,6 +2922,61 @@ contract LMPVaultMintingTests is Test {
             address(_underlyerOne), // tokenOut
             100
         );
+    function test_Halborn04_Exploit() public {
+        address user1 = makeAddr("USER_1");
+        address user2 = makeAddr("USER_2");
+        address user3 = makeAddr("USER_3");
+
+        // Ensure we start from a clean slate
+        assertEq(_lmpVault.balanceOf(address(this)), 0);
+        assertEq(_lmpVault.rewarder().balanceOf(address(this)), 0);
+
+        // Add rewarder to the system
+        _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
+        _lmpVault.rewarder().addToWhitelist(address(this));
+
+        // Hal-04: Adding 100 TOKE as vault rewards and waiting until they are claimable.
+        // Hal-04: Rewarder TOKE balance: 100000000000000000000
+        _toke.mint(address(this), 100e18);
+        _toke.approve(address(_lmpVault.rewarder()), 100e18);
+        _lmpVault.rewarder().queueNewRewards(100e18);
+        vm.roll(block.number + 10_000);
+
+        // Hal-04: User1 gets 500 tokens minted
+        _asset.mint(user1, 500e18);
+
+        // Hal-04: User1 balance is 500
+        assertEq(_asset.balanceOf(user1), 500e18);
+        // Hal-04: User2 balance is 0
+        assertEq(_asset.balanceOf(user2), 0);
+        // Hal-04: User3 balance is 0
+        assertEq(_asset.balanceOf(user3), 0);
+
+        // Hal-04: User1 deposits 500 tokens in the vault and then instantly transfers the shares to User2
+        vm.startPrank(user1);
+        _asset.approve(address(_lmpVault), 500e18);
+        _lmpVault.deposit(500e18, user1);
+        _lmpVault.transfer(user2, 500e18);
+        vm.stopPrank();
+
+        // Hal-04: After receiving the funds, User2 will transfer the shares to User3...
+        vm.prank(user2);
+        _lmpVault.transfer(user3, 500e18);
+
+        // Hal-04: User3 calls redeem, in order to obtain the rewards, setting User1 as receiver for the deposited
+        // tokens
+        vm.prank(user3);
+        _lmpVault.redeem(500e18, user1, user3);
+
+        // Hal-04 expected outcomes:
+        //  - User1 TOKE balance after the exploit: 33333333333333333333
+        //  - User2 TOKE balance after the exploit: 33333333333333333333
+        //  - User3 TOKE balance after the exploit: 33333333333333333333
+
+        // However, with current updates, User1 should receive all the rewards
+        assertEq(_toke.balanceOf(user1), 100e18);
+        assertEq(_toke.balanceOf(user2), 0);
+        assertEq(_toke.balanceOf(user3), 0);
     }
 
     function _mockSystemBound(address registry, address addr) internal {

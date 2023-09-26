@@ -861,18 +861,18 @@ contract LMPVault is
         if (balanceOf(to) + amount > perWalletLimit && to != feeSink) {
             revert OverWalletLimit(to);
         }
-    }
-
-    function _afterTokenTransfer(address from, address to, uint256 amount) internal virtual override {
-        // Nothing to do really do here
-        if (from == to) {
-            return;
-        }
 
         // If this isn't a burn, then the recipient should be earning in the rewarder
         // "Stake" the tokens there so they start earning
         if (to != address(0)) {
             rewarder.stake(to, amount);
+        }
+    }
+
+    function _afterTokenTransfer(address from, address to, uint256) internal virtual override {
+        // Nothing to do really do here
+        if (from == to) {
+            return;
         }
     }
 

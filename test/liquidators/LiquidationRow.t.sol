@@ -554,6 +554,21 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
         liquidationRow.liquidateVaultsForToken(address(rewardToken), address(asyncSwapper), vaults, swapParams);
     }
 
+    function test_RevertIf_SellTokenAddressIsTheSameThanBuyTokenAddress() public {
+        liquidationRow.addToWhitelist(address(asyncSwapper));
+
+        _mockSimpleScenario(address(testVault));
+        IDestinationVault[] memory vaults = _initArrayOfOneTestVault();
+        liquidationRow.claimsVaultRewards(vaults);
+
+        SwapParams memory swapParams =
+            SwapParams(address(rewardToken), 200, address(targetToken), 200, new bytes(0), new bytes(0));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParams.selector));
+
+        liquidationRow.liquidateVaultsForToken(address(targetToken), address(asyncSwapper), vaults, swapParams);
+    }
+
     function test_RevertIf_BuytokenaddressIsDifferentThanTheVaultRewarderRewardTokenAddress() public {
         liquidationRow.addToWhitelist(address(asyncSwapper));
 

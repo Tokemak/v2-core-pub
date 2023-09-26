@@ -170,6 +170,8 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
         IDestinationVault[] memory vaultsToLiquidate,
         SwapParams memory params
     ) external nonReentrant hasRole(Roles.LIQUIDATOR_ROLE) onlyWhitelistedSwapper(asyncSwapper) {
+        if (fromToken == params.buyTokenAddress) revert Errors.InvalidParams();
+
         uint256 gasBefore = gasleft();
 
         (uint256 totalBalanceToLiquidate, uint256[] memory vaultsBalances) =

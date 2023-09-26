@@ -22,6 +22,7 @@ contract BalancerLPMetaStableEthOracle is SystemComponent, IPriceOracle {
     IBalancerVault public immutable balancerVault;
 
     error InvalidTokenCount(address token, uint256 length);
+    error InvalidPool(address token);
 
     constructor(ISystemRegistry _systemRegistry, IBalancerVault _balancerVault) SystemComponent(_systemRegistry) {
         // System registry must be properly initialized first
@@ -34,6 +35,11 @@ contract BalancerLPMetaStableEthOracle is SystemComponent, IPriceOracle {
     /// @inheritdoc IPriceOracle
     function getPriceInEth(address token) external returns (uint256 price) {
         Errors.verifyNotZero(token, "token");
+
+        // Checks to make sure pool being priced is not ComposableStablePool.
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success,) = token.call(abi.encodeWithSignature("getActualSupply()"));
+        if (success) revert InvalidPool(token);
 
         BalancerUtilities.checkReentrancy(address(balancerVault));
 

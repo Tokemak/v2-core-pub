@@ -18,8 +18,11 @@ import {
     CBETH_WSTETH_BAL_POOL,
     RETH_MAINNET,
     WSETH_WETH_BAL_POOL,
-    WETH_MAINNET
+    WETH_MAINNET,
+    WSETH_RETH_SFRXETH_BAL_POOL
 } from "test/utils/Addresses.sol";
+
+// solhint-disable func-name-mixedcase
 
 contract BalancerLPMetaStableEthOracleTests is Test {
     IBalancerVault private constant VAULT = IBalancerVault(BAL_VAULT);
@@ -136,6 +139,11 @@ contract BalancerLPMetaStableEthOracleTests is Test {
 
         vm.expectRevert("BAL#500");
         oracle.getPriceInEth(mockPool);
+    }
+
+    function test_ComposablePoolReverts() external {
+        vm.expectRevert(abi.encodeWithSignature("InvalidPool(address)", WSETH_RETH_SFRXETH_BAL_POOL));
+        oracle.getPriceInEth(WSETH_RETH_SFRXETH_BAL_POOL);
     }
 
     function mockRootPrice(address token, uint256 price) internal {

@@ -111,6 +111,12 @@ contract BalancerLPMetaStableEthOracleTests is Test {
         //solhint-disable-next-line max-line-length
         vm.mockCall(mockPool, abi.encodeWithSelector(IBalancerMetaStablePool.getPoolId.selector), abi.encode(badPoolId));
 
+        /**
+         * Stops `getActualSupply()` from returning true when targeting `mockPool`.  This happens because
+         *      `vm.addr()` creates an EOA, EOAs return true when low level calls are called against them.
+         */
+        vm.mockCallRevert(mockPool, abi.encodeWithSignature("getActualSupply()"), "Error");
+
         address mockVault = vm.addr(3_434_343);
 
         ISystemRegistry localSystemRegistry = generateSystemRegistry(address(rootPriceOracle));
@@ -136,6 +142,7 @@ contract BalancerLPMetaStableEthOracleTests is Test {
         bytes32 badPoolId = keccak256("x2349382440328");
         //solhint-disable-next-line max-line-length
         vm.mockCall(mockPool, abi.encodeWithSelector(IBalancerMetaStablePool.getPoolId.selector), abi.encode(badPoolId));
+        vm.mockCallRevert(mockPool, abi.encodeWithSignature("getActualSupply()"), "Error");
 
         vm.expectRevert("BAL#500");
         oracle.getPriceInEth(mockPool);

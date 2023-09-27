@@ -32,13 +32,13 @@ contract BalancerLPMetaStableEthOracle is SystemComponent, IPriceOracle {
         balancerVault = _balancerVault;
     }
 
+    // slither-disable-start missing-zero-check
+    // slither-disable-start low-level-calls
     /// @inheritdoc IPriceOracle
     function getPriceInEth(address token) external returns (uint256 price) {
         Errors.verifyNotZero(token, "token");
 
-        /**
-         * Checks to make sure pool being priced is not ComposableStablePool.
-         */
+        // Checks to make sure pool being priced is not ComposableStablePool.
         // solhint-disable-next-line avoid-low-level-calls
         (bool success,) = token.call(abi.encodeWithSignature("getActualSupply()"));
         if (success) revert InvalidPool(token);
@@ -87,4 +87,6 @@ contract BalancerLPMetaStableEthOracle is SystemComponent, IPriceOracle {
         price = ((px0 > px1 ? px1 : px0) * virtualPrice) / 1e18;
         // slither-disable-end divide-before-multiply
     }
+    // slither-disable-end low-level-calls
+    // slither-disable-end missing-zero-check
 }

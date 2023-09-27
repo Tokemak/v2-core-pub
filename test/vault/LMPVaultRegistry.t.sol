@@ -68,6 +68,38 @@ contract LMPVaultRegistryTest is BaseTest {
         assert(_contains(lmpVaultRegistry.listVaults(), address(anotherVault)));
     }
 
+    // Covering https://github.com/Tokemak/2023-06-sherlock-judging/blob/main/068-M/068.md
+    function testAddVaultAfterRemove() public {
+        vm.expectEmit(true, true, false, true);
+        emit VaultAdded(vault.asset(), address(vault));
+
+        lmpVaultRegistry.addVault(address(vault));
+
+        assert(lmpVaultRegistry.isVault(address(vault)));
+        assert(lmpVaultRegistry.listVaultsForAsset(vault.asset()).length > 0);
+        assert(lmpVaultRegistry.listVaultsForType(VaultTypes.LST).length > 0);
+        assert(_contains(lmpVaultRegistry.listVaults(), address(vault)));
+
+        vm.expectEmit(true, true, false, true);
+        emit VaultRemoved(vault.asset(), address(vault));
+        lmpVaultRegistry.removeVault(address(vault));
+
+        assertFalse(lmpVaultRegistry.isVault(address(vault)));
+        assertEq(lmpVaultRegistry.listVaultsForAsset(vault.asset()).length, 0);
+        assertEq(lmpVaultRegistry.listVaultsForType(VaultTypes.LST).length, 0);
+        assertFalse(_contains(lmpVaultRegistry.listVaults(), address(vault)));
+
+        vm.expectEmit(true, true, false, true);
+        emit VaultAdded(vault.asset(), address(vault));
+
+        lmpVaultRegistry.addVault(address(vault));
+
+        assert(lmpVaultRegistry.isVault(address(vault)));
+        assert(lmpVaultRegistry.listVaultsForAsset(vault.asset()).length > 0);
+        assert(lmpVaultRegistry.listVaultsForType(VaultTypes.LST).length > 0);
+        assert(_contains(lmpVaultRegistry.listVaults(), address(vault)));
+    }
+
     function testRevertOnAddingVaultWithNoPermission() public {
         accessController.revokeRole(Roles.REGISTRY_UPDATER, address(this));
 

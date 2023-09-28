@@ -59,7 +59,7 @@ contract BalancerV2Swap is BaseAdapter {
 
         IVault.FundManagement memory funds = IVault.FundManagement(address(this), false, payable(address(this)), false);
 
-        IERC20(sellTokenAddress).safeApprove(address(vault), sellAmount);
+        IERC20(sellTokenAddress).safeIncreaseAllowance(address(vault), sellAmount);
 
         return vault.swap(singleSwap, funds, minBuyAmount, block.timestamp);
     }

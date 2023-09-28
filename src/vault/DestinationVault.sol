@@ -269,7 +269,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
                 amount += amounts[i];
             } else {
                 if (amounts[i] > 0) {
-                    IERC20(token).safeApprove(address(swapRouter), amounts[i]);
+                    IERC20(token).safeIncreaseAllowance(address(swapRouter), amounts[i]);
                     amount += swapRouter.swapForQuote(token, amounts[i], _baseAsset, 0);
                 }
             }

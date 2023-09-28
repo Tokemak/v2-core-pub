@@ -172,6 +172,23 @@ contract LMPVaultRouterTest is BaseTest {
         _deposit(lmpVault, amount);
     }
 
+    // Covering https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/346-M/346-best.md
+    function test_deposit_after_approve() public {
+        uint256 amount = depositAmount; // TODO: fuzz
+        baseAsset.approve(address(lmpVaultRouter), amount);
+
+        // -- try to fail slippage first -- //
+        // set threshold for just over what's expected
+        uint256 minSharesExpected = lmpVault.previewDeposit(amount) + 1;
+        vm.expectRevert(abi.encodeWithSelector(ILMPVaultRouterBase.MinSharesError.selector));
+        lmpVaultRouter.deposit(lmpVault, address(this), amount, minSharesExpected);
+
+        // -- pre-approve -- //
+        lmpVaultRouter.approve(baseAsset, address(lmpVault), amount);
+        // -- now do a successful scenario -- //
+        _deposit(lmpVault, amount);
+    }
+
     function test_deposit_ETH() public {
         _changeVaultToWETH();
 

@@ -38,7 +38,7 @@ abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multica
             pullToken(vaultAsset, assets, address(this));
         }
 
-        vaultAsset.safeApprove(address(vault), assets);
+        vaultAsset.safeIncreaseAllowance(address(vault), assets);
 
         amountIn = vault.mint(shares, to);
         if (amountIn > maxAmountIn) {

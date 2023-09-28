@@ -39,7 +39,7 @@ contract CurveV2Swap is BaseAdapter {
         (uint256 sellIndex, uint256 buyIndex) = abi.decode(data, (uint256, uint256));
         ICurveV2Swap pool = ICurveV2Swap(poolAddress);
 
-        IERC20(sellTokenAddress).safeApprove(poolAddress, sellAmount);
+        IERC20(sellTokenAddress).safeIncreaseAllowance(poolAddress, sellAmount);
 
         return pool.exchange(sellIndex, buyIndex, sellAmount, minBuyAmount);
     }

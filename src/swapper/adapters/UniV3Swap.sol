@@ -51,7 +51,7 @@ contract UniV3Swap is BaseAdapter {
         uint256 minBuyAmount,
         bytes memory data
     ) external override onlyRouter returns (uint256) {
-        IERC20(sellTokenAddress).safeApprove(routerAddress, sellAmount);
+        IERC20(sellTokenAddress).safeIncreaseAllowance(routerAddress, sellAmount);
 
         IUniswapV3SwapRouter.ExactInputParams memory params = IUniswapV3SwapRouter.ExactInputParams({
             path: data,

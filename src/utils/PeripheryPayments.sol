@@ -33,7 +33,7 @@ abstract contract PeripheryPayments {
     receive() external payable { }
 
     function approve(IERC20 token, address to, uint256 amount) public payable {
-        token.safeApprove(to, amount);
+        token.safeIncreaseAllowance(to, amount);
     }
 
     function unwrapWETH9(uint256 amountMinimum, address recipient) public payable {

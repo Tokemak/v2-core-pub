@@ -324,7 +324,7 @@ library LMPDebt {
         address tokenIn,
         uint256 depositAmount
     ) private returns (uint256 debtDecrease, uint256 debtIncrease) {
-        IERC20(tokenIn).safeApprove(address(dvIn), depositAmount);
+        IERC20(tokenIn).safeIncreaseAllowance(address(dvIn), depositAmount);
 
         // Snapshot our current shares so we know how much to back out
         uint256 originalShareBal = dvIn.balanceOf(address(this));

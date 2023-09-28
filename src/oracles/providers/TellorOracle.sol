@@ -15,6 +15,9 @@ import { UsingTellor } from "usingtellor/UsingTellor.sol";
  * @dev Returns 18 decimals of precision.
  */
 contract TellorOracle is BaseOracleDenominations, UsingTellor {
+    /// @dev Thrown when an invalid pricing timeout is submitted at oracle registration.
+    error InvalidPricingTimeout(uint256 pricingTimeout);
+
     /**
      * @notice Used to store information about Tellor price queries.
      * @dev No decimals, all returned in e18 precision.
@@ -28,6 +31,9 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
         uint32 pricingTimeout;
         Denomination denomination;
     }
+
+    /// @dev Minimum time to have passed since price submitted to Tellor.
+    uint256 public constant TELLOR_PRICING_FRESHNESS = 15 minutes;
 
     /// @dev Token address to TellorInfo structs.
     mapping(address => TellorInfo) private tellorQueryInfo;
@@ -66,6 +72,9 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
         Errors.verifyNotZero(token, "tokenForQueryId");
         Errors.verifyNotZero(_queryId, "queryId");
         if (tellorQueryInfo[token].queryId != bytes32(0)) revert Errors.MustBeZero();
+        if (pricingTimeout != 0 && pricingTimeout < TELLOR_PRICING_FRESHNESS) {
+            revert InvalidPricingTimeout(pricingTimeout);
+        }
         tellorQueryInfo[token] =
             TellorInfo({ queryId: _queryId, denomination: denomination, pricingTimeout: pricingTimeout });
         emit TellorRegistrationAdded(token, denomination, _queryId);
@@ -101,7 +110,7 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
     function getPriceInEth(address tokenToPrice) external returns (uint256) {
         TellorInfo memory tellorInfo = _getQueryInfo(tokenToPrice);
         uint256 timestamp = block.timestamp;
-        uint256 tellorMinAllowableTimestamp = timestamp - 15 minutes;
+        uint256 tellorMinAllowableTimestamp = timestamp - TELLOR_PRICING_FRESHNESS;
 
         // Giving time for Tellor network to dispute price
         (bytes memory value, uint256 timestampRetrieved) =

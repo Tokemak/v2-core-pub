@@ -25,6 +25,7 @@ contract TellorOracleTest is Test {
     TellorOracle public _oracle;
 
     error AccessDenied();
+    error InvalidPricingTimeout(uint256 pricingTimeout);
 
     event TellorRegistrationAdded(address token, BaseOracleDenominations.Denomination, bytes32 _queryId);
     event TellorRegistrationRemoved(address token, bytes32 queryId);
@@ -68,6 +69,14 @@ contract TellorOracleTest is Test {
         vm.expectRevert(Errors.MustBeZero.selector);
 
         _oracle.addTellorRegistration(address(1), bytes32("Test Bytes 2"), BaseOracleDenominations.Denomination.ETH, 0);
+    }
+
+    function test_RevertPricingTimeoutTooSmall() external {
+        vm.expectRevert(abi.encodeWithSelector(InvalidPricingTimeout.selector, 1 minutes));
+
+        _oracle.addTellorRegistration(
+            address(1), bytes32("Test Bytes"), BaseOracleDenominations.Denomination.ETH, 1 minutes
+        );
     }
 
     function test_ProperAddTellorRegistration() external {

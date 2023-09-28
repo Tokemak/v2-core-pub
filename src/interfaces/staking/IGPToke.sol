@@ -39,6 +39,7 @@ interface IGPToke {
     error TransfersDisabled();
     error TransferFailed();
     error NoRewardsToClaim();
+    error InsufficientAmount();
 
     ///////////////////////////////////////////////////////////////////
     //                        Events

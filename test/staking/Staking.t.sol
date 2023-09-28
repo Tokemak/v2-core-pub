@@ -195,6 +195,14 @@ contract StakingTest is BaseTest {
         assert(lockup.points > pointsBefore);
     }
 
+    function test_Revert_IfAmountIsInsufficient() public {
+        gpToke.stake(stakeAmount, ONE_YEAR);
+        weth.approve(address(gpToke), 1);
+
+        vm.expectRevert(abi.encodeWithSelector(IGPToke.InsufficientAmount.selector));
+        gpToke.addWETHRewards(1);
+    }
+
     /* **************************************************************************** */
     /* 						Staking helper methods									*/
 

@@ -231,6 +231,10 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
         uint256 supply = totalSupply();
         Errors.verifyNotZero(supply, "supply");
 
+        if (amount * REWARD_FACTOR < supply) {
+            revert InsufficientAmount();
+        }
+
         totalRewardsEarned += amount;
         accRewardPerShare += amount * REWARD_FACTOR / supply;
 

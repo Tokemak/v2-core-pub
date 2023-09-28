@@ -54,6 +54,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle {
 
     /// @notice Register a Curve LP token to this oracle
     /// @dev Double checks pool+lp against on-chain query. Only use with StableSwap pools.
+    /// @dev Pool containing Eth, Weth, ERC-677, ERC-777 tokens should all be registered for reentrancy checks.
     /// @param curvePool address of the Curve pool related to the LP token
     /// @param curveLpToken address of the LP token we'll be looking up prices for
     /// @param checkReentrancy whether or not we should check for read-only reentrancy
@@ -124,17 +125,20 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle {
         PoolData memory poolInfo = lpTokenToPool[token];
         ICurveV1StableSwap pool = ICurveV1StableSwap(poolInfo.pool);
 
+        /**
+         * We're in a V1 pool and we'll be reading the virtual price later
+         *      make sure we're not in a read-only reentrancy scenario
+         *
+         * This check can be done for any token, although the reentrancy attack only
+         *      applies to pools containing Eth, Weth, ERC-677 or ERC-777 tokens.
+         */
+        if (poolInfo.checkReentrancy == 1) {
+            // This will fail in reentrancy
+            ICurveOwner(pool.owner()).withdraw_admin_fees(address(pool));
+        }
+
         for (uint256 i = 0; i < nTokens;) {
             address iToken = tokens[i];
-
-            // We're in a V1 ETH pool and we'll be reading the virtual price later
-            // make sure we're not in a read-only reentrancy scenario
-            if (iToken == LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER) {
-                if (poolInfo.checkReentrancy == 1) {
-                    // This will fail in reentrancy
-                    ICurveOwner(pool.owner()).withdraw_admin_fees(address(pool));
-                }
-            }
 
             // Our prices are always in 1e18
             uint256 tokenPrice = systemRegistry.rootPriceOracle().getPriceInEth(iToken);

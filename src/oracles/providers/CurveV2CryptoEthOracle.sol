@@ -95,9 +95,9 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle {
     /**
      * @notice Allows owner of system to register a pool.
      * @dev While the reentrancy check implemented in this contact can technically be used with any token,
-     *      it does not make sense to check for reentrancy unless the pool contains ETH or WETH, as the
-     *      known Curve reentrancy vulnerability only works when the caller recieves native ETH.  Therefore,
-     *      reentrancy checks should only be set to `1` when these tokens are present.  Otherwise we
+     *      it does not make sense to check for reentrancy unless the pool contains ETH, WETH, ERC-677, ERC-777 tokens,
+     *      as the known Curve reentrancy vulnerability only works when the caller recieves these tokens.
+     *      Therefore, reentrancy checks should only be set to `1` when these tokens are present.  Otherwise we
      *      waste gas claiming admin fees for Curve.
      * @param curvePool Address of CurveV2 pool.
      * @param curveLpToken Address of LP token associated with v2 pool.

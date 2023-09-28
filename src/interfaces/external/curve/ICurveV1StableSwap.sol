@@ -36,5 +36,7 @@ interface ICurveV1StableSwap {
     function withdraw_admin_fees() external;
 
     function owner() external view returns (address);
+
+    function admin_balances(uint256 i) external view returns (uint256);
 }
 // slither-disable-end naming-convention

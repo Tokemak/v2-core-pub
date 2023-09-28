@@ -2,6 +2,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+// solhint-disable func-name-mixedcase
+
 import { Vm } from "forge-std/Vm.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
@@ -221,6 +223,22 @@ contract CurveV1StableEthOracleTests is Test {
         uint256 price = oracle.getPriceInEth(STETH_ETH_LP_TOKEN);
 
         assertApproxEqAbs(price, 1 ether, 1e17);
+    }
+
+    function test_CanCallReentrancyNonEthPool() external {
+        mockRootPrice(USDC_MAINNET, 1e15);
+        mockRootPrice(USDT_MAINNET, 1e15);
+        mockRootPrice(DAI_MAINNET, 1e15);
+
+        oracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, true);
+
+        ICurveV1StableSwap pool = ICurveV1StableSwap(THREE_CURVE_MAINNET);
+
+        assertGt(pool.admin_balances(0), 0); // Check balances before reentrancy check.
+
+        oracle.getPriceInEth(THREE_CURVE_POOL_MAINNET_LP);
+
+        assertEq(pool.admin_balances(0), 0); // Balances transferred out on reentrancy check, should be 0.
     }
 
     function mockRootPrice(address token, uint256 price) internal {

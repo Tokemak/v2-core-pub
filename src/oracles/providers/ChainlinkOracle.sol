@@ -22,12 +22,15 @@ contract ChainlinkOracle is BaseOracleDenominations {
      * @param denomination Enum representing what token mapped is denominated in.
      * @param decimals Number of decimal precision that oracle returns.  Can differ from
      *      token decimals in some cases.
+     * @param aggregator Instand of Chainlink `IAccessControlledOffchainAggregator.sol`
+     *      contract.  Used to check min and max allowable returned values from oracle.
      */
     struct ChainlinkInfo {
         IAggregatorV3Interface oracle;
         uint32 pricingTimeout;
         Denomination denomination;
         uint8 decimals;
+        IOffchainAggregator aggregator;
     }
 
     /// @dev Mapping of token to ChainlinkInfo struct.  Private to enforce zero address checks.
@@ -74,7 +77,8 @@ contract ChainlinkOracle is BaseOracleDenominations {
             oracle: chainlinkOracle,
             denomination: denomination,
             decimals: oracleDecimals,
-            pricingTimeout: pricingTimeout
+            pricingTimeout: pricingTimeout,
+            aggregator: IOffchainAggregator(chainlinkOracle.aggregator())
         });
 
         emit ChainlinkRegistrationAdded(token, address(chainlinkOracle), denomination, oracleDecimals);
@@ -117,8 +121,8 @@ contract ChainlinkOracle is BaseOracleDenominations {
 
         if (
             roundId == 0 || updatedAt == 0 || updatedAt > timestamp || updatedAt < timestamp - tokenPricingTimeout
-                || priceUint == uint256(int256(IOffchainAggregator(chainlinkOracle.oracle.aggregator()).maxAnswer()))
-                || priceUint == uint256(int256(IOffchainAggregator(chainlinkOracle.oracle.aggregator()).minAnswer()))
+                || priceUint == uint256(int256(chainlinkOracle.aggregator.maxAnswer()))
+                || priceUint == uint256(int256(chainlinkOracle.aggregator.minAnswer()))
         ) revert InvalidDataReturned();
 
         uint256 decimals = chainlinkOracle.decimals;

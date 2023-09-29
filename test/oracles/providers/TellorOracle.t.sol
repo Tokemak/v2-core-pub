@@ -14,6 +14,8 @@ import { AccessController } from "src/security/AccessController.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { Errors } from "src/utils/Errors.sol";
 
+import { TellorPlayground } from "lib/usingtellor/contracts/TellorPlayground.sol";
+
 contract TellorOracleTest is Test {
     // Eth - usd query id
     bytes32 public constant QUERY_ID = 0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992;
@@ -31,7 +33,7 @@ contract TellorOracleTest is Test {
     event TellorRegistrationRemoved(address token, bytes32 queryId);
 
     function setUp() external {
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"));
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 18_200_000);
 
         systemRegistry = ISystemRegistry(address(777));
         AccessController accessControl = new AccessController(address(systemRegistry));
@@ -149,6 +151,24 @@ contract TellorOracleTest is Test {
         );
         vm.expectRevert(BaseOracleDenominations.InvalidDataReturned.selector);
         _oracle.getPriceInEth(ETH);
+    }
+
+    // Testing getting values within smaller timeframe, between 15 minute pricing freshness cut off and 30 min pricing
+    //      timeout.
+    function test_ReturnPriceWithinSmallerTimeframe() external {
+        _oracle.addTellorRegistration(ETH, QUERY_ID, BaseOracleDenominations.Denomination.ETH, 30 minutes);
+
+        vm.mockCall(
+            TELLOR_ORACLE,
+            abi.encodeWithSelector(TellorPlayground.getDataBefore.selector),
+            abi.encode(true, abi.encodePacked(uint256(1500)), block.timestamp)
+        );
+
+        skip(20 minutes);
+
+        uint256 value = _oracle.getPriceInEth(ETH);
+        emit log_uint(value);
+        assertEq(value, 1500);
     }
 
     function test_GetPriceMainnet() external {

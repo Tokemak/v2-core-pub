@@ -2832,6 +2832,99 @@ contract LMPVaultMintingTests is Test {
         _lmpVault.recover(tokens, amounts, destinations);
     }
 
+    /// Based on @dev https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/219-M/219.md
+    function test_OverWalletLimitIsDisabledForSink() public {
+        address user01 = vm.addr(101);
+        address user02 = vm.addr(102);
+        vm.label(user01, "user01");
+        vm.label(user02, "user02");
+        _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
+
+        // Setting a sink
+        address feeSink = vm.addr(555);
+        vm.label(feeSink, "feeSink");
+        _lmpVault.setFeeSink(feeSink);
+        // Setting a fee
+        _lmpVault.setPerformanceFeeBps(2000); // 20%
+        //Set the per-wallet share limit
+        _lmpVault.setPerWalletLimit(500);
+
+        //user01 `deposit()`
+        vm.startPrank(user01);
+        _asset.mint(user01, 500);
+        _asset.approve(address(_lmpVault), 500);
+        _lmpVault.deposit(500, user01);
+        vm.stopPrank();
+
+        //user02 `deposit()`
+        vm.startPrank(user02);
+        _asset.mint(user02, 500);
+        _asset.approve(address(_lmpVault), 500);
+        _lmpVault.deposit(500, user02);
+        vm.stopPrank();
+
+        // Queue up some Destination Vault rewards
+        _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
+        _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
+
+        // At time of writing LMPVault always returned true for verifyRebalance
+        // Rebalance 500 baseAsset for 250 underlyerOne+destVaultOne
+        uint256 assetBalBefore = _asset.balanceOf(address(this));
+        _underlyerOne.mint(address(this), 500);
+        _underlyerOne.approve(address(_lmpVault), 500);
+        _lmpVault.rebalance(
+            address(_destVaultOne),
+            address(_underlyerOne), // tokenIn
+            250,
+            address(0), // destinationOut, none when sending out baseAsset
+            address(_asset), // baseAsset, tokenOut
+            500
+        );
+        uint256 assetBalAfter = _asset.balanceOf(address(this));
+
+        _asset.mint(address(this), 2000);
+        _asset.approve(_destVaultOne.rewarder(), 2000);
+        IMainRewarder(_destVaultOne.rewarder()).queueNewRewards(2000);
+
+        // LMP Vault is correctly tracking 500 remaining in idle, 500 out as debt
+        uint256 totalIdleAfterFirstRebalance = _lmpVault.totalIdle();
+        uint256 totalDebtAfterFirstRebalance = _lmpVault.totalDebt();
+        assertEq(totalIdleAfterFirstRebalance, 500, "totalIdleAfterFirstRebalance");
+        assertEq(totalDebtAfterFirstRebalance, 500, "totalDebtAfterFirstRebalance");
+        // The destination vault has the 250 underlying
+        assertEq(_underlyerOne.balanceOf(address(_destVaultOne)), 250);
+        // The lmp vault has the 250 of the destination
+        assertEq(_destVaultOne.balanceOf(address(_lmpVault)), 250);
+        // Ensure the solver got their funds
+        assertEq(assetBalAfter - assetBalBefore, 500, "solverAssetBal");
+
+        //to simulate the accumulative fees in `sink` address. user01 `deposit()` to `sink`
+        vm.startPrank(user01);
+        _asset.mint(user01, 500);
+        _asset.approve(address(_lmpVault), 500);
+        _lmpVault.deposit(500, feeSink);
+        vm.stopPrank();
+
+        // Roll the block so that the rewards we queued earlier will become available
+        vm.roll(block.number + 100);
+
+        // `rebalance()`
+        _asset.mint(address(this), 200);
+        _asset.approve(address(_lmpVault), 200);
+
+        // Would have reverted if we didn't disable the limit for the sink
+        // vm.expectRevert(); // <== expectRevert
+        _lmpVault.rebalance(
+            address(0), // none when sending in base asset
+            address(_asset), // tokenIn
+            200,
+            address(_destVaultOne), // destinationOut
+            address(_underlyerOne), // tokenOut
+            100
+        );
+    }
+
     function _mockSystemBound(address registry, address addr) internal {
         vm.mockCall(addr, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(registry));
     }

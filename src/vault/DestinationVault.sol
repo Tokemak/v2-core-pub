@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
@@ -269,7 +270,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
                 amount += amounts[i];
             } else {
                 if (amounts[i] > 0) {
-                    IERC20(token).safeIncreaseAllowance(address(swapRouter), amounts[i]);
+                    LibAdapter._approve(IERC20(token), address(swapRouter), amounts[i]);
                     amount += swapRouter.swapForQuote(token, amounts[i], _baseAsset, 0);
                 }
             }

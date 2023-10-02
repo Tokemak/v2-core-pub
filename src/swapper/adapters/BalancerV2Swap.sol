@@ -5,6 +5,7 @@ pragma solidity 0.8.17;
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { Errors } from "src/utils/Errors.sol";
+import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IAsset } from "src/interfaces/external/balancer/IAsset.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
@@ -59,7 +60,7 @@ contract BalancerV2Swap is BaseAdapter {
 
         IVault.FundManagement memory funds = IVault.FundManagement(address(this), false, payable(address(this)), false);
 
-        IERC20(sellTokenAddress).safeIncreaseAllowance(address(vault), sellAmount);
+        LibAdapter._approve(IERC20(sellTokenAddress), address(vault), sellAmount);
 
         return vault.swap(singleSwap, funds, minBuyAmount, block.timestamp);
     }

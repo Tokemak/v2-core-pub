@@ -4,6 +4,7 @@
 pragma solidity 0.8.17;
 
 import { Errors } from "src/utils/Errors.sol";
+import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
@@ -324,7 +325,7 @@ library LMPDebt {
         address tokenIn,
         uint256 depositAmount
     ) private returns (uint256 debtDecrease, uint256 debtIncrease) {
-        IERC20(tokenIn).safeIncreaseAllowance(address(dvIn), depositAmount);
+        LibAdapter._approve(IERC20(tokenIn), address(dvIn), depositAmount);
 
         // Snapshot our current shares so we know how much to back out
         uint256 originalShareBal = dvIn.balanceOf(address(this));

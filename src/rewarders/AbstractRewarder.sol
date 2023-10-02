@@ -12,6 +12,7 @@ import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 
 import { IGPToke } from "src/interfaces/staking/IGPToke.sol";
 
+import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 
@@ -332,8 +333,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
             IERC20(rewardToken).safeTransfer(account, reward);
         } else {
             // authorize gpToke to get our reward Toke
-            // slither-disable-next-line unused-return
-            IERC20(address(tokeAddress)).approve(address(gpToke), reward);
+            LibAdapter._approve(IERC20(tokeAddress), address(gpToke), reward);
 
             // stake Toke
             gpToke.stake(reward, tokeLockDuration, account);

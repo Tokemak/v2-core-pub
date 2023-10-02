@@ -8,6 +8,7 @@ import { Path } from "src/utils/univ3/Path.sol";
 import { IUniswapV3SwapRouter } from "src/interfaces/external/uniswap/IUniswapV3SwapRouter.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { BaseAdapter, ISyncSwapper } from "src/swapper/adapters/BaseAdapter.sol";
+import { LibAdapter } from "src/libs/LibAdapter.sol";
 
 /**
  * @title UniV3Swap
@@ -51,7 +52,7 @@ contract UniV3Swap is BaseAdapter {
         uint256 minBuyAmount,
         bytes memory data
     ) external override onlyRouter returns (uint256) {
-        IERC20(sellTokenAddress).safeIncreaseAllowance(routerAddress, sellAmount);
+        LibAdapter._approve(IERC20(sellTokenAddress), routerAddress, sellAmount);
 
         IUniswapV3SwapRouter.ExactInputParams memory params = IUniswapV3SwapRouter.ExactInputParams({
             path: data,

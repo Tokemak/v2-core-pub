@@ -5,6 +5,7 @@ pragma solidity 0.8.17;
 import { IERC20, SafeERC20, Address } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { ILMPVault, ILMPVaultRouterBase } from "src/interfaces/vault/ILMPVaultRouterBase.sol";
 
+import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { SelfPermit } from "src/utils/SelfPermit.sol";
 import { PeripheryPayments } from "src/utils/PeripheryPayments.sol";
 import { Multicall } from "src/utils/Multicall.sol";
@@ -37,8 +38,7 @@ abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multica
         } else {
             pullToken(vaultAsset, assets, address(this));
         }
-
-        vaultAsset.safeIncreaseAllowance(address(vault), assets);
+        LibAdapter._approve(vaultAsset, address(vault), assets);
 
         amountIn = vault.mint(shares, to);
         if (amountIn > maxAmountIn) {

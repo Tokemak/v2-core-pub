@@ -45,7 +45,7 @@ contract CurveV1StableSwap is BaseAdapter {
         (int128 sellIndex, int128 buyIndex, bool isEth) = abi.decode(data, (int128, int128, bool));
         ICurveV1StableSwap pool = ICurveV1StableSwap(poolAddress);
 
-        IERC20(sellTokenAddress).safeIncreaseAllowance(poolAddress, sellAmount);
+        LibAdapter._approve(IERC20(sellTokenAddress), poolAddress, sellAmount);
 
         amount = pool.exchange(sellIndex, buyIndex, sellAmount, minBuyAmount);
 

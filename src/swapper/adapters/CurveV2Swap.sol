@@ -7,6 +7,7 @@ import { IERC20, SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/Safe
 import { ICurveV2Swap } from "src/interfaces/external/curve/ICurveV2Swap.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { BaseAdapter, ISyncSwapper } from "src/swapper/adapters/BaseAdapter.sol";
+import { LibAdapter } from "src/libs/LibAdapter.sol";
 
 contract CurveV2Swap is BaseAdapter {
     using SafeERC20 for IERC20;
@@ -39,7 +40,7 @@ contract CurveV2Swap is BaseAdapter {
         (uint256 sellIndex, uint256 buyIndex) = abi.decode(data, (uint256, uint256));
         ICurveV2Swap pool = ICurveV2Swap(poolAddress);
 
-        IERC20(sellTokenAddress).safeIncreaseAllowance(poolAddress, sellAmount);
+        LibAdapter._approve(IERC20(sellTokenAddress), poolAddress, sellAmount);
 
         return pool.exchange(sellIndex, buyIndex, sellAmount, minBuyAmount);
     }

@@ -156,7 +156,7 @@ contract TellorOracleTest is Test {
     // Testing getting values within smaller timeframe, between 15 minute pricing freshness cut off and 30 min pricing
     //      timeout.
     function test_ReturnPriceWithinSmallerTimeframe() external {
-        _oracle.addTellorRegistration(ETH, QUERY_ID, BaseOracleDenominations.Denomination.ETH, 30 minutes);
+        _oracle.addTellorRegistration(ETH, QUERY_ID, BaseOracleDenominations.Denomination.ETH, 20 minutes);
 
         vm.mockCall(
             TELLOR_ORACLE,
@@ -164,10 +164,9 @@ contract TellorOracleTest is Test {
             abi.encode(true, abi.encodePacked(uint256(1500)), block.timestamp)
         );
 
-        skip(20 minutes);
+        skip(18 minutes);
 
         uint256 value = _oracle.getPriceInEth(ETH);
-        emit log_uint(value);
         assertEq(value, 1500);
     }
 

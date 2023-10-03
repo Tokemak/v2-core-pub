@@ -99,7 +99,7 @@ contract SystemRegistryTest is Test {
     function testSystemRegistryLMPVaultInvalidContractCaught() public {
         // When its not a contract
         address fakeRegistry = vm.addr(2);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeRegistry));
         _systemRegistry.setLMPVaultRegistry(fakeRegistry);
 
         // When it is a contract, just incorrect
@@ -177,7 +177,7 @@ contract SystemRegistryTest is Test {
     function testSystemRegistryDestinationVaultInvalidContractCaught() public {
         // When its not a contract
         address fakeRegistry = vm.addr(2);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeRegistry));
         _systemRegistry.setDestinationVaultRegistry(fakeRegistry);
 
         // When it is a contract, just incorrect
@@ -255,7 +255,7 @@ contract SystemRegistryTest is Test {
     function testSystemRegistryDestinationTemplateInvalidContractCaught() public {
         // When its not a contract
         address fakeRegistry = vm.addr(2);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeRegistry));
         _systemRegistry.setDestinationTemplateRegistry(fakeRegistry);
 
         // When it is a contract, just incorrect
@@ -333,7 +333,7 @@ contract SystemRegistryTest is Test {
     function testSystemRegistryAccessControllerInvalidContractCaught() public {
         // When its not a contract
         address fakeController = vm.addr(2);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeController));
         _systemRegistry.setAccessController(fakeController);
 
         // When it is a contract, just incorrect
@@ -413,7 +413,7 @@ contract SystemRegistryTest is Test {
     function testSystemRegistryStatsCalcRegistryInvalidContractCaught() public {
         // When its not a contract
         address fakeStatsCalcRegistry = vm.addr(2);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeStatsCalcRegistry));
         _systemRegistry.setStatsCalculatorRegistry(fakeStatsCalcRegistry);
 
         // When it is a contract, just incorrect
@@ -477,7 +477,7 @@ contract SystemRegistryTest is Test {
     function testSystemRegistryRootPriceOracleInvalidContractCaught() public {
         // When its not a contract
         address fakeOracle = vm.addr(2);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeOracle));
         _systemRegistry.setRootPriceOracle(fakeOracle);
 
         // When it is a contract, just incorrect
@@ -598,7 +598,7 @@ contract SystemRegistryTest is Test {
     function test_setSwapRouter_CatchesInvalidContract() public {
         // When its not a contract
         address fakeRouter = vm.addr(2);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeRouter));
         _systemRegistry.setRootPriceOracle(fakeRouter);
 
         // When it is a contract, just incorrect
@@ -716,7 +716,7 @@ contract SystemRegistryTest is Test {
     function test_setSystemSecurity_BlocksInvalidContractFromBeingSet() public {
         // When its not a contract
         address fakeComponent = vm.addr(2);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeComponent));
         _systemRegistry.setSystemSecurity(fakeComponent);
 
         // When it is a contract, just incorrect

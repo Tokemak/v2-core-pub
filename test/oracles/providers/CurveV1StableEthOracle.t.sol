@@ -241,6 +241,8 @@ contract CurveV1StableEthOracleTests is Test {
         oracle.getPriceInEth(THREE_CURVE_POOL_MAINNET_LP);
 
         assertEq(pool.admin_balances(0), 0); // Balances transferred out on reentrancy check, should be 0.
+    }
+
     // Check to make sure that ng pools cannot be reentered despite inability to do standard curve reentrancy check.
     function testReentrancyStethEthNgPool() external {
         mockRootPrice(CURVE_ETH, 1e18);

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 < 0.9.0;
 
+import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { IERC20, SafeERC20, Address } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -33,7 +34,7 @@ abstract contract PeripheryPayments {
     receive() external payable { }
 
     function approve(IERC20 token, address to, uint256 amount) public payable {
-        token.safeIncreaseAllowance(to, amount);
+        LibAdapter._approve(token, to, amount);
     }
 
     function unwrapWETH9(uint256 amountMinimum, address recipient) public payable {

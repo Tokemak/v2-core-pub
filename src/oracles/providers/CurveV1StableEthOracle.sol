@@ -16,8 +16,6 @@ import { LibAdapter } from "src/libs/LibAdapter.sol";
 /// @title Price oracle for Curve StableSwap pools
 /// @dev getPriceEth is not a view fn to support reentrancy checks. Don't actually change state.
 contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle {
-    bytes32 public constant LOCK_REVERT_MSG = keccak256(abi.encode("lock"));
-
     ICurveResolver public immutable curveResolver;
 
     struct PoolData {
@@ -32,7 +30,6 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle {
     error NotRegistered(address curveLpToken);
     error InvalidPrice(address token, uint256 price);
     error ResolverMismatch(address providedLP, address queriedLP);
-    error ReadonlyReentrancy(address curvePool);
 
     /// @notice Curve LP tokens and their underlying tokens
     /// @dev lpToken => erc20[]

@@ -29,7 +29,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
     using SafeERC20 for IERC20;
 
     /// @notice The duration of the reward period in blocks.
-    uint256 public durationInBlock;
+    uint256 public immutable durationInBlock;
 
     ///  @notice It is used to determine if the new rewards should be distributed immediately or queued for later. If
     /// the ratio of current rewards to the sum of new and queued rewards is less than newRewardRatio, the new rewards
@@ -203,15 +203,6 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
      */
     function earned(address account) public view returns (uint256) {
         return (balanceOf(account) * (rewardPerToken() - userRewardPerTokenPaid[account]) / 1e18) + rewards[account];
-    }
-
-    /**
-     * @notice Updates the duration of the reward period in blocks.
-     * @param _durationInBlock The new duration of the reward period in blocks.
-     */
-    function setDurationInBlock(uint256 _durationInBlock) external hasRole(Roles.DV_REWARD_MANAGER_ROLE) {
-        durationInBlock = _durationInBlock;
-        emit RewardDurationUpdated(_durationInBlock);
     }
 
     /**

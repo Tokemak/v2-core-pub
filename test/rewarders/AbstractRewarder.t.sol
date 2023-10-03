@@ -553,32 +553,6 @@ contract Earned is AbstractRewarderTest {
     }
 }
 
-contract SetDurationInBlock is AbstractRewarderTest {
-    function test_RevertIf_SenderIsNotRewardManager() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        rewarder.setDurationInBlock(newRewardRatio);
-    }
-
-    function test_UpdateDurationInBlock() public {
-        uint256 durationInBlock = 200;
-
-        vm.prank(operator);
-        rewarder.setDurationInBlock(durationInBlock);
-
-        assertEq(durationInBlock, rewarder.durationInBlock());
-    }
-
-    function test_EmitRewardDurationUpdated() public {
-        uint256 durationInBlock = 200;
-
-        vm.expectEmit(true, true, true, true);
-        emit RewardDurationUpdated(durationInBlock);
-
-        vm.prank(operator);
-        rewarder.setDurationInBlock(durationInBlock);
-    }
-}
-
 contract NotifyRewardAmount is AbstractRewarderTest {
     function test_EmitRewardAdded() public {
         uint256 newReward = 100;

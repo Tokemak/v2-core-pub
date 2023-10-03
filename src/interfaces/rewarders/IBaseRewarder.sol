@@ -88,12 +88,6 @@ interface IBaseRewarder {
     function totalSupply() external view returns (uint256);
 
     /**
-     * @notice Set the duration of reward distribution in blocks.
-     * @param _durationInBlock The duration in blocks.
-     */
-    function setDurationInBlock(uint256 _durationInBlock) external;
-
-    /**
      * @notice Queue new rewards to be distributed.
      * @param newRewards The amount of new rewards to be queued.
      */

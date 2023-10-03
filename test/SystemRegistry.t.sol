@@ -28,6 +28,7 @@ contract SystemRegistryTest is Test {
     event SwapRouterSet(address swapRouter);
     event CurveResolverSet(address curveResolver);
     event SystemSecuritySet(address security);
+    event LMPVaultRouterSet(address router);
 
     function setUp() public {
         _systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
@@ -106,6 +107,46 @@ contract SystemRegistryTest is Test {
         address emptyContract = address(new EmptyContract());
         vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
         _systemRegistry.setLMPVaultRegistry(emptyContract);
+    }
+
+    /* ******************************** */
+    /* LMP Vault Router
+    /* ******************************** */
+
+    function test_OnlyOwner_setLMPVaultRouter() external {
+        address fakeOwner = vm.addr(3);
+        address fakeLMPRouter = vm.addr(4);
+
+        vm.prank(fakeOwner);
+        vm.expectRevert("Ownable: caller is not the owner");
+
+        _systemRegistry.setLMPVaultRouter(fakeLMPRouter);
+    }
+
+    function test_ZeroAddress_setLMPVaultRouter() external {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "lmpVaultRouter"));
+        _systemRegistry.setLMPVaultRouter(address(0));
+    }
+
+    function test_Duplicate_setLMPVaultRouter() external {
+        address fakeLMPRouter = vm.addr(4);
+        mockSystemComponent(fakeLMPRouter);
+
+        _systemRegistry.setLMPVaultRouter(fakeLMPRouter);
+
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.DuplicateSet.selector, fakeLMPRouter));
+        _systemRegistry.setLMPVaultRouter(fakeLMPRouter);
+    }
+
+    function test_WorksProperly_setLMPVaultRouter() external {
+        address fakeLMPRouter = vm.addr(4);
+        mockSystemComponent(fakeLMPRouter);
+
+        vm.expectEmit(false, false, false, true);
+        emit LMPVaultRouterSet(fakeLMPRouter);
+        _systemRegistry.setLMPVaultRouter(fakeLMPRouter);
+
+        assertEq(fakeLMPRouter, address(_systemRegistry.lmpVaultRouter()));
     }
 
     /* ******************************** */

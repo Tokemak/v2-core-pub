@@ -209,6 +209,10 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     function setLMPVaultRouter(address router) external onlyOwner {
         Errors.verifyNotZero(router, "lmpVaultRouter");
 
+        if (address(_lmpVaultRouter) == router) {
+            revert DuplicateSet(router);
+        }
+
         _lmpVaultRouter = ILMPVaultRouter(router);
 
         emit LMPVaultRouterSet(router);

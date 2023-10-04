@@ -213,9 +213,11 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
             revert DuplicateSet(router);
         }
 
+        emit LMPVaultRouterSet(router);
+
         _lmpVaultRouter = ILMPVaultRouter(router);
 
-        emit LMPVaultRouterSet(router);
+        _verifySystemsAgree(router);
     }
 
     /// @notice Set the Destination Vault Registry for this instance of the system

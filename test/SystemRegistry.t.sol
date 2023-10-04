@@ -149,6 +149,28 @@ contract SystemRegistryTest is Test {
         assertEq(fakeLMPRouter, address(_systemRegistry.lmpVaultRouter()));
     }
 
+    function test_SystemMismatch_setLMPVaultRouter() external {
+        address fakeLMPRouter = vm.addr(4);
+        address fakeRegistry = vm.addr(3);
+
+        vm.mockCall(
+            fakeLMPRouter, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(fakeRegistry)
+        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(_systemRegistry), fakeRegistry));
+
+        _systemRegistry.setLMPVaultRouter(fakeLMPRouter);
+    }
+
+    function test_InvalidContract_setLMPVaultRouter() external {
+        address fakeLMPRouter = vm.addr(4);
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeLMPRouter));
+        _systemRegistry.setLMPVaultRouter(fakeLMPRouter);
+
+        address emptyContract = address(new EmptyContract());
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
+        _systemRegistry.setLMPVaultRouter(emptyContract);
+    }
+
     /* ******************************** */
     /* Destination Vault Registry
     /* ******************************** */

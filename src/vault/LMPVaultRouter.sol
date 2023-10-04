@@ -11,17 +11,17 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ILMPVault, ILMPVaultRouter } from "src/interfaces/vault/ILMPVaultRouter.sol";
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 import { LMPVaultRouterBase } from "src/vault/LMPVaultRouterBase.sol";
+import { SystemComponent } from "src/SystemComponent.sol";
 
 /// @title ERC4626Router contract
-contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard {
+contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard, SystemComponent {
     using SafeERC20 for IERC20;
     using Address for address;
 
-    ISystemRegistry private immutable systemRegistry;
-
-    constructor(ISystemRegistry _systemRegistry, address _weth9) LMPVaultRouterBase(_weth9) {
-        systemRegistry = _systemRegistry;
-    }
+    constructor(
+        ISystemRegistry _systemRegistry,
+        address _weth9
+    ) LMPVaultRouterBase(_weth9) SystemComponent(_systemRegistry) { }
 
     // For the below, no approval needed, assumes vault is already max approved
 

@@ -44,7 +44,7 @@ contract BaseTest is Test {
     DestinationVaultRegistry public destinationVaultRegistry;
     DestinationVaultFactory public destinationVaultFactory;
 
-    TestDestinationVault public testDestinationVault;
+    TestDestinationVault public defaultDestinationVault;
 
     IAccessController public accessController;
 

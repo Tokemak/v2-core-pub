@@ -20,9 +20,9 @@ contract LensTest is BaseTest {
 
         address underlyer = address(BaseTest.mockAsset("underlyer", "underlyer", 0));
 
-        testDestinationVault = new TestDestinationVault(systemRegistry,vm.addr(34343), address(baseAsset), underlyer);
+        defaultDestinationVault = new TestDestinationVault(systemRegistry,vm.addr(3434), address(baseAsset), underlyer);
         address[] memory destinations = new address[](1);
-        destinations[0] = address(testDestinationVault);
+        destinations[0] = address(defaultDestinationVault);
 
         destinationVaultRegistry = new DestinationVaultRegistry(systemRegistry);
 

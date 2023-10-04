@@ -225,14 +225,27 @@ contract LiquidationRowTest is Test {
         _mockCalls(vault, amounts, tokens);
     }
 
+    function _mockSimpleScenarioWithTargetToken(address vault) internal {
+        _registerVault(vault);
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 100;
+        amounts[1] = 100;
+
+        address[] memory tokens = new address[](2);
+        tokens[0] = address(rewardToken);
+        tokens[1] = address(targetToken);
+
+        _mockCalls(vault, amounts, tokens);
+    }
+
     /// @dev Mocks the required calls for the claimsVaultRewards calls.
     function _mockCalls(address vault, uint256[] memory amounts, address[] memory tokens) internal {
         for (uint256 i = 0; i < tokens.length; i++) {
-            vm.mockCall(
-                address(tokens[i]),
-                abi.encodeWithSelector(IERC20.balanceOf.selector, address(liquidationRow)),
-                abi.encode(amounts[i])
-            );
+            // Can't mint to address(0) so we skip it
+            if (tokens[i] != address(0)) {
+                TestERC20(tokens[i]).mint(address(liquidationRow), amounts[i]);
+            }
         }
 
         vm.mockCall(
@@ -554,21 +567,6 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
         liquidationRow.liquidateVaultsForToken(address(rewardToken), address(asyncSwapper), vaults, swapParams);
     }
 
-    function test_RevertIf_SellTokenAddressIsTheSameThanBuyTokenAddress() public {
-        liquidationRow.addToWhitelist(address(asyncSwapper));
-
-        _mockSimpleScenario(address(testVault));
-        IDestinationVault[] memory vaults = _initArrayOfOneTestVault();
-        liquidationRow.claimsVaultRewards(vaults);
-
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken), 200, address(targetToken), 200, new bytes(0), new bytes(0));
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParams.selector));
-
-        liquidationRow.liquidateVaultsForToken(address(targetToken), address(asyncSwapper), vaults, swapParams);
-    }
-
     function test_RevertIf_BuytokenaddressIsDifferentThanTheVaultRewarderRewardTokenAddress() public {
         liquidationRow.addToWhitelist(address(asyncSwapper));
 
@@ -597,7 +595,7 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
         liquidationRow.claimsVaultRewards(vaults);
 
         SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), 200, address(targetToken), 200, new bytes(0), new bytes(0));
+            SwapParams(address(rewardToken2), 100, address(targetToken), 100, new bytes(0), new bytes(0));
 
         liquidationRow.liquidateVaultsForToken(address(rewardToken2), address(asyncSwapper), vaults, swapParams);
 
@@ -612,6 +610,27 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
         assertTrue(liquidationRow.totalBalanceOf(address(rewardToken3)) == 100);
         assertTrue(liquidationRow.totalBalanceOf(address(rewardToken4)) == 100);
         assertTrue(liquidationRow.totalBalanceOf(address(rewardToken5)) == 100);
+    }
+
+    function test_AvoidSwapWhenRewardTokenMatchesBaseAsset() public {
+        // Tokens are the same, so exchange rate is 1:1.
+        uint256 amount = 100;
+        SwapParams memory swapParams =
+            SwapParams(address(targetToken), amount, address(targetToken), amount, new bytes(0), new bytes(0));
+
+        liquidationRow.addToWhitelist(address(asyncSwapper));
+        liquidationRow.setFeeAndReceiver(feeReceiver, feeBps);
+
+        _mockSimpleScenarioWithTargetToken(address(testVault));
+        IDestinationVault[] memory vaults = _initArrayOfOneTestVault();
+        liquidationRow.claimsVaultRewards(vaults);
+
+        uint256 balanceBefore = IERC20(targetToken).balanceOf(address(mainRewarder));
+
+        liquidationRow.liquidateVaultsForToken(address(targetToken), address(asyncSwapper), vaults, swapParams);
+
+        uint256 balanceAfter = IERC20(targetToken).balanceOf(address(mainRewarder));
+        assertTrue(balanceAfter - balanceBefore == amount - 50);
     }
 
     function test_EmitFeesTransferedEventWhenFeesFeatureIsTurnedOn() public {

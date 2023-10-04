@@ -170,8 +170,6 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
         IDestinationVault[] memory vaultsToLiquidate,
         SwapParams memory params
     ) external nonReentrant hasRole(Roles.LIQUIDATOR_ROLE) onlyWhitelistedSwapper(asyncSwapper) {
-        if (fromToken == params.buyTokenAddress) revert Errors.InvalidParams();
-
         uint256 gasBefore = gasleft();
 
         (uint256 totalBalanceToLiquidate, uint256[] memory vaultsBalances) =
@@ -249,11 +247,16 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
         uint256[] memory vaultsBalances
     ) private {
         uint256 length = vaultsToLiquidate.length;
-        // the swapper checks that the amount received is greater or equal than the params.buyAmount
-        bytes memory data = asyncSwapper.functionDelegateCall(
-            abi.encodeWithSignature("swap((address,uint256,address,uint256,bytes,bytes))", params), "SwapFailed"
-        );
-        uint256 amountReceived = abi.decode(data, (uint256));
+        uint256 amountReceived = params.buyAmount;
+
+        // Swap only if the sellToken is different than the vault rewardToken
+        if (fromToken != params.buyTokenAddress) {
+            // the swapper checks that the amount received is greater or equal than the params.buyAmount
+            bytes memory data = asyncSwapper.functionDelegateCall(
+                abi.encodeWithSignature("swap((address,uint256,address,uint256,bytes,bytes))", params), "SwapFailed"
+            );
+            amountReceived = abi.decode(data, (uint256));
+        }
 
         // if the fee feature is turned on, send the fee to the fee receiver
         if (feeReceiver != address(0) && feeBps > 0) {

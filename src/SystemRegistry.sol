@@ -396,6 +396,8 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
         _lmpVaultFactoryByType[vaultType] = ILMPVaultFactory(factoryAddress);
 
         emit LMPVaultFactorySet(vaultType, factoryAddress);
+
+        _verifySystemsAgree(factoryAddress);
     }
 
     function removeLMPVaultFactory(bytes32 vaultType) external onlyOwner {

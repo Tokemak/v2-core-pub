@@ -29,6 +29,7 @@ contract SystemRegistryTest is Test {
     event CurveResolverSet(address curveResolver);
     event SystemSecuritySet(address security);
     event LMPVaultRouterSet(address router);
+    event LMPVaultFactorySet(bytes32 vaultType, address factory);
 
     function setUp() public {
         _systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
@@ -786,6 +787,63 @@ contract SystemRegistryTest is Test {
         address emptyContract = address(new EmptyContract());
         vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
         _systemRegistry.setSystemSecurity(emptyContract);
+    }
+
+    /* ******************************** */
+    /* LMP Vault Factory
+    /* ******************************** */
+
+    function test_OnlyOwner_setLMPVaultFactory() external {
+        address fakeLMPFactory = vm.addr(4);
+        vm.prank(vm.addr(1));
+
+        vm.expectRevert("Ownable: caller is not the owner");
+        _systemRegistry.setLMPVaultFactory(bytes32("Test bytes"), fakeLMPFactory);
+    }
+
+    function test_ZeroAddress_setLMPVaultFactory() external {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "factoryAddress"));
+        _systemRegistry.setLMPVaultFactory(bytes32("Test bytes"), address(0));
+    }
+
+    function test_ZeroBytes_setLMPVaultFactory() external {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "vaultType"));
+        _systemRegistry.setLMPVaultFactory(bytes32(0), vm.addr(4));
+    }
+
+    function test_ProperAdd_setLMPVaultFactory() external {
+        bytes32 fakeLMPFactoryBytes = bytes32("Fake LMP");
+        address fakeLMPFactory = vm.addr(4);
+        mockSystemComponent(fakeLMPFactory);
+
+        vm.expectEmit(false, false, false, true);
+        emit LMPVaultFactorySet(fakeLMPFactoryBytes, fakeLMPFactory);
+
+        _systemRegistry.setLMPVaultFactory(fakeLMPFactoryBytes, fakeLMPFactory);
+        assertEq(address(_systemRegistry.getLMPVaultFactoryByType(fakeLMPFactoryBytes)), fakeLMPFactory);
+    }
+
+    function test_SystemMismatch_setLMPVaultFactory() external {
+        address fakeRegistry = vm.addr(3);
+        address fakeLMPFactory = vm.addr(4);
+
+        vm.mockCall(
+            fakeLMPFactory,
+            abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector),
+            abi.encode(fakeRegistry)
+        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(_systemRegistry), fakeRegistry));
+        _systemRegistry.setLMPVaultFactory(bytes32("Test bytes"), fakeLMPFactory);
+    }
+
+    function test_InvalidContract_setLMPVaultFactory() external {
+        address eoa = vm.addr(3);
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, eoa));
+        _systemRegistry.setLMPVaultFactory(bytes32("Test bytes"), eoa);
+
+        address emptyContract = address(new EmptyContract());
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
+        _systemRegistry.setLMPVaultFactory(bytes32("Test bytes"), emptyContract);
     }
 
     /* ******************************** */

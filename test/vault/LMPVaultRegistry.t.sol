@@ -12,7 +12,7 @@ import { LMPVault } from "src/vault/LMPVault.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
 
 contract LMPVaultRegistryTest is BaseTest {
-    LMPVault private vault;
+    LMPVault internal vault;
 
     event VaultAdded(address indexed asset, address indexed vault);
     event VaultRemoved(address indexed asset, address indexed vault);
@@ -27,7 +27,18 @@ contract LMPVaultRegistryTest is BaseTest {
             LMPVault(lmpVaultFactory.createVault(type(uint256).max, type(uint256).max, "x", "y", keccak256("v8"), ""));
     }
 
-    function testAddRemoveVault() public {
+    function _contains(address[] memory arr, address value) internal pure returns (bool) {
+        for (uint256 i = 0; i < arr.length; ++i) {
+            if (arr[i] == value) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+contract AddVault is LMPVaultRegistryTest {
+    function test_AddVault() public {
         vm.expectEmit(true, true, false, true);
         emit VaultAdded(vault.asset(), address(vault));
 
@@ -37,18 +48,9 @@ contract LMPVaultRegistryTest is BaseTest {
         assert(lmpVaultRegistry.listVaultsForAsset(vault.asset()).length > 0);
         assert(lmpVaultRegistry.listVaultsForType(VaultTypes.LST).length > 0);
         assert(_contains(lmpVaultRegistry.listVaults(), address(vault)));
-
-        vm.expectEmit(true, true, false, true);
-        emit VaultRemoved(vault.asset(), address(vault));
-        lmpVaultRegistry.removeVault(address(vault));
-
-        assertFalse(lmpVaultRegistry.isVault(address(vault)));
-        assertEq(lmpVaultRegistry.listVaultsForAsset(vault.asset()).length, 0);
-        assertEq(lmpVaultRegistry.listVaultsForType(VaultTypes.LST).length, 0);
-        assertFalse(_contains(lmpVaultRegistry.listVaults(), address(vault)));
     }
 
-    function testAddMultipleVaults() public {
+    function test_AddMultipleVaults() public {
         vm.expectEmit(true, true, false, true);
         emit VaultAdded(vault.asset(), address(vault));
         lmpVaultRegistry.addVault(address(vault));
@@ -69,7 +71,7 @@ contract LMPVaultRegistryTest is BaseTest {
     }
 
     // Covering https://github.com/Tokemak/2023-06-sherlock-judging/blob/main/068-M/068.md
-    function testAddVaultAfterRemove() public {
+    function test_AddVaultAfterRemove() public {
         vm.expectEmit(true, true, false, true);
         emit VaultAdded(vault.asset(), address(vault));
 
@@ -100,14 +102,44 @@ contract LMPVaultRegistryTest is BaseTest {
         assert(_contains(lmpVaultRegistry.listVaults(), address(vault)));
     }
 
-    function testRevertOnAddingVaultWithNoPermission() public {
+    function test_RevertIf_AddingVaultWithNoPermission() public {
         accessController.revokeRole(Roles.REGISTRY_UPDATER, address(this));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         lmpVaultRegistry.addVault(address(vault));
     }
 
-    function testRevertOnRemovingVaultWithNoPermission() public {
+    function test_RevertIf_AddingExistingVault() public {
+        lmpVaultRegistry.addVault(address(vault));
+
+        vm.expectRevert(abi.encodeWithSelector(ILMPVaultRegistry.VaultAlreadyExists.selector, address(vault)));
+        lmpVaultRegistry.addVault(address(vault));
+    }
+
+    function test_RevertIf_AddingZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "vaultAddress"));
+        lmpVaultRegistry.addVault(address(0));
+    }
+}
+
+contract RemoveVault is LMPVaultRegistryTest {
+    function test_RemoveVault() public {
+        vm.expectEmit(true, true, false, true);
+        emit VaultAdded(vault.asset(), address(vault));
+
+        lmpVaultRegistry.addVault(address(vault));
+
+        vm.expectEmit(true, true, false, true);
+        emit VaultRemoved(vault.asset(), address(vault));
+        lmpVaultRegistry.removeVault(address(vault));
+
+        assertFalse(lmpVaultRegistry.isVault(address(vault)));
+        assertEq(lmpVaultRegistry.listVaultsForAsset(vault.asset()).length, 0);
+        assertEq(lmpVaultRegistry.listVaultsForType(VaultTypes.LST).length, 0);
+        assertFalse(_contains(lmpVaultRegistry.listVaults(), address(vault)));
+    }
+
+    function test_RevertIf_RemovingVaultWithNoPermission() public {
         lmpVaultRegistry.addVault(address(vault));
 
         accessController.revokeRole(Roles.REGISTRY_UPDATER, address(this));
@@ -116,36 +148,17 @@ contract LMPVaultRegistryTest is BaseTest {
         lmpVaultRegistry.removeVault(address(vault));
     }
 
-    function testRevertOnAddingRemovingZeroAddress() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "vaultAddress"));
-        lmpVaultRegistry.addVault(address(0));
-
+    function test_RevertIf_RemovingZeroAddress() public {
         lmpVaultRegistry.addVault(address(vault));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "vaultAddress"));
         lmpVaultRegistry.removeVault(address(0));
     }
 
-    function testRevertOnAddingExistingVault() public {
-        lmpVaultRegistry.addVault(address(vault));
-
-        vm.expectRevert(abi.encodeWithSelector(ILMPVaultRegistry.VaultAlreadyExists.selector, address(vault)));
-        lmpVaultRegistry.addVault(address(vault));
-    }
-
-    function testRevertOnRemovingNonExistingVault() public {
+    function test_RevertIf_RemovingNonExistingVault() public {
         lmpVaultRegistry.addVault(address(vault));
 
         vm.expectRevert(abi.encodeWithSelector(ILMPVaultRegistry.VaultNotFound.selector, address(123)));
         lmpVaultRegistry.removeVault(address(123));
-    }
-
-    function _contains(address[] memory arr, address value) private pure returns (bool) {
-        for (uint256 i = 0; i < arr.length; ++i) {
-            if (arr[i] == value) {
-                return true;
-            }
-        }
-        return false;
     }
 }

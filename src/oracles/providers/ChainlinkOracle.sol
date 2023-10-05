@@ -115,10 +115,12 @@ contract ChainlinkOracle is BaseOracleDenominations {
         if (price <= 0) revert InvalidDataReturned(); // Check before conversion from int to uint.
         uint256 priceUint = uint256(price);
 
+        IOffchainAggregator aggregator = IOffchainAggregator(chainlinkOracle.oracle.aggregator());
+
         if (
             roundId == 0 || updatedAt == 0 || updatedAt > timestamp || updatedAt < timestamp - tokenPricingTimeout
-                || priceUint == uint256(int256(IOffchainAggregator(chainlinkOracle.oracle.aggregator()).maxAnswer()))
-                || priceUint == uint256(int256(IOffchainAggregator(chainlinkOracle.oracle.aggregator()).minAnswer()))
+                || priceUint == uint256(int256(aggregator.maxAnswer()))
+                || priceUint == uint256(int256(aggregator.minAnswer()))
         ) revert InvalidDataReturned();
 
         uint256 decimals = chainlinkOracle.decimals;

@@ -94,6 +94,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
     ) SecurityBase(address(_systemRegistry.accessController())) {
         Errors.verifyNotZero(_stakeTracker, "_stakeTracker");
         Errors.verifyNotZero(_rewardToken, "_rewardToken");
+        Errors.verifyNotZero(_durationInBlock, "_durationInBlock");
 
         systemRegistry = _systemRegistry;
         if (!systemRegistry.isRewardToken(_rewardToken)) {

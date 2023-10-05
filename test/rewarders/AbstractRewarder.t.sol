@@ -96,7 +96,6 @@ contract AbstractRewarderTest is Test {
         uint256 periodInBlockFinish,
         uint256 historicalRewards
     );
-    event RewardDurationUpdated(uint256 rewardDuration);
     event TokeLockDurationUpdated(uint256 newDuration);
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
@@ -283,6 +282,18 @@ contract Constructor is AbstractRewarderTest {
             address(0),
             newRewardRatio,
             durationInBlock
+        );
+    }
+
+    function test_RevertIf_DurationInBlockIsZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "_durationInBlock"));
+
+        new Rewarder(
+            systemRegistry,
+            address(1),
+            address(2),
+            newRewardRatio,
+            0
         );
     }
 }

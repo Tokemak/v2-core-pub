@@ -119,6 +119,8 @@ contract LMPVaultMintingTests is Test {
         address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
 
+    uint256 private constant MAX_FEE_BPS = 10_000;
+
     function setUp() public {
         vm.label(address(this), "testContract");
 
@@ -391,6 +393,9 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.totalDebt(), 0, "totalDebtPre");
         assertEq(_lmpVault.totalIdle(), 0, "totalIdlePre");
 
+        // NOTE: expect a reset of high mark value
+        vm.expectEmit(true, true, true, true);
+        emit NewNavHighWatermark(MAX_FEE_BPS, 1);
         _lmpVault.updateDebtReporting(_destinations);
 
         // Ensure this is still true after reporting
@@ -2062,6 +2067,108 @@ contract LMPVaultMintingTests is Test {
         // vm.expectEmit(true, true, true, true);
         // emit FeeCollected(45, feeSink, 31, 2_249_100, 500, 50);
         _lmpVault.updateDebtReporting(_destinations);
+    }
+
+    function test_updateDebtReporting_HighNavMarkResetWhenVaultEmpties() public {
+        _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
+
+        // 1. User 1 deposits 1000
+
+        _asset.mint(address(this), 1000);
+        _asset.approve(address(_lmpVault), 1000);
+        _lmpVault.deposit(1000, address(this));
+
+        // 2. Rebalance
+
+        // At time of writing LMPVault always returned true for verifyRebalance
+        // Rebalance 1000 baseAsset for 500 underlyerOne+destVaultOne (price is 2:1)
+        _underlyerOne.mint(address(this), 250);
+        _underlyerOne.approve(address(_lmpVault), 250);
+        _lmpVault.rebalance(
+            address(_destVaultOne),
+            address(_underlyerOne), // tokenIn
+            250,
+            address(0), // destinationOut, none when sending out baseAsset
+            address(_asset), // baseAsset, tokenOut
+            500
+        );
+
+        // Setting a sink but not an actual fee yet
+        address feeSink = vm.addr(555);
+        _lmpVault.setFeeSink(feeSink);
+
+        // Dropped 1000 asset in and just did a rebalance. There's no slippage or anything
+        // atm so assets are just moved around, should still be reporting 1000 available
+        uint256 shareBal = _lmpVault.balanceOf(address(this));
+        assertEq(_lmpVault.totalDebt(), 500);
+        assertEq(_lmpVault.totalIdle(), 500);
+        assertEq(_lmpVault.convertToAssets(shareBal), 1000);
+
+        // 3. Increase the value of the DV asset 3x
+
+        // Underlyer1 is currently worth 2 ETH a piece
+        // Lets update the price to 6 ETH (3x) and trigger a debt reporting
+        // and verify our totalDebt and asset conversions match the drop in price
+        _mockRootPrice(address(_underlyerOne), 6e18);
+
+        // 4. Debt report
+        _lmpVault.updateDebtReporting(_destinations);
+
+        // No change in idle
+        assertEq(_lmpVault.totalIdle(), 500);
+        // Debt value per share went 3x so it's a 200% increase. Was 500 before
+        assertEq(_lmpVault.totalDebt(), 1500);
+        // So overall I can get 500 + 1500 back
+        shareBal = _lmpVault.balanceOf(address(this));
+        assertEq(_lmpVault.convertToAssets(shareBal), 2000);
+
+        // 5. Validate nav per share high water is greater than default - this is point A
+
+        uint256 pointA = _lmpVault.navPerShareHighMark();
+        assertGt(pointA, MAX_FEE_BPS);
+
+        // 6. User 1 withdrawal all funds
+        _lmpVault.withdraw(2000, address(this), address(this));
+
+        // 7. Ensure nav per share high water is default
+        assertEq(_lmpVault.navPerShareHighMark(), MAX_FEE_BPS);
+
+        // 8. User 2 deposits
+        address user2 = vm.addr(222_222);
+        vm.label(user2, "user2");
+
+        _asset.mint(user2, 1000);
+        vm.startPrank(user2);
+        _asset.approve(address(_lmpVault), 1000);
+        _lmpVault.deposit(1000, user2);
+
+        // 9. Set value of DV asset to 1x
+        _mockRootPrice(address(_underlyerOne), 2e18);
+
+        // 10. Rebalance
+        vm.startPrank(address(this));
+        _underlyerOne.mint(address(this), 250);
+        _underlyerOne.approve(address(_lmpVault), 250);
+        _lmpVault.rebalance(
+            address(_destVaultOne),
+            address(_underlyerOne), // tokenIn
+            250,
+            address(0), // destinationOut, none when sending out baseAsset
+            address(_asset), // baseAsset, tokenOut
+            500
+        );
+
+        // 11. Increase the value of the DV asset to 2x
+        _mockRootPrice(address(_underlyerOne), 4e18);
+
+        // 12. Debt report
+        _lmpVault.updateDebtReporting(_destinations);
+
+        // 13. Confirm nav share high water mark is greater than default and less than point A
+        uint256 currentHighMark = _lmpVault.navPerShareHighMark();
+        assertGt(currentHighMark, MAX_FEE_BPS);
+        assertLt(currentHighMark, pointA);
     }
 
     function test_updateDebtReporting_FlashRebalanceFeesAreTakenWithoutDoubleDipping() public {

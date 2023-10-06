@@ -491,7 +491,7 @@ contract LMPVault is
                 // It's possible we'll get back more assets than we anticipate from a swap
                 // so if we do, throw it in idle and stop processing. You don't get more than we've calculated
                 if (info.totalAssetsPulled > info.totalAssetsToPull) {
-                    info.idleIncrease = info.totalAssetsPulled - info.totalAssetsToPull;
+                    info.idleIncrease += info.totalAssetsPulled - info.totalAssetsToPull;
                     info.totalAssetsPulled = info.totalAssetsToPull;
                     break;
                 }

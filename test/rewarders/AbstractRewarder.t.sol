@@ -88,7 +88,6 @@ contract AbstractRewarderTest is Test {
     event AddedToWhitelist(address indexed wallet);
     event RemovedFromWhitelist(address indexed wallet);
     event QueuedRewardsUpdated(uint256 startingQueuedRewards, uint256 startingNewRewards, uint256 queuedRewards);
-    event NewRewardRateUpdated(uint256 newRewardRate);
     event RewardAdded(
         uint256 reward,
         uint256 rewardRate,
@@ -296,6 +295,18 @@ contract Constructor is AbstractRewarderTest {
             0
         );
     }
+
+    function test_RevertIf_NewRewardRatioIsZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "_newRewardRatio"));
+
+        new Rewarder(
+            systemRegistry,
+            address(1),
+            address(2),
+            0,
+            durationInBlock
+        );
+    }
 }
 
 contract AddToWhitelist is AbstractRewarderTest {
@@ -469,33 +480,6 @@ contract QueueNewRewards is AbstractRewarderTest {
         assertEq(balanceBefore - balanceAfter, 1000);
 
         vm.stopPrank();
-    }
-}
-
-contract SetNewRewardRate is AbstractRewarderTest {
-    function test_RevertIf_SenderIsNotRewardManager() public {
-        uint256 newRewardRatio = 10;
-        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        rewarder.setNewRewardRate(newRewardRatio);
-    }
-
-    function test_UpdateNewRewardRatio() public {
-        uint256 newRewardRatio = 10;
-
-        vm.prank(operator);
-        rewarder.setNewRewardRate(newRewardRatio);
-
-        assertEq(newRewardRatio, rewarder.newRewardRatio());
-    }
-
-    function test_EmitNewRewardRateUpdated() public {
-        uint256 newRewardRatio = 10;
-
-        vm.expectEmit(true, true, true, true);
-        emit NewRewardRateUpdated(newRewardRatio);
-
-        vm.prank(operator);
-        rewarder.setNewRewardRate(newRewardRatio);
     }
 }
 

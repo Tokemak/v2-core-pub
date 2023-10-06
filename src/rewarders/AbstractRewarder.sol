@@ -34,7 +34,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
     ///  @notice It is used to determine if the new rewards should be distributed immediately or queued for later. If
     /// the ratio of current rewards to the sum of new and queued rewards is less than newRewardRatio, the new rewards
     /// are distributed immediately; otherwise, they are added to the queue.
-    uint256 public newRewardRatio;
+    uint256 public immutable newRewardRatio;
 
     /// @notice An instance of the system registry contract.
     ISystemRegistry internal immutable systemRegistry;
@@ -82,19 +82,20 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
      * @param _systemRegistry Address of the system registry.
      * @param _stakeTracker Address of the stake tracker.
      * @param _rewardToken Address of the reward token.
-     * @param _newRewardRate The new reward rate.
+     * @param _newRewardRatio The new reward rate.
      * @param _durationInBlock The duration of the reward period in blocks.
      */
     constructor(
         ISystemRegistry _systemRegistry,
         address _stakeTracker,
         address _rewardToken,
-        uint256 _newRewardRate,
+        uint256 _newRewardRatio,
         uint256 _durationInBlock
     ) SecurityBase(address(_systemRegistry.accessController())) {
         Errors.verifyNotZero(_stakeTracker, "_stakeTracker");
         Errors.verifyNotZero(_rewardToken, "_rewardToken");
         Errors.verifyNotZero(_durationInBlock, "_durationInBlock");
+        Errors.verifyNotZero(_newRewardRatio, "_newRewardRatio");
 
         systemRegistry = _systemRegistry;
         if (!systemRegistry.isRewardToken(_rewardToken)) {
@@ -102,7 +103,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
         }
         rewardToken = _rewardToken;
         stakeTracker = IStakeTracking(_stakeTracker);
-        newRewardRatio = _newRewardRate;
+        newRewardRatio = _newRewardRatio;
         durationInBlock = _durationInBlock;
     }
 
@@ -204,15 +205,6 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
      */
     function earned(address account) public view returns (uint256) {
         return (balanceOf(account) * (rewardPerToken() - userRewardPerTokenPaid[account]) / 1e18) + rewards[account];
-    }
-
-    /**
-     * @notice Updates the new reward ratio.
-     * @param _newRewardRate The new reward ratio to determine the distribution of rewards.
-     */
-    function setNewRewardRate(uint256 _newRewardRate) external hasRole(Roles.DV_REWARD_MANAGER_ROLE) {
-        newRewardRatio = _newRewardRate;
-        emit NewRewardRateUpdated(_newRewardRate);
     }
 
     /**

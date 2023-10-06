@@ -284,7 +284,7 @@ contract Constructor is AbstractRewarderTest {
         );
     }
 
-    function test_RevertIf_DurationInBlockIsZeroAddress() public {
+    function test_RevertIf_DurationInBlockIsZero() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "_durationInBlock"));
 
         new Rewarder(
@@ -296,7 +296,7 @@ contract Constructor is AbstractRewarderTest {
         );
     }
 
-    function test_RevertIf_NewRewardRatioIsZeroAddress() public {
+    function test_RevertIf_NewRewardRatioIsZero() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "_newRewardRatio"));
 
         new Rewarder(

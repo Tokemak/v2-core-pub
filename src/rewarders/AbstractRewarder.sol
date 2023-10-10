@@ -117,9 +117,8 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
 
         // Do not update lastUpdateBlock if rewardPerTokenStored is 0, to prevent the loss of rewards when supply is 0
         if (rewardPerTokenStored > 0) {
-            lastUpdateBlock = lastBlockRewardApplicable();
-
             if (account != address(0)) {
+                lastUpdateBlock = lastBlockRewardApplicable();
                 earnedRewards = earned(account);
                 rewards[account] = earnedRewards;
                 userRewardPerTokenPaid[account] = rewardPerTokenStored;

@@ -2922,6 +2922,8 @@ contract LMPVaultMintingTests is Test {
             address(_underlyerOne), // tokenOut
             100
         );
+    }
+
     function test_Halborn04_Exploit() public {
         address user1 = makeAddr("USER_1");
         address user2 = makeAddr("USER_2");

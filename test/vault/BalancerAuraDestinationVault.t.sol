@@ -340,7 +340,7 @@ contract BalancerAuraDestinationVaultTests is Test {
 
         assertEq(amounts.length, tokens.length);
         assertEq(tokens.length, 3);
-        assertEq(address(tokens[0]), 0x00dfc9ceEFAf596A0Da2e6A1251215a28147EB5b); // stash token
+        assertEq(address(tokens[0]), address(0)); // stash token
         assertEq(address(tokens[1]), BAL_MAINNET);
         assertEq(address(tokens[2]), AURA_MAINNET);
 

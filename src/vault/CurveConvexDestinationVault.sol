@@ -176,7 +176,8 @@ contract CurveConvexDestinationVault is DestinationVault {
 
     /// @inheritdoc DestinationVault
     function _collectRewards() internal virtual override returns (uint256[] memory amounts, address[] memory tokens) {
-        (amounts, tokens) = ConvexRewards.claimRewards(convexStaking, defaultStakingRewardToken, msg.sender);
+        (amounts, tokens) =
+            ConvexRewards.claimRewards(convexStaking, defaultStakingRewardToken, msg.sender, _trackedTokens);
     }
 
     /// @inheritdoc DestinationVault

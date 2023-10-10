@@ -37,7 +37,7 @@ contract BalancerAuraDestinationVault is DestinationVault {
     IVault public immutable balancerVault;
 
     /// @notice Token minted during reward claiming. Specific to Convex-style rewards. Aura in this case.
-    address public immutable defaultStakingRewardToken;
+    address public immutable defaultRewardToken;
 
     /// @notice Pool tokens changed – possible for Balancer pools with no liquidity
     error PoolTokensChanged(IERC20[] cachedTokens, IERC20[] actualTokens);
@@ -75,7 +75,7 @@ contract BalancerAuraDestinationVault is DestinationVault {
         // slither-disable-next-line missing-zero-check
         balancerVault = IVault(_balancerVault);
         // slither-disable-next-line missing-zero-check
-        defaultStakingRewardToken = _defaultStakingRewardToken;
+        defaultRewardToken = _defaultStakingRewardToken;
     }
 
     /// @inheritdoc DestinationVault
@@ -174,7 +174,7 @@ contract BalancerAuraDestinationVault is DestinationVault {
 
     /// @inheritdoc DestinationVault
     function _collectRewards() internal virtual override returns (uint256[] memory amounts, address[] memory tokens) {
-        (amounts, tokens) = AuraRewards.claimRewards(auraStaking, defaultStakingRewardToken, msg.sender);
+        (amounts, tokens) = AuraRewards.claimRewards(auraStaking, defaultRewardToken, msg.sender, _trackedTokens);
     }
 
     /// @inheritdoc DestinationVault

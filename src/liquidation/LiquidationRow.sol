@@ -246,8 +246,14 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
         uint256 totalBalanceToLiquidate,
         uint256[] memory vaultsBalances
     ) private {
-        uint256 length = vaultsToLiquidate.length;
+        // Ensure the amount to liquidate matches the vault balance.
+        // If not, either the vault balance changed or swapper parameters are incorrect.
+        if (params.sellAmount != totalBalanceToLiquidate) {
+            revert SellAmountMismatch(totalBalanceToLiquidate, params.sellAmount);
+        }
+
         uint256 amountReceived = params.buyAmount;
+        uint256 length = vaultsToLiquidate.length;
 
         // Swap only if the sellToken is different than the vault rewardToken
         if (fromToken != params.buyTokenAddress) {
@@ -255,7 +261,11 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
             bytes memory data = asyncSwapper.functionDelegateCall(
                 abi.encodeWithSignature("swap((address,uint256,address,uint256,bytes,bytes))", params), "SwapFailed"
             );
+
             amountReceived = abi.decode(data, (uint256));
+        } else {
+            // Ensure that if no swap is needed, the sell and buy amounts are the same.
+            if (params.sellAmount != params.buyAmount) revert AmountsMismatch(params.sellAmount, params.buyAmount);
         }
 
         // if the fee feature is turned on, send the fee to the fee receiver

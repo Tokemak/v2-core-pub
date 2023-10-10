@@ -16,6 +16,8 @@ interface ILiquidationRow {
     error NothingToLiquidate();
     error InvalidRewardToken();
     error FeeTooHigh();
+    error SellAmountMismatch(uint256 totalBalanceToLiquidate, uint256 buyAmount);
+    error AmountsMismatch(uint256 sellAmount, uint256 buyAmount);
 
     /**
      * @notice Claim rewards from a list of vaults

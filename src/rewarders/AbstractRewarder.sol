@@ -245,7 +245,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
 
         rewardRate = reward / durationInBlock;
         // If `reward` < `durationInBlock`, it will result in a `rewardRate` of 0, which we want to prevent.
-        if (rewardRate == 0) revert Errors.ZeroAmount();
+        if (rewardRate <= 0) revert Errors.ZeroAmount();
 
         currentRewards = reward;
         lastUpdateBlock = block.number;

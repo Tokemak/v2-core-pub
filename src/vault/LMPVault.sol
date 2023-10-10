@@ -639,7 +639,12 @@ contract LMPVault is
         return totalAssets() > 0 || totalSupply() == 0;
     }
 
-    function updateDebtReporting(address[] calldata _destinations) external nonReentrant trackNavOps {
+    function updateDebtReporting(address[] calldata _destinations)
+        external
+        nonReentrant
+        hasRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE)
+        trackNavOps
+    {
         _updateDebtReporting(_destinations);
     }
 

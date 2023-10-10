@@ -393,6 +393,7 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.totalDebt(), 0, "totalDebtPre");
         assertEq(_lmpVault.totalIdle(), 0, "totalIdlePre");
 
+        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
         _lmpVault.updateDebtReporting(_destinations);
 
         // Ensure this is still true after reporting
@@ -1591,6 +1592,7 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.totalDebt(), 0);
         assertEq(_lmpVault.totalIdle(), 0);
 
+        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
         _lmpVault.updateDebtReporting(_destinations);
 
         // Ensure this is still true after reporting
@@ -1698,6 +1700,7 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.totalDebt(), 0);
         assertEq(_lmpVault.totalIdle(), 0);
 
+        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
         _lmpVault.updateDebtReporting(_destinations);
 
         // Ensure this is still true after reporting
@@ -1990,6 +1993,7 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.totalDebt(), 0);
         assertEq(_lmpVault.totalIdle(), 0);
 
+        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
         _lmpVault.updateDebtReporting(_destinations);
 
         // Ensure this is still true after reporting
@@ -2020,9 +2024,20 @@ contract LMPVaultMintingTests is Test {
         );
     }
 
+    function test_updateDebtReporting_OnlyCallableByRole() external {
+        assertEq(_accessController.hasRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this)), false);
+
+        address[] memory fakeDestinations = new address[](1);
+        fakeDestinations[0] = vm.addr(1);
+
+        vm.expectRevert(Errors.AccessDenied.selector);
+        _lmpVault.updateDebtReporting(fakeDestinations);
+    }
+
     function test_updateDebtReporting_FeesAreTakenWithoutDoubleDipping() public {
         _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
         _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
 
         // User is going to deposit 1000 asset
         _asset.mint(address(this), 1000);
@@ -2253,6 +2268,7 @@ contract LMPVaultMintingTests is Test {
     function test_updateDebtReporting_FlashRebalanceFeesAreTakenWithoutDoubleDipping() public {
         _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
         _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
 
         FlashRebalancer rebalancer = new FlashRebalancer();
 
@@ -2389,6 +2405,7 @@ contract LMPVaultMintingTests is Test {
 
     function test_updateDebtReporting_EarnedRewardsAreFactoredIn() public {
         _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
 
         // Going to work with two users for this one to test partial ownership
         // Both users get 1000 asset initially
@@ -2645,6 +2662,7 @@ contract LMPVaultMintingTests is Test {
 
     function test_updateDebtReporting_FlashRebalanceEarnedRewardsAreFactoredIn() public {
         _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
         FlashRebalancer rebalancer = new FlashRebalancer();
 
         // Going to work with two users for this one to test partial ownership

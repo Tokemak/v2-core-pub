@@ -37,4 +37,6 @@ library Roles {
     bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
 
     bytes32 public constant LSD_BACKING_UPDATER = keccak256("LSD_BACKING_UPDATER");
+
+    bytes32 public constant LMP_UPDATE_DEBT_REPORTING_ROLE = keccak256("LMP_UPDATE_DEBT_REPORTING_ROLE");
 }

@@ -150,6 +150,26 @@ contract SystemRegistryTest is Test {
         assertEq(fakeLMPRouter, address(_systemRegistry.lmpVaultRouter()));
     }
 
+    function test_SetMultipleTimes_setLMPVaultRouter() external {
+        address fakeLMPRouter1 = vm.addr(4);
+        address fakeLMPRouter2 = vm.addr(5);
+
+        mockSystemComponent(fakeLMPRouter1);
+        mockSystemComponent(fakeLMPRouter2);
+
+        // First set
+        vm.expectEmit(false, false, false, true);
+        emit LMPVaultRouterSet(fakeLMPRouter1);
+        _systemRegistry.setLMPVaultRouter(fakeLMPRouter1);
+        assertEq(fakeLMPRouter1, address(_systemRegistry.lmpVaultRouter()));
+
+        // Second set
+        vm.expectEmit(false, false, false, true);
+        emit LMPVaultRouterSet(fakeLMPRouter2);
+        _systemRegistry.setLMPVaultRouter(fakeLMPRouter2);
+        assertEq(fakeLMPRouter2, address(_systemRegistry.lmpVaultRouter()));
+    }
+
     function test_SystemMismatch_setLMPVaultRouter() external {
         address fakeLMPRouter = vm.addr(4);
         address fakeRegistry = vm.addr(3);

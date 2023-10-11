@@ -547,7 +547,7 @@ contract LMPVault is
         return returnedAssets;
     }
 
-    function claimRewards() public whenNotPaused {
+    function claimRewards() public {
         rewarder.getReward(msg.sender, true);
     }
 

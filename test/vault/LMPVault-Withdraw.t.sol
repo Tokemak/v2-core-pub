@@ -2981,6 +2981,27 @@ contract LMPVaultMintingTests is Test {
         assertEq(_toke.balanceOf(user3), 0);
     }
 
+    /// Based on @dev https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/219-M/219.md
+    function test_OverWalletLimitIsDisabledWhenBurningToken() public {
+        // Mint 1000 tokens to the test address
+        _asset.mint(address(this), 1000);
+
+        // Approve the Vault to spend the 1000 tokens on behalf of this address
+        _asset.approve(address(_lmpVault), 1000);
+
+        // Deposit the 1000 tokens into the Vault
+        _lmpVault.deposit(1000, address(this));
+
+        // Set the per-wallet share limit to 500 tokens
+        _lmpVault.setPerWalletLimit(500);
+
+        // Define the fee sink address
+        _lmpVault.setFeeSink(makeAddr("FEE_SINK"));
+
+        // Try to withdraw (burn) 1000 tokens - this should NOT revert if the limit is disabled when burning tokens
+        _lmpVault.withdraw(1000, address(this), address(this));
+    }
+
     function _mockSystemBound(address registry, address addr) internal {
         vm.mockCall(addr, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(registry));
     }

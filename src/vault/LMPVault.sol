@@ -858,7 +858,7 @@ contract LMPVault is
 
         // Make sure the destination wallet total share balance doesn't go above the
         // current perWalletLimit, except for the feeSink
-        if (balanceOf(to) + amount > perWalletLimit && to != feeSink) {
+        if (to != feeSink && to != address(0) && balanceOf(to) + amount > perWalletLimit) {
             revert OverWalletLimit(to);
         }
 

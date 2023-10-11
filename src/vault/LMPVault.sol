@@ -836,7 +836,12 @@ contract LMPVault is
             fees = profit.mulDiv(performanceFeeBps, (MAX_FEE_BPS ** 2), Math.Rounding.Up);
             if (fees > 0 && sink != address(0)) {
                 // Calculated separate from other mints as normal share mint is round down
-                shares = _convertToShares(fees, Math.Rounding.Up);
+                shares = Math.mulDiv(
+                    profit * performanceFeeBps,
+                    totalSupply,
+                    (totalAssets() * MAX_FEE_BPS) - (performanceFeeBps * profit),
+                    Math.Rounding.Up
+                );
                 _mint(sink, shares);
                 emit Deposit(address(this), sink, fees, shares);
             }

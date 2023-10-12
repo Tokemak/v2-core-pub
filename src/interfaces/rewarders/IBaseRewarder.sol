@@ -61,6 +61,12 @@ interface IBaseRewarder {
     function rewardRate() external view returns (uint256);
 
     /**
+     * @notice Get the current TOKE lock duration.
+     * @return The current TOKE lock duration.
+     */
+    function tokeLockDuration() external view returns (uint256);
+
+    /**
      * @notice Get the last block where rewards are applicable.
      * @return The last block number where rewards are applicable.
      */

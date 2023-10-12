@@ -96,13 +96,17 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
         _stake(amount, duration, msg.sender);
     }
 
+    /// @inheritdoc IGPToke
+    function isStakableAmount(uint256 amount) public pure returns (bool) {
+        return amount >= MIN_STAKE_AMOUNT && amount <= MAX_STAKE_AMOUNT;
+    }
+
     function _stake(uint256 amount, uint256 duration, address to) internal whenNotPaused {
         //
         // validation checks
         //
         if (to == address(0)) revert ZeroAddress();
-        if (amount < MIN_STAKE_AMOUNT) revert StakingAmountInsufficient();
-        if (amount > MAX_STAKE_AMOUNT) revert StakingAmountExceeded();
+        if (!isStakableAmount(amount)) revert IncorrectStakingAmount();
 
         // duration checked inside previewPoints
         (uint256 points, uint256 end) = previewPoints(amount, duration);

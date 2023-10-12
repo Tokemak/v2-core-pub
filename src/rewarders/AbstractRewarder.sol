@@ -327,18 +327,22 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
         // slither-disable-next-line incorrect-equality
         if (reward == 0) return;
 
-        rewards[account] = 0;
-        emit RewardPaid(account, reward);
-
         // if NOT toke, or staking is turned off (by duration = 0), just send reward back
         if (rewardToken != tokeAddress || tokeLockDuration == 0) {
+            rewards[account] = 0;
+            emit RewardPaid(account, reward);
+
             IERC20(rewardToken).safeTransfer(account, reward);
         } else {
-            // authorize gpToke to get our reward Toke
-            LibAdapter._approve(IERC20(tokeAddress), address(gpToke), reward);
+            if (gpToke.isStakableAmount(reward)) {
+                rewards[account] = 0;
+                emit RewardPaid(account, reward);
+                // authorize gpToke to get our reward Toke
+                LibAdapter._approve(IERC20(tokeAddress), address(gpToke), reward);
 
-            // stake Toke
-            gpToke.stake(reward, tokeLockDuration, account);
+                // stake Toke
+                gpToke.stake(reward, tokeLockDuration, account);
+            }
         }
     }
 

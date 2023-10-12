@@ -29,8 +29,7 @@ interface IGPToke {
     error StakingDurationTooShort();
     error StakingDurationTooLong();
     error StakingPointsExceeded();
-    error StakingAmountExceeded();
-    error StakingAmountInsufficient();
+    error IncorrectStakingAmount();
     error InsufficientFunds();
     error LockupDoesNotExist();
     error NotUnlockableYet();
@@ -146,4 +145,7 @@ interface IGPToke {
 
     /// @notice Claim rewards for the caller
     function collectRewards() external returns (uint256);
+
+    /// @notice Check if amount can be staked
+    function isStakableAmount(uint256 amount) external pure returns (bool);
 }

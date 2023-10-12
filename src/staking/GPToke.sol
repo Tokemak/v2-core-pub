@@ -226,10 +226,15 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
     /// @notice Allows an actor to deposit ETH as staking reward to be distributed to all staked participants
     /// @param amount Amount of `WETH` to take from caller and deposit as reward for the stakers
     function addWETHRewards(uint256 amount) external whenNotPaused {
-        _addWETHRewards(amount, false);
+        // update accounting to factor in new rewards
+        _addWETHRewards(amount);
+        // actually transfer WETH
+        weth.safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    function _addWETHRewards(uint256 amount, bool skipTransfer) internal whenNotPaused {
+    /// @dev Internal function used by both `addWETHRewards` external and the `receive()` function
+    /// @param amount See {IGPToke-addWETHRewards}.
+    function _addWETHRewards(uint256 amount) internal whenNotPaused {
         Errors.verifyNotZero(amount, "amount");
 
         uint256 supply = totalSupply();
@@ -243,10 +248,6 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
         accRewardPerShare += amount * REWARD_FACTOR / supply;
 
         emit RewardsAdded(amount, accRewardPerShare);
-
-        if (!skipTransfer) {
-            weth.safeTransferFrom(msg.sender, address(this), amount);
-        }
     }
 
     /// @inheritdoc IGPToke
@@ -327,9 +328,10 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
 
     /// @notice Catch-all. If any eth is sent, wrap and add to rewards
     receive() external payable {
+        // update accounting to factor in new rewards
+        // NOTE: doing it in this order keeps slither happy
+        _addWETHRewards(msg.value);
         // appreciate the ETH! wrap and add as rewards
         weth.deposit{ value: msg.value }();
-
-        _addWETHRewards(msg.value, true);
     }
 }

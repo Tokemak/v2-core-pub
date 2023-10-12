@@ -3,6 +3,7 @@
 pragma solidity 0.8.17;
 
 import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard.sol";
+import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
@@ -21,6 +22,8 @@ import { Errors } from "src/utils/Errors.sol";
  * from ExtraRewarder contracts.
  */
 contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     /// @notice True if additional reward tokens/contracts are allowed to be added
     /// @dev Destination Vaults should not allow extras. LMP should.
     bool public immutable allowExtraRewards;
@@ -28,15 +31,10 @@ contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
     /// @notice An instance of the stake tracking contract
     address public immutable stakeTracker;
 
-    address[] public extraRewards;
+    EnumerableSet.AddressSet private _extraRewards;
 
     uint256 private _totalSupply;
     mapping(address => uint256) private _balances;
-
-    error ExtraRewardsNotAllowed();
-
-    event ExtraRewardAdded(address reward);
-    event ExtraRewardsCleared();
 
     constructor(
         ISystemRegistry _systemRegistry,
@@ -62,7 +60,7 @@ contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
     }
 
     function extraRewardsLength() external view returns (uint256) {
-        return extraRewards.length;
+        return _extraRewards.length();
     }
 
     function addExtraReward(address reward) external hasRole(Roles.DV_REWARD_MANAGER_ROLE) {
@@ -71,29 +69,50 @@ contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
         }
         Errors.verifyNotZero(reward, "reward");
 
-        extraRewards.push(reward);
+        if (!_extraRewards.add(reward)) {
+            revert Errors.ItemExists();
+        }
 
         emit ExtraRewardAdded(reward);
     }
 
     function getExtraRewarder(uint256 index) external view returns (IExtraRewarder rewarder) {
-        return IExtraRewarder(extraRewards[index]);
+        return IExtraRewarder(_extraRewards.at(index));
+    }
+
+    function removeExtraRewards(address[] calldata _rewards) external hasRole(Roles.DV_REWARD_MANAGER_ROLE) {
+        uint256 length = _rewards.length;
+        for (uint256 i = 0; i < length; ++i) {
+            if (!_extraRewards.remove(_rewards[i])) {
+                revert Errors.ItemNotFound();
+            }
+            emit ExtraRewardRemoved(_rewards[i]);
+        }
     }
 
     function clearExtraRewards() external hasRole(Roles.DV_REWARD_MANAGER_ROLE) {
-        delete extraRewards;
+        while (_extraRewards.length() > 0) {
+            if (!_extraRewards.remove(_extraRewards.at(_extraRewards.length() - 1))) {
+                revert Errors.ItemNotFound();
+            }
+        }
 
         emit ExtraRewardsCleared();
+    }
+
+    function extraRewards() external view returns (address[] memory) {
+        return _extraRewards.values();
     }
 
     function withdraw(address account, uint256 amount, bool claim) public onlyStakeTracker {
         _updateReward(account);
         _withdraw(account, amount);
 
-        for (uint256 i = 0; i < extraRewards.length; ++i) {
+        uint256 length = _extraRewards.length();
+        for (uint256 i = 0; i < length; ++i) {
             // No need to worry about reentrancy here
             // slither-disable-next-line reentrancy-no-eth
-            IExtraRewarder(extraRewards[i]).withdraw(account, amount);
+            IExtraRewarder(_extraRewards.at(i)).withdraw(account, amount);
         }
 
         if (claim) {
@@ -109,10 +128,11 @@ contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
         _updateReward(account);
         _stake(account, amount);
 
-        for (uint256 i = 0; i < extraRewards.length; ++i) {
+        uint256 length = _extraRewards.length();
+        for (uint256 i = 0; i < length; ++i) {
             // No need to worry about reentrancy here
             // slither-disable-next-line reentrancy-no-eth
-            IExtraRewarder(extraRewards[i]).stake(account, amount);
+            IExtraRewarder(_extraRewards.at(i)).stake(account, amount);
         }
 
         // slither-disable-next-line events-maths
@@ -143,11 +163,12 @@ contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
 
     function _processRewards(address account, bool claimExtras) internal {
         _getReward(account);
+        uint256 length = _extraRewards.length();
 
         //also get rewards from linked rewards
         if (claimExtras) {
-            for (uint256 i = 0; i < extraRewards.length; ++i) {
-                IExtraRewarder(extraRewards[i]).getReward(account);
+            for (uint256 i = 0; i < length; ++i) {
+                IExtraRewarder(_extraRewards.at(i)).getReward(account);
             }
         }
     }

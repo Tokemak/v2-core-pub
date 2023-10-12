@@ -12,7 +12,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
-import { MainRewarder } from "src/rewarders/MainRewarder.sol";
+import { MainRewarder, IMainRewarder } from "src/rewarders/MainRewarder.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { IStakeTracking } from "src/interfaces/rewarders/IStakeTracking.sol";
 import { Errors } from "src/utils/Errors.sol";
@@ -29,7 +29,11 @@ contract MainRewarderTest is Test {
     uint256 public durationInBlock = 100_000;
     uint256 public totalSupply = 100;
 
-    function setUp() public {
+    event ExtraRewardAdded(address reward);
+    event ExtraRewardsCleared();
+    event ExtraRewardRemoved(address reward);
+
+    function setUp() public virtual {
         systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
         AccessController accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
@@ -37,6 +41,7 @@ contract MainRewarderTest is Test {
         stakeTracker = makeAddr("STAKE_TRACKER");
 
         accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
+        accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
 
         // We use mock since this function is called not from owner and
         // SystemRegistry.addRewardToken is not accessible from the ownership perspective
@@ -52,6 +57,108 @@ contract MainRewarderTest is Test {
             durationInBlock,
             true
         );
+    }
+}
+
+contract AddExtraReward is MainRewarderTest {
+    function test_RevertIf_ExtraRewardsNotAllowed() public {
+        MainRewarder mainRewarder = new MainRewarder(
+            systemRegistry,
+            address(stakeTracker),
+            address(rewardToken),
+            newRewardRatio,
+            durationInBlock,
+            false
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(IMainRewarder.ExtraRewardsNotAllowed.selector));
+        mainRewarder.addExtraReward(makeAddr("EXTRA_REWARD"));
+    }
+
+    function test_RevertIf_ExtraRewardIsZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "reward"));
+        rewarder.addExtraReward(address(0));
+    }
+
+    function test_RevertIf_ItemExists() public {
+        address extraReward = makeAddr("EXTRA_REWARD");
+        rewarder.addExtraReward(extraReward);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ItemExists.selector));
+        rewarder.addExtraReward(extraReward);
+    }
+
+    function test_EmitExtraRewardAddedEvent() public {
+        address extraReward = makeAddr("EXTRA_REWARD");
+
+        vm.expectEmit(true, true, true, true);
+        emit ExtraRewardAdded(extraReward);
+        rewarder.addExtraReward(extraReward);
+    }
+
+    function test_AddTheGivenExtraReward() public {
+        assertEq(rewarder.extraRewardsLength(), 0, "extraRewardsLength before");
+        rewarder.addExtraReward(makeAddr("EXTRA_REWARD"));
+        assertEq(rewarder.extraRewardsLength(), 1, "extraRewardsLength after");
+    }
+}
+
+contract RemoveExtraRewards is MainRewarderTest {
+    function test_RevertIf_ItemNotFound() public {
+        address[] memory rewardsToRemove = new address[](1);
+        rewardsToRemove[0] = makeAddr("NON_EXISTENT_REWARDER");
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ItemNotFound.selector));
+        rewarder.removeExtraRewards(rewardsToRemove);
+    }
+
+    function test_EmitExtraRewardRemovedEvent() public {
+        address extraReward = makeAddr("EXTRA_REWARDER");
+        rewarder.addExtraReward(extraReward);
+
+        address[] memory rewardsToRemove = new address[](1);
+        rewardsToRemove[0] = extraReward;
+
+        vm.expectEmit(true, true, true, true);
+        emit ExtraRewardRemoved(extraReward);
+        rewarder.removeExtraRewards(rewardsToRemove);
+    }
+
+    function test_RemovedTheGivenRewards() public {
+        address extraReward1 = makeAddr("EXTRA_REWARDER1");
+        address extraReward2 = makeAddr("EXTRA_REWARDER2");
+        rewarder.addExtraReward(extraReward1);
+        rewarder.addExtraReward(extraReward2);
+
+        assertEq(rewarder.extraRewardsLength(), 2, "extraRewardsLength before removal");
+
+        address[] memory rewardsToRemove = new address[](2);
+        rewardsToRemove[0] = extraReward1;
+        rewardsToRemove[1] = extraReward2;
+
+        rewarder.removeExtraRewards(rewardsToRemove);
+        assertEq(rewarder.extraRewardsLength(), 0, "extraRewardsLength after removal");
+    }
+}
+
+contract ClearExtraRewards is MainRewarderTest {
+    function setUp() public override {
+        super.setUp();
+        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_1"));
+        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_2"));
+        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_3"));
+    }
+
+    function test_EmitExtraRewardsClearedEvent() public {
+        vm.expectEmit(true, true, true, true);
+        emit ExtraRewardsCleared();
+        rewarder.clearExtraRewards();
+    }
+
+    function test_ClearAllExtraRewards() public {
+        assertEq(rewarder.extraRewardsLength(), 3, "extraRewardsLength before");
+        rewarder.clearExtraRewards();
+        assertEq(rewarder.extraRewardsLength(), 0, "extraRewardsLength after");
     }
 }
 

@@ -6,6 +6,12 @@ import { IBaseRewarder } from "./IBaseRewarder.sol";
 import { IExtraRewarder } from "src/interfaces/rewarders/IExtraRewarder.sol";
 
 interface IMainRewarder is IBaseRewarder {
+    error ExtraRewardsNotAllowed();
+
+    event ExtraRewardAdded(address reward);
+    event ExtraRewardsCleared();
+    event ExtraRewardRemoved(address reward);
+
     /**
      * @notice Adds an ExtraRewarder contract address to the extraRewards array.
      * @param reward The address of the ExtraRewarder contract.

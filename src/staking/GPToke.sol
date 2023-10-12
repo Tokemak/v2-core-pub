@@ -10,6 +10,7 @@ import { ERC20Votes } from "openzeppelin-contracts/token/ERC20/extensions/ERC20V
 import { ERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import { Ownable } from "openzeppelin-contracts/access/Ownable.sol";
 import { Pausable } from "openzeppelin-contracts/security/Pausable.sol";
+import { SafeCast } from "openzeppelin-contracts/utils/math/SafeCast.sol";
 
 import { PRBMathUD60x18 } from "prb-math/contracts/PRBMathUD60x18.sol";
 
@@ -114,7 +115,7 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
         _collectRewards(to, false);
 
         // save information for current lockup
-        lockups[to].push(Lockup({ amount: uint128(amount), end: uint128(end), points: points }));
+        lockups[to].push(Lockup({ amount: SafeCast.toUint128(amount), end: SafeCast.toUint128(end), points: points }));
 
         // create points for user
         _mint(to, points);
@@ -170,7 +171,7 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
         (uint256 newPoints, uint256 newEnd) = previewPoints(oldAmount, duration);
 
         if (newEnd <= oldEnd) revert ExtendDurationTooShort();
-        lockup.end = uint128(newEnd);
+        lockup.end = SafeCast.toUint128(newEnd);
         lockup.points = newPoints;
         lockups[msg.sender][lockupId] = lockup;
         // issue extra points for extension

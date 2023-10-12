@@ -226,6 +226,10 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
     /// @notice Allows an actor to deposit ETH as staking reward to be distributed to all staked participants
     /// @param amount Amount of `WETH` to take from caller and deposit as reward for the stakers
     function addWETHRewards(uint256 amount) external whenNotPaused {
+        _addWETHRewards(amount, false);
+    }
+
+    function _addWETHRewards(uint256 amount, bool skipTransfer) internal whenNotPaused {
         Errors.verifyNotZero(amount, "amount");
 
         uint256 supply = totalSupply();
@@ -240,7 +244,9 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
 
         emit RewardsAdded(amount, accRewardPerShare);
 
-        weth.safeTransferFrom(msg.sender, address(this), amount);
+        if (!skipTransfer) {
+            weth.safeTransferFrom(msg.sender, address(this), amount);
+        }
     }
 
     /// @inheritdoc IGPToke
@@ -323,6 +329,7 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
     receive() external payable {
         // appreciate the ETH! wrap and add as rewards
         weth.deposit{ value: msg.value }();
-        GPToke(payable(this)).addWETHRewards(msg.value);
+
+        _addWETHRewards(msg.value, true);
     }
 }

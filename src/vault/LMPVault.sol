@@ -823,11 +823,6 @@ contract LMPVault is
         // If there's no supply then there should be no assets and so nothing
         // to actually take fees on
         if (totalSupply == 0) {
-            // reset navPerShareHighMark
-            navPerShareHighMark = MAX_FEE_BPS;
-
-            emit NewNavHighWatermark(navPerShareHighMark, block.timestamp);
-
             return;
         }
 

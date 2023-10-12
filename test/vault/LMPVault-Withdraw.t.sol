@@ -393,9 +393,6 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.totalDebt(), 0, "totalDebtPre");
         assertEq(_lmpVault.totalIdle(), 0, "totalIdlePre");
 
-        // NOTE: expect a reset of high mark value
-        vm.expectEmit(true, true, true, true);
-        emit NewNavHighWatermark(MAX_FEE_BPS, 1);
         _lmpVault.updateDebtReporting(_destinations);
 
         // Ensure this is still true after reporting

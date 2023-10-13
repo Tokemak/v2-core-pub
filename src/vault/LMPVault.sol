@@ -836,10 +836,13 @@ contract LMPVault is
             fees = profit.mulDiv(performanceFeeBps, (MAX_FEE_BPS ** 2), Math.Rounding.Up);
             if (fees > 0 && sink != address(0)) {
                 // Calculated separate from other mints as normal share mint is round down
+                // Note: We use Lido's formula: from https://docs.lido.fi/guides/lido-tokens-integration-guide/#fees
+                // suggested by: https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/486-H/624-best.md
+                // but we scale down `profit` by MAX_FEE_BPS
                 shares = Math.mulDiv(
-                    profit * performanceFeeBps,
+                    performanceFeeBps * profit / MAX_FEE_BPS,
                     totalSupply,
-                    (totalAssets() * MAX_FEE_BPS) - (performanceFeeBps * profit),
+                    (totalAssets() * MAX_FEE_BPS) - (performanceFeeBps * profit / MAX_FEE_BPS),
                     Math.Rounding.Up
                 );
                 _mint(sink, shares);

@@ -2020,19 +2020,20 @@ contract LMPVaultMintingTests is Test {
 
         // From 2.5 to 3 or a 20% increase
         // Debt was at 625, so we have 125 profit
-        // 1250 nav @ 1000 shares, 25*1000/1250, 20 new shares to us
+        // 1250 nav @ 1000 shares,
+        // 25*1000/1250, 20 (+1 taking into account the new totalSupply after mint) new shares to us
         _mockRootPrice(address(_underlyerOne), 3e18);
         vm.expectEmit(true, true, true, true);
-        emit FeeCollected(25, feeSink, 20, 1_250_000, 500, 750);
+        emit FeeCollected(25, feeSink, 21, 1_250_000, 500, 750);
         _lmpVault.updateDebtReporting(_destinations);
         shareBal = _lmpVault.balanceOf(address(this));
         // Previously 625 but with 125 increase
         assertEq(_lmpVault.totalDebt(), 750);
         // Fees come from extra minted shares, idle shouldn't change
         assertEq(_lmpVault.totalIdle(), 500);
-        // 20 Extra shares were minted to cover the fees. That's 1020 shares now
-        // for 1250 assets. 1000*1250/1020
-        assertEq(_lmpVault.convertToAssets(shareBal), 1225);
+        // 20+1 Extra shares were minted to cover the fees. That's 1020+1 shares now
+        // for 1224 assets. 1000*1250/1021
+        assertEq(_lmpVault.convertToAssets(shareBal), 1224);
 
         // Debt report again with no changes, make sure we don't double dip fee's
         vm.expectEmit(true, true, true, true);
@@ -2258,19 +2259,20 @@ contract LMPVaultMintingTests is Test {
 
         // From 2.5 to 3 or a 20% increase
         // Debt was at 625, so we have 125 profit
-        // 1250 nav @ 1000 shares, 25*1000/1250, 20 new shares to us
+        // 1250 nav @ 1000 shares,
+        // 25*1000/1250, 20 (+1 taking into account the new totalSupply after mint) new shares to us
         _mockRootPrice(address(_underlyerOne), 3e18);
         vm.expectEmit(true, true, true, true);
-        emit FeeCollected(25, feeSink, 20, 1_250_000, 500, 750);
+        emit FeeCollected(25, feeSink, 21, 1_250_000, 500, 750);
         _lmpVault.updateDebtReporting(_destinations);
         shareBal = _lmpVault.balanceOf(address(this));
         // Previously 625 but with 125 increase
         assertEq(_lmpVault.totalDebt(), 750);
         // Fees come from extra minted shares, idle shouldn't change
         assertEq(_lmpVault.totalIdle(), 500);
-        // 20 Extra shares were minted to cover the fees. That's 1020 shares now
-        // for 1250 assets. 1000*1250/1020
-        assertEq(_lmpVault.convertToAssets(shareBal), 1225);
+        // 21 Extra shares were minted to cover the fees. That's 1021 shares now
+        // for 1250 assets. 1000*1250/1021
+        assertEq(_lmpVault.convertToAssets(shareBal), 1224);
 
         // Debt report again with no changes, make sure we don't double dip fee's
         vm.expectEmit(true, true, true, true);
@@ -2293,14 +2295,14 @@ contract LMPVaultMintingTests is Test {
 
         // And finally an increase above our last high value where we should
         // grab more fee's. Debt was at 750 @3 ETH. Going from 3 to 4, worth
-        // 1000 now. Our nav is 1500 with 1020 shares. Previous was 1250 @ 1000 shares.
-        // So that's 1.25 nav/share -> 1.467 a change of 0.217710372. With totalSupply
-        // at 1020 that's a profit of 222.5 (our fee shares we minted docked
+        // 1000 now. Our nav is 1500 with 1021 shares. Previous was 1250 @ 1000 shares.
+        // So that's 1.25 nav/share -> 1.469 a change of 0.219. With totalSupply
+        // at 1021 that's a profit of 222.5 (our fee shares we minted docked
         // that from the straight up 250 we'd expect).
-        // Our 20% on that profit gives us 44.5. 45*1020/1500, 30.6 shares
+        // Our 20% on that profit gives us 44.5. 45*1021/1500, ~32 shares
         _mockRootPrice(address(_underlyerOne), 4e18);
         vm.expectEmit(true, true, true, true);
-        emit FeeCollected(45, feeSink, 31, 2_249_100, 500, 1000);
+        emit FeeCollected(45, feeSink, 32, 2_237_011, 500, 1000);
         _lmpVault.updateDebtReporting(_destinations);
     }
 
@@ -2478,10 +2480,10 @@ contract LMPVaultMintingTests is Test {
         // We have 1117+750 = 1867 shares. 1.18 nav/share up from 1
         // .18 * 1867 is about a profit of 352. With our 20% fee
         // we should get 71. Converted to shares that gets us
-        // 71_fee * 1867_lmpSupply / 2220_totalAssets = 60 shares
+        // 71_fee * 1867_lmpSupply / 2220_totalAssets = 60(+2 with new totalSupply after additional shares mint) shares
         _mockRootPrice(address(_underlyerOne), 4e18);
         vm.expectEmit(true, true, true, true);
-        emit FeeCollected(71, feeSink, 60, 3_528_630, 1000, 1220);
+        emit FeeCollected(71, feeSink, 62, 3_528_630, 1000, 1220);
         _lmpVault.updateDebtReporting(_destinations);
 
         // Now lets introduce reward value. Deposit rewards, something normally
@@ -2500,29 +2502,33 @@ contract LMPVaultMintingTests is Test {
         // Previously we were at 1867 shares with 2220 assets
         // Or an NAV/share of 1.18907338. Now we're at
         // 2220+999 or 3219 assets and factoring in our last set of fee shares
-        // total supply is at 1927 - nav/share - 1.670472237
-        // That's a NAV increase of roughly 0.481398857. So
-        // there was 927.65559674 in profit. At our 20% fee ~186
-        // To capture 186 asset we need 186*1927/3219 or ~112 shares
+        // total supply is at 1933 - nav/share - 1.66528712
+        // That's a NAV increase of roughly 0.47621374. So
+        // there was 925.3413 in profit. At our 20% fee ~186
+        // To capture 186 asset we need ~118 shares
         uint256 feeSinkBeforeBal = _lmpVault.balanceOf(feeSink);
         vm.expectEmit(true, true, true, true);
-        emit FeeCollected(186, feeSink, 112, 9_276_578, 1999, 1220);
+        emit FeeCollected(186, feeSink, 118, 9_253_413, 1999, 1220);
         _lmpVault.updateDebtReporting(_destinations);
         uint256 feeSinkAfterBal = _lmpVault.balanceOf(feeSink);
-        assertEq(feeSinkAfterBal - feeSinkBeforeBal, 112);
+        assertEq(feeSinkAfterBal - feeSinkBeforeBal, 118);
+
+        assertEq(feeSinkAfterBal - feeSinkBeforeBal, 118);
+
+        assertEq(_lmpVault.totalSupply(), 2047);
 
         // Users come to withdraw everything. User share breakdown looks this:
         // User 1 - 500
         // User 2 - 250
         // User 3 - 1117
-        // Fees - 112 + 60 - 172
-        // Total Supply - 2039
+        // Fees - 118 + 60 - 180
+        // Total Supply - 2047
         // We have a totalAssets() of 3219
         // We assume no slippage
-        // User 1 - 500/2039*3219 - 789.3575282
-        // User 2 - 250/(2039-500)*(3219-789) - 394.736842105
-        // User 3 - 1117/(2039-500-250)*(3219-789-394) - 1764.322730799
-        // Fees - 172/(2039-500-250-1117)*(3219-789-394-1764) - 272
+        // User 1 - 500/2047*3219 - 786.27259404
+        // User 2 - 250/(2047-500)*(3219-789) - 392.695539754
+        // User 3 - 1117/(2047-500-250)*(3219-789-394) - 1753.44024672
+        // Fees - 180/(2047-500-250-1117)*(3219-789-394-1764) - 272
 
         vm.prank(user1);
         uint256 user1Assets = _lmpVault.redeem(500, vm.addr(4847), user1);
@@ -2532,10 +2538,10 @@ contract LMPVaultMintingTests is Test {
         uint256 user3Assets = _lmpVault.redeem(1117, vm.addr(6847), user3);
 
         // Just our fee shares left
-        assertEq(_lmpVault.totalSupply(), 172);
+        assertEq(_lmpVault.totalSupply(), 180);
 
         vm.prank(feeSink);
-        uint256 feeSinkAssets = _lmpVault.redeem(172, vm.addr(7847), feeSink);
+        uint256 feeSinkAssets = _lmpVault.redeem(180, vm.addr(7847), feeSink);
 
         // Nothing left in the vault
         assertEq(_lmpVault.totalSupply(), 0);
@@ -2543,17 +2549,17 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.totalIdle(), 0);
 
         // Make sure users got what they expected
-        assertEq(_asset.balanceOf(vm.addr(4847)), 789);
-        assertEq(user1Assets, 789);
+        assertEq(_asset.balanceOf(vm.addr(4847)), 786);
+        assertEq(user1Assets, 786);
 
-        assertEq(_asset.balanceOf(vm.addr(5847)), 394);
-        assertEq(user2Assets, 394);
+        assertEq(_asset.balanceOf(vm.addr(5847)), 393);
+        assertEq(user2Assets, 393);
 
-        assertEq(_asset.balanceOf(vm.addr(6847)), 1764);
-        assertEq(user3Assets, 1764);
+        assertEq(_asset.balanceOf(vm.addr(6847)), 1756);
+        assertEq(user3Assets, 1756);
 
-        assertEq(_asset.balanceOf(vm.addr(7847)), 272);
-        assertEq(feeSinkAssets, 272);
+        assertEq(_asset.balanceOf(vm.addr(7847)), 284);
+        assertEq(feeSinkAssets, 284);
     }
 
     function test_updateDebtReporting_FlashRebalanceEarnedRewardsAreFactoredIn() public {
@@ -2748,10 +2754,10 @@ contract LMPVaultMintingTests is Test {
         // We have 1117+750 = 1867 shares. 1.18 nav/share up from 1
         // .18 * 1867 is about a profit of 352. With our 20% fee
         // we should get 71. Converted to shares that gets us
-        // 71_fee * 1867_lmpSupply / 2220_totalAssets = 60 shares
+        // 71_fee * 1867_lmpSupply / 2220_totalAssets = 60(+2 with new totalSupply after additional shares mint) shares
         _mockRootPrice(address(_underlyerOne), 4e18);
         vm.expectEmit(true, true, true, true);
-        emit FeeCollected(71, feeSink, 60, 3_528_630, 1000, 1220);
+        emit FeeCollected(71, feeSink, 62, 3_528_630, 1000, 1220);
         _lmpVault.updateDebtReporting(_destinations);
 
         // Now lets introduce reward value. Deposit rewards, something normally
@@ -2770,29 +2776,29 @@ contract LMPVaultMintingTests is Test {
         // Previously we were at 1867 shares with 2220 assets
         // Or an NAV/share of 1.18907338. Now we're at
         // 2220+999 or 3219 assets and factoring in our last set of fee shares
-        // total supply is at 1927 - nav/share - 1.670472237
-        // That's a NAV increase of roughly 0.481398857. So
-        // there was 927.65559674 in profit. At our 20% fee ~186
-        // To capture 186 asset we need 186*1927/3219 or ~112 shares
+        // total supply is at 1933 - nav/share - 1.66528712
+        // That's a NAV increase of roughly 0.47621374. So
+        // there was 925.3413 in profit. At our 20% fee ~186
+        // To capture 186 asset we need ~118 shares
         uint256 feeSinkBeforeBal = _lmpVault.balanceOf(feeSink);
         vm.expectEmit(true, true, true, true);
-        emit FeeCollected(186, feeSink, 112, 9_276_578, 1999, 1220);
+        emit FeeCollected(186, feeSink, 118, 9_253_413, 1999, 1220);
         _lmpVault.updateDebtReporting(_destinations);
         uint256 feeSinkAfterBal = _lmpVault.balanceOf(feeSink);
-        assertEq(feeSinkAfterBal - feeSinkBeforeBal, 112);
+        assertEq(feeSinkAfterBal - feeSinkBeforeBal, 118);
 
         // Users come to withdraw everything. User share breakdown looks this:
         // User 1 - 500
         // User 2 - 250
         // User 3 - 1117
-        // Fees - 112 + 60 - 172
-        // Total Supply - 2039
+        // Fees - 118 + 60 - 180
+        // Total Supply - 2047
         // We have a totalAssets() of 3219
         // We assume no slippage
-        // User 1 - 500/2039*3219 - 789.3575282
-        // User 2 - 250/(2039-500)*(3219-789) - 394.736842105
-        // User 3 - 1117/(2039-500-250)*(3219-789-394) - 1764.322730799
-        // Fees - 172/(2039-500-250-1117)*(3219-789-394-1764) - 272
+        // User 1 - 500/2047*3219 - 786.27259404
+        // User 2 - 250/(2047-500)*(3219-789) - 392.695539754
+        // User 3 - 1117/(2047-500-250)*(3219-789-394) - 1753.44024672
+        // Fees - 180/(2047-500-250-1117)*(3219-789-394-1764) - 272
 
         vm.prank(user1);
         uint256 user1Assets = _lmpVault.redeem(500, vm.addr(4847), user1);
@@ -2802,10 +2808,10 @@ contract LMPVaultMintingTests is Test {
         uint256 user3Assets = _lmpVault.redeem(1117, vm.addr(6847), user3);
 
         // Just our fee shares left
-        assertEq(_lmpVault.totalSupply(), 172);
+        assertEq(_lmpVault.totalSupply(), 180);
 
         vm.prank(feeSink);
-        uint256 feeSinkAssets = _lmpVault.redeem(172, vm.addr(7847), feeSink);
+        uint256 feeSinkAssets = _lmpVault.redeem(180, vm.addr(7847), feeSink);
 
         // Nothing left in the vault
         assertEq(_lmpVault.totalSupply(), 0);
@@ -2813,17 +2819,17 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.totalIdle(), 0);
 
         // Make sure users got what they expected
-        assertEq(_asset.balanceOf(vm.addr(4847)), 789);
-        assertEq(user1Assets, 789);
+        assertEq(_asset.balanceOf(vm.addr(4847)), 786);
+        assertEq(user1Assets, 786);
 
-        assertEq(_asset.balanceOf(vm.addr(5847)), 394);
-        assertEq(user2Assets, 394);
+        assertEq(_asset.balanceOf(vm.addr(5847)), 393);
+        assertEq(user2Assets, 393);
 
-        assertEq(_asset.balanceOf(vm.addr(6847)), 1764);
-        assertEq(user3Assets, 1764);
+        assertEq(_asset.balanceOf(vm.addr(6847)), 1756);
+        assertEq(user3Assets, 1756);
 
-        assertEq(_asset.balanceOf(vm.addr(7847)), 272);
-        assertEq(feeSinkAssets, 272);
+        assertEq(_asset.balanceOf(vm.addr(7847)), 284);
+        assertEq(feeSinkAssets, 284);
     }
 
     function test_recover_OnlyCallableByRole() public {

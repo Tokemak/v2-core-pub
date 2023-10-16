@@ -531,6 +531,7 @@ contract LMPVault is
         _burn(owner, shares);
 
         // if totalSupply is now 0, reset the high water mark
+        // slither-disable-next-line incorrect-equality
         if (totalSupply() == 0) {
             navPerShareHighMark = MAX_FEE_BPS;
 
@@ -603,6 +604,7 @@ contract LMPVault is
     /// @dev Internal conversion function (from shares to assets) with support for rounding direction.
     function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view virtual returns (uint256 assets) {
         uint256 supply = totalSupply();
+        // slither-disable-next-line incorrect-equality
         assets = (supply == 0) ? shares : shares.mulDiv(totalAssets(), supply, rounding);
     }
 
@@ -633,6 +635,7 @@ contract LMPVault is
 
     ///@dev Checks if vault is "healthy" in the sense of having assets backing the circulating shares.
     function _isVaultCollateralized() internal view returns (bool) {
+        // slither-disable-next-line incorrect-equality
         return totalAssets() > 0 || totalSupply() == 0;
     }
 
@@ -822,6 +825,7 @@ contract LMPVault is
 
         // If there's no supply then there should be no assets and so nothing
         // to actually take fees on
+        // slither-disable-next-line incorrect-equality
         if (totalSupply == 0) {
             return;
         }
@@ -893,6 +897,7 @@ contract LMPVault is
 
     function _snapStartNav() private view returns (uint256 oldNav, uint256 startingTotalSupply) {
         startingTotalSupply = totalSupply();
+        // slither-disable-next-line incorrect-equality
         if (startingTotalSupply == 0) {
             return (0, 0);
         }
@@ -926,6 +931,7 @@ contract LMPVault is
     /// @dev No check when no shares
     function _ensureNoNavDecrease(uint256 oldNav, uint256 startingTotalSupply) private view {
         uint256 ts = totalSupply();
+        // slither-disable-next-line incorrect-equality
         if (ts == 0 || startingTotalSupply == 0) {
             return;
         }

@@ -1051,6 +1051,10 @@ contract LMPVaultMintingTests is Test {
 
     // Covers HAL-05 & https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/005-H/005-best.md
     function test_withdraw_RewardsGoToIdleWithPriceIncrease() public {
+        _mockRootPrice(address(_asset), 1 ether);
+        _mockRootPrice(address(_underlyerOne), 1 ether);
+        _mockRootPrice(address(_underlyerTwo), 1 ether);
+
         _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
         _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
 
@@ -1059,39 +1063,63 @@ contract LMPVaultMintingTests is Test {
         _asset.approve(address(_lmpVault), 1000);
         _lmpVault.deposit(1000, address(this));
 
-        // Queue up some Destination Vault rewards
-        _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
-        _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
+        assertEq(_lmpVault.totalIdle(), 1000);
 
-        _underlyerTwo.mint(address(this), 100);
-        _underlyerTwo.approve(address(_lmpVault), 100);
+        // Deployed 100 asset to DV1
+        _underlyerOne.mint(address(this), 100);
+        _underlyerOne.approve(address(_lmpVault), 100);
         _lmpVault.rebalance(
-            address(_destVaultTwo),
-            address(_underlyerTwo), // tokenIn
+            address(_destVaultOne),
+            address(_underlyerOne), // tokenIn
             100,
             address(0), // destinationOut, none when sending out baseAsset
             address(_asset), // baseAsset, tokenOut
             100 // aligned with underlying price
         );
 
-        _asset.mint(address(this), 2000);
-        _asset.approve(_destVaultTwo.rewarder(), 2000);
-        IMainRewarder(_destVaultTwo.rewarder()).queueNewRewards(2000);
+        // Deploy 10 asset to DV2
+        _underlyerTwo.mint(address(this), 10);
+        _underlyerTwo.approve(address(_lmpVault), 10);
+        _lmpVault.rebalance(
+            address(_destVaultTwo),
+            address(_underlyerTwo), // tokenIn
+            10,
+            address(0), // destinationOut, none when sending out baseAsset
+            address(_asset), // baseAsset, tokenOut
+            10 // aligned with underlying price
+        );
+
+        assertEq(_lmpVault.totalIdle(), 890);
+
+        // Queue up some Destination Vault rewards
+        _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
+        _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
+
+        _asset.mint(address(this), 1000);
+        _asset.approve(_destVaultOne.rewarder(), 1000);
+        IMainRewarder(_destVaultOne.rewarder()).queueNewRewards(1000);
+        _asset.mint(address(this), 1000);
+        _asset.approve(_destVaultTwo.rewarder(), 1000);
+        IMainRewarder(_destVaultTwo.rewarder()).queueNewRewards(1000);
 
         // Roll the block so that the rewards we queued earlier will become available
         vm.roll(block.number + 10_000);
 
-        assertEq(_lmpVault.totalIdle(), 900);
+        assertEq(_lmpVault.totalIdle(), 890);
 
         // make it so that we end up with more than expected b/c we swap for 2e18 vs 1e18
+        TestDstVault(address(_destVaultOne)).setBurnPrice(2e18);
         TestDstVault(address(_destVaultTwo)).setBurnPrice(2e18);
 
+        assertEq(_lmpVault.totalIdle(), 890);
+
+        // user needs +110 to get back 1000 - so we withdraw 200 from DV1 and 90 goes to idle
         // user redeems and gets back 1000 since the reported NAV didn't change between deposit and withdrawal
         uint256 assets = _lmpVault.redeem(1000, address(this), address(this));
         assertEq(assets, 1000);
 
-        // we should get back 2000 from rewards + 100 extra b/c the swap was 2x higher than expected
-        assertEq(_lmpVault.totalIdle(), 2100);
+        // we should have 1000 left from rewards + 90 extra went to idle from DV1 withdrawal at 2x price
+        assertEq(_lmpVault.totalIdle(), 1090);
     }
 
     function test_redeem_RevertIf_Paused() public {

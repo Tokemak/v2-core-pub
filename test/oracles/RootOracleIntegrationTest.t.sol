@@ -10,7 +10,6 @@ import { Test } from "forge-std/Test.sol";
 import {
     BAL_VAULT,
     CURVE_META_REGISTRY_MAINNET,
-    // SFRXETH_MAINNET,
     TELLOR_ORACLE,
     WSTETH_MAINNET,
     STETH_MAINNET,
@@ -25,7 +24,6 @@ import {
     USDC_CL_FEED_MAINNET,
     USDT_CL_FEED_MAINNET,
     CBETH_CL_FEED_MAINNET,
-    // WSETH_RETH_SFRXETH_BAL_POOL,
     USDC_DAI_USDT_BAL_POOL,
     CBETH_WSTETH_BAL_POOL,
     RETH_WETH_BAL_POOL,
@@ -40,19 +38,13 @@ import {
     THREE_CURVE_MAINNET,
     USDC_IN_USD_CL_FEED_MAINNET,
     ETH_CL_FEED_MAINNET,
-    // ETH_FRXETH_CURVE_POOL_LP,
-    // ETH_FRXETH_CURVE_POOL,
     STETH_STABLESWAP_NG_POOL,
-    // STETH_FRXETH_POOL_AND_TOKEN_CURVE,
     RETH_WSTETH_CURVE_POOL_LP,
     RETH_WSTETH_CURVE_POOL,
     RETH_WETH_CURVE_POOL,
     RETH_ETH_CURVE_LP,
-    // FRXETH_MAINNET,
     TOKE_MAINNET,
     WSTETH_WETH_MAV,
-    ETH_SWETH_MAV,
-    SWETH_MAINNET,
     USDT_IN_USD_CL_FEED_MAINNET,
     CRVUSD_MAINNET,
     USDP_CL_FEED_MAINNET,
@@ -89,11 +81,9 @@ import { BalancerLPMetaStableEthOracle } from "src/oracles/providers/BalancerLPM
 import { ChainlinkOracle } from "src/oracles/providers/ChainlinkOracle.sol";
 import { CurveV1StableEthOracle } from "src/oracles/providers/CurveV1StableEthOracle.sol";
 import { EthPeggedOracle } from "src/oracles/providers/EthPeggedOracle.sol";
-// import { SfrxEthEthOracle } from "src/oracles/providers/SfrxEthEthOracle.sol";
 import { UniswapV2EthOracle } from "src/oracles/providers/UniswapV2EthOracle.sol";
 import { WstETHEthOracle } from "src/oracles/providers/WstETHEthOracle.sol";
 import { MavEthOracle } from "src/oracles/providers/MavEthOracle.sol";
-import { SwEthEthOracle } from "src/oracles/providers/SwEthEthOracle.sol";
 import { CurveV2CryptoEthOracle } from "src/oracles/providers/CurveV2CryptoEthOracle.sol";
 import { BaseOracleDenominations } from "src/oracles/providers/base/BaseOracleDenominations.sol";
 import { CrvUsdOracle } from "test/mocks/CrvUsdOracle.sol";
@@ -101,7 +91,6 @@ import { CrvUsdOracle } from "test/mocks/CrvUsdOracle.sol";
 import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
 import { CurveResolverMainnet, ICurveResolver, ICurveMetaRegistry } from "src/utils/CurveResolverMainnet.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
-import { IswETH } from "src/interfaces/external/swell/IswETH.sol";
 
 /**
  * This series of tests compares expected values with contract calculated values for lp token pricing.  Below is a guide
@@ -128,11 +117,9 @@ contract RootOracleIntegrationTest is Test {
     ChainlinkOracle public chainlinkOracle;
     CurveV1StableEthOracle public curveStableOracle;
     EthPeggedOracle public ethPegOracle;
-    // SfrxEthEthOracle public sfrxEthOracle;
     UniswapV2EthOracle public uniV2EthOracle;
     WstETHEthOracle public wstEthOracle;
     MavEthOracle public mavEthOracle;
-    SwEthEthOracle public swEthOracle;
     CurveV2CryptoEthOracle public curveCryptoOracle;
     CrvUsdOracle public crvUsdOracle;
 
@@ -155,11 +142,9 @@ contract RootOracleIntegrationTest is Test {
         chainlinkOracle = new ChainlinkOracle(systemRegistry);
         curveStableOracle = new CurveV1StableEthOracle(systemRegistry, ICurveResolver(curveResolver));
         ethPegOracle = new EthPeggedOracle(systemRegistry);
-        // sfrxEthOracle = new SfrxEthEthOracle(systemRegistry, SFRXETH_MAINNET);
         uniV2EthOracle = new UniswapV2EthOracle(systemRegistry);
         wstEthOracle = new WstETHEthOracle(systemRegistry, WSTETH_MAINNET);
         mavEthOracle = new MavEthOracle(systemRegistry);
-        swEthOracle = new SwEthEthOracle(systemRegistry, IswETH(SWETH_MAINNET));
         curveCryptoOracle = new CurveV2CryptoEthOracle(systemRegistry, ICurveResolver(curveResolver));
         crvUsdOracle = new CrvUsdOracle(
           systemRegistry,
@@ -180,11 +165,9 @@ contract RootOracleIntegrationTest is Test {
         vm.makePersistent(address(chainlinkOracle));
         vm.makePersistent(address(curveStableOracle));
         vm.makePersistent(address(ethPegOracle));
-        // vm.makePersistent(address(sfrxEthOracle));
         vm.makePersistent(address(uniV2EthOracle));
         vm.makePersistent(address(wstEthOracle));
         vm.makePersistent(address(mavEthOracle));
-        vm.makePersistent(address(swEthOracle));
         vm.makePersistent(address(curveCryptoOracle));
         vm.makePersistent(address(crvUsdOracle));
 
@@ -206,7 +189,6 @@ contract RootOracleIntegrationTest is Test {
         priceOracle.registerMapping(LDO_MAINNET, IPriceOracle(address(chainlinkOracle)));
 
         // Balancer composable stable pool
-        // priceOracle.registerMapping(WSETH_RETH_SFRXETH_BAL_POOL, IPriceOracle(address(balancerComposableOracle)));
         priceOracle.registerMapping(USDC_DAI_USDT_BAL_POOL, IPriceOracle(address(balancerComposableOracle)));
 
         // Balancer meta stable pool
@@ -217,8 +199,6 @@ contract RootOracleIntegrationTest is Test {
         // Curve V1
         priceOracle.registerMapping(ST_ETH_CURVE_LP_TOKEN_MAINNET, IPriceOracle(address(curveStableOracle)));
         priceOracle.registerMapping(THREE_CURVE_POOL_MAINNET_LP, IPriceOracle(address(curveStableOracle)));
-        // priceOracle.registerMapping(ETH_FRXETH_CURVE_POOL_LP, IPriceOracle(address(curveStableOracle)));
-        // priceOracle.registerMapping(STETH_FRXETH_POOL_AND_TOKEN_CURVE, IPriceOracle(address(curveStableOracle)));
         priceOracle.registerMapping(RETH_WSTETH_CURVE_POOL_LP, IPriceOracle(address(curveStableOracle)));
         priceOracle.registerMapping(STETH_STABLESWAP_NG_POOL, IPriceOracle(address(curveStableOracle)));
         priceOracle.registerMapping(USDC_STABLESWAP_NG_POOL, IPriceOracle(address(curveStableOracle)));
@@ -239,17 +219,13 @@ contract RootOracleIntegrationTest is Test {
 
         // Mav
         priceOracle.registerMapping(WSTETH_WETH_MAV, IPriceOracle(address(mavEthOracle)));
-        priceOracle.registerMapping(ETH_SWETH_MAV, IPriceOracle(address(mavEthOracle)));
 
         // Eth 1:1 setup
         priceOracle.registerMapping(WETH9_ADDRESS, IPriceOracle(address(ethPegOracle)));
         priceOracle.registerMapping(CURVE_ETH, IPriceOracle(address(ethPegOracle)));
-        // priceOracle.registerMapping(FRXETH_MAINNET, IPriceOracle(address(ethPegOracle)));
 
         // Lst special pricing case setup
-        // priceOracle.registerMapping(SFRXETH_MAINNET, IPriceOracle(address(sfrxEthOracle)));
         priceOracle.registerMapping(WSTETH_MAINNET, IPriceOracle(address(wstEthOracle)));
-        priceOracle.registerMapping(SWETH_MAINNET, IPriceOracle(address(swEthOracle)));
 
         // Chainlink setup
         chainlinkOracle.registerChainlinkOracle(
@@ -319,9 +295,7 @@ contract RootOracleIntegrationTest is Test {
         // Curve V1 pool setup
         curveStableOracle.registerPool(STETH_ETH_CURVE_POOL, ST_ETH_CURVE_LP_TOKEN_MAINNET, true);
         curveStableOracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, false);
-        // curveStableOracle.registerPool(ETH_FRXETH_CURVE_POOL, ETH_FRXETH_CURVE_POOL_LP, false);
         curveStableOracle.registerPool(STETH_STABLESWAP_NG_POOL, STETH_STABLESWAP_NG_POOL, false);
-        // curveStableOracle.registerPool(STETH_FRXETH_POOL_AND_TOKEN_CURVE, STETH_FRXETH_POOL_AND_TOKEN_CURVE, false);
         curveStableOracle.registerPool(RETH_WSTETH_CURVE_POOL, RETH_WSTETH_CURVE_POOL_LP, false);
         curveStableOracle.registerPool(USDC_STABLESWAP_NG_POOL, USDC_STABLESWAP_NG_POOL, false);
         curveStableOracle.registerPool(USDT_STABLESWAP_NG_POOL, USDT_STABLESWAP_NG_POOL, false);
@@ -352,16 +326,6 @@ contract RootOracleIntegrationTest is Test {
         (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
         assertGt(upperBound, safePrice);
         assertLt(lowerBound, safePrice);
-
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_478_924);
-
-        // Calculated - 1010782811000000000
-        // Safe price - 1055299120697408989
-        // calculatedPrice = uint256(1_010_782_811_000_000_000);
-        // safePrice = priceOracle.getPriceInEth(WSETH_RETH_SFRXETH_BAL_POOL);
-        // (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        // assertGt(upperBound, safePrice);
-        // assertLt(lowerBound, safePrice);
     }
 
     function test_CurveStableV1PoolOracle() external {
@@ -385,22 +349,6 @@ contract RootOracleIntegrationTest is Test {
 
         // Newer tests, new fork.
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_480_014);
-
-        // Calculated - 1003869775000000000
-        // Safe price - 1001074825252786600
-        // calculatedPrice = uint256(1_003_869_775_000_000_000);
-        // safePrice = priceOracle.getPriceInEth(ETH_FRXETH_CURVE_POOL_LP);
-        // (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        // assertGt(upperBound, safePrice);
-        // assertLt(lowerBound, safePrice);
-
-        // Calculated - 1012223904000000000
-        // Safe price - 1008312837172276871
-        // calculatedPrice = uint256(1_012_223_904_000_000_000);
-        // safePrice = priceOracle.getPriceInEth(STETH_FRXETH_POOL_AND_TOKEN_CURVE);
-        // (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        // assertGt(upperBound, safePrice);
-        // assertLt(lowerBound, safePrice);
 
         // Calculated - 1098321582000000000
         // Safe price - 1077905860822595469
@@ -459,9 +407,6 @@ contract RootOracleIntegrationTest is Test {
         assertLt(lowerBound, safePrice);
     }
 
-    // Reserves from boosted position
-    // price from somewhere
-    // total supply
     function test_MavEthOracle() external {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_528_586);
 
@@ -470,14 +415,6 @@ contract RootOracleIntegrationTest is Test {
         uint256 calculatedPrice = uint256(1_279_055_722_000_000_000);
         uint256 safePrice = priceOracle.getPriceInEth(WSTETH_WETH_MAV);
         (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // Calculated - 1477192563000000000
-        // Safe price - 1477192560261437163
-        calculatedPrice = uint256(1_477_192_563_000_000_000);
-        safePrice = priceOracle.getPriceInEth(ETH_SWETH_MAV);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
         assertGt(upperBound, safePrice);
         assertLt(lowerBound, safePrice);
     }
@@ -565,8 +502,6 @@ contract RootOracleIntegrationTest is Test {
         (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
         assertGt(upperBound, safePrice);
         assertLt(lowerBound, safePrice);
-
-        // 28958009260000000000000
 
         // Calculated - 42945287200000000
         // Safe Price - 43072642081141667

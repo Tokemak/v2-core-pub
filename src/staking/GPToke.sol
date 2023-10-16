@@ -225,7 +225,7 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
 
     /// @notice Allows an actor to deposit ETH as staking reward to be distributed to all staked participants
     /// @param amount Amount of `WETH` to take from caller and deposit as reward for the stakers
-    function addWETHRewards(uint256 amount) external whenNotPaused {
+    function addWETHRewards(uint256 amount) external {
         // update accounting to factor in new rewards
         _addWETHRewards(amount);
         // actually transfer WETH

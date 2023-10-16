@@ -2502,9 +2502,9 @@ contract LMPVaultMintingTests is Test {
         // Previously we were at 1867 shares with 2220 assets
         // Or an NAV/share of 1.18907338. Now we're at
         // 2220+999 or 3219 assets and factoring in our last set of fee shares
-        // total supply is at 1933 - nav/share - 1.66528712
-        // That's a NAV increase of roughly 0.47621374. So
-        // there was 925.3413 in profit. At our 20% fee ~186
+        // total supply is at 1929 - nav/share - 1.66874028
+        // That's a NAV increase of roughly 0.4796669. So
+        // there was 925.277 in profit. At our 20% fee ~186 (185.xx but we round up)
         // To capture 186 asset we need ~118 shares
         uint256 feeSinkBeforeBal = _lmpVault.balanceOf(feeSink);
         vm.expectEmit(true, true, true, true);
@@ -2521,7 +2521,7 @@ contract LMPVaultMintingTests is Test {
         // User 1 - 500
         // User 2 - 250
         // User 3 - 1117
-        // Fees - 118 + 60 - 180
+        // Fees - 118 + 62 - 180
         // Total Supply - 2047
         // We have a totalAssets() of 3219
         // We assume no slippage
@@ -2776,9 +2776,9 @@ contract LMPVaultMintingTests is Test {
         // Previously we were at 1867 shares with 2220 assets
         // Or an NAV/share of 1.18907338. Now we're at
         // 2220+999 or 3219 assets and factoring in our last set of fee shares
-        // total supply is at 1933 - nav/share - 1.66528712
-        // That's a NAV increase of roughly 0.47621374. So
-        // there was 925.3413 in profit. At our 20% fee ~186
+        // total supply is at 1929 - nav/share - 1.66874028
+        // That's a NAV increase of roughly 0.4796669. So
+        // there was 925.277 in profit. At our 20% fee ~186 (185.xx but we round up)
         // To capture 186 asset we need ~118 shares
         uint256 feeSinkBeforeBal = _lmpVault.balanceOf(feeSink);
         vm.expectEmit(true, true, true, true);
@@ -2791,7 +2791,7 @@ contract LMPVaultMintingTests is Test {
         // User 1 - 500
         // User 2 - 250
         // User 3 - 1117
-        // Fees - 118 + 60 - 180
+        // Fees - 118 + 62 - 180
         // Total Supply - 2047
         // We have a totalAssets() of 3219
         // We assume no slippage

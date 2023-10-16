@@ -195,6 +195,17 @@ contract StakingTest is BaseTest {
         assert(lockup.points > pointsBefore);
     }
 
+    function testExtendUnsafeDuration() public {
+        uint256 amount = stakeAmount;
+        prepareFunds(address(this), amount);
+
+        // original stake
+        stake(amount, ONE_YEAR);
+        // extend past the max
+        vm.expectRevert(abi.encodeWithSelector(IGPToke.StakingDurationTooLong.selector));
+        gpToke.extend(0, 10 * ONE_YEAR);
+    }
+
     function test_Revert_IfAmountIsInsufficient() public {
         gpToke.stake(stakeAmount, ONE_YEAR);
         weth.approve(address(gpToke), 1);

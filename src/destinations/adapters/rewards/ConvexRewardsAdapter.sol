@@ -62,6 +62,7 @@ library ConvexRewards {
         EnumerableSet.AddressSet storage trackedTokens
     ) internal returns (uint256[] memory amounts, address[] memory tokens) {
         Errors.verifyNotZero(gauge, "gauge");
+        Errors.verifyNotZero(sendTo, "sendTo");
 
         address account = address(this);
 

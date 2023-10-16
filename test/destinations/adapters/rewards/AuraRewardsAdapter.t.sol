@@ -45,7 +45,7 @@ contract AuraRewardsAdapterTest is Test {
         vm.warp(block.timestamp + 7 days);
     }
 
-    function test_claimRewards_Revert_If() public {
+    function test_claimRewards_RevertIf_ConvexClaimFails() public {
         address gauge = 0xbD5445402B0a287cbC77cb67B2a52e2FC635dce4;
 
         bytes4 selector = bytes4(keccak256(bytes("getReward(address,bool)")));
@@ -54,9 +54,15 @@ contract AuraRewardsAdapterTest is Test {
         AuraRewards.claimRewards(gauge, AURA_MAINNET, _trackedTokens);
     }
 
-    function test_Revert_IfAddressZero() public {
+    function test_RevertIf_GaugeIsZero() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "gauge"));
         AuraRewards.claimRewards(address(0), AURA_MAINNET, _trackedTokens);
+    }
+
+    function test_RevertIf_SendToIsZero() public {
+        address gauge = 0xd26948E7a0223700e3C3cdEA21cA2471abCb8d47;
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "sendTo"));
+        AuraRewards.claimRewards(gauge, AURA_MAINNET, address(0), _trackedTokens);
     }
 
     //Pool rETH-WETH

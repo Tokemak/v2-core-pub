@@ -547,7 +547,7 @@ contract LMPVault is
         return returnedAssets;
     }
 
-    function claimRewards() public {
+    function claimRewards() external {
         rewarder.getReward(msg.sender, true);
     }
 

@@ -573,6 +573,13 @@ contract LMPVaultMintingTests is Test {
         );
     }
 
+    function test_CanClaimRewardsWhenPaused() public {
+        _accessController.grantRole(Roles.EMERGENCY_PAUSER, address(this));
+        _lmpVault.pause();
+
+        _lmpVault.claimRewards();
+    }
+
     function test_deposit_RevertIf_Paused() public {
         _asset.mint(address(this), 1000);
         _asset.approve(address(_lmpVault), 1000);

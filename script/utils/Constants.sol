@@ -39,6 +39,7 @@ library Constants {
 
     struct External {
         address curveMetaRegistry;
+        address convexBooster;
         address zeroExProxy;
         address balancerComposableStableFactory;
         address balancerMetaStableFactor;
@@ -97,6 +98,7 @@ library Constants {
             }),
             ext: External({
                 curveMetaRegistry: address(0),
+                convexBooster: 0xF403C135812408BFbE8713b5A23a04b3D48AAE31,
                 zeroExProxy: 0xF91bB752490473B8342a3E964E855b9f9a2A668e,
                 balancerComposableStableFactory: 0x4bdCc2fb18AEb9e2d281b0278D946445070EAda7,
                 balancerMetaStableFactor: 0xA55F73E2281c60206ba43A3590dB07B8955832Be,
@@ -136,6 +138,7 @@ library Constants {
                 lens: address(0)
             }),
             ext: External({
+                convexBooster: 0xF403C135812408BFbE8713b5A23a04b3D48AAE31,
                 curveMetaRegistry: 0xF98B45FA17DE75FB1aD0e7aFD971b0ca00e379fC,
                 zeroExProxy: 0xDef1C0ded9bec7F1a1670819833240f027b25EfF,
                 balancerComposableStableFactory: address(0),

@@ -25,8 +25,6 @@ contract CurveConvexDestinationVault is DestinationVault {
         address curvePool;
         /// @notice Convex reward contract
         address convexStaking;
-        /// @notice Convex Booster contract
-        address convexBooster;
         /// @notice Numeric pool id used to reference Curve pool
         uint256 convexPoolId;
         /// @notice Coin index of token we'll perform withdrawals to
@@ -40,6 +38,9 @@ contract CurveConvexDestinationVault is DestinationVault {
 
     /// @notice Invalid coin index was provided for withdrawal
     error InvalidBaseTokenBurnIndex(uint256 provided, uint256 numTokens);
+
+    /// @notice Pool is shutdown
+    error PoolShutdown();
 
     /* ******************************** */
     /* State Variables                  */
@@ -56,7 +57,7 @@ contract CurveConvexDestinationVault is DestinationVault {
     address public convexStaking;
 
     /// @notice Convex Booster contract
-    address public convexBooster;
+    address public immutable convexBooster;
 
     /// @notice Numeric pool id used to reference Curve pool
     uint256 public convexPoolId;
@@ -70,10 +71,18 @@ contract CurveConvexDestinationVault is DestinationVault {
     /// @dev Always 0, used as min amounts during withdrawals
     uint256[] private minAmounts;
 
-    constructor(ISystemRegistry sysRegistry, address _defaultStakingRewardToken) DestinationVault(sysRegistry) {
+    constructor(
+        ISystemRegistry sysRegistry,
+        address _defaultStakingRewardToken,
+        address _convexBooster
+    ) DestinationVault(sysRegistry) {
         // Zero is valid here if no default token is minted by the reward system
         // slither-disable-next-line missing-zero-check
         defaultStakingRewardToken = _defaultStakingRewardToken;
+
+        Errors.verifyNotZero(_convexBooster, "_convexBooster");
+        // slither-disable-next-line missing-zero-check
+        convexBooster = _convexBooster;
     }
 
     ///@notice Support ETH operations
@@ -99,27 +108,39 @@ contract CurveConvexDestinationVault is DestinationVault {
         InitParams memory initParams = abi.decode(params_, (InitParams));
         Errors.verifyNotZero(initParams.curvePool, "curvePool");
         Errors.verifyNotZero(initParams.convexStaking, "convexStaking");
-        Errors.verifyNotZero(initParams.convexBooster, "convexBooster");
-        Errors.verifyNotZero(initParams.convexPoolId, "convexPoolId");
 
         curvePool = initParams.curvePool;
         convexStaking = initParams.convexStaking;
-        convexBooster = initParams.convexBooster;
         convexPoolId = initParams.convexPoolId;
         baseAssetBurnTokenIndex = initParams.baseAssetBurnTokenIndex;
 
         // Setup pool tokens as tracked. If we want to handle meta pools and their tokens
         // we will pass them in as additional, not currently a use case
         // slither-disable-next-line unused-return
-        (address[8] memory tokens, uint256 numTokens, address lpToken,) =
+        (address[8] memory tokens, uint256 numTokens, address curveQueriedLpToken,) =
             curveResolver.resolveWithLpToken(initParams.curvePool);
+
+        (address lpToken,,, address crvRewards,, bool _isShutdown) =
+            IConvexBooster(convexBooster).poolInfo(initParams.convexPoolId);
+
+        if (_isShutdown) {
+            revert PoolShutdown();
+        }
+
         Errors.verifyNotZero(lpToken, "lpToken");
         Errors.verifyNotZero(numTokens, "numTokens");
+
+        if (curveQueriedLpToken != lpToken) {
+            revert Errors.InvalidParam("lpToken");
+        }
+
+        if (crvRewards != initParams.convexStaking) {
+            revert Errors.InvalidParam("crvRewards");
+        }
 
         for (uint256 i = 0; i < numTokens; ++i) {
             address weth = address(_systemRegistry.weth());
             address token = tokens[i] == LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER ? weth : tokens[i];
-
             _addTrackedToken(token);
             constituentTokens.push(token);
         }

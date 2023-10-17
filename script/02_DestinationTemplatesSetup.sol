@@ -28,7 +28,8 @@ contract DestinationTemplatesSetupScript is BaseScript {
 
         CurveConvexDestinationVault curveVault = new CurveConvexDestinationVault(
             systemRegistry,
-            constants.tokens.cvx
+            constants.tokens.cvx,
+            constants.ext.convexBooster
         );
 
         MaverickDestinationVault mavVault = new MaverickDestinationVault(

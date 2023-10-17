@@ -4,8 +4,10 @@ pragma solidity >=0.8.17;
 
 // solhint-disable func-name-mixedcase
 // solhint-disable max-states-count
+// solhint-disable max-line-length
 
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
+import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
 import { DestinationVault } from "src/vault/DestinationVault.sol";
@@ -51,7 +53,7 @@ contract CurveConvexDestinationVaultTests is Test {
 
     uint256 private _mainnetFork;
 
-    SystemRegistry private _systemRegistry;
+    SystemRegistry internal _systemRegistry;
     AccessController private _accessController;
     DestinationVaultFactory private _destinationVaultFactory;
     DestinationVaultRegistry private _destinationVaultRegistry;
@@ -60,10 +62,10 @@ contract CurveConvexDestinationVaultTests is Test {
     ILMPVaultRegistry private _lmpVaultRegistry;
     IRootPriceOracle private _rootPriceOracle;
 
-    IWETH9 private _asset;
-    MainRewarder private _rewarder;
+    IWETH9 internal _asset;
+    MainRewarder internal _rewarder;
 
-    IERC20 private _underlyer;
+    IERC20 internal _underlyer;
 
     CurveResolverMainnet private _curveResolver;
     CurveConvexDestinationVault private _destVault;
@@ -71,9 +73,11 @@ contract CurveConvexDestinationVaultTests is Test {
     SwapRouter private swapRouter;
     CurveV1StableSwap private curveSwapper;
 
-    address[] private additionalTrackedTokens;
+    address[] internal additionalTrackedTokens;
 
-    function setUp() public {
+    address constant zero = address(0);
+
+    function setUp() public virtual {
         additionalTrackedTokens = new address[](0);
 
         _mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), 16_728_070);
@@ -124,7 +128,8 @@ contract CurveConvexDestinationVaultTests is Test {
         _underlyer = IERC20(ST_ETH_CURVE_LP_TOKEN_MAINNET);
         vm.label(address(_underlyer), "underlyer");
 
-        CurveConvexDestinationVault dvTemplate = new CurveConvexDestinationVault(_systemRegistry, CVX_MAINNET);
+        CurveConvexDestinationVault dvTemplate =
+            new CurveConvexDestinationVault(_systemRegistry, CVX_MAINNET, CONVEX_BOOSTER);
         bytes32 dvType = keccak256(abi.encode("template"));
         bytes32[] memory dvTypes = new bytes32[](1);
         dvTypes[0] = dvType;
@@ -138,7 +143,6 @@ contract CurveConvexDestinationVaultTests is Test {
         CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
             curvePool: STETH_ETH_CURVE_POOL,
             convexStaking: 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03,
-            convexBooster: CONVEX_BOOSTER,
             convexPoolId: 25,
             baseAssetBurnTokenIndex: 0
         });
@@ -177,7 +181,6 @@ contract CurveConvexDestinationVaultTests is Test {
         CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
             curvePool: STETH_ETH_CURVE_POOL,
             convexStaking: 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03,
-            convexBooster: CONVEX_BOOSTER,
             convexPoolId: 25,
             baseAssetBurnTokenIndex: 0
         });
@@ -363,5 +366,105 @@ contract CurveConvexDestinationVaultTests is Test {
             abi.encodeWithSelector(ILMPVaultRegistry.isVault.selector, vault),
             abi.encode(isVault)
         );
+    }
+}
+
+contract Constructor is CurveConvexDestinationVaultTests {
+    function test_RevertIf_ConvexBoosterIsZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_convexBooster"));
+        new CurveConvexDestinationVault(_systemRegistry, CVX_MAINNET, zero);
+    }
+}
+
+contract Initialize is CurveConvexDestinationVaultTests {
+    CurveConvexDestinationVault internal vault;
+
+    bytes internal defaultInitParamBytes;
+
+    function setUp() public override {
+        super.setUp();
+        vault = new CurveConvexDestinationVault(_systemRegistry, CVX_MAINNET, CONVEX_BOOSTER);
+        _rewarder = MainRewarder(makeAddr("REWARDER"));
+        CurveConvexDestinationVault.InitParams memory defaultInitParams = CurveConvexDestinationVault.InitParams({
+            curvePool: STETH_ETH_CURVE_POOL,
+            convexStaking: 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03,
+            convexPoolId: 25,
+            baseAssetBurnTokenIndex: 0
+        });
+
+        defaultInitParamBytes = abi.encode(defaultInitParams);
+    }
+
+    function test_RevertIf_ParamConvexStakingIsZeroAddress() public {
+        CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
+            curvePool: STETH_ETH_CURVE_POOL,
+            convexStaking: zero,
+            convexPoolId: 25,
+            baseAssetBurnTokenIndex: 0
+        });
+        bytes memory initParamBytes = abi.encode(initParams);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "convexStaking"));
+        vault.initialize(IERC20(address(_asset)), _underlyer, _rewarder, additionalTrackedTokens, initParamBytes);
+    }
+
+    function test_RevertIf_ParamCurvePoolIsZeroAddress() public {
+        CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
+            curvePool: zero,
+            convexStaking: 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03,
+            convexPoolId: 25,
+            baseAssetBurnTokenIndex: 0
+        });
+        bytes memory initParamBytes = abi.encode(initParams);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "curvePool"));
+        vault.initialize(IERC20(address(_asset)), _underlyer, _rewarder, additionalTrackedTokens, initParamBytes);
+    }
+
+    function test_RevertIf_PoolIsShutdown() public {
+        vm.mockCall(
+            CONVEX_BOOSTER,
+            abi.encodeWithSelector(IConvexBooster.poolInfo.selector),
+            abi.encode(
+                0x06325440D014e39736583c165C2963BA99fAf14E,
+                zero,
+                zero,
+                0x0A760466E1B4621579a82a39CB56Dda2F4E70f03,
+                zero,
+                true
+            )
+        );
+        vm.expectRevert(abi.encodeWithSelector(CurveConvexDestinationVault.PoolShutdown.selector));
+        vault.initialize(IERC20(address(_asset)), _underlyer, _rewarder, additionalTrackedTokens, defaultInitParamBytes);
+    }
+
+    function test_RevertIf_LptokeFromBoosterIsZeroAddress() public {
+        vm.mockCall(
+            CONVEX_BOOSTER,
+            abi.encodeWithSelector(IConvexBooster.poolInfo.selector),
+            abi.encode(zero, zero, zero, zero, zero, false)
+        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "lpToken"));
+        vault.initialize(IERC20(address(_asset)), _underlyer, _rewarder, additionalTrackedTokens, defaultInitParamBytes);
+    }
+
+    function test_RevertIf_LptokeIsDifferentThanTheOneFromBooster() public {
+        vm.mockCall(
+            CONVEX_BOOSTER,
+            abi.encodeWithSelector(IConvexBooster.poolInfo.selector),
+            abi.encode(address(1), zero, zero, zero, zero, false)
+        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "lpToken"));
+        vault.initialize(IERC20(address(_asset)), _underlyer, _rewarder, additionalTrackedTokens, defaultInitParamBytes);
+    }
+
+    function test_RevertIf_CrvRewardsIsDifferentThanTheOneFromBooster() public {
+        vm.mockCall(
+            CONVEX_BOOSTER,
+            abi.encodeWithSelector(IConvexBooster.poolInfo.selector),
+            abi.encode(0x06325440D014e39736583c165C2963BA99fAf14E, zero, zero, zero, zero, false)
+        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "crvRewards"));
+        vault.initialize(IERC20(address(_asset)), _underlyer, _rewarder, additionalTrackedTokens, defaultInitParamBytes);
     }
 }

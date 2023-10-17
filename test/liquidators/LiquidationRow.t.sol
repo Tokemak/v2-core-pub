@@ -751,14 +751,14 @@ contract IntegrationTest is LiquidationRowTest {
         CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
             curvePool: STETH_ETH_CURVE_POOL,
             convexStaking: 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03,
-            convexBooster: CONVEX_BOOSTER,
             convexPoolId: 25,
             baseAssetBurnTokenIndex: 0
         });
         bytes memory initParamBytes = abi.encode(initParams);
 
         // Create CurveConvexDestinationVault template
-        CurveConvexDestinationVault dvTemplate = new CurveConvexDestinationVault(systemRegistry, CVX_MAINNET);
+        CurveConvexDestinationVault dvTemplate =
+            new CurveConvexDestinationVault(systemRegistry, CVX_MAINNET, CONVEX_BOOSTER);
         bytes32[] memory dvTypes = new bytes32[](1);
         dvTypes[0] = keccak256(abi.encode("template"));
         destinationTemplateRegistry.addToWhitelist(dvTypes);

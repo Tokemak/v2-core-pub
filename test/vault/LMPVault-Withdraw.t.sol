@@ -2207,6 +2207,7 @@ contract LMPVaultMintingTests is Test {
         _mockRootPrice(address(_underlyerOne), 6e18);
 
         // 4. Debt report
+        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
         _lmpVault.updateDebtReporting(_destinations);
 
         // No change in idle

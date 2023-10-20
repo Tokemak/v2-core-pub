@@ -859,8 +859,11 @@ contract LMPVault is
                     Math.Rounding.Up
                 );
                 _mint(sink, shares);
+                totalSupply += shares;
+                currentNavPerShare = ((idle + debt) * MAX_FEE_BPS) / totalSupply;
                 emit Deposit(address(this), sink, fees, shares);
             }
+
             // Set our new high water mark, the last nav/share height we took fees
             navPerShareHighMark = currentNavPerShare;
             navPerShareHighMarkTimestamp = block.timestamp;

@@ -15,6 +15,8 @@ import { IBaseBribe } from "src/interfaces/external/velodrome/IBaseBribe.sol";
 import { IWrappedExternalBribeFactory } from "src/interfaces/external/velodrome/IWrappedExternalBribeFactory.sol";
 import { IRewardsDistributor } from "src/interfaces/external/velodrome/IRewardsDistributor.sol";
 
+//slither-disable-start dead-code
+
 /**
  * @title VelodromeRewardsAdapter
  * @dev This contract implements an adapter for interacting with Velodrome Finance's reward system.
@@ -332,3 +334,5 @@ library VelodromeRewardsAdapter {
         //slither-disable-end assembly
     }
 }
+
+//slither-disable-end dead-code

@@ -276,8 +276,11 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
         return value * adminFeeRate / 1e18;
     }
 
+    // Can remove slither disable once a contract derives
+    // slither-disable-start unimplemented-functions
     function getVirtualPrice() internal view virtual returns (uint256 virtualPrice);
 
     /// @dev for metastable pools the pool token should be filtered out
     function getPoolTokens() internal view virtual returns (IERC20[] memory tokens, uint256[] memory balances);
+    // slither-disable-end unimplemented-functions
 }

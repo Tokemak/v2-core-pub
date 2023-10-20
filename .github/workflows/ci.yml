@@ -71,13 +71,12 @@ jobs:
       #     forge --version
       #     forge build --sizes
 
-      - name: Security scan - Slither
-        run: |
-          pip3 install slither-analyzer==0.9.3
-          pip3 install solc-select
-          solc-select install 0.8.17
-          solc-select use 0.8.17
-          slither .
+      - name: Run Slither
+        uses: crytic/slither-action@v0.3.0
+        with:
+          fail-on: all
+          solc-version: 0.8.17
+          slither-version: 0.10.0
 
       - name: Build package
         run: npm run build

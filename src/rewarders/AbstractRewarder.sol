@@ -232,6 +232,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
         // Correctly calculate leftover reward when totalSupply() is 0.
         if (totalSupply() == 0) {
             if (lastUpdateBlock < periodInBlockFinish) {
+                // slither-disable-next-line divide-before-multiply
                 reward += (periodInBlockFinish - lastUpdateBlock) * rewardRate;
             }
         } else if (block.number < periodInBlockFinish) {
@@ -244,6 +245,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
 
         _updateReward(address(0));
 
+        // slither-disable-next-line divide-before-multiply
         rewardRate = reward / durationInBlock;
         // If `reward` < `durationInBlock`, it will result in a `rewardRate` of 0, which we want to prevent.
         if (rewardRate <= 0) revert Errors.ZeroAmount();

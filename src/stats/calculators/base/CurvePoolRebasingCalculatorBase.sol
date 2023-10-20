@@ -87,6 +87,7 @@ abstract contract CurvePoolRebasingCalculatorBase is IDexLSTStats, BaseStatsCalc
         rebasingTokenIdx = decodedInitData.rebasingTokenIdx;
 
         ICurveResolver curveResolver = systemRegistry.curveResolver();
+        // slither-disable-next-line unused-return
         (reserveTokens, numTokens, lpToken,) = curveResolver.resolveWithLpToken(poolAddress);
 
         Errors.verifyNotZero(lpToken, "lpToken");

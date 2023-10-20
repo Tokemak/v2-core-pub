@@ -2,8 +2,10 @@
 
 pragma solidity 0.8.17;
 
-//solhint-disable no-inline-assembly
-//slither-disable-start assembly,cyclomatic-complexity
+// solhint-disable no-inline-assembly
+
+// slither-disable-start assembly,cyclomatic-complexity,dead-code
+
 library CommandBuilder {
     uint256 public constant IDX_VARIABLE_LENGTH = 0x80;
     uint256 public constant IDX_VALUE_MASK = 0x7f;
@@ -166,4 +168,4 @@ library CommandBuilder {
         }
     }
 }
-//slither-disable-end assembly,cyclomatic-complexity
+// slither-disable-end assembly,cyclomatic-complexity,dead-code

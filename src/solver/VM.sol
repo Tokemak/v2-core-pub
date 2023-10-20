@@ -6,7 +6,7 @@ import { CommandBuilder } from "src/solver/CommandBuilder.sol";
 
 // solhint-disable avoid-low-level-calls
 // solhint-disable no-inline-assembly
-// slither-disable-start delegatecall-loop,low-level-calls,assembly
+// slither-disable-start delegatecall-loop,low-level-calls,assembly,dead-code
 
 /**
  *
@@ -30,6 +30,7 @@ abstract contract VM {
     uint256 private constant FLAG_EXTENDED_COMMAND = 0x40;
     uint256 private constant FLAG_TUPLE_RETURN = 0x80;
 
+    // slither-disable-next-line too-many-digits
     uint256 private constant SHORT_COMMAND_FILL = 0x000000000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
     address private immutable self;
@@ -138,4 +139,4 @@ abstract contract VM {
     }
 }
 
-// slither-disable-end delegatecall-loop,low-level-calls,assembly
+// slither-disable-end delegatecall-loop,low-level-calls,assembly,dead-code

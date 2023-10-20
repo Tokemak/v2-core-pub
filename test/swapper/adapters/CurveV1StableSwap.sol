@@ -12,10 +12,12 @@ import { ISyncSwapper } from "src/interfaces/swapper/ISyncSwapper.sol";
 import { CurveV1StableSwap } from "src/swapper/adapters/CurveV1StableSwap.sol";
 import { ICurveV1StableSwap } from "src/interfaces/external/curve/ICurveV1StableSwap.sol";
 
-import { STETH_MAINNET, WETH_MAINNET, RANDOM } from "test/utils/Addresses.sol";
+import { STETH_MAINNET, WETH_MAINNET, RANDOM, CURVE_ETH, STETH_WHALE } from "test/utils/Addresses.sol";
 
 // solhint-disable func-name-mixedcase
 contract CurveV1StableSwapTest is Test {
+    uint256 public sellAmount = 1e18;
+
     CurveV1StableSwap private adapter;
 
     ISwapRouter.SwapData private route;
@@ -26,6 +28,8 @@ contract CurveV1StableSwapTest is Test {
         vm.selectFork(forkId);
 
         adapter = new CurveV1StableSwap(address(this), WETH_MAINNET);
+
+        vm.makePersistent(address(adapter));
 
         // route WETH_MAINNET -> STETH_MAINNET
         route = ISwapRouter.SwapData({
@@ -55,8 +59,6 @@ contract CurveV1StableSwapTest is Test {
     }
 
     function test_swap_Works() public {
-        uint256 sellAmount = 1e18;
-
         deal(WETH_MAINNET, address(this), 10 * sellAmount);
         IERC20(WETH_MAINNET).approve(address(adapter), 4 * sellAmount);
 
@@ -73,4 +75,38 @@ contract CurveV1StableSwapTest is Test {
 
         assertGe(val, 0);
     }
+
+    function test_swap_ConvertsEthToWeth() external {
+        // More recent fork for STETH_WHALE.
+        string memory endpoint = vm.envString("MAINNET_RPC_URL");
+        uint256 forkId = vm.createFork(endpoint, 18_392_259);
+        vm.selectFork(forkId);
+
+        // Set route up for this test, stEth -> Eth.
+        route = ISwapRouter.SwapData({
+            token: CURVE_ETH,
+            pool: 0xDC24316b9AE028F1497c275EB9192a3Ea0f67022,
+            swapper: adapter,
+            data: abi.encode(1, 0, true) // isEth true, should swap for weth.
+         });
+
+        vm.prank(STETH_WHALE);
+        IERC20(STETH_MAINNET).transfer(address(this), 10 * sellAmount);
+        IERC20(STETH_MAINNET).approve(address(adapter), 10 * sellAmount);
+
+        assertEq(IERC20(WETH_MAINNET).balanceOf(address(this)), 0);
+
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success,) = address(adapter).delegatecall(
+            abi.encodeWithSelector(
+                ISyncSwapper.swap.selector, route.pool, STETH_MAINNET, sellAmount, vm.addr(1), 1, route.data
+            )
+        );
+
+        assertTrue(success);
+
+        assertGt(IERC20(WETH_MAINNET).balanceOf(address(this)), 0);
+    }
+
+    receive() external payable { }
 }

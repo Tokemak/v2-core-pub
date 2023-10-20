@@ -38,7 +38,7 @@ contract CurveV1StableSwap is BaseAdapter {
         address poolAddress,
         address sellTokenAddress,
         uint256 sellAmount,
-        address buyTokenAddress,
+        address,
         uint256 minBuyAmount,
         bytes memory data
     ) external override onlyRouter returns (uint256 amount) {
@@ -49,8 +49,9 @@ contract CurveV1StableSwap is BaseAdapter {
 
         amount = pool.exchange(sellIndex, buyIndex, sellAmount, minBuyAmount);
 
-        // The rest of the system only deals in WETH
-        if (isEth && buyTokenAddress == address(weth)) {
+        // The rest of the system only deals in WETH, swap if Eth
+        // TODO: Can potentially replace this with Eth balance check to remove potential admin misconfig.
+        if (isEth) {
             // slither-disable-next-line arbitrary-send-eth
             weth.deposit{ value: amount }();
         }

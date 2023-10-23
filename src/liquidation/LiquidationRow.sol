@@ -88,8 +88,9 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
 
     /// @inheritdoc ILiquidationRow
     function setFeeAndReceiver(address _feeReceiver, uint256 _feeBps) external hasRole(Roles.LIQUIDATOR_ROLE) {
-        // feeBps should be less than or equal to MAX_PCT (100%) to prevent overflows
-        if (_feeBps > MAX_PCT) revert FeeTooHigh();
+        // _feeBps should be less than or equal to 50%.  Want to limit the amount of received
+        //      that can be taken as fee.
+        if (_feeBps > MAX_PCT / 2) revert FeeTooHigh();
 
         feeBps = _feeBps;
         // slither-disable-next-line missing-zero-check

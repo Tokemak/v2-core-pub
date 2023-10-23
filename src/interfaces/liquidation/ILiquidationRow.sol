@@ -47,7 +47,7 @@ interface ILiquidationRow {
     /**
      * @notice Sets the fee and the receiver of the fee.
      *  If either _feeReceiver is address(0) or _feeBps is 0, the fee feature is turned off.
-     * @dev FeeBps must be less than or equal to 10_000, i.e., 100%, to prevent overflows.
+     * @dev FeeBps must be less than or equal to 5_000, i.e., 50%.
      * @param _feeReceiver The address of the fee receiver. If set to address(0), the fee feature is turned off.
      * @param _feeBps The fee rate in basis points (bps). 1 bps is 0.01%. If set to 0, the fee feature is turned off.
      */

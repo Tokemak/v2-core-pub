@@ -368,7 +368,7 @@ contract SetFeeAndReceiver is LiquidationRowTest {
 
     function test_RevertIf_FeeIsToHigh() public {
         address feeReceiver = address(1);
-        uint256 feeBps = 10_001;
+        uint256 feeBps = 5001;
 
         vm.expectRevert(abi.encodeWithSelector(ILiquidationRow.FeeTooHigh.selector));
 

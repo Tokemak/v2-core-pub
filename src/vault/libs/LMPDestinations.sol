@@ -11,6 +11,10 @@ import { ISystemRegistry, IDestinationVaultRegistry } from "src/interfaces/ISyst
 library LMPDestinations {
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    uint256 public constant MAX_DESTINATIONS = 50;
+
+    error DestinationLimitExceeded();
+
     event DestinationVaultAdded(address destination);
     event DestinationVaultRemoved(address destination);
     event WithdrawalQueueSet(address[] destinations);
@@ -105,6 +109,7 @@ library LMPDestinations {
 
         uint256 numDestinations = _destinations.length;
         if (numDestinations == 0) revert Errors.InvalidParams();
+        if (numDestinations + destinations.length() > MAX_DESTINATIONS) revert DestinationLimitExceeded();
 
         address dAddress;
         for (uint256 i = 0; i < numDestinations; ++i) {

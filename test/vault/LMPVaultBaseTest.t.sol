@@ -34,6 +34,8 @@ contract LMPVaultBaseTest is BaseTest {
 
     address private unauthorizedUser = address(0x33);
 
+    error DestinationLimitExceeded();
+
     event DestinationVaultAdded(address destination);
     event DestinationVaultRemoved(address destination);
     event WithdrawalQueueSet(address[] destinations);
@@ -94,6 +96,31 @@ contract LMPVaultBaseTest is BaseTest {
     function test_DestinationVault_add() public {
         _addDestinationVault(destinationVault);
         assert(lmpVault.getDestinations()[0] == address(destinationVault));
+    }
+
+    function test_DestinationVault_Max() public {
+        address[] memory localDestVaults = new address[](50); // 50 DV vaults is max.
+        // Generate 50 "vaults".
+        for (uint256 i = 0; i < 50; ++i) {
+            localDestVaults[i] = vm.addr(i + 1); // Private key cannot be 0.
+        }
+
+        // Mock DV registry call.
+        vm.mockCall(
+            address(systemRegistry.destinationVaultRegistry()),
+            abi.encodeWithSelector(destinationVaultRegistry.isRegistered.selector),
+            abi.encode(true)
+        );
+
+        // Add 50 DVs to LMP.
+        lmpVault.addDestinations(localDestVaults);
+
+        // Reset array with one extra "vault";
+        localDestVaults = new address[](1);
+        localDestVaults[0] = vm.addr(51);
+
+        vm.expectRevert(DestinationLimitExceeded.selector);
+        lmpVault.addDestinations(localDestVaults);
     }
 
     function test_DestinationVault_add_permissions() public {

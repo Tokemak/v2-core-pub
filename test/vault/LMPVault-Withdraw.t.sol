@@ -2694,7 +2694,7 @@ contract LMPVaultMintingTests is Test {
         // User 1 - 500
         // User 2 - 250
         // User 3 - 1117
-        // Fees - 128 + 62 - 180
+        // Fees - 128 + 62 - 190
         // Total Supply - 2057
         // We have a totalAssets() of 3219
         // We assume no slippage

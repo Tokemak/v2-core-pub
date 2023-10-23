@@ -55,7 +55,7 @@ contract LMPVaultRouterTest is BaseTest {
     }
 
     function _setupVault(bytes memory salt) internal returns (LMPVault _lmpVault) {
-        uint256 limit = type(uint256).max;
+        uint256 limit = type(uint112).max;
         _lmpVault = LMPVault(lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256(salt), ""));
         assert(systemRegistry.lmpVaultRegistry().isVault(address(_lmpVault)));
     }
@@ -374,7 +374,7 @@ contract LMPVaultRouterTest is BaseTest {
         accessController.grantRole(Roles.REGISTRY_UPDATER, address(lmpVaultFactory));
         systemRegistry.setLMPVaultFactory(VaultTypes.LST, address(lmpVaultFactory));
 
-        uint256 limit = type(uint256).max;
+        uint256 limit = type(uint112).max;
         lmpVault = LMPVault(lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256("weth"), ""));
         assert(systemRegistry.lmpVaultRegistry().isVault(address(lmpVault)));
     }

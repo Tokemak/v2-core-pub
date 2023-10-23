@@ -26,7 +26,7 @@ contract LMPVaultRegistryTest is BaseTest {
         accessController.grantRole(Roles.REGISTRY_UPDATER, address(this));
 
         vault =
-            LMPVault(lmpVaultFactory.createVault(type(uint256).max, type(uint256).max, "x", "y", keccak256("v8"), ""));
+            LMPVault(lmpVaultFactory.createVault(type(uint112).max, type(uint112).max, "x", "y", keccak256("v8"), ""));
     }
 
     function _contains(address[] memory arr, address value) internal pure returns (bool) {
@@ -58,7 +58,7 @@ contract AddVault is LMPVaultRegistryTest {
         lmpVaultRegistry.addVault(address(vault));
 
         LMPVault anotherVault =
-            LMPVault(lmpVaultFactory.createVault(type(uint256).max, type(uint256).max, "x", "y", keccak256("v9"), ""));
+            LMPVault(lmpVaultFactory.createVault(type(uint112).max, type(uint112).max, "x", "y", keccak256("v9"), ""));
 
         vm.expectEmit(true, true, false, true);
         emit VaultAdded(anotherVault.asset(), address(anotherVault));

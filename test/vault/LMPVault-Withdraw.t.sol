@@ -150,7 +150,7 @@ contract LMPVaultMintingTests is Test {
         _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, template, 800, 100);
         _accessController.grantRole(Roles.REGISTRY_UPDATER, address(_lmpVaultFactory));
 
-        uint256 limit = type(uint256).max;
+        uint256 limit = type(uint112).max;
         _lmpVault = LMPVaultNavChange(_lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256("v1"), ""));
         vm.label(address(_lmpVault), "lmpVault");
         _rewarder = MainRewarder(address(_lmpVault.rewarder()));
@@ -424,6 +424,11 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.totalSupplyLimit(), 999);
     }
 
+    function test_setTotalSupplyLimit_RevertIf_OverLimit() public {
+        vm.expectRevert(abi.encodeWithSelector(LMPVault.TotalSupplyOverLimit.selector));
+        _lmpVault.setTotalSupplyLimit(type(uint256).max);
+    }
+
     function test_setTotalSupplyLimit_EmitsTotalSupplyLimitSetEvent() public {
         vm.expectEmit(true, true, true, true);
         emit TotalSupplyLimitSet(999);
@@ -433,6 +438,11 @@ contract LMPVaultMintingTests is Test {
     function test_setPerWalletLimit_RevertIf_ZeroIsSet() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "newWalletLimit"));
         _lmpVault.setPerWalletLimit(0);
+    }
+
+    function test_setPerWalletLimit_RevertIf_OverLimit() public {
+        vm.expectRevert(abi.encodeWithSelector(LMPVault.PerWalletOverLimit.selector));
+        _lmpVault.setPerWalletLimit(type(uint256).max);
     }
 
     function test_setPerWalletLimit_SavesValue() public {

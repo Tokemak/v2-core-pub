@@ -37,7 +37,7 @@ contract LensTest is BaseTest {
         destinationVaultRegistry.register(destinations[0]);
 
         LMPVault lmpVault =
-            LMPVault(lmpVaultFactory.createVault(type(uint256).max, type(uint256).max, "x", "y", keccak256("v8"), ""));
+            LMPVault(lmpVaultFactory.createVault(type(uint112).max, type(uint112).max, "x", "y", keccak256("v8"), ""));
 
         accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));
         lmpVault.addDestinations(destinations);

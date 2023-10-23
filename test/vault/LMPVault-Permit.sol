@@ -55,7 +55,7 @@ contract PermitTests is Test {
         _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, template, 800, 100);
         _accessController.grantRole(Roles.REGISTRY_UPDATER, address(_lmpVaultFactory));
 
-        uint256 limit = type(uint256).max;
+        uint256 limit = type(uint112).max;
         _lmpVault = LMPVault(_lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256("v1"), ""));
         vm.label(address(_lmpVault), "lmpVault");
     }

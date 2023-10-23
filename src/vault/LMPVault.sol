@@ -131,6 +131,8 @@ contract LMPVault is
     error NavOpsInProgress();
     error OverWalletLimit(address to);
     error VaultShutdown();
+    error TotalSupplyOverLimit();
+    error PerWalletOverLimit();
 
     event PerformanceFeeSet(uint256 newFee);
     event FeeSinkSet(address newFeeSink);
@@ -996,6 +998,11 @@ contract LMPVault is
     /// @dev Zero is allowed here and used as a way to stop deposits but allow withdrawals
     /// @param newSupplyLimit new total amount of shares allowed to be minted
     function _setTotalSupplyLimit(uint256 newSupplyLimit) private {
+        // overflow protection / max reasonable limit
+        if (newSupplyLimit > type(uint112).max) {
+            revert TotalSupplyOverLimit();
+        }
+
         // We do not expect that a decrease in this value will affect any shares already minted
         // Just that new shares won't be minted until existing fall below the limit
 
@@ -1010,6 +1017,11 @@ contract LMPVault is
         // Any decrease in this value shouldn't affect what a wallet is already holding
         // Just that their amount can't increase
         Errors.verifyNotZero(newWalletLimit, "newWalletLimit");
+
+        // overflow protection / max reasonable limit
+        if (newWalletLimit > type(uint112).max) {
+            revert PerWalletOverLimit();
+        }
 
         perWalletLimit = newWalletLimit;
 

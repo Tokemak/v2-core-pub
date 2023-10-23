@@ -65,7 +65,7 @@ contract LMPVaultBaseTest is BaseTest {
             address(systemRegistry), abi.encodeWithSelector(SystemRegistry.isRewardToken.selector), abi.encode(true)
         );
         lmpVault =
-            LMPVault(vaultFactory.createVault(type(uint256).max, type(uint256).max, "x", "y", keccak256("vault"), ""));
+            LMPVault(vaultFactory.createVault(type(uint112).max, type(uint112).max, "x", "y", keccak256("vault"), ""));
 
         assert(systemRegistry.lmpVaultRegistry().isVault(address(lmpVault)));
     }

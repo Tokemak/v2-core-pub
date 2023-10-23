@@ -61,13 +61,13 @@ contract DeploySystem is BaseScript {
     bytes32 public lmpVaultType = keccak256("lst-weth-v1");
     uint256 public startEpoch = block.timestamp;
     uint256 public minStakeDuration = 30 days;
-    uint256 public lmp1SupplyLimit = type(uint256).max;
-    uint256 public lmp1WalletLimit = type(uint256).max;
+    uint256 public lmp1SupplyLimit = type(uint112).max;
+    uint256 public lmp1WalletLimit = type(uint112).max;
     string public lmp1SymbolSuffix = "EST";
     string public lmp1DescPrefix = "Established";
     bytes32 public lmp1Salt = keccak256("established");
-    uint256 public lmp2SupplyLimit = type(uint256).max;
-    uint256 public lmp2WalletLimit = type(uint256).max;
+    uint256 public lmp2SupplyLimit = type(uint112).max;
+    uint256 public lmp2WalletLimit = type(uint112).max;
     string public lmp2SymbolSuffix = "EMRG";
     string public lmp2DescPrefix = "Emerging";
     bytes32 public lmp2Salt = keccak256("emerging");
@@ -123,8 +123,8 @@ contract DeploySystem is BaseScript {
         // LMP Factory setup.
         lmpFactory = new LMPVaultFactory(
           systemRegistry,
-          address(lmpVaultTemplate), 
-          defaultRewardRatioLmp, 
+          address(lmpVaultTemplate),
+          defaultRewardRatioLmp,
           defaultRewardBlockDurationLmp
         );
         systemRegistry.setLMPVaultFactory(lmpVaultType, address(lmpFactory));

@@ -25,7 +25,7 @@ contract LMPVaultTest is ERC4626Test, BaseTest {
 
         // create vault
         LMPVault vault =
-            LMPVault(lmpVaultFactory.createVault(type(uint256).max, type(uint256).max, "x", "y", keccak256("v8"), ""));
+            LMPVault(lmpVaultFactory.createVault(type(uint112).max, type(uint112).max, "x", "y", keccak256("v8"), ""));
 
         _vault_ = address(vault);
         _delta_ = 0;

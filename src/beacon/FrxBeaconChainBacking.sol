@@ -40,9 +40,6 @@ contract FrxBeaconChainBacking is SystemComponent, SecurityBase, IBeaconChainBac
         uint208 totalLiabilities,
         uint48 queriedTimestamp
     ) public hasRole(Roles.LSD_BACKING_UPDATER) {
-        // Errors.verifyNotZero(totalAssets, "totalAssets");
-        // Errors.verifyNotZero(totalLiabilities, "totalLiabilities");
-
         if (queriedTimestamp < currentRatio.timestamp) {
             revert Errors.InvalidParam("queriedTimestamp");
         }

@@ -67,22 +67,48 @@ contract FrxBeaconChainBackingTest is Test {
         beaconBacking.update(totalAssets, totalLiabilities, queriedTimestamp);
     }
 
-    function testRevertOnUpdateRatioWhenTotalAssetsIsZero() public {
+    function testUpdateRatioWhenDataHasZeros() public { }
+
+    function testUpdateRatioWhenTotalAssetsIsZero() public {
         uint208 totalAssets = 0;
         uint208 totalLiabilities = 10;
         uint48 queriedTimestamp = 999;
+        uint208 expectedRatio = 0;
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "totalAssets"));
-        beaconBacking.update(totalAssets, totalLiabilities, queriedTimestamp - 1);
+        _runRatioTest(totalAssets, totalLiabilities, queriedTimestamp, expectedRatio);
     }
 
-    function testRevertOnUpdateRatioWhenTotalLiabilitiesIsZero() public {
-        uint208 totalAssets = 90;
+    function testUpdateRatioWhenTotalLiabilitiesIsZero() public {
+        uint208 totalAssets = 10;
         uint208 totalLiabilities = 0;
         uint48 queriedTimestamp = 999;
+        uint208 expectedRatio = 1e18;
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "totalLiabilities"));
-        beaconBacking.update(totalAssets, totalLiabilities, queriedTimestamp - 1);
+        _runRatioTest(totalAssets, totalLiabilities, queriedTimestamp, expectedRatio);
+    }
+
+    function testUpdateRatioWhenBothTotalAssetsAndTotalLiabilitiesAreZero() public {
+        uint208 totalAssets = 0;
+        uint208 totalLiabilities = 0;
+        uint48 queriedTimestamp = 999;
+        uint208 expectedRatio = 1e18;
+
+        _runRatioTest(totalAssets, totalLiabilities, queriedTimestamp, expectedRatio);
+    }
+
+    function _runRatioTest(
+        uint208 totalAssets,
+        uint208 totalLiabilities,
+        uint48 queriedTimestamp,
+        uint208 expectedRatio
+    ) internal {
+        vm.expectEmit(true, true, true, true);
+        emit RatioUpdated(expectedRatio, totalAssets, totalLiabilities, queriedTimestamp);
+        beaconBacking.update(totalAssets, totalLiabilities, queriedTimestamp);
+
+        (uint208 ratio, uint48 timestamp) = beaconBacking.current();
+        assertEq(expectedRatio, ratio);
+        assertEq(queriedTimestamp, timestamp);
     }
 
     function testRevertOnUpdateRatioWhenTimestampIsLessThanCurrent() public {

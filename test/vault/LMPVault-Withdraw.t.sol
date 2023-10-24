@@ -516,6 +516,40 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.totalIdle(), 1000);
     }
 
+    function test_deposit_RevertIf_SharesTooLow() public {
+        _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
+
+        // 1. User deposits
+        _asset.mint(address(this), 1e6);
+        _asset.approve(address(_lmpVault), 1e6);
+        _lmpVault.deposit(1e6, address(this));
+
+        // 2. Rebalance
+        _underlyerOne.mint(address(this), 1e6);
+        _underlyerOne.approve(address(_lmpVault), 1e6);
+        _lmpVault.rebalance(
+            address(_destVaultOne),
+            address(_underlyerOne), // tokenIn
+            1e6,
+            address(0), // destinationOut, none when sending out baseAsset
+            address(_asset), // baseAsset, tokenOut
+            1e6
+        );
+
+        // Underlyer1 is currently worth 2 ETH a piece
+        // 3. Inflate debt up to 1e18
+        _mockRootPrice(address(_underlyerOne), 2e18 * 10);
+
+        // 4. Debt report
+        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
+        _lmpVault.updateDebtReporting(_destinations);
+
+        // 4. try to deposit again
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "shares"));
+        _lmpVault.deposit(1, address(this));
+    }
+
     function test_deposit_StartsEarningWhileStillReceivingToken() public {
         _asset.mint(address(this), 1000);
         _asset.approve(address(_lmpVault), 1000);
@@ -1241,6 +1275,41 @@ contract LMPVaultMintingTests is Test {
             }),
             abi.encode("")
         );
+    }
+
+    function test_redeem_RevertIf_AssetTooLow() public {
+        _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
+
+        // 1. User deposits 1e18
+        _asset.mint(address(this), 1e18);
+        _asset.approve(address(_lmpVault), 1e18);
+        _lmpVault.deposit(1e18, address(this));
+
+        // 2. Rebalance
+        _underlyerOne.mint(address(this), 1e18);
+        _underlyerOne.approve(address(_lmpVault), 1e18);
+        _lmpVault.rebalance(
+            address(_destVaultOne),
+            address(_underlyerOne), // tokenIn
+            1e18,
+            address(0), // destinationOut, none when sending out baseAsset
+            address(_asset), // baseAsset, tokenOut
+            1e18
+        );
+
+        // Underlyer1 is currently worth 2 ETH a piece
+        // 3. Value debt down to 1e6
+        //    (easy ratio since we have 1e18 and underlyer is 2e18, so just 2x target price)
+        _mockRootPrice(address(_underlyerOne), 2e6);
+
+        // 4. Debt report
+        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
+        _lmpVault.updateDebtReporting(_destinations);
+
+        // 4. try to redeem
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "possibleAssets"));
+        _lmpVault.redeem(1e6, address(this), address(this));
     }
 
     function test_transfer_RevertIf_DestinationWalletLimitReached() public {

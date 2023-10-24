@@ -341,6 +341,7 @@ contract LMPVault is
         }
 
         shares = previewDeposit(assets);
+        Errors.verifyNotZero(shares, "shares");
 
         _transferAndMint(assets, shares, receiver);
     }
@@ -431,6 +432,7 @@ contract LMPVault is
             revert ERC4626ExceededMaxRedeem(owner, shares, maxShares);
         }
         uint256 possibleAssets = previewRedeem(shares);
+        Errors.verifyNotZero(possibleAssets, "possibleAssets");
 
         assets = _withdraw(possibleAssets, shares, receiver, owner);
     }

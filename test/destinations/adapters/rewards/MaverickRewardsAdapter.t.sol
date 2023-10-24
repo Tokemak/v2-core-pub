@@ -60,4 +60,18 @@ contract MaverickRewardsAdapterTest is Test {
         assertTrue(amountsClaimed[1] > 0);
         assertEq(IERC20(LDO_MAINNET).balanceOf(receiver) - ldoBefore, amountsClaimed[1]);
     }
+
+    function test_claimRewards_Revert_IfMoreThanMaxUint8EarnedInfoArray() public {
+        IReward.EarnedInfo[] memory fakeEarnedInfo = new IReward.EarnedInfo[](256); // Over max uint8.
+
+        // Mock `IReward.earned()` call.
+        vm.mockCall(
+            REWARDER,
+            abi.encodeWithSignature("earned(address)"), // One call, calling account doesn't matter
+            abi.encode(fakeEarnedInfo)
+        );
+
+        vm.expectRevert(); // Overflowing uint8, max 255.
+        MaverickRewardsAdapter.claimRewards(REWARDER, address(this));
+    }
 }

@@ -49,7 +49,7 @@ library MaverickRewardsAdapter {
         uint256[] memory amountsClaimed = new uint256[](length);
 
         // Iterating over each reward info, if earned is not zero, reward is claimed
-        for (uint256 i = 0; i < length; ++i) {
+        for (uint8 i = 0; i < length; ++i) {
             IReward.EarnedInfo memory earnedInfo = earnedInfos[i];
             IERC20 rewardToken = IERC20(earnedInfo.rewardToken);
             rewardTokens[i] = address(rewardToken);
@@ -64,7 +64,7 @@ library MaverickRewardsAdapter {
 
             // Claiming the reward
             // slither-disable-next-line unused-return
-            reward.getReward(sendTo, uint8(i));
+            reward.getReward(sendTo, i);
 
             // Calculating the claimed amount by comparing the balance after claiming the reward
             amountsClaimed[i] = rewardToken.balanceOf(sendTo) - balanceBefore;

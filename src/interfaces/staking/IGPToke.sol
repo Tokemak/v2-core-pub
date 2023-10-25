@@ -147,5 +147,5 @@ interface IGPToke {
     function collectRewards() external returns (uint256);
 
     /// @notice Check if amount can be staked
-    function isStakableAmount(uint256 amount) external pure returns (bool);
+    function isStakeableAmount(uint256 amount) external pure returns (bool);
 }

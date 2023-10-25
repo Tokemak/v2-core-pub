@@ -333,16 +333,14 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
             emit RewardPaid(account, reward);
 
             IERC20(rewardToken).safeTransfer(account, reward);
-        } else {
-            if (gpToke.isStakableAmount(reward)) {
-                rewards[account] = 0;
-                emit RewardPaid(account, reward);
-                // authorize gpToke to get our reward Toke
-                LibAdapter._approve(IERC20(tokeAddress), address(gpToke), reward);
+        } else if (gpToke.isStakeableAmount(reward)) {
+            rewards[account] = 0;
+            emit RewardPaid(account, reward);
+            // authorize gpToke to get our reward Toke
+            LibAdapter._approve(IERC20(tokeAddress), address(gpToke), reward);
 
-                // stake Toke
-                gpToke.stake(reward, tokeLockDuration, account);
-            }
+            // stake Toke
+            gpToke.stake(reward, tokeLockDuration, account);
         }
     }
 

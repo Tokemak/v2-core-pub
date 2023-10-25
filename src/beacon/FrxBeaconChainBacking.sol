@@ -48,10 +48,7 @@ contract FrxBeaconChainBacking is SystemComponent, SecurityBase, IBeaconChainBac
 
         if (totalLiabilities == 0) {
             ratio = 1e18;
-        } else if (totalAssets == 0) {
-            ratio = 0;
         } else {
-            // slither-disable-next-line divide-before-multiply
             ratio = totalAssets * decimalPad / totalLiabilities;
         }
         currentRatio = Ratio(ratio, queriedTimestamp);

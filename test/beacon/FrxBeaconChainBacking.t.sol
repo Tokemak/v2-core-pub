@@ -67,8 +67,6 @@ contract FrxBeaconChainBackingTest is Test {
         beaconBacking.update(totalAssets, totalLiabilities, queriedTimestamp);
     }
 
-    function testUpdateRatioWhenDataHasZeros() public { }
-
     function testUpdateRatioWhenTotalAssetsIsZero() public {
         uint208 totalAssets = 0;
         uint208 totalLiabilities = 10;

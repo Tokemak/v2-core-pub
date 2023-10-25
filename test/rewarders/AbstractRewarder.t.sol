@@ -97,6 +97,7 @@ contract AbstractRewarderTest is Test {
     uint256 public newRewardRatio = 800;
     uint256 public durationInBlock = 100;
     uint256 public totalSupply = 100;
+    uint256 public tokeMinStakeAmount = 10_000;
 
     event AddedToWhitelist(address indexed wallet);
     event RemovedFromWhitelist(address indexed wallet);
@@ -664,5 +665,43 @@ contract _getReward is AbstractRewarderTest {
         uint256 balanceAfter = gPToke.balanceOf(RANDOM);
 
         assertTrue(balanceAfter > balanceBefore);
+    }
+
+    function test_GPToke_Staking_Should_Not_Happen_If_No_Lock_Duration() public {
+        GPToke gPToke = _setupGpTokeAndTokeRewarder();
+        _runDefaultScenarioGpToke();
+
+        assertEq(0, rewarder.tokeLockDuration());
+
+        // mock rewarder balanceOf function
+        rewarder.setBalanceOf(1000);
+
+        uint256 balanceBefore = gPToke.balanceOf(RANDOM);
+        rewarder.exposed_getRewardWrapper(RANDOM);
+        uint256 balanceAfter = gPToke.balanceOf(RANDOM);
+
+        assertTrue(balanceAfter == balanceBefore);
+    }
+
+    // This one covers Sherlock 217-M:
+    // https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/217-M/565-best.md
+    function test_GPToke_Staking_Should_Not_Happen_If_Amount_Is_Low() public {
+        GPToke gPToke = _setupGpTokeAndTokeRewarder();
+        _runDefaultScenarioGpToke();
+
+        vm.startPrank(operator);
+        rewarder.setTokeLockDuration(30 days);
+        vm.stopPrank();
+
+        // mock rewarder balanceOf function
+        rewarder.setBalanceOf(1);
+        // and assert that earned is less than tokeMinStakeAmount
+        assertTrue(rewarder.earned(RANDOM) < tokeMinStakeAmount);
+
+        uint256 balanceBefore = gPToke.balanceOf(RANDOM);
+        rewarder.exposed_getRewardWrapper(RANDOM);
+        uint256 balanceAfter = gPToke.balanceOf(RANDOM);
+
+        assertTrue(balanceAfter == balanceBefore);
     }
 }

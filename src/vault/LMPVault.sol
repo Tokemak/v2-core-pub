@@ -337,7 +337,7 @@ contract LMPVault is
 
     /// @dev See {IERC4626-maxDeposit}.
     function maxDeposit(address wallet) public view virtual override returns (uint256 maxAssets) {
-        maxAssets = convertToAssets(_maxMint(wallet));
+        maxAssets = _convertToAssets(_maxMint(wallet), Math.Rounding.Up);
     }
 
     /// @dev See {IERC4626-previewDeposit}.

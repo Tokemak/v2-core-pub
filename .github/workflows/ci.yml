@@ -77,6 +77,7 @@ jobs:
           fail-on: all
           solc-version: 0.8.17
           slither-version: 0.10.0
+          node-version: 18
 
       - name: Build package
         run: npm run build

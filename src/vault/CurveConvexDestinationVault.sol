@@ -195,6 +195,7 @@ contract CurveConvexDestinationVault is DestinationVault {
     /// @dev Should be used for staking tokens into protocols, etc
     /// @param amount underlying tokens received
     function _onDeposit(uint256 amount) internal virtual override {
+        _underlyerExternalBalance += amount;
         ConvexStaking.depositAndStake(IConvexBooster(convexBooster), _underlying, convexStaking, convexPoolId, amount);
     }
 

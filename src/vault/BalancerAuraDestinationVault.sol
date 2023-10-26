@@ -172,6 +172,9 @@ contract BalancerAuraDestinationVault is DestinationVault {
             }
         }
 
+        // Update external balance.
+        _underlyerExternalBalance += amount;
+
         // Stake LPs into Aura
         AuraStaking.depositAndStake(IConvexBooster(auraBooster), _underlying, auraStaking, auraPoolId, amount);
     }

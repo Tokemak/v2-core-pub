@@ -47,6 +47,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
 
     address internal _baseAsset;
     address internal _underlying;
+    uint256 internal _underlyerExternalBalance;
 
     IMainRewarder internal _rewarder;
 
@@ -245,19 +246,21 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
 
         emit UnderlyingWithdraw(amount, msg.sender, to);
 
+        _ensureLocalUnderlyingBalance(amount); // Here
+
         // Does a balance check, will revert if trying to burn too much
         _burn(msg.sender, shares);
-
-        _ensureLocalUnderlyingBalance(amount);
 
         IERC20(_underlying).safeTransfer(to, amount);
     }
 
     /// @notice Ensure that we have the specified balance of the underlyer in the vault itself
+    /// @dev Must update `_underlyerExternalBalance` in state if external balance is changed.
     /// @param amount amount of token
     function _ensureLocalUnderlyingBalance(uint256 amount) internal virtual;
 
     /// @notice Callback during a deposit after the sender has been minted shares (if applicable)
+    /// @dev Must update `_underlyerExternalBalance` in state if external balance is changed.
     /// @dev Should be used for staking tokens into protocols, etc
     /// @param amount underlying tokens received
     function _onDeposit(uint256 amount) internal virtual;

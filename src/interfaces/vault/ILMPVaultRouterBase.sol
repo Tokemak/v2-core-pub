@@ -80,7 +80,7 @@ interface ILMPVaultRouterBase {
         uint256 amount,
         uint256 maxSharesOut,
         bool unwrapWETH
-    ) external returns (uint256 sharesOut);
+    ) external payable returns (uint256 sharesOut);
 
     /**
      * @notice redeem `shares` shares from a LMPVault
@@ -98,5 +98,5 @@ interface ILMPVaultRouterBase {
         uint256 shares,
         uint256 minAmountOut,
         bool unwrapWETH
-    ) external returns (uint256 amountOut);
+    ) external payable returns (uint256 amountOut);
 }

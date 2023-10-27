@@ -86,7 +86,7 @@ abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multica
         uint256 amount,
         uint256 maxSharesOut,
         bool unwrapWETH
-    ) public virtual override returns (uint256 sharesOut) {
+    ) public payable virtual override returns (uint256 sharesOut) {
         address destination = unwrapWETH ? address(this) : to;
 
         sharesOut = vault.withdraw(amount, destination, msg.sender);
@@ -106,7 +106,7 @@ abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multica
         uint256 shares,
         uint256 minAmountOut,
         bool unwrapWETH
-    ) public virtual override returns (uint256 amountOut) {
+    ) public payable virtual override returns (uint256 amountOut) {
         address destination = unwrapWETH ? address(this) : to;
 
         if ((amountOut = vault.redeem(shares, destination, msg.sender)) < minAmountOut) {
@@ -119,13 +119,15 @@ abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multica
     }
 
     function _processEthIn(ILMPVault vault) internal {
-        // if asset is not weth, revert
-        if (address(vault.asset()) != address(weth9)) {
-            revert InvalidAsset();
-        }
+        if (address(this).balance > 0) {
+            // if asset is not weth, revert
+            if (address(vault.asset()) != address(weth9)) {
+                revert InvalidAsset();
+            }
 
-        // wrap eth
-        weth9.deposit{ value: msg.value }();
+            // wrap eth
+            weth9.deposit{ value: address(this).balance }();
+        }
     }
 
     function _processWethOut(address to) internal {

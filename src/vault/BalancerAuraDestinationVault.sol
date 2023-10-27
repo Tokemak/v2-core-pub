@@ -114,6 +114,12 @@ contract BalancerAuraDestinationVault is DestinationVault {
         }
     }
 
+    /// @notice Get the balance of underlyer currently staked in Aura
+    /// @return Balance of underlyer currently staked in Aura
+    function externalQueriedBalance() public view override returns (uint256) {
+        return IERC20(auraStaking).balanceOf(address(this));
+    }
+
     /// @inheritdoc DestinationVault
     /// @notice In this vault all underlyer should be staked externally, so internal debt should be 0.
     function internalDebtBalance() public pure override returns (uint256) {
@@ -171,9 +177,6 @@ contract BalancerAuraDestinationVault is DestinationVault {
                 revert PoolTokensChanged(poolTokens, queriedPoolTokens);
             }
         }
-
-        // Update external balance.
-        _underlyerExternalBalance += amount;
 
         // Stake LPs into Aura
         AuraStaking.depositAndStake(IConvexBooster(auraBooster), _underlying, auraStaking, auraPoolId, amount);

@@ -97,6 +97,12 @@ contract MaverickDestinationVault is DestinationVault {
         constituentTokens[1] = tokenB;
     }
 
+    /// @notice Get the balance of underlyer currently staked in Maverick Rewarder
+    /// @return Balance of underlyer currently staked in Maverick Rewarder
+    function externalQueriedBalance() public view override returns (uint256) {
+        return maverickRewarder.balanceOf(address(this));
+    }
+
     /// @inheritdoc DestinationVault
     /// @notice In this vault all underlyer should be staked externally, so internal debt should be 0.
     function internalDebtBalance() public pure override returns (uint256) {
@@ -132,7 +138,6 @@ contract MaverickDestinationVault is DestinationVault {
     /// @dev Should be used for staking tokens into protocols, etc
     /// @param amount underlying tokens received
     function _onDeposit(uint256 amount) internal virtual override {
-        _underlyerExternalBalance += amount;
         MaverickStakingAdapter.stakeLPs(maverickRewarder, amount);
     }
 

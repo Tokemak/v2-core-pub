@@ -459,6 +459,21 @@ contract CurveConvexDestinationVaultTests is Test {
         assertEq(_destVault.externalQueriedBalance(), 1000);
     }
 
+    // TODO: External manipulation test.
+
+    function test_InternalQueriedBalance_CapturesUnderlyerInVault() external {
+        // Transfer tokens to address.
+        vm.prank(LP_TOKEN_WHALE);
+        _underlyer.transfer(address(this), 1000);
+
+        // Transfer to DV directly.
+        _underlyer.transfer(address(_destVault), 1000);
+
+        assertEq(_destVault.internalQueriedBalance(), 1000);
+    }
+
+    // TODO: External capture test.
+
     function _mockSystemBound(address registry, address addr) internal {
         vm.mockCall(addr, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(registry));
     }

@@ -159,6 +159,12 @@ contract CurveConvexDestinationVault is DestinationVault {
         curveLpToken = lpToken;
     }
 
+    /// @notice Get the balance of underlyer currently staked in Convex
+    /// @return Balance of underlyer currently staked in Convex
+    function externalQueriedBalance() public view override returns (uint256) {
+        return IBaseRewardPool(convexStaking).balanceOf(address(this));
+    }
+
     /// @inheritdoc DestinationVault
     /// @notice In this vault all underlyer should be staked externally, so internal debt should be 0.
     function internalDebtBalance() public pure override returns (uint256) {
@@ -195,7 +201,6 @@ contract CurveConvexDestinationVault is DestinationVault {
     /// @dev Should be used for staking tokens into protocols, etc
     /// @param amount underlying tokens received
     function _onDeposit(uint256 amount) internal virtual override {
-        _underlyerExternalBalance += amount;
         ConvexStaking.depositAndStake(IConvexBooster(convexBooster), _underlying, convexStaking, convexPoolId, amount);
     }
 

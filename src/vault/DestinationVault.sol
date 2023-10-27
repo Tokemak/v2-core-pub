@@ -47,7 +47,6 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
 
     address internal _baseAsset;
     address internal _underlying;
-    uint256 internal _underlyerExternalBalance;
 
     IMainRewarder internal _rewarder;
 
@@ -131,6 +130,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     }
 
     /// @inheritdoc IDestinationVault
+<<<<<<< HEAD
     function internalDebtBalance() public view virtual override returns (uint256);
 
     /// @inheritdoc IDestinationVault
@@ -142,6 +142,23 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     }
 
     /// @inheritdoc IDestinationVault
+=======
+    function internalDebtBalance() public view virtual override returns (uint256) {
+        return 0;
+    }
+
+    /// @inheritdoc IDestinationVault
+    function externalDebtBalance() public view virtual override returns (uint256) {
+        return totalSupply();
+    }
+
+    /// @inheritdoc IDestinationVault
+    function internalQueriedBalance() external view virtual override returns (uint256) {
+        return IERC20(_underlying).balanceOf(address(this));
+    }
+
+    /// @inheritdoc IDestinationVault
+>>>>>>> d1f55a5 (feat(destinations): Updates to how debt balances, actual balances are tracked)
     function externalQueriedBalance() external view virtual override returns (uint256);
 
     /// @inheritdoc IDestinationVault
@@ -255,12 +272,10 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     }
 
     /// @notice Ensure that we have the specified balance of the underlyer in the vault itself
-    /// @dev Must update `_underlyerExternalBalance` in state if external balance is changed.
     /// @param amount amount of token
     function _ensureLocalUnderlyingBalance(uint256 amount) internal virtual;
 
     /// @notice Callback during a deposit after the sender has been minted shares (if applicable)
-    /// @dev Must update `_underlyerExternalBalance` in state if external balance is changed.
     /// @dev Should be used for staking tokens into protocols, etc
     /// @param amount underlying tokens received
     function _onDeposit(uint256 amount) internal virtual;

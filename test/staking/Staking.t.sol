@@ -28,6 +28,7 @@ contract StakingTest is BaseTest {
     uint256 public TOLERANCE = 1e14; // 0.01% (1e18 being 100%)
 
     // Fuzzing constraints
+    uint256 public constant MIN_STAKE_AMOUNT = 10_000;
     uint256 public constant MAX_STAKE_AMOUNT = 100e6 * 1e18; // default 100m toke
     uint256 public constant MAX_REWARD_ADD = 1e9 * 1e18; // default 1B eth
 
@@ -91,6 +92,14 @@ contract StakingTest is BaseTest {
         gpToke.setMaxStakeDuration(ONE_YEAR);
         vm.expectRevert();
         gpToke.stake(stakeAmount, 2 * ONE_YEAR);
+    }
+
+    function testIsStakeableAmount() public {
+        assertTrue(gpToke.isStakeableAmount(MIN_STAKE_AMOUNT));
+        assertTrue(gpToke.isStakeableAmount(MAX_STAKE_AMOUNT));
+
+        assertFalse(gpToke.isStakeableAmount(MIN_STAKE_AMOUNT - 1));
+        assertFalse(gpToke.isStakeableAmount(MAX_STAKE_AMOUNT + 1));
     }
 
     function testStakingAndUnstaking(uint256 amount) public {

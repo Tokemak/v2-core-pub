@@ -1122,8 +1122,233 @@ contract LMPVaultMintingTests is Test {
         assertEq(balAfter - balBefore, 900, "actual");
     }
 
+    function test_effectiveHighMarkDoesntDecayBeforeSixty() public {
+        uint256 currentBlock = 100 days;
+        uint256 currentNav = 11_000;
+        uint256 lastHighMarkTimestamp = 95 days;
+        uint256 lastHighMark = 12_000;
+        uint256 aumHighMark = 10e18;
+        uint256 aumCurrent = 9e18;
+
+        uint256 effectiveHigh = _lmpVault.calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
+
+        assertEq(lastHighMark, effectiveHigh);
+    }
+
+    function test_effectiveHighMarkBecomesCurrentAfter600() public {
+        uint256 currentBlock = 1001 days;
+        uint256 currentNav = 11_000;
+        uint256 lastHighMarkTimestamp = 400 days;
+        uint256 lastHighMark = 12_000;
+        uint256 aumHighMark = 10e18;
+        uint256 aumCurrent = 9e18;
+
+        uint256 effectiveHigh = _lmpVault.calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
+
+        assertEq(currentNav, effectiveHigh);
+    }
+
+    function test_effectiveHighMarkDecaysPastDay25() public {
+        uint256 currentBlock = 1000 days;
+        uint256 currentNav = 11_000;
+        uint256 lastHighMarkTimestamp = 900 days;
+        uint256 lastHighMark = 12_000;
+        uint256 aumHighMark = 10e18;
+        uint256 aumCurrent = 9e18;
+
+        uint256 effectiveHigh = _lmpVault.calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
+
+        assertEq(11_067, effectiveHigh);
+    }
+
+    function test_effectiveHighMarkDecaysDayOne() public {
+        uint256 currentBlock = 1000 days;
+        uint256 currentNav = 11_000;
+        uint256 lastHighMarkTimestamp = 939 days;
+        uint256 lastHighMark = 12_000;
+        uint256 aumHighMark = 10e18;
+        uint256 aumCurrent = 9e18;
+
+        uint256 effectiveHigh = _lmpVault.calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
+
+        assertEq(11_976, effectiveHigh);
+    }
+
+    function test_effectiveHighMarkDecaysMultiple25DayIterations() public {
+        uint256 currentBlock = 1000 days;
+        uint256 currentNav = 11_000;
+        uint256 lastHighMarkTimestamp = 790 days;
+        uint256 lastHighMark = 12_000;
+        uint256 aumHighMark = 10e18;
+        uint256 aumCurrent = 9e18;
+
+        uint256 effectiveHigh = _lmpVault.calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
+
+        assertEq(8875, effectiveHigh);
+    }
+
+    function test_effectiveHighMarkDecaysAt600() public {
+        uint256 currentBlock = 1000 days;
+        uint256 currentNav = 11_000;
+        uint256 lastHighMarkTimestamp = 400 days;
+        uint256 lastHighMark = 12_000;
+        uint256 aumHighMark = 10e18;
+        uint256 aumCurrent = 9e18;
+
+        uint256 effectiveHigh = _lmpVault.calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
+
+        assertEq(4037, effectiveHigh);
+    }
+
+    function test_effectiveHighMarkDecaysEqualAums() public {
+        uint256 currentBlock = 1000 days;
+        uint256 currentNav = 11_000;
+        uint256 lastHighMarkTimestamp = 900 days;
+        uint256 lastHighMark = 12_000;
+        uint256 aumHighMark = 10e18;
+        uint256 aumCurrent = aumHighMark;
+
+        uint256 effectiveHigh = _lmpVault.calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
+
+        assertEq(11_520, effectiveHigh);
+    }
+
+    function test_effectiveHighMarkDecaysCurrentAumLowerAumHighMark() public {
+        uint256 currentBlock = 1000 days;
+        uint256 currentNav = 11_000;
+        uint256 lastHighMarkTimestamp = 900 days;
+        uint256 lastHighMark = 12_000;
+        uint256 aumHighMark = 9e18;
+        uint256 aumCurrent = 10e18;
+
+        uint256 effectiveHigh = _lmpVault.calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
+
+        assertEq(11_067, effectiveHigh);
+    }
+
+    function test_effectiveHighMarkDecaysLastHighMarkZero() public {
+        uint256 currentBlock = 1000 days;
+        uint256 currentNav = 11_000;
+        uint256 lastHighMarkTimestamp = 900 days;
+        uint256 lastHighMark = 0;
+        uint256 aumHighMark = 9e18;
+        uint256 aumCurrent = 10e18;
+
+        uint256 effectiveHigh = _lmpVault.calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
+
+        assertEq(0, effectiveHigh);
+    }
+
+    function test_effectiveHighMarkDecaysZeroAumCurrent() public {
+        uint256 currentBlock = 1000 days;
+        uint256 currentNav = 11_000;
+        uint256 lastHighMarkTimestamp = 900 days;
+        uint256 lastHighMark = 12_000;
+        uint256 aumHighMark = 9e18;
+        uint256 aumCurrent = 0;
+
+        uint256 effectiveHigh = _lmpVault.calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
+
+        assertEq(8013, effectiveHigh);
+    }
+
+    function test_effectiveHighMarkDecaysZeroAumHighMark() public {
+        uint256 currentBlock = 1000 days;
+        uint256 currentNav = 11_000;
+        uint256 lastHighMarkTimestamp = 900 days;
+        uint256 lastHighMark = 12_000;
+        uint256 aumHighMark = 0;
+        uint256 aumCurrent = 10e18;
+
+        uint256 effectiveHigh = _lmpVault.calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
+
+        assertEq(8013, effectiveHigh);
+    }
+
+    function test_effectiveHighMarkDecaysLowAumHighMark() public {
+        uint256 currentBlock = 1000 days;
+        uint256 currentNav = 11_000;
+        uint256 lastHighMarkTimestamp = 900 days;
+        uint256 lastHighMark = 12_000;
+        uint256 aumHighMark = 1;
+        uint256 aumCurrent = 10e18;
+
+        uint256 effectiveHigh = _lmpVault.calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
+
+        assertEq(8013, effectiveHigh);
+    }
+
+    function test_effectiveHighMarkDecaysLowAumCurrent() public {
+        uint256 currentBlock = 1000 days;
+        uint256 currentNav = 11_000;
+        uint256 lastHighMarkTimestamp = 900 days;
+        uint256 lastHighMark = 12_000;
+        uint256 aumHighMark = 9e18;
+        uint256 aumCurrent = 1;
+
+        uint256 effectiveHigh = _lmpVault.calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
+
+        assertEq(8013, effectiveHigh);
+    }
+
+    function test_effectiveHighMarkDecaysHighAumHighMark() public {
+        uint256 currentBlock = 1000 days;
+        uint256 currentNav = 11_000;
+        uint256 lastHighMarkTimestamp = 900 days;
+        uint256 lastHighMark = 12_000;
+        uint256 aumHighMark = 500 * 9e18;
+        uint256 aumCurrent = 10e18;
+
+        uint256 effectiveHigh = _lmpVault.calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
+
+        assertEq(7700, effectiveHigh);
+    }
+
+    function test_effectiveHighMarkDecaysHighAumCurrent() public {
+        uint256 currentBlock = 1000 days;
+        uint256 currentNav = 11_000;
+        uint256 lastHighMarkTimestamp = 900 days;
+        uint256 lastHighMark = 12_000;
+        uint256 aumHighMark = 9e18;
+        uint256 aumCurrent = 500 * 10e18;
+
+        uint256 effectiveHigh = _lmpVault.calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
+
+        assertEq(7700, effectiveHigh);
+    }
+
     // Covers HAL-05 & https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/005-H/005-best.md
-    function test_withdraw_RewardsGoToIdleWithPriceIncrease() public {
+    function test_this_withdraw_RewardsGoToIdleWithPriceIncrease() public {
         _mockRootPrice(address(_asset), 1 ether);
         _mockRootPrice(address(_underlyerOne), 1 ether);
         _mockRootPrice(address(_underlyerTwo), 1 ether);
@@ -1149,6 +1374,8 @@ contract LMPVaultMintingTests is Test {
             address(_asset), // baseAsset, tokenOut
             100 // aligned with underlying price
         );
+
+        vm.warp(150 days);
 
         // Deploy 10 asset to DV2
         _underlyerTwo.mint(address(this), 10);
@@ -3416,6 +3643,19 @@ contract LMPVaultNavChange is LMPVaultMinting {
         if (_tweak) {
             totalIdle -= totalIdle / 2;
         }
+    }
+
+    function calculateEffectiveNavPerShareHighMark(
+        uint256 currentBlock,
+        uint256 currentNav,
+        uint256 lastHighMarkTimestamp,
+        uint256 lastHighMark,
+        uint256 aumHighMark,
+        uint256 aumCurrent
+    ) external view returns (uint256) {
+        return _calculateEffectiveNavPerShareHighMark(
+            currentBlock, currentNav, lastHighMarkTimestamp, lastHighMark, aumHighMark, aumCurrent
+        );
     }
 }
 

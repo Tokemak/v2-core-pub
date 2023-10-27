@@ -32,8 +32,8 @@ import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 
 // Cross functional reentrancy was identified between updateDebtReporting and the
 // destinationInfo. Have nonReentrant and read-only nonReentrant modifier on them both
-// but slither was still complaining
-//slither-disable-start reentrancy-no-eth,reentrancy-benign
+// but slither was still complaining. Also disabling reliance on block timestamp as we're basing on it
+//slither-disable-start reentrancy-no-eth,reentrancy-benign,timestamp
 
 contract LMPVault is
     SystemComponent,
@@ -116,6 +116,12 @@ contract LMPVault is
     /// @notice The last timestamp we took fees at
     uint256 public navPerShareHighMarkTimestamp;
 
+    /// @notice The last totalAssets amount we took fees at
+    uint256 public totalAssetsHighMark;
+
+    /// @notice The last timestamp we updated the high water mark
+    uint256 public totalAssetsHighMarkTimestamp;
+
     /// @notice The max total supply of shares we'll allow to be minted
     uint256 public totalSupplyLimit;
 
@@ -146,6 +152,7 @@ contract LMPVault is
     event PerformanceFeeSet(uint256 newFee);
     event FeeSinkSet(address newFeeSink);
     event NewNavHighWatermark(uint256 navPerShare, uint256 timestamp);
+    event NewTotalAssetsHighWatermark(uint256 assets, uint256 timestamp);
     event TotalSupplyLimitSet(uint256 limit);
     event PerWalletLimitSet(uint256 limit);
 
@@ -867,9 +874,21 @@ contract LMPVault is
         if (totalSupply == 0) {
             return;
         }
+        // slither-disable-next-line incorrect-equality
+        if (totalAssetsHighMark == 0) {
+            // Initialize our high water mark to the current assets
+            totalAssetsHighMark = totalAssets();
+        }
 
         uint256 currentNavPerShare = ((idle + debt) * MAX_FEE_BPS) / totalSupply;
-        uint256 effectiveNavPerShareHighMark = navPerShareHighMark;
+        uint256 effectiveNavPerShareHighMark = _calculateEffectiveNavPerShareHighMark(
+            block.timestamp,
+            currentNavPerShare,
+            navPerShareHighMarkTimestamp,
+            navPerShareHighMark,
+            totalAssetsHighMark,
+            totalAssets()
+        );
 
         if (currentNavPerShare > effectiveNavPerShareHighMark) {
             // Even if we aren't going to take the fee (haven't set a sink)
@@ -897,10 +916,70 @@ contract LMPVault is
             navPerShareHighMark = currentNavPerShare;
             navPerShareHighMarkTimestamp = block.timestamp;
             emit NewNavHighWatermark(currentNavPerShare, block.timestamp);
+
+            // Set our new high water mark for totalAssets, regardless if we took fees
+            uint256 assets = totalAssets();
+            if (totalAssetsHighMark < assets) {
+                totalAssetsHighMark = assets;
+                totalAssetsHighMarkTimestamp = block.timestamp;
+                emit NewTotalAssetsHighWatermark(totalAssetsHighMark, totalAssetsHighMarkTimestamp);
+            }
         }
         emit FeeCollected(fees, sink, shares, profit, idle, debt);
 
         // NOTE: NavChanged event thrown in higher level caller
+    }
+
+    function _calculateEffectiveNavPerShareHighMark(
+        uint256 currentBlock,
+        uint256 currentNav,
+        uint256 lastHighMarkTimestamp,
+        uint256 lastHighMark,
+        uint256 aumHighMark,
+        uint256 aumCurrent
+    ) internal view returns (uint256) {
+        if (lastHighMark == 0) {
+            // If we got 0, we shouldn't increase it
+            return 0;
+        }
+        uint256 workingHigh = lastHighMark;
+        uint256 daysSinceLastFeeEarned = (currentBlock - lastHighMarkTimestamp) / 60 / 60 / 24;
+
+        if (daysSinceLastFeeEarned > 600) {
+            return currentNav;
+        }
+        if (daysSinceLastFeeEarned > 60 && daysSinceLastFeeEarned <= 600) {
+            uint256 one = 10 ** decimals();
+
+            // AUM_min = min(AUM_high, AUM_current)
+            uint256 minAssets = aumCurrent < aumHighMark ? aumCurrent : aumHighMark;
+
+            // AUM_max = max(AUM_high, AUM_current);
+            uint256 maxAssets = aumCurrent > aumHighMark ? aumCurrent : aumHighMark;
+
+            /// 0.999 * (AUM_min / AUM_max)
+            // dividing by `one` because we need end up with a number in the 100's wei range
+            uint256 g1 = ((999 * minAssets * one) / (maxAssets * one));
+
+            /// 0.99 * (1 - AUM_min / AUM_max)
+            // dividing by `10 ** (decimals() - 1)` because we need to divide 100 out for our % and then
+            // we want to end up with a number in the 10's wei range
+            uint256 g2 = (99 * (one - (minAssets * one / maxAssets))) / 10 ** (decimals() - 1);
+
+            uint256 gamma = g1 + g2;
+
+            uint256 daysDiff = daysSinceLastFeeEarned - 60;
+            // slither-disable-start divide-before-multiply
+            for (uint256 i = 0; i < daysDiff / 25; ++i) {
+                workingHigh = workingHigh * (gamma ** 25 / 1e72) / 1000;
+            }
+            // slither-disable-next-line weak-prng
+            for (uint256 i = 0; i < daysDiff % 25; ++i) {
+                workingHigh = workingHigh * gamma / 1000;
+            }
+            // slither-disable-end divide-before-multiply
+        }
+        return workingHigh;
     }
 
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override whenNotPaused {
@@ -1063,4 +1142,4 @@ contract LMPVault is
     }
 }
 
-//slither-disable-end reentrancy-no-eth,reentrancy-benign
+//slither-disable-end reentrancy-no-eth,reentrancy-benign,timestamp

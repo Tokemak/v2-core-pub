@@ -8,7 +8,10 @@ pragma solidity >=0.8.17;
 // solhint-disable state-visibility
 // solhint-disable const-name-snakecase
 // solhint-disable avoid-low-level-calls
+<<<<<<< HEAD
 // solhint-disable const-name-snakecase
+=======
+>>>>>>> c472e9f (test(destinations): Added testing for external balances for Convex)
 
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.sol";
@@ -472,7 +475,30 @@ contract CurveConvexDestinationVaultTests is Test {
         assertEq(_destVault.internalQueriedBalance(), 1000);
     }
 
-    // TODO: External capture test.
+    function test_ExternalQueriedBalance_CapturesUnderlyerNotStakedByVault() external {
+        // Get some tokens to play with, transfer to dest vault because booster takes into account msg.sender.
+        vm.prank(LP_TOKEN_WHALE);
+        _underlyer.transfer(address(_destVault), 1000);
+
+        // Approve staking from dest vault address.
+        vm.startPrank(address(_destVault));
+        _underlyer.approve(CONVEX_BOOSTER, 1000);
+
+        // Low level call, no need for interface for test.
+        (, bytes memory payload) =
+            CONVEX_BOOSTER.call(abi.encodeWithSignature("deposit(uint256,uint256,bool)", CONVEX_POOL_ID, 1000, true));
+        vm.stopPrank();
+
+        // Check that booster deposit returns true.
+        assertEq(abi.decode(payload, (bool)), true);
+
+        // Use low level call to check balance on Convex staking contract.
+        (, payload) = CONVEX_STAKING.call(abi.encodeWithSignature("balanceOf(address)", address(_destVault)));
+        assertEq(abi.decode(payload, (uint256)), 1000);
+
+        // Make sure that DV not picking up external balances.
+        assertEq(_destVault.externalQueriedBalance(), 1000);
+    }
 
     function _mockSystemBound(address registry, address addr) internal {
         vm.mockCall(addr, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(registry));

@@ -17,6 +17,7 @@ library ConvexStaking {
     error DepositAndStakeFailed();
     error PoolIdLpTokenMismatch();
     error PoolIdStakingMismatch();
+    error PoolShutdown();
 
     error MustBeMoreThanZero();
     error ArraysLengthMismatch();
@@ -105,8 +106,9 @@ library ConvexStaking {
     function _validatePoolInfo(IConvexBooster booster, uint256 poolId, address lpToken, address staking) private view {
         // Partial return values are intentionally ignored. This call provides the most efficient way to get the data.
         // slither-disable-next-line unused-return
-        (address poolLpToken,,, address crvRewards,,) = booster.poolInfo(poolId);
+        (address poolLpToken,,, address crvRewards,, bool shutdown) = booster.poolInfo(poolId);
         if (lpToken != poolLpToken) revert PoolIdLpTokenMismatch();
         if (staking != crvRewards) revert PoolIdStakingMismatch();
+        if (shutdown) revert PoolShutdown();
     }
 }

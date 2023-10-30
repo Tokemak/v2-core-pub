@@ -8,6 +8,7 @@ pragma solidity >=0.8.17;
 
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.sol";
+import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
 import { DestinationVault } from "src/vault/DestinationVault.sol";
@@ -67,7 +68,7 @@ contract CurveConvexDestinationVaultTests is Test {
 
     IERC20 internal _underlyer;
 
-    CurveResolverMainnet private _curveResolver;
+    CurveResolverMainnet internal _curveResolver;
     CurveConvexDestinationVault private _destVault;
 
     SwapRouter private swapRouter;
@@ -465,6 +466,18 @@ contract Initialize is CurveConvexDestinationVaultTests {
             abi.encode(0x06325440D014e39736583c165C2963BA99fAf14E, zero, zero, zero, zero, false)
         );
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "crvRewards"));
+        vault.initialize(IERC20(address(_asset)), _underlyer, _rewarder, additionalTrackedTokens, defaultInitParamBytes);
+    }
+
+    function test_RevertIf_NumtokensIsZero() public {
+        address[8] memory tokens;
+        vm.mockCall(
+            address(_curveResolver),
+            abi.encodeWithSelector(ICurveResolver.resolveWithLpToken.selector),
+            abi.encode(tokens, 0, address(1), false)
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "numTokens"));
         vault.initialize(IERC20(address(_asset)), _underlyer, _rewarder, additionalTrackedTokens, defaultInitParamBytes);
     }
 }

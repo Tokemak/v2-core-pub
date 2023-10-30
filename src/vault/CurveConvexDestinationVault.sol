@@ -120,6 +120,9 @@ contract CurveConvexDestinationVault is DestinationVault {
         (address[8] memory tokens, uint256 numTokens, address curveQueriedLpToken,) =
             curveResolver.resolveWithLpToken(initParams.curvePool);
 
+        Errors.verifyNotZero(numTokens, "numTokens");
+
+        // slither-disable-next-line unused-return
         (address lpToken,,, address crvRewards,, bool _isShutdown) =
             IConvexBooster(convexBooster).poolInfo(initParams.convexPoolId);
 
@@ -128,7 +131,6 @@ contract CurveConvexDestinationVault is DestinationVault {
         }
 
         Errors.verifyNotZero(lpToken, "lpToken");
-        Errors.verifyNotZero(numTokens, "numTokens");
 
         if (curveQueriedLpToken != lpToken) {
             revert Errors.InvalidParam("lpToken");

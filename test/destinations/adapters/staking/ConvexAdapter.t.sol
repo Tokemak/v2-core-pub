@@ -42,14 +42,7 @@ contract ConvexAdapterTest is Test {
 
     function test_RevertIf_PoolIsShutdown() public {
         address curveLp = 0xf43211935C781D5ca1a41d2041F397B8A7366C7A;
-        address curveLpWhale = 0x1577671a75855a3Ffc87a3E7cba597BD5560f149;
         address gauge = 0xbD5445402B0a287cbC77cb67B2a52e2FC635dce4;
-
-        uint256 pid = IBaseRewardPool(gauge).pid();
-        uint256 balance = IERC20(curveLp).balanceOf(curveLpWhale);
-
-        vm.prank(curveLpWhale);
-        IERC20(curveLp).transfer(address(this), balance);
 
         vm.mockCall(
             CONVEX_BOOSTER,
@@ -57,7 +50,7 @@ contract ConvexAdapterTest is Test {
             abi.encode(curveLp, address(0), address(0), gauge, address(0), true)
         );
         vm.expectRevert(abi.encodeWithSelector(ConvexStaking.PoolShutdown.selector));
-        ConvexStaking.depositAndStake(convexBooster, curveLp, gauge, pid, balance);
+        ConvexStaking.depositAndStake(convexBooster, curveLp, gauge, 0, 10);
     }
 
     // Pool frxETH-ETH

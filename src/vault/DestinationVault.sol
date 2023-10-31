@@ -18,11 +18,14 @@ import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSe
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 
+import { console } from "forge-std/console.sol";
+
 abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDestinationVault {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     event Recovered(address[] tokens, uint256[] amounts, address[] destinations);
+    event UnderlyerRecovered(address destination, uint256 amount);
     event UnderlyingWithdraw(uint256 amount, address owner, address to);
     event BaseAssetWithdraw(uint256 amount, address owner, address to);
     event UnderlyingDeposited(uint256 amount, address sender);
@@ -32,6 +35,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     error PullingNonTrackedToken(address token);
     error RecoveringTrackedToken(address token);
     error RecoveringMoreThanAvailable(address token, uint256 amount, uint256 availableAmount);
+    error NothingToRecover();
     error DuplicateToken(address token);
     error VaultShutdown();
 
@@ -138,7 +142,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     function externalDebtBalance() public view virtual override returns (uint256);
 
     /// @inheritdoc IDestinationVault
-    function internalQueriedBalance() external view virtual override returns (uint256) {
+    function internalQueriedBalance() public view virtual override returns (uint256) {
         return IERC20(_underlying).balanceOf(address(this));
     }
 
@@ -385,6 +389,18 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
             if (tokenBalance < amounts[i]) revert RecoveringMoreThanAvailable(tokens[i], amounts[i], tokenBalance);
 
             token.safeTransfer(destinations[i], amounts[i]);
+        }
+    }
+
+    function recoverUnderlying(address destination) external override hasRole(Roles.TOKEN_RECOVERY_ROLE) {
+        Errors.verifyNotZero(destination, "destination");
+
+        uint256 amount = internalQueriedBalance() - internalDebtBalance();
+        if (amount > 0) {
+            emit UnderlyerRecovered(destination, amount);
+            IERC20(_underlying).safeTransfer(destination, amount);
+        } else {
+            revert NothingToRecover();
         }
     }
 

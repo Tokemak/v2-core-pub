@@ -20,7 +20,7 @@ import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
-
+import { Roles } from "src/libs/Roles.sol";
 import { MainRewarder } from "src/rewarders/MainRewarder.sol";
 
 contract DestinationVaultBaseTests is Test {
@@ -42,6 +42,7 @@ contract DestinationVaultBaseTests is Test {
 
     event OnDepositCalled();
     event Shutdown(IDestinationVault.VaultShutdownStatus reason);
+    event UnderlyerRecovered(address destination, uint256 amount);
 
     function setUp() public {
         testUser1 = vm.addr(1);
@@ -260,6 +261,48 @@ contract DestinationVaultBaseTests is Test {
         assertEq(afterBalance - beforeBalance, depositAmount);
         assertEq(beforeVaultShareBalance - afterVaultShareBalance, depositAmount);
         assertEq(amtRet, depositAmount);
+    }
+
+    function test_recoverUnderlying_RevertsWrongRole() external {
+        vm.expectRevert(Errors.AccessDenied.selector);
+        testVault.recoverUnderlying(address(2));
+    }
+
+    function test_recoverUnderlying_RevertsZeroAddress() external {
+        accessController.setupRole(Roles.TOKEN_RECOVERY_ROLE, vm.addr(4));
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "destination"));
+        vm.prank(vm.addr(4));
+        testVault.recoverUnderlying(address(0));
+    }
+
+    function test_recoverUnderlying_RevertsNothingToRecover() external {
+        accessController.setupRole(Roles.TOKEN_RECOVERY_ROLE, vm.addr(4));
+        vm.expectRevert(DestinationVault.NothingToRecover.selector);
+        vm.prank(vm.addr(4));
+        testVault.recoverUnderlying(vm.addr(55));
+    }
+
+    function test_recoverUnderlying_RunsProperly() external {
+        // Set up access
+        accessController.setupRole(Roles.TOKEN_RECOVERY_ROLE, vm.addr(4));
+
+        // Get tokens, transfer directly to vault to avoid being picked up in debt tracking.
+        deal(address(underlyer), address(this), 1000);
+        underlyer.transfer(address(testVault), 1000);
+
+        // Check tokens in vault and destination address.
+        assertEq(underlyer.balanceOf(address(testVault)), 1000);
+        assertEq(underlyer.balanceOf(vm.addr(55)), 0);
+
+        // Check event.
+        vm.expectEmit(false, false, false, true);
+        emit UnderlyerRecovered(vm.addr(55), 1000);
+        vm.prank(vm.addr(4));
+        testVault.recoverUnderlying(vm.addr(55));
+
+        // Balance checks
+        assertEq(underlyer.balanceOf(address(testVault)), 0);
+        assertEq(underlyer.balanceOf(vm.addr(55)), 1000);
     }
 
     function mockSystemBound(address addr, address systemRegistry_) internal {

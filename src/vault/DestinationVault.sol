@@ -18,8 +18,6 @@ import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSe
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 
-import { console } from "forge-std/console.sol";
-
 abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDestinationVault {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;

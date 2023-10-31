@@ -8,10 +8,7 @@ pragma solidity >=0.8.17;
 // solhint-disable state-visibility
 // solhint-disable const-name-snakecase
 // solhint-disable avoid-low-level-calls
-<<<<<<< HEAD
 // solhint-disable const-name-snakecase
-=======
->>>>>>> c472e9f (test(destinations): Added testing for external balances for Convex)
 
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.sol";

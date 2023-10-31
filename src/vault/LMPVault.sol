@@ -832,7 +832,7 @@ contract LMPVault is
 
         // Persist our change in idle and debt
         uint256 idle = totalIdle + idleIncrease;
-        uint256 debt = totalDebt - prevNTotalDebt + afterNTotalDebt;
+        uint256 debt = totalDebt + afterNTotalDebt - prevNTotalDebt;
 
         totalIdle = idle;
         totalDebt = debt;

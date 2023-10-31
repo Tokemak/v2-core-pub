@@ -3013,6 +3013,44 @@ contract LMPVaultMintingTests is Test {
         assertEq(feeSinkAssets, 298);
     }
 
+    /// Based on @dev https://github.com/Tokemak/2023-06-sherlock-judging/blob/main/invalid/675.md
+    function test_updateDebtReporting_debtDecreaseRoundingNoUnderflow() public {
+        _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
+
+        // 1) Value DV1 @ 1e18
+        _mockRootPrice(address(_underlyerOne), 1e18);
+
+        // 2) Deposit 10 wei
+        _asset.mint(address(this), 1_000_000_000_000_000_010);
+        _asset.approve(address(_lmpVault), 1_000_000_000_000_000_010);
+        _lmpVault.deposit(1_000_000_000_000_000_010, address(this));
+
+        // 3) Rebalance 10 to DV1
+        _underlyerOne.mint(address(this), 1_000_000_000_000_000_010);
+        _underlyerOne.approve(address(_lmpVault), 1_000_000_000_000_000_010);
+        _lmpVault.rebalance(
+            address(_destVaultOne),
+            address(_underlyerOne), // tokenIn
+            1_000_000_000_000_000_010,
+            address(0), // destinationOut, none when sending out baseAsset
+            address(_asset), // baseAsset, tokenOut
+            1_000_000_000_000_000_010
+        );
+
+        _mockRootPrice(address(_underlyerOne), 1.1e18);
+
+        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
+        _lmpVault.updateDebtReporting(_destinations);
+
+        _lmpVault.redeem(100_000_000_000_000_001, address(this), address(this));
+
+        _lmpVault.redeem(100_000_000_000_000_001, address(this), address(this));
+
+        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
+        _lmpVault.updateDebtReporting(_destinations);
+    }
+
     function test_recover_OnlyCallableByRole() public {
         TestERC20 newToken = new TestERC20("c", "c");
         newToken.mint(address(_lmpVault), 5e18);

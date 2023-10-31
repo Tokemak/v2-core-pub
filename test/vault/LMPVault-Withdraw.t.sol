@@ -591,40 +591,39 @@ contract LMPVaultMintingTests is Test {
     }
 
     /// Based on @dev https://github.com/Tokemak/2023-06-sherlock-judging/blob/main/invalid/488.md
-    function test_deposit_Rounding() public {
+    function test_maxDeposit_RoundsUp() public {
         _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
         _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
 
-        // 1) Value DV1 @ 1wei
-        _mockRootPrice(address(_underlyerOne), 1);
+        // 1) Value DV1 @ 1e18
+        _mockRootPrice(address(_underlyerOne), 1_000_000_000_000_000_000);
 
         // 2) Deposit 4
-        _asset.mint(address(this), 4);
-        _asset.approve(address(_lmpVault), 4);
-        _lmpVault.deposit(4, address(this));
+        _asset.mint(address(this), 1_000_000_000_000_000_004);
+        _asset.approve(address(_lmpVault), 1_000_000_000_000_000_004);
+        _lmpVault.deposit(1_000_000_000_000_000_004, address(this));
 
         // 3) Rebalance 4 to DV1, send back 3 LP shares
-        _underlyerOne.mint(address(this), 3);
-        _underlyerOne.approve(address(_lmpVault), 3);
+        _underlyerOne.mint(address(this), 1_000_000_000_000_000_003);
+        _underlyerOne.approve(address(_lmpVault), 1_000_000_000_000_000_003);
         _lmpVault.rebalance(
             address(_destVaultOne),
             address(_underlyerOne), // tokenIn
-            3,
+            1_000_000_000_000_000_003,
             address(0), // destinationOut, none when sending out baseAsset
             address(_asset), // baseAsset, tokenOut
-            4
+            1_000_000_000_000_000_004
         );
 
         _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
         _lmpVault.updateDebtReporting(_destinations);
 
-        // 4) Deposit 3 more
-        _asset.mint(address(this), 3);
-        _asset.approve(address(_lmpVault), 3);
-        _lmpVault.deposit(3, address(this));
+        // We have 1.0__4, set limit 2.0__7 so that the max deposit
+        // Is calculated as trying to deposit 1.0__3
+        _lmpVault.setPerWalletLimit(2_000_000_000_000_000_007);
 
         // 5) Should get 3 back if rounding up
-        assertEq(_lmpVault.maxDeposit(address(this)), 3);
+        assertEq(_lmpVault.maxDeposit(address(this)), 1_000_000_000_000_000_003);
     }
 
     function test_CanClaimRewardsWhenPaused() public {

@@ -590,6 +590,43 @@ contract LMPVaultMintingTests is Test {
         );
     }
 
+    /// Based on @dev https://github.com/Tokemak/2023-06-sherlock-judging/blob/main/invalid/488.md
+    function test_deposit_Rounding() public {
+        _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
+
+        // 1) Value DV1 @ 1wei
+        _mockRootPrice(address(_underlyerOne), 1);
+
+        // 2) Deposit 4
+        _asset.mint(address(this), 4);
+        _asset.approve(address(_lmpVault), 4);
+        _lmpVault.deposit(4, address(this));
+
+        // 3) Rebalance 4 to DV1, send back 3 LP shares
+        _underlyerOne.mint(address(this), 3);
+        _underlyerOne.approve(address(_lmpVault), 3);
+        _lmpVault.rebalance(
+            address(_destVaultOne),
+            address(_underlyerOne), // tokenIn
+            3,
+            address(0), // destinationOut, none when sending out baseAsset
+            address(_asset), // baseAsset, tokenOut
+            4
+        );
+
+        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
+        _lmpVault.updateDebtReporting(_destinations);
+
+        // 4) Deposit 3 more
+        _asset.mint(address(this), 3);
+        _asset.approve(address(_lmpVault), 3);
+        _lmpVault.deposit(3, address(this));
+
+        // 5) Should get 3 back if rounding up
+        assertEq(_lmpVault.maxDeposit(address(this)), 3);
+    }
+
     function test_CanClaimRewardsWhenPaused() public {
         _accessController.grantRole(Roles.EMERGENCY_PAUSER, address(this));
         _lmpVault.pause();
@@ -2975,43 +3012,6 @@ contract LMPVaultMintingTests is Test {
 
         assertEq(_asset.balanceOf(vm.addr(7847)), 298);
         assertEq(feeSinkAssets, 298);
-    }
-
-    /// Based on @dev https://github.com/Tokemak/2023-06-sherlock-judging/blob/main/invalid/488.md
-    function test_updateDebtReporting_Underflow() public {
-        _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
-        _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
-
-        // 1) Value DV1 @ 1wei
-        _mockRootPrice(address(_underlyerOne), 1);
-
-        // 2) Deposit 4
-        _asset.mint(address(this), 4);
-        _asset.approve(address(_lmpVault), 4);
-        _lmpVault.deposit(4, address(this));
-
-        // 3) Rebalance 4 to DV1, send back 3 LP shares
-        _underlyerOne.mint(address(this), 3);
-        _underlyerOne.approve(address(_lmpVault), 3);
-        _lmpVault.rebalance(
-            address(_destVaultOne),
-            address(_underlyerOne), // tokenIn
-            3,
-            address(0), // destinationOut, none when sending out baseAsset
-            address(_asset), // baseAsset, tokenOut
-            4
-        );
-
-        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
-        _lmpVault.updateDebtReporting(_destinations);
-
-        // 4) Deposit 3 more
-        _asset.mint(address(this), 3);
-        _asset.approve(address(_lmpVault), 3);
-        _lmpVault.deposit(3, address(this));
-
-        // 5) Should get 3 back if rounding up
-        assertEq(_lmpVault.maxDeposit(address(this)), 3);
     }
 
     function test_recover_OnlyCallableByRole() public {

@@ -124,12 +124,23 @@ contract TellorOracleTest is Test {
     }
 
     // test `getPrice()`
-    function test_RevertInvalidTimestamp() external {
+    function test_RevertInvalidDataReturned() external {
         _oracle.addTellorRegistration(ETH, QUERY_ID, BaseOracleDenominations.Denomination.ETH, 0);
 
-        // Returns 0
+        // Returns timestamp of 0
         vm.mockCall(
-            TELLOR_ORACLE, abi.encodeWithSelector(UsingTellor.getDataBefore.selector), abi.encode(true, bytes(""), 0)
+            TELLOR_ORACLE,
+            abi.encodeWithSelector(UsingTellor.getDataBefore.selector),
+            abi.encode(true, abi.encode(1), 0)
+        );
+        vm.expectRevert(BaseOracleDenominations.InvalidDataReturned.selector);
+        _oracle.getPriceInEth(ETH);
+
+        // Returns price of zero
+        vm.mockCall(
+            TELLOR_ORACLE,
+            abi.encodeWithSelector(UsingTellor.getDataBefore.selector),
+            abi.encode(true, abi.encode(0), block.timestamp - 30 minutes)
         );
         vm.expectRevert(BaseOracleDenominations.InvalidDataReturned.selector);
         _oracle.getPriceInEth(ETH);
@@ -138,7 +149,7 @@ contract TellorOracleTest is Test {
         vm.mockCall(
             TELLOR_ORACLE,
             abi.encodeWithSelector(UsingTellor.getDataBefore.selector),
-            abi.encode(true, bytes(""), block.timestamp)
+            abi.encode(true, abi.encode(1), block.timestamp)
         );
         vm.expectRevert(BaseOracleDenominations.InvalidDataReturned.selector);
         _oracle.getPriceInEth(ETH);
@@ -147,7 +158,7 @@ contract TellorOracleTest is Test {
         vm.mockCall(
             TELLOR_ORACLE,
             abi.encodeWithSelector(UsingTellor.getDataBefore.selector),
-            abi.encode(true, bytes(""), block.timestamp - 1 weeks)
+            abi.encode(true, abi.encode(1), block.timestamp - 1 weeks)
         );
         vm.expectRevert(BaseOracleDenominations.InvalidDataReturned.selector);
         _oracle.getPriceInEth(ETH);

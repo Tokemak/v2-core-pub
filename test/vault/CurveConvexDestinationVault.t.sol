@@ -5,6 +5,8 @@ pragma solidity >=0.8.17;
 // solhint-disable func-name-mixedcase
 // solhint-disable max-states-count
 // solhint-disable max-line-length
+// solhint-disable state-visibility
+// solhint-disable const-name-snakecase
 
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.sol";

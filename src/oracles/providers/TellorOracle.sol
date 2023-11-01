@@ -117,16 +117,16 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
             getDataBefore(tellorInfo.queryId, tellorMaxAllowableTimestamp);
         uint256 tellorStoredTimeout = uint256(tellorInfo.pricingTimeout);
         uint256 tokenPricingTimeout = tellorStoredTimeout == 0 ? DEFAULT_PRICING_TIMEOUT : tellorStoredTimeout;
+        uint256 price = abi.decode(value, (uint256));
 
         // Check that something was returned and freshness of price.
         if (
             timestampRetrieved == 0 || timestamp - timestampRetrieved > tokenPricingTimeout
-                || timestampRetrieved >= tellorMaxAllowableTimestamp
+                || timestampRetrieved >= tellorMaxAllowableTimestamp || price == 0
         ) {
             revert InvalidDataReturned();
         }
 
-        uint256 price = abi.decode(value, (uint256));
         return _denominationPricing(tellorInfo.denomination, price, tokenToPrice);
     }
     // slither-disable-end timestamp

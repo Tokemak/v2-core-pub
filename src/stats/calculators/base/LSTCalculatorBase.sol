@@ -112,8 +112,8 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         // slither-disable-next-line reentrancy-benign
         updateDiscountHistory(currentEthPerToken);
 
-        // TODO: make slither happy, but this feature needs to be implemented
-        discountTimestampByPercent = [0, 0, 0, 0, 0];
+        // // TODO: make slither happy, but this feature needs to be implemented
+        // discountTimestampByPercent = [0, 0, 0, 0, 0];
     }
 
     /// @inheritdoc IStatsCalculator
@@ -158,6 +158,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         if (_timeForDiscountSnapshot()) {
             // slither-disable-next-line reentrancy-benign,reentrancy-events
             updateDiscountHistory(currentEthPerToken);
+            updateDiscountTimestampbyPercent();
         }
 
         if (_hasSlashingOccurred(currentEthPerToken)) {
@@ -255,6 +256,67 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
         // positive value is a discount; negative value is a premium
         return 1e18 - int256(priceToBacking);
+    }
+
+    function _handleStartToDecay(uint40 currentDiscount) private {
+        // save timestampOfDecayStart as the start of this decay episode
+        // don't overwrite any values that are newer than timestampOfDecayStart in the same discount
+        timestampOfDecayStart = uint40(block.timestamp);
+        for (uint256 i; i < 5; i++) {
+            if (currentDiscount >= percentileByIndex[i]) {
+                // overwrite the ith percentile slot with the current timestamp
+                discountTimestampByPercent[i] = uint40(block.timestamp);
+            } else {
+                // early stopping if the discount is less than 1% then it is also less than 2% etc
+                break;
+            }
+        }
+    }
+
+    function _handleIncreaseDecay(uint40 currentDiscount) private {
+        for (uint256 i; i < 5; i++) {
+            // don't overwrite any timestamps that were recorded as part of this discount episode
+            if ((currentDiscount >= percentileByIndex[i]) && (discountTimestampByPercent[i] < timestampOfDecayStart)) {
+                discountTimestampByPercent[i] = uint40(block.timestamp);
+            } else if (currentDiscount < percentileByIndex[i]) {
+                // early stopping if the discount is less than 1% then it is also less than 2% etc
+                break;
+            }
+        }
+    }
+
+    function _getCurrentDiscount() private view returns (uint40) {
+        if (discountHistoryIndex != 0) {
+            return discountHistory[discountHistoryIndex - 1];
+        } else {
+            return discountHistory[9];
+        }
+    }
+
+    function _getPreviousDiscount() private view returns (uint40) {
+        if (discountHistoryIndex == 0) {
+            return discountHistory[8];
+        } else if (discountHistoryIndex == 1) {
+            return discountHistory[9];
+        } else {
+            return discountHistory[discountHistoryIndex - 2];
+        }
+    }
+
+    function updateDiscountTimestampbyPercent() private {
+        uint40 currentDiscount = _getCurrentDiscount();
+        uint40 previousDiscount = _getPreviousDiscount();
+
+        // 1e5 == 1% in the discountHistory array
+        if (currentDiscount >= 1e5) {
+            if (previousDiscount < 1e5) {
+                _handleStartToDecay(currentDiscount);
+            } else {
+                if (currentDiscount > previousDiscount) {
+                    _handleIncreaseDecay(currentDiscount);
+                }
+            }
+        } // all other end points of this decision tree dont modify discountTimestampByPercent
     }
 
     function updateDiscountHistory(uint256 backing) private {

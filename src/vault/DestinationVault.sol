@@ -390,6 +390,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
         }
     }
 
+    /// @inheritdoc IDestinationVault
     function recoverUnderlying(address destination) external override hasRole(Roles.TOKEN_RECOVERY_ROLE) {
         Errors.verifyNotZero(destination, "destination");
 

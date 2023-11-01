@@ -44,6 +44,7 @@ contract MainRewarderTest is BaseTest {
     uint256 private amount = 100_000;
     uint256 private newRewardRatio = 800;
     uint256 private durationInBlock = 100;
+    uint256 public tokeMinStakeAmount = 10_000;
 
     function setUp() public virtual override(BaseTest) {
         BaseTest.setUp();
@@ -173,6 +174,88 @@ contract MainRewarderTest is BaseTest {
 
     function test_toke_notAutoStakeRewards() public {
         _runTokeStakingTest(0, amount, false);
+    }
+
+    // This one covers Sherlock 217-M:
+    // https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/217-M/565-best.md
+    function test_toke_getExtraRewards_WhenTokeRewardIsLessThanMinStake() public {
+        // setup toke rewarder
+        MainRewarder tokeRewarder = new MainRewarder(
+            systemRegistry,
+            address(stakeTracker),
+            address(toke),
+            newRewardRatio,
+            durationInBlock,
+            true
+        );
+        vm.prank(address(operator));
+        tokeRewarder.setTokeLockDuration(30 days);
+
+        // and some extra rewarders
+        extraReward1Vault = new ExtraRewarder(
+            systemRegistry,
+            address(extraReward1),
+            address(tokeRewarder),
+            newRewardRatio,
+            durationInBlock
+        );
+        extraReward2Vault = new ExtraRewarder(
+            systemRegistry,
+            address(extraReward2),
+            address(tokeRewarder),
+            newRewardRatio,
+            durationInBlock
+        );
+        vm.startPrank(operator);
+        tokeRewarder.addExtraReward(address(extraReward1Vault));
+        tokeRewarder.addExtraReward(address(extraReward2Vault));
+        vm.stopPrank();
+
+        // use small amount to get rewards that are < tokeMinStakeAmount
+        amount = 100;
+
+        // load available extra rewards
+        vm.startPrank(liquidator);
+        IERC20(extraReward1).approve(address(extraReward1Vault), amount);
+        extraReward1Vault.queueNewRewards(amount);
+
+        IERC20(extraReward2).approve(address(extraReward2Vault), amount);
+        extraReward2Vault.queueNewRewards(amount);
+        vm.stopPrank();
+
+        // load toke rewards
+        deal(address(toke), liquidator, 100_000_000_000);
+        vm.startPrank(liquidator);
+        IERC20(address(toke)).approve(address(tokeRewarder), amount);
+        tokeRewarder.queueNewRewards(amount);
+        vm.stopPrank();
+
+        // stake
+        vm.prank(address(stakeTracker));
+        tokeRewarder.stake(RANDOM, amount);
+
+        // let some time pass
+        vm.roll(block.number + 100);
+
+        // ensure we got less toke rewards than min stake amount
+        assertTrue(tokeRewarder.earned(RANDOM) < tokeMinStakeAmount);
+
+        // record balances before
+        uint256 tokeBalanceBefore = toke.balanceOf(RANDOM);
+        uint256 gpTokeBalanceBefore = gpToke.balanceOf(RANDOM);
+        uint256 extraReward1BalanceBefore = extraReward1.balanceOf(RANDOM);
+        uint256 extraReward2BalanceBefore = extraReward2.balanceOf(RANDOM);
+
+        // claim rewards
+        vm.prank(RANDOM);
+        tokeRewarder.getReward();
+
+        // validate balances after – toke should be the same as before
+        assertEq(toke.balanceOf(RANDOM), tokeBalanceBefore);
+        assertEq(gpToke.balanceOf(RANDOM), gpTokeBalanceBefore);
+        // extra rewards should be claimed successfully
+        assertTrue(extraReward1.balanceOf(RANDOM) > extraReward1BalanceBefore);
+        assertTrue(extraReward2.balanceOf(RANDOM) > extraReward2BalanceBefore);
     }
 
     function _runTokeStakingTest(

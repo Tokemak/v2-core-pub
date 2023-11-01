@@ -327,7 +327,7 @@ contract LMPVault is
     }
 
     /// @dev See {IERC4626-convertToAssets}.
-    function convertToAssets(uint256 shares) public view virtual returns (uint256 assets) {
+    function convertToAssets(uint256 shares) external view virtual returns (uint256 assets) {
         assets = _convertToAssets(shares, Math.Rounding.Down);
     }
 

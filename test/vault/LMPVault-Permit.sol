@@ -55,8 +55,10 @@ contract PermitTests is Test {
         _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, template, 800, 100);
         _accessController.grantRole(Roles.REGISTRY_UPDATER, address(_lmpVaultFactory));
 
+        bytes memory initData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: vm.addr(10_001) }));
+
         uint256 limit = type(uint112).max;
-        _lmpVault = LMPVault(_lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256("v1"), ""));
+        _lmpVault = LMPVault(_lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256("v1"), initData));
         vm.label(address(_lmpVault), "lmpVault");
     }
 

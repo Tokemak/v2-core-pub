@@ -37,6 +37,8 @@ contract LMPVaultRouterTest is BaseTest {
 
     uint256 public depositAmount = 1e18;
 
+    bytes private lmpVaultInitData;
+
     function setUp() public override {
         forkBlock = 16_731_638;
         super.setUp();
@@ -51,12 +53,14 @@ contract LMPVaultRouterTest is BaseTest {
 
         deal(address(baseAsset), address(this), depositAmount * 10);
 
+        lmpVaultInitData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: vm.addr(10_001) }));
+
         lmpVault = _setupVault("v1");
     }
 
     function _setupVault(bytes memory salt) internal returns (LMPVault _lmpVault) {
         uint256 limit = type(uint112).max;
-        _lmpVault = LMPVault(lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256(salt), ""));
+        _lmpVault = LMPVault(lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256(salt), lmpVaultInitData));
         assert(systemRegistry.lmpVaultRegistry().isVault(address(_lmpVault)));
     }
 
@@ -375,7 +379,7 @@ contract LMPVaultRouterTest is BaseTest {
         systemRegistry.setLMPVaultFactory(VaultTypes.LST, address(lmpVaultFactory));
 
         uint256 limit = type(uint112).max;
-        lmpVault = LMPVault(lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256("weth"), ""));
+        lmpVault = LMPVault(lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256("weth"), lmpVaultInitData));
         assert(systemRegistry.lmpVaultRegistry().isVault(address(lmpVault)));
     }
 }

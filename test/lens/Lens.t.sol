@@ -36,8 +36,11 @@ contract LensTest is BaseTest {
         vm.prank(address(destinationVaultFactory));
         destinationVaultRegistry.register(destinations[0]);
 
-        LMPVault lmpVault =
-            LMPVault(lmpVaultFactory.createVault(type(uint112).max, type(uint112).max, "x", "y", keccak256("v8"), ""));
+        bytes memory initData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: vm.addr(10_001) }));
+
+        LMPVault lmpVault = LMPVault(
+            lmpVaultFactory.createVault(type(uint112).max, type(uint112).max, "x", "y", keccak256("v8"), initData)
+        );
 
         accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));
         lmpVault.addDestinations(destinations);

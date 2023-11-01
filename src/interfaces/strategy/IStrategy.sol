@@ -75,5 +75,5 @@ interface IStrategy {
         address destinationOut,
         address tokenOut,
         uint256 amountOut
-    ) external view returns (bool success, string memory message);
+    ) external returns (bool success, string memory message);
 }

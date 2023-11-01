@@ -175,11 +175,16 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
             }
         }
 
+        // we want to return zero values
+        // slither-disable-next-line uninitialized-local
+        StakingIncentiveStats memory stakingIncentiveStats;
+
         return DexLSTStatsData({
             lastSnapshotTimestamp: lastSnapshotTimestamp,
             feeApr: feeApr,
             reservesInEth: reservesInEth,
-            lstStatsData: lstStatsData
+            lstStatsData: lstStatsData,
+            stakingIncentiveStats: stakingIncentiveStats
         });
     }
 

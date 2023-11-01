@@ -32,6 +32,7 @@ contract LMPVaultBaseTest is BaseTest {
     IDestinationVault public destinationVault2;
     LMPVault public lmpVault;
 
+    address private lmpStrategy = vm.addr(100_001);
     address private unauthorizedUser = address(0x33);
 
     error DestinationLimitExceeded();
@@ -66,8 +67,11 @@ contract LMPVaultBaseTest is BaseTest {
         vm.mockCall(
             address(systemRegistry), abi.encodeWithSelector(SystemRegistry.isRewardToken.selector), abi.encode(true)
         );
-        lmpVault =
-            LMPVault(vaultFactory.createVault(type(uint112).max, type(uint112).max, "x", "y", keccak256("vault"), ""));
+
+        bytes memory initData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: lmpStrategy }));
+        lmpVault = LMPVault(
+            vaultFactory.createVault(type(uint112).max, type(uint112).max, "x", "y", keccak256("vault"), initData)
+        );
 
         assert(systemRegistry.lmpVaultRegistry().isVault(address(lmpVault)));
     }

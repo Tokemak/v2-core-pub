@@ -56,7 +56,7 @@ interface ILMPVault is IERC4626, IERC20Permit {
     function getWithdrawalQueue() external returns (IDestinationVault[] memory _destinations);
 
     /// @notice Get a list of destination vaults with pending assets to clear out
-    function getRemovalQueue() external returns (address[] memory);
+    function getRemovalQueue() external view returns (address[] memory);
 
     /// @notice Remove emptied destination vault from pending removal queue
     function removeFromRemovalQueue(address vaultToRemove) external;

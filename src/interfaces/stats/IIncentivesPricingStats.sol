@@ -54,8 +54,16 @@ interface IIncentivesPricingStats {
     /// @dev if a token is not ready to be snapshot the entire call will fail
     function snapshot(address[] calldata tokensToSnapshot) external;
 
-    /// @notice get the latest prices for an incentive token
+    /// @notice get the latest prices for an incentive token. Reverts if token is not registered
     /// @return fastPrice the price based on the faster filter (weighted toward current prices)
     /// @return slowPrice the price based on the slower filter (weighted toward older prices, relative to fast)
     function getPrice(address token, uint40 staleCheck) external view returns (uint256 fastPrice, uint256 slowPrice);
+
+    /// @notice get the latest prices for an incentive token or zero if the token is not registered
+    /// @return fastPrice the price based on the faster filter (weighted toward current prices)
+    /// @return slowPrice the price based on the slower filter (weighted toward older prices, relative to fast)
+    function getPriceOrZero(
+        address token,
+        uint40 staleCheck
+    ) external view returns (uint256 fastPrice, uint256 slowPrice);
 }

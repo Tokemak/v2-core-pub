@@ -153,11 +153,17 @@ abstract contract CurvePoolNoRebasingCalculatorBase is IDexLSTStats, BaseStatsCa
                 lstStatsData[i] = lstStats[i].current();
             }
         }
+
+        // we want to return zero values
+        // slither-disable-next-line uninitialized-local
+        StakingIncentiveStats memory stakingIncentiveStats;
+
         return DexLSTStatsData({
             lastSnapshotTimestamp: lastSnapshotTimestamp,
             feeApr: feeApr,
             lstStatsData: lstStatsData,
-            reservesInEth: reservesInEth
+            reservesInEth: reservesInEth,
+            stakingIncentiveStats: stakingIncentiveStats
         });
     }
 

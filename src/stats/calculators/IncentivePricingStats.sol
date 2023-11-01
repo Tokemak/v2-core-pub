@@ -111,7 +111,7 @@ contract IncentivePricingStats is IIncentivesPricingStats, SecurityBase {
     }
 
     /// @inheritdoc IIncentivesPricingStats
-    function getPrice(address token, uint40 staleCheck) external view returns (uint256 fastPrice, uint256 slowPrice) {
+    function getPrice(address token, uint40 staleCheck) public view returns (uint256 fastPrice, uint256 slowPrice) {
         if (!registeredTokens.contains(token)) revert TokenNotFound(token);
 
         TokenSnapshotInfo memory info = tokenSnapshotInfo[token];
@@ -120,6 +120,17 @@ contract IncentivePricingStats is IIncentivesPricingStats, SecurityBase {
         if (block.timestamp - info.lastSnapshot > staleCheck) revert IncentiveTokenPriceStale(token);
 
         return (info.fastFilterPrice, info.slowFilterPrice);
+    }
+
+    function getPriceOrZero(
+        address token,
+        uint40 staleCheck
+    ) external view returns (uint256 fastPrice, uint256 slowPrice) {
+        if (!registeredTokens.contains(token)) {
+            return (0, 0);
+        }
+
+        return getPrice(token, staleCheck);
     }
 
     function updatePricingInfo(IRootPriceOracle pricer, address token) internal {

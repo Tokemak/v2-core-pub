@@ -16,7 +16,6 @@ import { IDestinationVaultRegistry, DestinationVaultRegistry } from "src/vault/D
 import { IDestinationVaultFactory, DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
-import { StrategyFactory } from "src/strategy/StrategyFactory.sol";
 import { StakeTrackingMock } from "test/mocks/StakeTrackingMock.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { IMainRewarder, MainRewarder } from "src/rewarders/MainRewarder.sol";

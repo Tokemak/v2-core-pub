@@ -17,6 +17,8 @@ import { ILMPVault, LMPVault } from "src/vault/LMPVault.sol";
 import { Roles } from "src/libs/Roles.sol";
 
 contract LMPVaultTest is ERC4626Test, BaseTest {
+    address private lmpStrategy = vm.addr(10_001);
+
     function setUp() public override(BaseTest, ERC4626Test) {
         // everything's mocked, so disable forking
         super._setUp(false);
@@ -24,8 +26,10 @@ contract LMPVaultTest is ERC4626Test, BaseTest {
         _underlying_ = address(baseAsset);
 
         // create vault
-        LMPVault vault =
-            LMPVault(lmpVaultFactory.createVault(type(uint112).max, type(uint112).max, "x", "y", keccak256("v8"), ""));
+        bytes memory initData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: lmpStrategy }));
+        LMPVault vault = LMPVault(
+            lmpVaultFactory.createVault(type(uint112).max, type(uint112).max, "x", "y", keccak256("v8"), initData)
+        );
 
         _vault_ = address(vault);
         _delta_ = 0;

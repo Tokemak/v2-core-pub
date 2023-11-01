@@ -58,11 +58,12 @@ contract LSTCalculatorBaseTest is Test {
     }
 
     function testAprInitIncreaseSnapshot() public {
-        // Test intializes the baseApr filter and processes the next snapshot
+        // Test initializes the baseApr filter and processes the next snapshot
         // where eth backing increases
         uint256 startingEthPerShare = 1_126_467_900_855_209_627;
         mockCalculateEthPerToken(startingEthPerShare);
-        initCalculator();
+        mockIsRebasing(false);
+        initCalculator(1e18);
 
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), START_TIMESTAMP);
         assertEq(testCalculator.lastBaseAprEthPerToken(), startingEthPerShare);
@@ -95,13 +96,12 @@ contract LSTCalculatorBaseTest is Test {
 
         mockCalculateEthPerToken(1e18);
         mockTokenPrice(1e18);
-        mockIsRebasing(false);
 
         ILSTStats.LSTStatsData memory stats = testCalculator.current();
         assertEq(stats.baseApr, expectedBaseApr);
         assertEq(stats.slashingCosts.length, 0);
         assertEq(stats.slashingTimestamps.length, 0);
-        assertEq(stats.premium, 0);
+        assertEq(stats.discount, 0);
 
         // APR Increase
         startingEthPerShare = 1_126_897_087_511_522_171;
@@ -145,13 +145,12 @@ contract LSTCalculatorBaseTest is Test {
 
         mockCalculateEthPerToken(1e18);
         mockTokenPrice(1e18);
-        mockIsRebasing(false);
 
         stats = testCalculator.current();
         assertEq(stats.baseApr, expectedBaseApr);
         assertEq(stats.slashingCosts.length, 0);
         assertEq(stats.slashingTimestamps.length, 0);
-        assertEq(stats.premium, 0);
+        assertEq(stats.discount, 0);
     }
 
     function testAprInitDecreaseSnapshot() public {
@@ -159,7 +158,8 @@ contract LSTCalculatorBaseTest is Test {
         // where eth backing decreases. Slashing event list should be updated
         uint256 startingEthPerShare = 1_126_467_900_855_209_627;
         mockCalculateEthPerToken(startingEthPerShare);
-        initCalculator();
+        mockIsRebasing(false);
+        initCalculator(1e18);
 
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), START_TIMESTAMP);
         assertEq(testCalculator.lastBaseAprEthPerToken(), startingEthPerShare);
@@ -192,13 +192,12 @@ contract LSTCalculatorBaseTest is Test {
 
         mockCalculateEthPerToken(1e18);
         mockTokenPrice(1e18);
-        mockIsRebasing(false);
 
         ILSTStats.LSTStatsData memory stats = testCalculator.current();
         assertEq(stats.baseApr, expectedBaseApr);
         assertEq(stats.slashingCosts.length, 0);
         assertEq(stats.slashingTimestamps.length, 0);
-        assertEq(stats.premium, 0);
+        assertEq(stats.discount, 0);
 
         // APR Decrease
         startingEthPerShare = 1_126_897_087_511_522_171;
@@ -233,7 +232,6 @@ contract LSTCalculatorBaseTest is Test {
 
         mockCalculateEthPerToken(1e18);
         mockTokenPrice(1e18);
-        mockIsRebasing(false);
 
         stats = testCalculator.current();
         assertEq(stats.baseApr, expectedBaseApr);
@@ -242,13 +240,14 @@ contract LSTCalculatorBaseTest is Test {
         assertEq(stats.slashingTimestamps[0], END_TIMESTAMP);
         assertEq(stats.slashingCosts[0], slashingCost);
         assertEq(stats.lastSnapshotTimestamp, END_TIMESTAMP);
-        assertEq(stats.premium, 0);
+        assertEq(stats.discount, 0);
     }
 
     function testRevertNoSnapshot() public {
         uint256 startingEthPerShare = 1e18;
         mockCalculateEthPerToken(startingEthPerShare);
-        initCalculator();
+        mockIsRebasing(false);
+        initCalculator(1e18);
 
         // move each value forward so we can verify that a snapshot was not taken
         uint256 endingEthPerShare = startingEthPerShare + 1; // do not trigger slashing
@@ -263,7 +262,8 @@ contract LSTCalculatorBaseTest is Test {
     function testSlashingTimeExpire() public {
         uint256 startingEthPerShare = 1e18;
         mockCalculateEthPerToken(startingEthPerShare);
-        initCalculator();
+        mockIsRebasing(false);
+        initCalculator(1e18);
 
         uint256 endingEthPerShare = startingEthPerShare + 1; // do not trigger slashing event
         uint256 endingTimestamp = START_TIMESTAMP + testCalculator.SLASHING_SNAPSHOT_INTERVAL_IN_SEC();
@@ -285,19 +285,19 @@ contract LSTCalculatorBaseTest is Test {
 
         mockCalculateEthPerToken(1e18);
         mockTokenPrice(1e18);
-        mockIsRebasing(false);
 
         ILSTStats.LSTStatsData memory stats = testCalculator.current();
         assertEq(stats.baseApr, 0);
         assertEq(stats.slashingCosts.length, 0);
         assertEq(stats.slashingTimestamps.length, 0);
-        assertEq(stats.premium, 0);
+        assertEq(stats.discount, 0);
     }
 
     function testSlashingEventOccurred() public {
         uint256 startingEthPerShare = 1e18;
         mockCalculateEthPerToken(startingEthPerShare);
-        initCalculator();
+        mockIsRebasing(false);
+        initCalculator(1e18);
 
         uint256 endingEthPerShare = startingEthPerShare - 1e17; // trigger slashing event
         uint256 endingTimestamp = START_TIMESTAMP + 1;
@@ -325,7 +325,6 @@ contract LSTCalculatorBaseTest is Test {
 
         mockCalculateEthPerToken(1e18);
         mockTokenPrice(1e18);
-        mockIsRebasing(false);
 
         ILSTStats.LSTStatsData memory stats = testCalculator.current();
         assertEq(stats.baseApr, 0);
@@ -333,15 +332,16 @@ contract LSTCalculatorBaseTest is Test {
         assertEq(stats.slashingTimestamps.length, 1);
         assertEq(stats.slashingTimestamps[0], endingTimestamp);
         assertEq(stats.slashingCosts[0], expectedSlashingCost);
-        assertEq(stats.premium, 0);
+        assertEq(stats.discount, 0);
 
         // should use the maximum between slashing and baseApr
         assertEq(stats.lastSnapshotTimestamp, endingTimestamp);
     }
 
-    function testPremiumShouldCalculateCorrectly() public {
+    function testDiscountShouldCalculateCorrectly() public {
         mockCalculateEthPerToken(1e17); // starting value doesn't matter for these tests
-        initCalculator();
+        mockIsRebasing(false); // just needs to be here for initialization
+        initCalculator(1e18);
 
         ILSTStats.LSTStatsData memory stats;
         int256 expected;
@@ -351,41 +351,42 @@ contract LSTCalculatorBaseTest is Test {
         mockTokenPrice(11e17);
         mockIsRebasing(false);
 
-        expected = int256(11e17 * 1e18) / 1e18 - 1e18;
+        expected = 1e18 - int256(11e17 * 1e18) / 1e18;
         stats = testCalculator.current();
-        assertEq(stats.premium, expected);
+        assertEq(stats.discount, expected);
 
         // test handling a discount with a non-rebasing token
         mockCalculateEthPerToken(11e17);
         mockTokenPrice(1e18);
         mockIsRebasing(false);
 
-        expected = int256(1e18 * 1e18) / 11e17 - 1e18;
+        expected = 1e18 - int256(1e18 * 1e18) / 11e17;
         stats = testCalculator.current();
-        assertEq(stats.premium, expected);
+        assertEq(stats.discount, expected);
 
         // test handling a premium for a rebasing token
         // do not mock ethPerToken
         mockTokenPrice(12e17);
         mockIsRebasing(true);
 
-        expected = int256(12e17) - 1e18;
+        expected = 1e18 - int256(12e17);
         stats = testCalculator.current();
-        assertEq(stats.premium, expected);
+        assertEq(stats.discount, expected);
 
         // test handling a discount for a rebasing token
         // do not mock ethPerToken
         mockTokenPrice(9e17);
         mockIsRebasing(true);
 
-        expected = int256(9e17) - 1e18;
+        expected = 1e18 - int256(9e17);
         stats = testCalculator.current();
-        assertEq(stats.premium, expected);
+        assertEq(stats.discount, expected);
     }
 
-    function initCalculator() private {
+    function initCalculator(uint256 initPrice) private {
         bytes32[] memory dependantAprs = new bytes32[](0);
         LSTCalculatorBase.InitData memory initData = LSTCalculatorBase.InitData({ lstTokenAddress: mockToken });
+        mockTokenPrice(initPrice);
         testCalculator.initialize(dependantAprs, abi.encode(initData));
     }
 

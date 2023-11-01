@@ -10,7 +10,9 @@ interface ILSTStats {
     struct LSTStatsData {
         uint256 lastSnapshotTimestamp;
         uint256 baseApr;
-        int256 premium; // positive number is a premium, negative is a discount
+        int256 discount; // positive number is a discount, negative is a premium
+        uint24[10] discountHistory; // 7 decimal precision
+        uint40[5] discountTimestampByPercent; // each index is the timestamp that the token reached that discount
         uint256[] slashingCosts;
         uint256[] slashingTimestamps;
     }

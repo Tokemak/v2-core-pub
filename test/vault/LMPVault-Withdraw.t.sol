@@ -29,6 +29,7 @@ import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
+import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 
 contract LMPVaultTests is Test {
     SystemRegistry private _systemRegistry;
@@ -84,6 +85,8 @@ contract LMPVaultTests is Test {
 }
 
 contract LMPVaultMintingTests is Test {
+    address private _lmpStrategyAddress = vm.addr(1_000_001);
+
     SystemRegistry private _systemRegistry;
     AccessController private _accessController;
     DestinationVaultFactory private _destinationVaultFactory;
@@ -127,6 +130,8 @@ contract LMPVaultMintingTests is Test {
         _toke = new TestERC20("test", "test");
         vm.label(address(_toke), "toke");
 
+        vm.label(_lmpStrategyAddress, "lmpStrategy");
+
         _systemRegistry = new SystemRegistry(address(_toke), address(new TestERC20("weth", "weth")));
         _systemRegistry.addRewardToken(address(_toke));
 
@@ -150,14 +155,19 @@ contract LMPVaultMintingTests is Test {
         _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, template, 800, 100);
         _accessController.grantRole(Roles.REGISTRY_UPDATER, address(_lmpVaultFactory));
 
+        bytes memory initData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: _lmpStrategyAddress }));
+
         uint256 limit = type(uint112).max;
-        _lmpVault = LMPVaultNavChange(_lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256("v1"), ""));
+        _lmpVault = LMPVaultNavChange(_lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256("v1"), initData));
         vm.label(address(_lmpVault), "lmpVault");
         _rewarder = MainRewarder(address(_lmpVault.rewarder()));
 
         // Setup second LMP Vault
-        _lmpVault2 = LMPVaultNavChange(_lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256("v2"), ""));
+        _lmpVault2 = LMPVaultNavChange(_lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256("v2"), initData));
         vm.label(address(_lmpVault2), "lmpVault2");
+
+        // default to passing rebalance. Can override in individual tests
+        _mockVerifyRebalance(true, "");
 
         // Setup the Destination system
 
@@ -243,44 +253,6 @@ contract LMPVaultMintingTests is Test {
 
     function test_SetUpState() public {
         assertEq(_lmpVault.asset(), address(_asset));
-    }
-
-    function test_Stubs() public {
-        _lmpVault.setVerifyRebalance(true);
-
-        (bool success, string memory message) =
-            _lmpVault.verifyRebalance(address(0), address(0), 1, address(0), address(0), 1);
-
-        assertEq(success, true);
-        assertEq(message, "");
-
-        _lmpVault.setVerifyRebalance(false);
-
-        (success, message) = _lmpVault.verifyRebalance(address(0), address(0), 1, address(0), address(0), 1);
-
-        assertEq(success, false);
-        assertEq(message, "");
-
-        _lmpVault.setVerifyRebalance(true, "x");
-
-        (success, message) = _lmpVault.verifyRebalance(address(0), address(0), 1, address(0), address(0), 1);
-
-        assertEq(success, true);
-        assertEq(message, "x");
-
-        _lmpVault.setVerifyRebalance(false, "y");
-
-        (success, message) = _lmpVault.verifyRebalance(address(0), address(0), 1, address(0), address(0), 1);
-
-        assertEq(success, false);
-        assertEq(message, "y");
-
-        _lmpVault.setVerifyRebalance(true, "");
-
-        (success, message) = _lmpVault.verifyRebalance(address(0), address(0), 1, address(0), address(0), 1);
-
-        assertEq(success, true);
-        assertEq(message, "");
     }
 
     function testFuzz_deposit_NoNavChangeDuringWithdraw(
@@ -3296,22 +3268,18 @@ contract LMPVaultMintingTests is Test {
             abi.encode(price)
         );
     }
+
+    function _mockVerifyRebalance(bool success, string memory reason) internal {
+        vm.mockCall(
+            _lmpStrategyAddress,
+            abi.encodeWithSelector(ILMPStrategy.verifyRebalance.selector),
+            abi.encode(success, reason)
+        );
+    }
 }
 
 contract LMPVaultMinting is LMPVault {
     constructor(ISystemRegistry _systemRegistry, address _vaultAsset) LMPVault(_systemRegistry, _vaultAsset) { }
-
-    bool private _rebalanceVerifies;
-    string private _rebalanceVerifyError;
-
-    function setVerifyRebalance(bool vr) public {
-        _rebalanceVerifies = vr;
-    }
-
-    function setVerifyRebalance(bool vr, string memory err) public {
-        setVerifyRebalance(vr);
-        _rebalanceVerifyError = err;
-    }
 
     function rebalance(
         address destinationIn,
@@ -3331,18 +3299,6 @@ contract LMPVaultMinting is LMPVault {
                 amountOut: amountOut
             })
         );
-    }
-
-    function verifyRebalance(
-        address,
-        address,
-        uint256,
-        address,
-        address,
-        uint256
-    ) public view virtual override returns (bool success, string memory message) {
-        success = _rebalanceVerifies;
-        message = _rebalanceVerifyError;
     }
 }
 

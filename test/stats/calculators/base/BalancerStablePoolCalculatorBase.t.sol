@@ -80,6 +80,7 @@ contract BalancerStablePoolCalculatorBaseTest is Test {
         rETHStats = new RethLSTCalculator(systemRegistry);
         bytes32[] memory rETHDepAprIds = new bytes32[](0);
         LSTCalculatorBase.InitData memory rETHInitData = LSTCalculatorBase.InitData({ lstTokenAddress: RETH_MAINNET });
+        mockTokenPrice(RETH_MAINNET, 1e18); // required for stats init
         rETHStats.initialize(rETHDepAprIds, abi.encode(rETHInitData));
 
         vm.prank(address(statsFactory));
@@ -393,10 +394,14 @@ contract BalancerStablePoolCalculatorBaseTest is Test {
         uint256[] memory slashingCosts,
         uint256[] memory slashingTimestamps
     ) internal {
+        uint24[10] memory discountHistory;
+        uint40[5] memory discountTimestampByPercent;
         ILSTStats.LSTStatsData memory res = ILSTStats.LSTStatsData({
             lastSnapshotTimestamp: 0,
             baseApr: baseApr,
-            premium: 0,
+            discount: 0,
+            discountHistory: discountHistory,
+            discountTimestampByPercent: discountTimestampByPercent,
             slashingCosts: slashingCosts,
             slashingTimestamps: slashingTimestamps
         });

@@ -13,7 +13,7 @@ import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.so
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ISystemRegistry, IDestinationVaultRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
-import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
+import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 
 library LMPDebt {
     using Math for uint256;
@@ -69,12 +69,15 @@ library LMPDebt {
         DestinationInfo storage destInfoOut,
         DestinationInfo storage destInfoIn,
         IStrategy.RebalanceParams memory params,
+        ILMPStrategy lmpStrategy,
         IERC20 baseAsset,
         bool shutdown,
         uint256 totalIdle,
         uint256 totalDebt
     ) external returns (uint256 idle, uint256 debt) {
         LMPDebt.IdleDebtChange memory idleDebtChange;
+
+        // TODO: move the amountIn/Out & destination checks to verify rebalance
 
         // make sure there's something to do
         if (params.amountIn == 0 && params.amountOut == 0) {
@@ -87,7 +90,7 @@ library LMPDebt {
 
         // make sure we have a valid path
         {
-            (bool success, string memory message) = LMPStrategy.verifyRebalance(params);
+            (bool success, string memory message) = lmpStrategy.verifyRebalance(params);
             if (!success) {
                 revert RebalanceFailed(message);
             }
@@ -145,6 +148,7 @@ library LMPDebt {
         DestinationInfo storage destInfoIn,
         IERC3156FlashBorrower receiver,
         IStrategy.RebalanceParams memory params,
+        ILMPStrategy lmpStrategy,
         FlashRebalanceParams memory flashParams,
         bytes calldata data
     ) external returns (uint256 idle, uint256 debt) {
@@ -161,7 +165,7 @@ library LMPDebt {
 
         // make sure we have a valid path
         {
-            (bool success, string memory message) = LMPStrategy.verifyRebalance(params);
+            (bool success, string memory message) = lmpStrategy.verifyRebalance(params);
             if (!success) {
                 revert RebalanceFailed(message);
             }
@@ -184,8 +188,6 @@ library LMPDebt {
 
         // Handle increase (shares coming "In", getting underlying from the swapper and trading for new shares)
         if (params.amountIn > 0) {
-            IDestinationVault dvIn = IDestinationVault(params.destinationIn);
-
             // get "before" counts
             uint256 tokenInBalanceBefore = IERC20(params.tokenIn).balanceOf(address(this));
 
@@ -206,8 +208,9 @@ library LMPDebt {
             }
 
             if (params.tokenIn != address(flashParams.baseAsset)) {
-                (uint256 debtDecreaseIn, uint256 debtIncreaseIn) =
-                    _handleRebalanceIn(destInfoIn, dvIn, params.tokenIn, tokenInBalanceAfter);
+                (uint256 debtDecreaseIn, uint256 debtIncreaseIn) = _handleRebalanceIn(
+                    destInfoIn, IDestinationVault(params.destinationIn), params.tokenIn, tokenInBalanceAfter
+                );
                 idleDebtChange.debtDecrease += debtDecreaseIn;
                 idleDebtChange.debtIncrease += debtIncreaseIn;
             } else {

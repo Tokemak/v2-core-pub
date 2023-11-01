@@ -503,10 +503,14 @@ contract CurveV1PoolRebasingStatsCalculatorTest is Test {
         uint256[] memory slashingCosts,
         uint256[] memory slashingTimestamps
     ) internal {
+        uint24[10] memory discountHistory;
+        uint40[5] memory discountTimestampByPercent;
         ILSTStats.LSTStatsData memory res = ILSTStats.LSTStatsData({
             lastSnapshotTimestamp: 0,
             baseApr: baseApr,
-            premium: 0,
+            discount: 0,
+            discountHistory: discountHistory,
+            discountTimestampByPercent: discountTimestampByPercent,
             slashingCosts: slashingCosts,
             slashingTimestamps: slashingTimestamps
         });

@@ -21,6 +21,9 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
     /// @notice time in seconds between slashing snapshots
     uint256 public constant SLASHING_SNAPSHOT_INTERVAL_IN_SEC = 24 * 60 * 60; // 1 day
 
+    /// @notice time in seconds between discount snapshots
+    uint256 public constant DISCOUNT_SNAPSHOT_INTERVAL_IN_SEC = 24 * 60 * 60; // 1 day
+
     /// @notice alpha for filter
     uint256 public constant ALPHA = 1e17; // 0.1; must be 0 < x <= 1e18
 
@@ -33,6 +36,9 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
     /// @notice timestamp of the last snapshot for base apr
     uint256 public lastBaseAprSnapshotTimestamp;
 
+    /// @notice timestamp of the last discount snapshot
+    uint256 public lastDiscountSnapshot;
+
     /// @notice ethPerToken at the last snapshot for slashing events
     uint256 public lastSlashingEthPerToken;
 
@@ -42,14 +48,24 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
     /// @notice filtered base apr
     uint256 public baseApr;
 
-    /// @notice indicates if baseApr filter is initialized
-    bool public baseAprFilterInitialized;
-
     /// @notice list of slashing costs (slashing / value at the time)
     uint256[] public slashingCosts;
 
     /// @notice list of timestamps associated with slashing events
     uint256[] public slashingTimestamps;
+
+    /// @notice the last 10 daily discount/premium values for the token
+    uint24[10] public discountHistory;
+
+    /// @notice each index is the timestamp that the token reached that discount (e.g., 1pct = 0 index)
+    uint40[5] public discountTimestampByPercent;
+
+    // TODO: verify that we save space by using a uint8. It should be packed with the bool & bytes32 below
+    /// @dev the next index in the discountHistory buffer to be written
+    uint8 private discountHistoryIndex;
+
+    /// @notice indicates if baseApr filter is initialized
+    bool public baseAprFilterInitialized;
 
     bytes32 private _aprId;
 
@@ -86,6 +102,12 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         baseAprFilterInitialized = false;
         lastSlashingEthPerToken = currentEthPerToken;
         lastSlashingSnapshotTimestamp = block.timestamp;
+
+        // slither-disable-next-line reentrancy-benign
+        updateDiscountHistory(currentEthPerToken);
+
+        // TODO: make slither happy, but this feature needs to be implemented
+        discountTimestampByPercent = [0, 0, 0, 0, 0];
     }
 
     /// @inheritdoc IStatsCalculator
@@ -127,6 +149,11 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
             lastBaseAprSnapshotTimestamp = block.timestamp;
         }
 
+        if (_timeForDiscountSnapshot()) {
+            // slither-disable-next-line reentrancy-benign,reentrancy-events
+            updateDiscountHistory(currentEthPerToken);
+        }
+
         if (_hasSlashingOccurred(currentEthPerToken)) {
             uint256 cost = Stats.calculateUnannualizedNegativeChange(lastSlashingEthPerToken, currentEthPerToken);
             slashingCosts.push(cost);
@@ -150,20 +177,10 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
     /// @inheritdoc IStatsCalculator
     function shouldSnapshot() public view override returns (bool) {
-        uint256 currentEthPerToken = calculateEthPerToken();
-        if (_timeForAprSnapshot()) {
-            return true;
-        }
-
-        if (_hasSlashingOccurred(currentEthPerToken)) {
-            return true;
-        }
-
-        if (_timeForSlashingSnapshot()) {
-            return true;
-        }
-
-        return false;
+        // slither-disable-start timestamp
+        return _timeForAprSnapshot() || _timeForDiscountSnapshot() || _hasSlashingOccurred(calculateEthPerToken())
+            || _timeForSlashingSnapshot();
+        // slither-disable-end timestamp
     }
 
     function _timeForAprSnapshot() private view returns (bool) {
@@ -174,6 +191,11 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
             // slither-disable-next-line timestamp
             return block.timestamp >= lastBaseAprSnapshotTimestamp + APR_FILTER_INIT_INTERVAL_IN_SEC;
         }
+    }
+
+    function _timeForDiscountSnapshot() private view returns (bool) {
+        // slither-disable-next-line timestamp
+        return block.timestamp >= lastBaseAprSnapshotTimestamp + DISCOUNT_SNAPSHOT_INTERVAL_IN_SEC;
     }
 
     function _timeForSlashingSnapshot() private view returns (bool) {
@@ -199,7 +221,21 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
             lastSnapshotTimestamp = lastBaseAprSnapshotTimestamp;
         }
 
+        return LSTStatsData({
+            lastSnapshotTimestamp: lastSnapshotTimestamp,
+            baseApr: baseApr,
+            discount: calculateDiscount(calculateEthPerToken()),
+            discountHistory: discountHistory,
+            discountTimestampByPercent: discountTimestampByPercent,
+            slashingCosts: slashingCosts,
+            slashingTimestamps: slashingTimestamps
+        });
+    }
+
+    function calculateDiscount(uint256 backing) private returns (int256) {
         IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
+
+        // slither-disable-next-line reentrancy-benign
         uint256 price = pricer.getPriceInEth(lstTokenAddress);
 
         // result is 1e18
@@ -207,21 +243,30 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         if (isRebasing()) {
             priceToBacking = price;
         } else {
-            uint256 backing = calculateEthPerToken();
             // price is always 1e18 and backing is in eth, which is 1e18
             priceToBacking = price * 1e18 / backing;
         }
 
-        // positive value is a premium; negative value is a discount
-        int256 premium = int256(priceToBacking) - 1e18;
+        // positive value is a discount; negative value is a premium
+        return 1e18 - int256(priceToBacking);
+    }
 
-        return LSTStatsData({
-            lastSnapshotTimestamp: lastSnapshotTimestamp,
-            baseApr: baseApr,
-            premium: premium,
-            slashingCosts: slashingCosts,
-            slashingTimestamps: slashingTimestamps
-        });
+    function updateDiscountHistory(uint256 backing) private {
+        // TODO: verify that the precision loss is worth it
+        // reduce precision from 18 to 7 to reduce costs
+        int256 discount = calculateDiscount(backing) / 1e11;
+        uint24 trackedDiscount;
+        if (discount <= 0) {
+            trackedDiscount = 0;
+        } else if (discount >= 1e7) {
+            trackedDiscount = 1e7;
+        } else {
+            trackedDiscount = uint24(uint256(discount));
+        }
+
+        discountHistory[discountHistoryIndex] = trackedDiscount;
+        discountHistoryIndex = (discountHistoryIndex + 1) % uint8(discountHistory.length);
+        lastDiscountSnapshot = block.timestamp;
     }
 
     /// @inheritdoc ILSTStats

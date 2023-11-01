@@ -27,6 +27,7 @@ contract LMPVaultFactoryTest is Test {
     TestERC20 private _toke;
 
     address private _template;
+    bytes private lmpVaultInitData;
 
     function setUp() public {
         vm.label(address(this), "testContract");
@@ -56,6 +57,8 @@ contract LMPVaultFactoryTest is Test {
 
         _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, _template, 800, 100);
         _accessController.grantRole(Roles.REGISTRY_UPDATER, address(_lmpVaultFactory));
+
+        lmpVaultInitData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: vm.addr(10_001) }));
     }
 
     function test_constructor_RewardInfoSet() public {
@@ -76,7 +79,8 @@ contract LMPVaultFactoryTest is Test {
     }
 
     function test_createVault_CreatesVaultAndAddsToRegistry() public {
-        address newVault = _lmpVaultFactory.createVault(1_000_000, 1_000_000, "x", "y", keccak256("v1"), "");
+        address newVault =
+            _lmpVaultFactory.createVault(1_000_000, 1_000_000, "x", "y", keccak256("v1"), lmpVaultInitData);
         assertTrue(_lmpVaultRegistry.isVault(newVault));
     }
 
@@ -88,7 +92,8 @@ contract LMPVaultFactoryTest is Test {
     }
 
     function test_createVault_FixesUpTokenFields() public {
-        address newVault = _lmpVaultFactory.createVault(1_000_000, 1_000_000, "x", "y", keccak256("v1"), "");
+        address newVault =
+            _lmpVaultFactory.createVault(1_000_000, 1_000_000, "x", "y", keccak256("v1"), lmpVaultInitData);
         assertEq(IERC20(newVault).symbol(), "lmpx");
         assertEq(IERC20(newVault).name(), "y Pool Token");
     }

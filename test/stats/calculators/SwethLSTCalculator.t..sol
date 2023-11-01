@@ -9,6 +9,8 @@ import { AccessController } from "src/security/AccessController.sol";
 import { LSTCalculatorBase } from "src/stats/calculators/base/LSTCalculatorBase.sol";
 import { SWETH_MAINNET, TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
 import { Roles } from "src/libs/Roles.sol";
+import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
+import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 
 contract SwethLSTCalculatorTest is Test {
     function testStethEthPerToken() public {
@@ -27,6 +29,15 @@ contract SwethLSTCalculatorTest is Test {
         AccessController accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
         accessController.grantRole(Roles.STATS_SNAPSHOT_ROLE, address(this));
+
+        // required for initialization, but not part of test surface area
+        RootPriceOracle rootPriceOracle = new RootPriceOracle(systemRegistry);
+        systemRegistry.setRootPriceOracle(address(rootPriceOracle));
+        vm.mockCall(
+            address(rootPriceOracle),
+            abi.encodeWithSelector(IRootPriceOracle.getPriceInEth.selector, SWETH_MAINNET),
+            abi.encode(1e18)
+        );
 
         SwethLSTCalculator calculator = new SwethLSTCalculator(systemRegistry);
         bytes32[] memory dependantAprs = new bytes32[](0);

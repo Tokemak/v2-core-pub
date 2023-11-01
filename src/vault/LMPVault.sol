@@ -28,6 +28,7 @@ import { ISystemRegistry, IDestinationVaultRegistry } from "src/interfaces/ISyst
 import { ERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 
 // Cross functional reentrancy was identified between updateDebtReporting and the
 // destinationInfo. Have nonReentrant and read-only nonReentrant modifier on them both
@@ -118,6 +119,11 @@ contract LMPVault is
     /// @notice The max shares a single wallet is allowed to hold
     uint256 public perWalletLimit;
 
+    // TODO: update init/constructor to support this
+    /// @notice The strategy logic for the LMP
+    // slither-disable-next-line uninitialized-state,constable-states
+    ILMPStrategy public lmpStrategy;
+
     string private _desc;
     string private _symbol;
 
@@ -139,6 +145,10 @@ contract LMPVault is
     event NewNavHighWatermark(uint256 navPerShare, uint256 timestamp);
     event TotalSupplyLimitSet(uint256 limit);
     event PerWalletLimitSet(uint256 limit);
+
+    struct ExtraData {
+        address lmpStrategyAddress;
+    }
 
     modifier noNavChange() {
         (uint256 oldNav, uint256 startingTotalSupply) = _snapStartNav();
@@ -192,7 +202,7 @@ contract LMPVault is
         uint256 walletLimit,
         string memory symbolSuffix,
         string memory descPrefix,
-        bytes memory
+        bytes memory extraData
     ) public virtual initializer {
         Errors.verifyNotEmpty(symbolSuffix, "symbolSuffix");
         Errors.verifyNotEmpty(descPrefix, "descPrefix");
@@ -209,6 +219,10 @@ contract LMPVault is
 
         _symbol = symbolSuffix;
         _desc = descPrefix;
+
+        ExtraData memory decodedInitData = abi.decode(extraData, (ExtraData));
+        Errors.verifyNotZero(decodedInitData.lmpStrategyAddress, "lmpStrategyAddress");
+        lmpStrategy = ILMPStrategy(decodedInitData.lmpStrategyAddress);
     }
 
     /**
@@ -716,6 +730,7 @@ contract LMPVault is
             destinationInfo[params.destinationOut],
             destinationInfo[params.destinationIn],
             params,
+            lmpStrategy,
             _baseAsset,
             _shutdown,
             totalIdle,
@@ -739,6 +754,7 @@ contract LMPVault is
             destinationInfo[rebalanceParams.destinationIn],
             receiver,
             rebalanceParams,
+            lmpStrategy,
             LMPDebt.FlashRebalanceParams({
                 totalIdle: totalIdle,
                 totalDebt: totalDebt,
@@ -762,8 +778,8 @@ contract LMPVault is
         address destinationOut,
         address tokenOut,
         uint256 amountOut
-    ) public view virtual returns (bool success, string memory message) {
-        (success, message) = LMPStrategy.verifyRebalance(
+    ) public virtual returns (bool success, string memory message) {
+        (success, message) = lmpStrategy.verifyRebalance(
             IStrategy.RebalanceParams({
                 destinationIn: destinationIn,
                 tokenIn: tokenIn,

@@ -78,7 +78,7 @@ contract SwapRouterTest is Test {
             token: STETH_MAINNET,
             pool: 0x828b154032950C8ff7CF8085D841723Db2696056,
             swapper: curveSwapper,
-            data: abi.encode(0, 1, false)
+            data: abi.encode(0, 1)
         });
         swapRouter.setSwapRoute(WETH_MAINNET, curveOneHopRoute);
 
@@ -89,7 +89,7 @@ contract SwapRouterTest is Test {
             token: FRXETH_MAINNET,
             pool: 0x4d9f9D15101EEC665F77210cB999639f760F831E,
             swapper: curveSwapper,
-            data: abi.encode(0, 1, false)
+            data: abi.encode(0, 1)
         });
         swapRouter.setSwapRoute(WETH_MAINNET, curveTwoHopRoute);
     }

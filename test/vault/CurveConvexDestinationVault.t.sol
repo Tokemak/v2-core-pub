@@ -112,7 +112,7 @@ contract CurveConvexDestinationVaultTests is Test {
             token: address(_systemRegistry.weth()),
             pool: STETH_ETH_CURVE_POOL,
             swapper: curveSwapper,
-            data: abi.encode(sellIndex, buyIndex, true)
+            data: abi.encode(sellIndex, buyIndex)
         });
         swapRouter.setSwapRoute(STETH_MAINNET, stethSwapRoute);
         _systemRegistry.setSwapRouter(address(swapRouter));

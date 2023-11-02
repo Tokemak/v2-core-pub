@@ -21,7 +21,7 @@ contract CurveV1StableSwap is BaseAdapter {
 
     /// @inheritdoc ISyncSwapper
     function validate(address fromAddress, ISwapRouter.SwapData memory swapData) external view override {
-        (int128 sellIndex, int128 buyIndex,) = abi.decode(swapData.data, (int128, int128, bool));
+        (int128 sellIndex, int128 buyIndex) = abi.decode(swapData.data, (int128, int128));
 
         ICurveV1StableSwap pool = ICurveV1StableSwap(swapData.pool);
 
@@ -42,7 +42,7 @@ contract CurveV1StableSwap is BaseAdapter {
         uint256 minBuyAmount,
         bytes memory data
     ) external override onlyRouter returns (uint256 amount) {
-        (int128 sellIndex, int128 buyIndex, bool isEth) = abi.decode(data, (int128, int128, bool));
+        (int128 sellIndex, int128 buyIndex) = abi.decode(data, (int128, int128));
         ICurveV1StableSwap pool = ICurveV1StableSwap(poolAddress);
 
         LibAdapter._approve(IERC20(sellTokenAddress), poolAddress, sellAmount);
@@ -50,10 +50,9 @@ contract CurveV1StableSwap is BaseAdapter {
         amount = pool.exchange(sellIndex, buyIndex, sellAmount, minBuyAmount);
 
         // The rest of the system only deals in WETH, swap if Eth
-        // TODO: Can potentially replace this with Eth balance check to remove potential admin misconfig.
-        if (isEth) {
+        if (address(this).balance > 0) {
             // slither-disable-next-line arbitrary-send-eth
-            weth.deposit{ value: amount }();
+            weth.deposit{ value: address(this).balance }();
         }
     }
 

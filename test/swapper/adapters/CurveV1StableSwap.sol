@@ -36,7 +36,7 @@ contract CurveV1StableSwapTest is Test {
             token: STETH_MAINNET,
             pool: 0x828b154032950C8ff7CF8085D841723Db2696056,
             swapper: adapter,
-            data: abi.encode(0, 1, false)
+            data: abi.encode(0, 1)
         });
     }
 
@@ -87,7 +87,7 @@ contract CurveV1StableSwapTest is Test {
             token: CURVE_ETH,
             pool: 0xDC24316b9AE028F1497c275EB9192a3Ea0f67022,
             swapper: adapter,
-            data: abi.encode(1, 0, true) // isEth true, should swap for weth.
+            data: abi.encode(1, 0) // isEth true, should swap for weth.
          });
 
         vm.prank(STETH_WHALE);

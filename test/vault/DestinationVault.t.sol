@@ -7,7 +7,7 @@ pragma solidity >=0.8.7;
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
-import { DestinationVault } from "src/vault/DestinationVault.sol";
+import { IDestinationVault, DestinationVault } from "src/vault/DestinationVault.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -40,6 +40,7 @@ contract DestinationVaultBaseTests is Test {
     address private _weth;
 
     event OnDepositCalled();
+    event Shutdown(IDestinationVault.VaultShutdownStatus reason);
 
     function setUp() public {
         testUser1 = vm.addr(1);
@@ -130,14 +131,35 @@ contract DestinationVaultBaseTests is Test {
 
         vm.startPrank(caller);
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        testVault.shutdown();
+        testVault.shutdown(IDestinationVault.VaultShutdownStatus.Deprecated);
         vm.stopPrank();
     }
 
-    function testIsShutdownProperlyReports() public {
+    function testIsShutdownProperlyReportsWithEvent() public {
+        // verify "not shutdown" / "active" first
         assertEq(testVault.isShutdown(), false);
-        testVault.shutdown();
+        if (testVault.shutdownStatus() != IDestinationVault.VaultShutdownStatus.Active) {
+            assert(false);
+        }
+
+        // test invalid reason
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IDestinationVault.InvalidShutdownStatus.selector, IDestinationVault.VaultShutdownStatus.Active
+            )
+        );
+        testVault.shutdown(IDestinationVault.VaultShutdownStatus.Active);
+
+        // test proper shutdown
+        vm.expectEmit(true, true, true, true);
+        emit Shutdown(IDestinationVault.VaultShutdownStatus.Deprecated);
+        testVault.shutdown(IDestinationVault.VaultShutdownStatus.Deprecated);
+
+        // verify shutdown
         assertEq(testVault.isShutdown(), true);
+        if (testVault.shutdownStatus() != IDestinationVault.VaultShutdownStatus.Deprecated) {
+            assert(false);
+        }
     }
 
     function testCannotDepositWhenShutdown() public {
@@ -145,7 +167,7 @@ contract DestinationVaultBaseTests is Test {
         underlyer.approve(address(testVault), 10);
         mockIsLmpVault(address(this), true);
 
-        testVault.shutdown();
+        testVault.shutdown(IDestinationVault.VaultShutdownStatus.Deprecated);
 
         vm.expectRevert(abi.encodeWithSelector(DestinationVault.VaultShutdown.selector));
         testVault.depositUnderlying(10);
@@ -212,7 +234,7 @@ contract DestinationVaultBaseTests is Test {
         mockIsLmpVault(address(this), true);
         underlyer.approve(address(testVault), depositAmount);
         testVault.depositUnderlying(depositAmount);
-        testVault.shutdown();
+        testVault.shutdown(IDestinationVault.VaultShutdownStatus.Deprecated);
 
         // LMP again
         mockIsLmpVault(address(this), true);

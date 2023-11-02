@@ -8,6 +8,12 @@ import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 
 interface ILMPVault is IERC4626, IERC20Permit {
+    enum VaultShutdownStatus {
+        Active,
+        Deprecated,
+        Exploit
+    }
+
     /* ******************************** */
     /*      Events                      */
     /* ******************************** */
@@ -17,7 +23,7 @@ interface ILMPVault is IERC4626, IERC20Permit {
     event RewarderSet(address rewarder);
     event DestinationDebtReporting(address destination, uint256 debtValue, uint256 claimed, uint256 claimGasUsed);
     event FeeCollected(uint256 fees, address feeSink, uint256 mintedShares, uint256 profit, uint256 idle, uint256 debt);
-    event Shutdown();
+    event Shutdown(VaultShutdownStatus reason);
 
     /* ******************************** */
     /*      Errors                      */
@@ -28,6 +34,7 @@ interface ILMPVault is IERC4626, IERC20Permit {
     error ERC4626ExceededMaxWithdraw(address owner, uint256 assets, uint256 max);
     error ERC4626ExceededMaxRedeem(address owner, uint256 shares, uint256 max);
     error AmountExceedsAllowance(uint256 shares, uint256 allowed);
+    error InvalidShutdownStatus(VaultShutdownStatus status);
 
     error WithdrawalFailed();
     error DepositFailed();
@@ -62,10 +69,13 @@ interface ILMPVault is IERC4626, IERC20Permit {
     function removeFromRemovalQueue(address vaultToRemove) external;
 
     /// @notice Initiate the shutdown procedures for this vault
-    function shutdown() external;
+    function shutdown(VaultShutdownStatus reason) external;
 
     /// @notice True if the vault has been shutdown
     function isShutdown() external view returns (bool);
+
+    /// @notice Returns the reason for shutdown (or `Active` if not shutdown)
+    function shutdownStatus() external view returns (VaultShutdownStatus);
 
     /// @notice gets the list of supported destination vaults for the LMP/Strategy
     /// @return _destinations List of supported destination vaults

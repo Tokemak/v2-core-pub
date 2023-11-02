@@ -25,7 +25,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     event UnderlyingWithdraw(uint256 amount, address owner, address to);
     event BaseAssetWithdraw(uint256 amount, address owner, address to);
     event UnderlyingDeposited(uint256 amount, address sender);
-    event Shutdown();
+    event Shutdown(VaultShutdownStatus reason);
 
     error ArrayLengthMismatch();
     error PullingNonTrackedToken(address token);
@@ -51,7 +51,11 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
 
     EnumerableSet.AddressSet internal _trackedTokens;
 
+    /// @dev whether or not the vault has been shutdown
     bool internal _shutdown;
+
+    /// @dev The reason for shutdown (or `Active` if not shutdown)
+    VaultShutdownStatus internal _shutdownStatus;
 
     constructor(ISystemRegistry sysRegistry) SecurityBase(address(sysRegistry.accessController())) ERC20("", "") {
         _systemRegistry = sysRegistry;
@@ -175,15 +179,25 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     function _collectRewards() internal virtual returns (uint256[] memory amounts, address[] memory tokens);
 
     /// @inheritdoc IDestinationVault
-    function shutdown() external onlyOwner {
-        _shutdown = true;
+    function shutdown(VaultShutdownStatus reason) external onlyOwner {
+        if (reason == VaultShutdownStatus.Active) {
+            revert InvalidShutdownStatus(reason);
+        }
 
-        emit Shutdown();
+        _shutdown = true;
+        _shutdownStatus = reason;
+
+        emit Shutdown(reason);
     }
 
     /// @inheritdoc IDestinationVault
     function isShutdown() external view returns (bool) {
         return _shutdown;
+    }
+
+    /// @inheritdoc IDestinationVault
+    function shutdownStatus() external view returns (VaultShutdownStatus) {
+        return _shutdownStatus;
     }
 
     function trackedTokens() public view virtual returns (address[] memory trackedTokensArr) {

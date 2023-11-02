@@ -117,7 +117,7 @@ contract LMPVaultMintingTests is Test {
     event NewNavHighWatermark(uint256 navPerShare, uint256 timestamp);
     event TotalSupplyLimitSet(uint256 limit);
     event PerWalletLimitSet(uint256 limit);
-    event Shutdown();
+    event Shutdown(ILMPVault.VaultShutdownStatus reason);
     event Withdraw(
         address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
@@ -441,32 +441,45 @@ contract LMPVaultMintingTests is Test {
         _lmpVault.setPerWalletLimit(999);
     }
 
-    function test_shutdown_ProperlyReports() public {
+    function test_shutdown_ProperlyReportsWithEvent() public {
+        // verify "not shutdown" / "active" first
         assertEq(_lmpVault.isShutdown(), false);
-        _lmpVault.shutdown();
-        assertEq(_lmpVault.isShutdown(), true);
-    }
+        if (_lmpVault.shutdownStatus() != ILMPVault.VaultShutdownStatus.Active) {
+            assert(false);
+        }
 
-    function test_shutdown_EmitsShutdownEvent() public {
+        // test invalid reason
+        vm.expectRevert(
+            abi.encodeWithSelector(ILMPVault.InvalidShutdownStatus.selector, ILMPVault.VaultShutdownStatus.Active)
+        );
+        _lmpVault.shutdown(ILMPVault.VaultShutdownStatus.Active);
+
+        // test proper shutdown
         vm.expectEmit(true, true, true, true);
-        emit Shutdown();
-        _lmpVault.shutdown();
+        emit Shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        _lmpVault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+
+        // verify shutdown
+        assertEq(_lmpVault.isShutdown(), true);
+        if (_lmpVault.shutdownStatus() != ILMPVault.VaultShutdownStatus.Deprecated) {
+            assert(false);
+        }
     }
 
     function test_shutdown_OnlyCallableByOwner() public {
         vm.startPrank(address(5));
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        _lmpVault.shutdown();
+        _lmpVault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
         vm.stopPrank();
 
-        _lmpVault.shutdown();
+        _lmpVault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
     }
 
     function test_deposit_RevertIf_Shutdown() public {
         _asset.mint(address(this), 1000);
         _asset.approve(address(_lmpVault), 1000);
 
-        _lmpVault.shutdown();
+        _lmpVault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
 
         vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626DepositExceedsMax.selector, 1000, 0));
         _lmpVault.deposit(1000, address(this));
@@ -713,7 +726,7 @@ contract LMPVaultMintingTests is Test {
         _asset.mint(address(this), 1000);
         _asset.approve(address(_lmpVault), 1000);
 
-        _lmpVault.shutdown();
+        _lmpVault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
 
         vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626MintExceedsMax.selector, 1000, 0));
         _lmpVault.mint(1000, address(this));
@@ -1514,7 +1527,7 @@ contract LMPVaultMintingTests is Test {
         _underlyerOne.mint(address(this), 500);
         _underlyerOne.approve(address(_lmpVault), 500);
 
-        _lmpVault.shutdown();
+        _lmpVault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
 
         vm.expectRevert(abi.encodeWithSelector(LMPVault.VaultShutdown.selector));
         _lmpVault.rebalance(
@@ -1809,7 +1822,7 @@ contract LMPVaultMintingTests is Test {
         // Tell the test harness how much it should have at mid execution
         rebalancer.snapshotAsset(address(_asset), 500);
 
-        _lmpVault.shutdown();
+        _lmpVault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
 
         vm.expectRevert(abi.encodeWithSelector(LMPVault.VaultShutdown.selector));
         _lmpVault.flashRebalance(

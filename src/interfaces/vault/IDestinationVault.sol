@@ -9,6 +9,12 @@ import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 interface IDestinationVault is IBaseAssetVault, IERC20 {
+    enum VaultShutdownStatus {
+        Active,
+        Deprecated,
+        Exploit
+    }
+
     /* ******************************** */
     /* View                             */
     /* ******************************** */
@@ -52,6 +58,7 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /* ******************************** */
 
     error ZeroAddress(string paramName);
+    error InvalidShutdownStatus(VaultShutdownStatus status);
 
     /* ******************************** */
     /* Functions                        */
@@ -110,8 +117,11 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
 
     /// @notice Initiate the shutdown procedures for this vault
     /// @dev Should pull back tokens from staking locations
-    function shutdown() external;
+    function shutdown(VaultShutdownStatus reason) external;
 
     /// @notice True if the vault has been shutdown
     function isShutdown() external view returns (bool);
+
+    /// @notice Returns the reason for shutdown (or `Active` if not shutdown)
+    function shutdownStatus() external view returns (VaultShutdownStatus);
 }

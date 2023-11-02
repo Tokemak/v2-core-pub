@@ -89,6 +89,9 @@ contract LMPVault is
     /// @dev whether or not the vault has been shutdown
     bool internal _shutdown;
 
+    /// @dev The reason for shutdown (or `Active` if not shutdown)
+    VaultShutdownStatus internal _shutdownStatus;
+
     /// @notice The amount of baseAsset deposited into the contract pending deployment
     uint256 public totalIdle = 0;
 
@@ -598,15 +601,25 @@ contract LMPVault is
     }
 
     /// @inheritdoc ILMPVault
-    function shutdown() external onlyOwner {
-        _shutdown = true;
+    function shutdown(VaultShutdownStatus reason) external onlyOwner {
+        if (reason == VaultShutdownStatus.Active) {
+            revert InvalidShutdownStatus(reason);
+        }
 
-        emit Shutdown();
+        _shutdown = true;
+        _shutdownStatus = reason;
+
+        emit Shutdown(reason);
     }
 
     /// @inheritdoc ILMPVault
     function isShutdown() external view returns (bool) {
         return _shutdown;
+    }
+
+    /// @inheritdoc ILMPVault
+    function shutdownStatus() external view returns (VaultShutdownStatus) {
+        return _shutdownStatus;
     }
 
     /**

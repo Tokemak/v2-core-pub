@@ -21,7 +21,7 @@ library WithdrawalQueue {
         return address(uint160(x));
     }
 
-    /// @notice Returns true
+    /// @notice Returns true if the address is in the queue.
     function addressExists(StructuredLinkedList.List storage queue, address addr) public view returns (bool) {
         return StructuredLinkedList.nodeExists(queue, _addressToUint(addr));
     }

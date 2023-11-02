@@ -675,8 +675,7 @@ contract LMPStrategyTest is Test {
         IDexLSTStats.DexLSTStatsData memory dexStats;
         dexStats.lstStatsData = new ILSTStats.LSTStatsData[](3);
         dexStats.lstStatsData[0] = build10pctExitThresholdLst();
-        dexStats.lstStatsData[1] = build5pctExitThresholdLst();
-        dexStats.lstStatsData[2] = buildFullExitThresholdLst();
+        dexStats.lstStatsData[1] = buildFullExitThresholdLst();
 
         setStatsCurrent(mockOutStats, dexStats);
         uint256 trimAmount = defaultStrat._getDestinationTrimAmount(IDestinationVaultForStrategy(mockOutDest));
@@ -726,31 +725,6 @@ contract LMPStrategyTest is Test {
 
         lstStat.discountHistory = discountHistory;
         lstStat.discount = 3e16; // below the full exit threshold, but at the discountThreshold
-
-        return lstStat;
-    }
-
-    function build5pctExitThresholdLst() private view returns (ILSTStats.LSTStatsData memory) {
-        ILSTStats.LSTStatsData memory lstStat;
-        uint24[10] memory discountHistory;
-        discountHistory[0] = 3e5;
-        discountHistory[1] = 3e5;
-        discountHistory[2] = 3e5;
-        discountHistory[3] = 3e5;
-        discountHistory[4] = 3e5;
-        discountHistory[5] = 3e5;
-        discountHistory[6] = 3e5;
-
-        uint256[] memory slashingCosts = new uint256[](1);
-        slashingCosts[0] = 25e14; // slashing costs do not impact strategy
-
-        uint256[] memory slashingTimestamps = new uint256[](1);
-        slashingTimestamps[0] = block.timestamp;
-
-        lstStat.discount = 3e16; // below the full exit threshold, but at the discountThreshold
-        lstStat.discountHistory = discountHistory;
-        lstStat.slashingCosts = slashingCosts;
-        lstStat.slashingTimestamps = slashingTimestamps;
 
         return lstStat;
     }

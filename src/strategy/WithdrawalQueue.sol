@@ -8,6 +8,11 @@ import { StructuredLinkedList } from "src/strategy/StructuredLinkedList.sol";
 library WithdrawalQueue {
     using StructuredLinkedList for StructuredLinkedList.List;
 
+    error CannotInsertZeroAddress();
+    error UnexpectedNodeRemoved();
+    error AddToHeadFailed();
+    error AddToTailFailed();
+
     function _addressToUint(address addr) internal pure returns (uint256) {
         return uint256(uint160(addr));
     }
@@ -16,6 +21,7 @@ library WithdrawalQueue {
         return address(uint160(x));
     }
 
+    /// @notice Returns true
     function addressExists(StructuredLinkedList.List storage queue, address addr) public view returns (bool) {
         return StructuredLinkedList.nodeExists(queue, _addressToUint(addr));
     }
@@ -34,9 +40,12 @@ library WithdrawalQueue {
     function popAddress(StructuredLinkedList.List storage queue, address toRemove) public {
         uint256 addrAsUint = _addressToUint(toRemove);
         uint256 _removedNode = StructuredLinkedList.remove(queue, addrAsUint);
-        require((_removedNode == addrAsUint) || (_removedNode == 0), "unexpected remove");
+        if (!((_removedNode == addrAsUint) || (_removedNode == 0))) {
+            revert UnexpectedNodeRemoved();
+        }
     }
 
+    /// @notice returns true if there are no addresses in queue.
     function isEmpty(StructuredLinkedList.List storage queue) public view returns (bool) {
         return !StructuredLinkedList.listExists(queue);
     }
@@ -45,17 +54,28 @@ library WithdrawalQueue {
     // if addr not in queue, add it to the top of the queue.
     // if queue is empty, make a new queue with addr as the only node
     function addToHead(StructuredLinkedList.List storage queue, address addr) public {
+        if (addr == address(0)) {
+            revert CannotInsertZeroAddress();
+        }
         popAddress(queue, addr);
         bool success = StructuredLinkedList.pushFront(queue, _addressToUint(addr));
-        require(success, "pushFront failed");
+        if (!success) {
+            revert AddToHeadFailed();
+        }
     }
 
     /// @notice if addr in queue, move it to the end
     // if addr not in queue, add it to the end of the queue.
     // if queue is empty, make a new queue with addr as the only node
     function addToTail(StructuredLinkedList.List storage queue, address addr) public {
+        if (addr == address(0)) {
+            revert CannotInsertZeroAddress();
+        }
+
         popAddress(queue, addr);
         bool success = StructuredLinkedList.pushBack(queue, _addressToUint(addr));
-        require(success, "pushBack failed");
+        if (!success) {
+            revert AddToTailFailed();
+        }
     }
 }

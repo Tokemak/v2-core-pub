@@ -147,20 +147,21 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
 
         // Get Tellor cached pricing.
         TellorPriceInfo memory tellorPriceInfo = tellorCachedPriceInfo[tellorInfo.queryId];
+        uint256 tellorCachedTimestamp = tellorPriceInfo.timestamp;
 
         // Check timestamp vs cached, replace if neccessary.
-        if (timestampRetrieved > tellorPriceInfo.timestamp) {
+        if (timestampRetrieved > tellorCachedTimestamp) {
             tellorCachedPriceInfo[tellorInfo.queryId] =
                 TellorPriceInfo({ price: SafeCast.toUint208(price), timestamp: SafeCast.toUint48(timestampRetrieved) });
-        } else if (timestampRetrieved < tellorPriceInfo.timestamp) {
+        } else if (timestampRetrieved < tellorCachedTimestamp) {
             price = tellorPriceInfo.price;
-            timestampRetrieved = tellorPriceInfo.timestamp; // For checks below.
+            timestampRetrieved = tellorCachedTimestamp; // For checks below.
         }
 
         // Post caching checks, checking for timestamp validity.  Want to do this after caching checks,
         //      that way if we are using a cached value we are checking the timestamp we retrieved it at,
         //      not the timestamp we retrieved the value we queried on this call.
-        if (timestampRetrieved >= tellorMaxAllowableTimestamp || timestamp - timestampRetrieved > tokenPricingTimeout) {
+        if (timestampRetrieved > tellorMaxAllowableTimestamp || timestamp - timestampRetrieved > tokenPricingTimeout) {
             revert InvalidPricingTimestamp();
         }
 

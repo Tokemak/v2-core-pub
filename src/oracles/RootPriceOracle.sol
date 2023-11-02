@@ -3,19 +3,27 @@
 
 pragma solidity 0.8.17;
 
+import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
+import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 
 contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     mapping(address => IPriceOracle) public tokenMappings;
+    mapping(address => ISpotPriceOracle) public poolMappings;
 
     event TokenRemoved(address token);
     event TokenRegistered(address token, address oracle);
     event TokenRegistrationReplaced(address token, address oldOracle, address newOracle);
+
+    // pool-handler specific events
+    event PoolRegistered(address indexed pool, address indexed oracle);
+    event PoolRegistrationReplaced(address indexed pool, address indexed oldOracle, address indexed newOracle);
+    event PoolRemoved(address indexed pool);
 
     error AlreadyRegistered(address token);
     error MissingTokenOracle(address token);
@@ -93,16 +101,99 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         emit TokenRemoved(token);
     }
 
+    /// @notice Register a new liquidity pool to its LP oracle
+    /// @dev May require additional registration in the oracle itself
+    /// @param pool address of the liquidity pool
+    /// @param oracle address of the LP oracle
+    function registerPoolMapping(address pool, ISpotPriceOracle oracle) external onlyOwner {
+        Errors.verifyNotZero(pool, "pool");
+        Errors.verifyNotZero(address(oracle), "oracle");
+        Errors.verifySystemsMatch(address(this), address(oracle));
+
+        if (address(poolMappings[pool]) != address(0)) {
+            revert AlreadyRegistered(pool);
+        }
+
+        poolMappings[pool] = oracle;
+
+        emit PoolRegistered(pool, address(oracle));
+    }
+
+    /// @notice Replace an existing oracle for a specified liquidity pool
+    /// @dev Must exist, matching existing, and new != old value to successfully replace
+    /// @param pool address of the liquidity pool
+    /// @param oldOracle address of the current LP oracle
+    /// @param newOracle address of the new LP oracle
+    function replacePoolMapping(
+        address pool,
+        ISpotPriceOracle oldOracle,
+        ISpotPriceOracle newOracle
+    ) external onlyOwner {
+        Errors.verifyNotZero(pool, "pool");
+        Errors.verifyNotZero(address(oldOracle), "oldOracle");
+        Errors.verifyNotZero(address(newOracle), "newOracle");
+        Errors.verifySystemsMatch(address(this), address(newOracle));
+
+        ISpotPriceOracle currentOracle = poolMappings[pool];
+
+        if (currentOracle != oldOracle) revert ReplaceOldMismatch(pool, address(oldOracle), address(currentOracle));
+        if (oldOracle == newOracle) revert ReplaceAlreadyMatches(pool, address(newOracle));
+
+        poolMappings[pool] = newOracle;
+
+        emit PoolRegistrationReplaced(pool, address(oldOracle), address(newOracle));
+    }
+
+    /// @notice Remove an existing oracle for a specified liquidity pool
+    /// @dev Must exist. Does not remove any additional configuration from the oracle itself
+    /// @param pool address of the liquidity pool that needs oracle removal
+    function removePoolMapping(address pool) external onlyOwner {
+        Errors.verifyNotZero(pool, "pool");
+
+        if (address(poolMappings[pool]) == address(0)) revert MappingDoesNotExist(pool);
+
+        delete poolMappings[pool];
+
+        emit PoolRemoved(pool);
+    }
+
     /// @dev This and all price oracles are not view fn's so that we can perform the Curve reentrancy check
     /// @inheritdoc IRootPriceOracle
     function getPriceInEth(address token) external returns (uint256 price) {
         // Skip the token address(0) check and just rely on the oracle lookup
         // Emit token so we can figure out what was actually 0 later
         IPriceOracle oracle = tokenMappings[token];
-        if (address(0) == address(oracle)) {
-            revert MissingTokenOracle(token);
-        }
+        if (address(oracle) == address(0)) revert MissingTokenOracle(token);
 
         price = oracle.getPriceInEth(token);
+    }
+
+    /// @inheritdoc IRootPriceOracle
+    function getSpotPriceInEth(address token, address pool) external returns (uint256 price) {
+        Errors.verifyNotZero(token, "token");
+        Errors.verifyNotZero(pool, "pool");
+
+        ISpotPriceOracle oracle = poolMappings[pool];
+        if (address(oracle) == address(0)) revert MissingTokenOracle(pool);
+
+        address weth = address(systemRegistry.weth());
+
+        // Retrieve the spot price with weth as the requested quote token
+        (uint256 rawPrice, address actualQuoteToken) = oracle.getSpotPrice(token, pool, weth);
+
+        // If the returned quote token is weth, return the price directly
+        if (actualQuoteToken == weth) return rawPrice;
+
+        // If not, get the conversion rate from the actualQuoteToken to weth and then derive the spot price
+        IPriceOracle tokenOracle = tokenMappings[actualQuoteToken];
+        if (address(tokenOracle) == address(0)) revert MissingTokenOracle(actualQuoteToken);
+
+        uint256 conversionRate = tokenOracle.getPriceInEth(actualQuoteToken);
+
+        uint256 decimals = IERC20Metadata(actualQuoteToken).decimals();
+
+        price = rawPrice * conversionRate / (10 ** decimals);
+
+        return price;
     }
 }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.17; // they used 0.8.12
+pragma solidity =0.8.17;
 
 /**
  * @title StructuredLinkedList
@@ -173,7 +173,7 @@ library StructuredLinkedList {
         delete self.list[_node][_PREV];
         delete self.list[_node][_NEXT];
 
-        self.size -= 1; // NOT: SafeMath library should be used here to decrement.
+        self.size -= 1;
 
         return _node;
     }
@@ -256,7 +256,7 @@ library StructuredLinkedList {
             _createLink(self, _node, _new, _direction);
             _createLink(self, _new, c, _direction);
 
-            self.size += 1; // NOT: SafeMath library should be used here to increment.
+            self.size += 1;
 
             return true;
         }

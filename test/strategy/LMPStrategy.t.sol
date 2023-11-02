@@ -825,45 +825,6 @@ contract LMPStrategyTest is Test {
     }
 
     /* **************************************** */
-    /* getSlashingEventSummary Tests            */
-    /* **************************************** */
-    function test_getSlashingEventSummary_handlesEmpty() public {
-        ILSTStats.LSTStatsData memory stats;
-        LMPStrategy.SlashingEventSummary memory summary = defaultStrat._getSlashingEventsSummary(stats, 0);
-
-        assertEq(summary.numEvents, 0);
-        assertEq(summary.firstEventTimestamp, 0);
-    }
-
-    function test_getSlashingEventSummary_basic() public {
-        uint256 blockTimestamp = 180 days;
-
-        uint256[] memory costs = new uint256[](6);
-        costs[0] = 25e14;
-        costs[1] = 25e14;
-        costs[2] = 15e14; // below threshold
-        costs[3] = 100e14;
-        costs[4] = 200e14;
-        costs[5] = 25e14;
-
-        uint256[] memory timestamps = new uint256[](6);
-        timestamps[0] = 0;
-        timestamps[1] = 90 days - 1; // should be excluded
-        timestamps[2] = 120 days;
-        timestamps[3] = 130 days;
-        timestamps[4] = 150 days;
-        timestamps[5] = 180 days;
-
-        ILSTStats.LSTStatsData memory stats;
-        stats.slashingCosts = costs;
-        stats.slashingTimestamps = timestamps;
-
-        LMPStrategy.SlashingEventSummary memory summary = defaultStrat._getSlashingEventsSummary(stats, blockTimestamp);
-        assertEq(summary.numEvents, 3);
-        assertEq(summary.firstEventTimestamp, 130 days);
-    }
-
-    /* **************************************** */
     /* getRebalanceSummaryStats Tests           */
     /* **************************************** */
     function test_getRebalanceSummaryStats() public {
@@ -1881,13 +1842,6 @@ contract LMPStrategyHarness is LMPStrategy {
         uint256 threshold
     ) public pure returns (uint256 count) {
         return getDiscountAboveThreshold(discountHistory, threshold);
-    }
-
-    function _getSlashingEventsSummary(
-        ILSTStats.LSTStatsData memory stats,
-        uint256 blockTimestamp
-    ) public pure returns (SlashingEventSummary memory) {
-        return getSlashingEventsSummary(stats, blockTimestamp);
     }
 
     function _verifyTrimOperation(IStrategy.RebalanceParams memory params, uint256 trimAmount) public returns (bool) {

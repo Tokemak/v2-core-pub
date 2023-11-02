@@ -202,11 +202,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         uint256 slippage;
     }
 
-    struct SlashingEventSummary {
-        uint256 numEvents;
-        uint256 firstEventTimestamp;
-    }
-
     enum RebalanceDirection {
         In,
         Out
@@ -506,17 +501,11 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
                 return 0;
             }
 
-            SlashingEventSummary memory slashingSummary = getSlashingEventsSummary(targetLst, block.timestamp);
-
             // discountThreshold is 1e7 precision for the discount history, but here it is compared to a 1e18, so pad it
             if (
                 targetLst.discount >= int256(discountThreshold * 1e11)
                     && numDiscountOverThreshold >= discountDaysThreshold
             ) {
-                if (slashingSummary.numEvents > 0) {
-                    minTrim = minTrim.min(5e16); // 5%
-                }
-
                 minTrim = minTrim.min(1e17); // 10%
             }
         }
@@ -537,41 +526,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         }
     }
 
-    // TODO: underlying stats needs to be refactored b/c this could become too costly to execute
-    function getSlashingEventsSummary(
-        ILSTStats.LSTStatsData memory stats,
-        uint256 blockTimestamp
-    ) internal pure returns (SlashingEventSummary memory) {
-        // zero values are what we want if there are no slashing events to iterate
-        // slither-disable-next-line uninitialized-local
-        SlashingEventSummary memory summary;
-
-        uint256 costThreshold = 0.0025e18; // 0.25%
-        uint256 timeCutoff = 90 days;
-        uint256[] memory timestamps = stats.slashingTimestamps;
-        uint256[] memory costs = stats.slashingCosts;
-        uint256 numEvents = costs.length;
-
-        // iterate starting with the more recent slashing events
-        for (uint256 i = numEvents; i > 0; --i) {
-            uint256 timestamp = timestamps[i - 1];
-            uint256 cost = costs[i - 1];
-
-            // only lookback as far as 90 days
-            // slither-disable-next-line timestamp
-            if (blockTimestamp - timestamp > timeCutoff) {
-                break;
-            }
-
-            if (cost >= costThreshold) {
-                summary.numEvents += 1;
-                summary.firstEventTimestamp = timestamp;
-            }
-        }
-
-        return summary;
-    }
-
     function getRebalanceSummaryStats(
         IStrategy.RebalanceParams memory params,
         RebalanceValueStats memory valueStats
@@ -585,7 +539,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         );
     }
 
-    // TODO: add slashing costs
     function getDestinationSummaryStats(
         address destAddress,
         uint256 price,
@@ -654,7 +607,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         result.maxPremium = interimStats.maxPremium;
         result.maxDiscount = interimStats.maxDiscount;
 
-        // TODO: add slashing cost
         uint256 returnExPrice = (
             result.baseApr * weightBase / 1e6 + result.feeApr * weightFee / 1e6
                 + result.incentiveApr * weightIncentive / 1e6

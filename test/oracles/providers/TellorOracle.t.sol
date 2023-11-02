@@ -144,6 +144,10 @@ contract TellorOracleTest is Test {
         );
         vm.expectRevert(BaseOracleDenominations.InvalidDataReturned.selector);
         _oracle.getPriceInEth(ETH);
+    }
+
+    function test_RevertsInvalidPricingTimestamp() external {
+        _oracle.addTellorRegistration(ETH, QUERY_ID, BaseOracleDenominations.Denomination.ETH, 0);
 
         // Too soon
         vm.mockCall(
@@ -151,7 +155,7 @@ contract TellorOracleTest is Test {
             abi.encodeWithSelector(UsingTellor.getDataBefore.selector),
             abi.encode(true, abi.encode(1), block.timestamp)
         );
-        vm.expectRevert(BaseOracleDenominations.InvalidDataReturned.selector);
+        vm.expectRevert(TellorOracle.InvalidPricingTimestamp.selector);
         _oracle.getPriceInEth(ETH);
 
         // Too far in past
@@ -160,7 +164,7 @@ contract TellorOracleTest is Test {
             abi.encodeWithSelector(UsingTellor.getDataBefore.selector),
             abi.encode(true, abi.encode(1), block.timestamp - 1 weeks)
         );
-        vm.expectRevert(BaseOracleDenominations.InvalidDataReturned.selector);
+        vm.expectRevert(TellorOracle.InvalidPricingTimestamp.selector);
         _oracle.getPriceInEth(ETH);
     }
 
@@ -179,6 +183,69 @@ contract TellorOracleTest is Test {
 
         uint256 value = _oracle.getPriceInEth(ETH);
         assertEq(value, 1500);
+    }
+
+    function test_getPriceInEth_DoesNotReplaceCachedPrice_WithOlderPrice() external {
+        // Register ETH - USD pricing feed.  Denomination is Eth, doesn't matter for this scenario.
+        _oracle.addTellorRegistration(ETH, QUERY_ID, BaseOracleDenominations.Denomination.ETH, 0);
+
+        // First `getDataBefore` price, returns price and timestamp price retrieved at.
+        vm.mockCall(
+            TELLOR_ORACLE,
+            abi.encodeWithSelector(TellorPlayground.getDataBefore.selector),
+            abi.encode(true, abi.encodePacked(uint256(1500)), block.timestamp - 30 minutes)
+        );
+
+        // Call will cache price from previous mockCall.
+        uint256 returnedPrice = _oracle.getPriceInEth(ETH);
+
+        // Check to make sure price cached properly.
+        assertEq(returnedPrice, 1500);
+
+        // Return different price at older timestamp on next call.
+        vm.mockCall(
+            TELLOR_ORACLE,
+            abi.encodeWithSelector(TellorPlayground.getDataBefore.selector),
+            abi.encode(true, abi.encodePacked(uint256(1750)), block.timestamp - 45 minutes)
+        );
+
+        // Call will not overwrite price from first call, because most recent call to oracle returns an
+        //      older timestamp.
+        returnedPrice = _oracle.getPriceInEth(ETH);
+
+        // Check that price has not changed.
+        assertEq(returnedPrice, 1500);
+    }
+
+    function test_getPriceInEth_ReplacesCachedPrice_WithNewerPrice() external {
+        // Register ETH - USD pricing feed.  Denomination is Eth, doesn't matter for this scenario.
+        _oracle.addTellorRegistration(ETH, QUERY_ID, BaseOracleDenominations.Denomination.ETH, 0);
+
+        // First `getDataBefore` price, returns price and timestamp price retrieved at.
+        vm.mockCall(
+            TELLOR_ORACLE,
+            abi.encodeWithSelector(TellorPlayground.getDataBefore.selector),
+            abi.encode(true, abi.encodePacked(uint256(1500)), block.timestamp - 30 minutes)
+        );
+
+        // Call will cache price from previous mockCall.
+        uint256 returnedPrice = _oracle.getPriceInEth(ETH);
+
+        // Check to make sure price cached properly.
+        assertEq(returnedPrice, 1500);
+
+        // Return different price at newer timestamp on next call.
+        vm.mockCall(
+            TELLOR_ORACLE,
+            abi.encodeWithSelector(TellorPlayground.getDataBefore.selector),
+            abi.encode(true, abi.encodePacked(uint256(1750)), block.timestamp - 20 minutes)
+        );
+
+        // Call will overwrite price from first call because timestamp is newer.
+        returnedPrice = _oracle.getPriceInEth(ETH);
+
+        // Check that price has changed to newer price.
+        assertEq(returnedPrice, 1750);
     }
 
     function test_GetPriceMainnet() external {

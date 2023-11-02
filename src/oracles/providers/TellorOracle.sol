@@ -3,6 +3,8 @@
 
 pragma solidity 0.8.17;
 
+import { SafeCast } from "openzeppelin-contracts/utils/math/SafeCast.sol";
+
 import { BaseOracleDenominations, ISystemRegistry } from "src/oracles/providers/base/BaseOracleDenominations.sol";
 import { IEthValueOracle } from "src/interfaces/pricing/IEthValueOracle.sol";
 import { Errors } from "src/utils/Errors.sol";
@@ -18,6 +20,9 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
     /// @dev Thrown when an invalid pricing timeout is submitted at oracle registration.
     error InvalidPricingTimeout(uint256 pricingTimeout);
 
+    /// @dev Thrown when a price's timestamp is outside of freshness bounds.
+    error InvalidPricingTimestamp();
+
     /**
      * @notice Used to store information about Tellor price queries.
      * @dev No decimals, all returned in e18 precision.
@@ -32,11 +37,24 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
         Denomination denomination;
     }
 
+    /**
+     * @notice Used to cache Tellor price and timestamp, used in case of dispute attack.
+     * @param price Cached price of query.
+     * @param timestamp Timestamp at which price was cached
+     */
+    struct TellorPriceInfo {
+        uint208 price;
+        uint48 timestamp;
+    }
+
     /// @dev Minimum time to have passed since price submitted to Tellor.
     uint256 public constant TELLOR_PRICING_FRESHNESS = 15 minutes;
 
     /// @dev Token address to TellorInfo structs.
     mapping(address => TellorInfo) private tellorQueryInfo;
+
+    /// @dev queryId => TellorPriceInfo struct.
+    mapping(bytes32 => TellorPriceInfo) private tellorCachedPriceInfo;
 
     /// @notice Emitted when information about a Tellor query is registered.
     event TellorRegistrationAdded(address token, Denomination denomination, bytes32 _queryId);
@@ -82,6 +100,7 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
 
     /**
      * @notice Allows permissioned removal registration for token address.
+     * @dev Also removes any cached pricing.
      * @param token Token to remove TellorInfo struct for.
      */
     function removeTellorRegistration(address token) external onlyOwner {
@@ -89,6 +108,7 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
         bytes32 queryIdBeforeDeletion = tellorQueryInfo[token].queryId;
         Errors.verifyNotZero(queryIdBeforeDeletion, "queryIdBeforeDeletion");
         delete tellorQueryInfo[token];
+        delete tellorCachedPriceInfo[queryIdBeforeDeletion];
         emit TellorRegistrationRemoved(token, queryIdBeforeDeletion);
     }
 
@@ -119,12 +139,29 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
         uint256 tokenPricingTimeout = tellorStoredTimeout == 0 ? DEFAULT_PRICING_TIMEOUT : tellorStoredTimeout;
         uint256 price = abi.decode(value, (uint256));
 
-        // Check that something was returned and freshness of price.
-        if (
-            timestampRetrieved == 0 || timestamp - timestampRetrieved > tokenPricingTimeout
-                || timestampRetrieved >= tellorMaxAllowableTimestamp || price == 0
-        ) {
+        // Pre caching checks, zero checks for timestamp and price.  If these are zero, something is wrong,
+        //      want to revert.
+        if (timestampRetrieved == 0 || price == 0) {
             revert InvalidDataReturned();
+        }
+
+        // Get Tellor cached pricing.
+        TellorPriceInfo memory tellorPriceInfo = tellorCachedPriceInfo[tellorInfo.queryId];
+
+        // Check timestamp vs cached, replace if neccessary.
+        if (timestampRetrieved > tellorPriceInfo.timestamp) {
+            tellorCachedPriceInfo[tellorInfo.queryId] =
+                TellorPriceInfo({ price: SafeCast.toUint208(price), timestamp: SafeCast.toUint48(timestampRetrieved) });
+        } else if (timestampRetrieved < tellorPriceInfo.timestamp) {
+            price = tellorPriceInfo.price;
+            timestampRetrieved = tellorPriceInfo.timestamp; // For checks below.
+        }
+
+        // Post caching checks, checking for timestamp validity.  Want to do this after caching checks,
+        //      that way if we are using a cached value we are checking the timestamp we retrieved it at,
+        //      not the timestamp we retrieved the value we queried on this call.
+        if (timestampRetrieved >= tellorMaxAllowableTimestamp || timestamp - timestampRetrieved > tokenPricingTimeout) {
+            revert InvalidPricingTimestamp();
         }
 
         return _denominationPricing(tellorInfo.denomination, price, tokenToPrice);

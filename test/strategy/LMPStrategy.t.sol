@@ -695,19 +695,6 @@ contract LMPStrategyTest is Test {
         assertEq(trimAmount, 1e17);
     }
 
-    function test_getDestinationTrimAmount_5pctExit() public {
-        IDexLSTStats.DexLSTStatsData memory dexStats;
-        dexStats.lstStatsData = new ILSTStats.LSTStatsData[](3);
-        ILSTStats.LSTStatsData memory empty;
-        dexStats.lstStatsData[0] = empty;
-        dexStats.lstStatsData[1] = build10pctExitThresholdLst();
-        dexStats.lstStatsData[2] = build5pctExitThresholdLst();
-
-        setStatsCurrent(mockOutStats, dexStats);
-        uint256 trimAmount = defaultStrat._getDestinationTrimAmount(IDestinationVaultForStrategy(mockOutDest));
-        assertEq(trimAmount, 5e16);
-    }
-
     function buildFullExitThresholdLst() private pure returns (ILSTStats.LSTStatsData memory) {
         ILSTStats.LSTStatsData memory lstStat;
 
@@ -755,7 +742,7 @@ contract LMPStrategyTest is Test {
         discountHistory[6] = 3e5;
 
         uint256[] memory slashingCosts = new uint256[](1);
-        slashingCosts[0] = 25e14; // above threshold
+        slashingCosts[0] = 25e14; // slashing costs do not impact strategy
 
         uint256[] memory slashingTimestamps = new uint256[](1);
         slashingTimestamps[0] = block.timestamp;

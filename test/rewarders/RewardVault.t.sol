@@ -180,13 +180,13 @@ contract MainRewarderTest is BaseTest {
     // https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/217-M/565-best.md
     function test_toke_getExtraRewards_WhenTokeRewardIsLessThanMinStake() public {
         // setup toke rewarder
-        MainRewarder tokeRewarder = new MainRewarder(
-            systemRegistry,
+        MainRewarder tokeRewarder = MainRewarder(
+            new DestinationVaultMainRewarder(systemRegistry,
             address(stakeTracker),
             address(toke),
             newRewardRatio,
             durationInBlock,
-            true
+            true)
         );
         vm.prank(address(operator));
         tokeRewarder.setTokeLockDuration(30 days);

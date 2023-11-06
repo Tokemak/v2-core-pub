@@ -263,7 +263,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
 
         emit UnderlyingWithdraw(amount, msg.sender, to);
 
-        _ensureLocalUnderlyingBalance(amount); // Here
+        _ensureLocalUnderlyingBalance(amount);
 
         // Does a balance check, will revert if trying to burn too much
         _burn(msg.sender, shares);

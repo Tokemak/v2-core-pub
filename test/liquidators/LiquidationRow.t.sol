@@ -22,7 +22,7 @@ import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { StakeTrackingMock } from "test/mocks/StakeTrackingMock.sol";
-import { MainRewarder, IMainRewarder } from "src/rewarders/MainRewarder.sol";
+import { DestinationVaultMainRewarder, MainRewarder } from "src/rewarders/DestinationVaultMainRewarder.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import {
@@ -149,13 +149,15 @@ contract LiquidationRowTest is Test {
         uint256 durationInBlock = 10;
         StakeTrackingMock stakeTracker = new StakeTrackingMock();
         systemRegistry.addRewardToken(address(targetToken));
-        mainRewarder = new MainRewarder(
+        mainRewarder = MainRewarder(
+            new DestinationVaultMainRewarder(
             systemRegistry,
             address(stakeTracker),
             address(targetToken),
             newRewardRatio,
             durationInBlock,
             true
+            )
         );
 
         // Set up test vault

@@ -7,7 +7,7 @@ pragma solidity 0.8.17;
 import { Test } from "forge-std/Test.sol";
 import { ERC20Mock } from "openzeppelin-contracts/mocks/ERC20Mock.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import { MainRewarder } from "src/rewarders/MainRewarder.sol";
+import { DestinationVaultMainRewarder, MainRewarder } from "src/rewarders/DestinationVaultMainRewarder.sol";
 import { ExtraRewarder } from "src/rewarders/ExtraRewarder.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { StakeTrackingMock } from "test/mocks/StakeTrackingMock.sol";
@@ -69,13 +69,13 @@ contract MainRewarderTest is BaseTest {
             address(systemRegistry), abi.encodeWithSelector(ISystemRegistry.isRewardToken.selector), abi.encode(true)
         );
 
-        mainRewardVault = new MainRewarder(
-            systemRegistry,
+        mainRewardVault = MainRewarder(
+            new DestinationVaultMainRewarder(systemRegistry,
             address(stakeTracker),
             address(mainReward),
             newRewardRatio,
             durationInBlock,
-            true
+            true)
         );
 
         extraReward1Vault = new ExtraRewarder(
@@ -263,13 +263,13 @@ contract MainRewarderTest is BaseTest {
         uint256 expectedTokeBalanceDiff,
         bool gpTokeIncreaseExpected
     ) private {
-        MainRewarder tokeRewarder = new MainRewarder(
-            systemRegistry,
+        MainRewarder tokeRewarder = MainRewarder(
+            new DestinationVaultMainRewarder(systemRegistry,
             address(stakeTracker),
             address(toke),
             newRewardRatio,
             durationInBlock,
-            true
+            true)
         );
 
         // set duration

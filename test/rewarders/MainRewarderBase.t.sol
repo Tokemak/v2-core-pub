@@ -12,18 +12,20 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
-import { MainRewarder, IMainRewarder } from "src/rewarders/MainRewarder.sol";
+import { DestinationVaultMainRewarder, MainRewarder } from "src/rewarders/DestinationVaultMainRewarder.sol";
+import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { IStakeTracking } from "src/interfaces/rewarders/IStakeTracking.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { RANDOM, WETH_MAINNET, TOKE_MAINNET } from "test/utils/Addresses.sol";
 
-contract MainRewarderTest is Test {
+abstract contract MainRewarderBaseTest is Test {
     MainRewarder public rewarder;
     ERC20Mock public rewardToken;
 
     address public stakeTracker;
     SystemRegistry public systemRegistry;
+    AccessController public accessController;
 
     uint256 public newRewardRatio = 800;
     uint256 public durationInBlock = 100_000;
@@ -35,44 +37,25 @@ contract MainRewarderTest is Test {
 
     function setUp() public virtual {
         systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
-        AccessController accessController = new AccessController(address(systemRegistry));
+        accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
         rewardToken = new ERC20Mock("MAIN_REWARD", "MAIN_REWARD", address(this), 0);
         stakeTracker = makeAddr("STAKE_TRACKER");
 
         accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
-        accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
 
         // We use mock since this function is called not from owner and
         // SystemRegistry.addRewardToken is not accessible from the ownership perspective
         vm.mockCall(
             address(systemRegistry), abi.encodeWithSelector(ISystemRegistry.isRewardToken.selector), abi.encode(true)
         );
-
-        rewarder = new MainRewarder(
-            systemRegistry,
-            address(stakeTracker),
-            address(rewardToken),
-            newRewardRatio,
-            durationInBlock,
-            true
-        );
     }
-}
 
-contract AddExtraReward is MainRewarderTest {
-    function test_RevertIf_ExtraRewardsNotAllowed() public {
-        MainRewarder mainRewarder = new MainRewarder(
-            systemRegistry,
-            address(stakeTracker),
-            address(rewardToken),
-            newRewardRatio,
-            durationInBlock,
-            false
-        );
-
-        vm.expectRevert(abi.encodeWithSelector(IMainRewarder.ExtraRewardsNotAllowed.selector));
-        mainRewarder.addExtraReward(makeAddr("EXTRA_REWARD"));
+    // `addExtraReward()` tests.
+    function test_RevertIf_ImproperRole_addExtraReward() external {
+        vm.prank(makeAddr("NO_ROLE"));
+        vm.expectRevert(Errors.AccessDenied.selector);
+        rewarder.addExtraReward(makeAddr("EXTRA_REWARD"));
     }
 
     function test_RevertIf_ExtraRewardIsZeroAddress() public {
@@ -101,9 +84,17 @@ contract AddExtraReward is MainRewarderTest {
         rewarder.addExtraReward(makeAddr("EXTRA_REWARD"));
         assertEq(rewarder.extraRewardsLength(), 1, "extraRewardsLength after");
     }
-}
 
-contract RemoveExtraRewards is MainRewarderTest {
+    // `removeExtraRewards()` tests.
+    function test_RevertIf_ImproperRole_removeExtraReward() external {
+        vm.prank(makeAddr("NO_ROLE"));
+        vm.expectRevert(Errors.AccessDenied.selector);
+
+        address[] memory removalRewards = new address[](1);
+        removalRewards[0] = makeAddr("EXTRA_REWARD");
+        rewarder.removeExtraRewards(removalRewards);
+    }
+
     function test_RevertIf_ItemNotFound() public {
         address[] memory rewardsToRemove = new address[](1);
         rewardsToRemove[0] = makeAddr("NON_EXISTENT_REWARDER");
@@ -139,31 +130,36 @@ contract RemoveExtraRewards is MainRewarderTest {
         rewarder.removeExtraRewards(rewardsToRemove);
         assertEq(rewarder.extraRewardsLength(), 0, "extraRewardsLength after removal");
     }
-}
 
-contract ClearExtraRewards is MainRewarderTest {
-    function setUp() public override {
-        super.setUp();
-        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_1"));
-        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_2"));
-        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_3"));
+    // `clearExtraRewards()` tests.
+    function test_RevertIf_ImproperRole_clearExtraReward() external {
+        vm.prank(makeAddr("NO_ROLE"));
+        vm.expectRevert(Errors.AccessDenied.selector);
+        rewarder.clearExtraRewards();
     }
 
     function test_EmitExtraRewardsClearedEvent() public {
+        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_1"));
+        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_2"));
+        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_3"));
+
         vm.expectEmit(true, true, true, true);
         emit ExtraRewardsCleared();
         rewarder.clearExtraRewards();
     }
 
     function test_ClearAllExtraRewards() public {
+        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_1"));
+        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_2"));
+        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_3"));
+
         assertEq(rewarder.extraRewardsLength(), 3, "extraRewardsLength before");
         rewarder.clearExtraRewards();
         assertEq(rewarder.extraRewardsLength(), 0, "extraRewardsLength after");
     }
-}
 
-contract Stake is MainRewarderTest {
-    function test_RevertIf_CallerIsNotStakeTracker() public {
+    // `stake()` tests.
+    function test_RevertIf_CallerIsNotStakeTracker_stake() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         rewarder.stake(RANDOM, 1000);
     }
@@ -187,10 +183,9 @@ contract Stake is MainRewarderTest {
 
         assertEq(rewarder.totalSupply(), deposit * 3);
     }
-}
 
-contract Withdraw is MainRewarderTest {
-    function test_RevertIf_CallerIsNotStakeTracker() public {
+    // `withdraw()` tests.
+    function test_RevertIf_CallerIsNotStakeTracker_withdraw() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         rewarder.withdraw(RANDOM, 1000, false);
     }
@@ -217,9 +212,8 @@ contract Withdraw is MainRewarderTest {
 
         vm.stopPrank();
     }
-}
 
-contract EdgeCases is MainRewarderTest {
+    // Testing for edge cases.
     function test_QueueNewRewardsTwice_WhenNoSupply() public {
         rewardToken.mint(address(this), 100_000_000);
 
@@ -235,13 +229,13 @@ contract EdgeCases is MainRewarderTest {
         rewarder.queueNewRewards(newReward2);
 
         uint256 currentRewards = rewarder.currentRewards();
-        uint256 durationInBlock = rewarder.durationInBlock();
+        uint256 localDurationInBlock = rewarder.durationInBlock();
 
         assertEq(rewarder.historicalRewards(), newReward + newReward2, "historicalRewards");
         assertEq(rewarder.rewardPerTokenStored(), 0, "rewardPerTokenStored");
         assertEq(currentRewards, newReward + newReward2, "currentRewards");
         // rewardRate = currentRewards / durationInBlock
-        assertEq(rewarder.rewardRate(), currentRewards / durationInBlock, "rewardRate");
+        assertEq(rewarder.rewardRate(), currentRewards / localDurationInBlock, "rewardRate");
     }
 
     function test_RewardDistributionForThreeUsersAtDifferentIntervals() public {

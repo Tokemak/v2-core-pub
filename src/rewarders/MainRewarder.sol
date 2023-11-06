@@ -17,11 +17,12 @@ import { Errors } from "src/utils/Errors.sol";
 
 /**
  * @title MainRewarder
+ * @dev Contract is abstract to enforce proper role designation on construction
  * @notice The MainRewarder contract extends the AbstractRewarder and
  * manages the distribution of main rewards along with additional rewards
  * from ExtraRewarder contracts.
  */
-contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
+abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @notice True if additional reward tokens/contracts are allowed to be added
@@ -63,7 +64,7 @@ contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
         return _extraRewards.length();
     }
 
-    function addExtraReward(address reward) external hasRole(Roles.DV_REWARD_MANAGER_ROLE) {
+    function addExtraReward(address reward) external hasRole(rewardRole) {
         if (!allowExtraRewards) {
             revert ExtraRewardsNotAllowed();
         }
@@ -80,7 +81,7 @@ contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
         return IExtraRewarder(_extraRewards.at(index));
     }
 
-    function removeExtraRewards(address[] calldata _rewards) external hasRole(Roles.DV_REWARD_MANAGER_ROLE) {
+    function removeExtraRewards(address[] calldata _rewards) external hasRole(rewardRole) {
         uint256 length = _rewards.length;
         for (uint256 i = 0; i < length; ++i) {
             if (!_extraRewards.remove(_rewards[i])) {
@@ -90,7 +91,7 @@ contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
         }
     }
 
-    function clearExtraRewards() external hasRole(Roles.DV_REWARD_MANAGER_ROLE) {
+    function clearExtraRewards() external hasRole(rewardRole) {
         while (_extraRewards.length() > 0) {
             if (!_extraRewards.remove(_extraRewards.at(_extraRewards.length() - 1))) {
                 revert Errors.ItemNotFound();

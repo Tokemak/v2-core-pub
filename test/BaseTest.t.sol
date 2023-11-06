@@ -18,7 +18,7 @@ import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
 import { StakeTrackingMock } from "test/mocks/StakeTrackingMock.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
-import { IMainRewarder, MainRewarder } from "src/rewarders/MainRewarder.sol";
+import { LMPVaultMainRewarder, MainRewarder } from "src/rewarders/LMPVaultMainRewarder.sol";
 import { LMPVault } from "src/vault/LMPVault.sol";
 import { IGPToke, GPToke } from "src/staking/GPToke.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -166,13 +166,15 @@ contract BaseTest is Test {
         vm.mockCall(
             address(systemRegistry), abi.encodeWithSelector(ISystemRegistry.isRewardToken.selector), abi.encode(true)
         );
-        MainRewarder mainRewarder = new MainRewarder(
+        MainRewarder mainRewarder = MainRewarder(
+            new LMPVaultMainRewarder(
             systemRegistry, // registry
             lmpVault, // stakeTracker
             asset, // address(mockAsset("MAIN_REWARD", "MAIN_REWARD", 0)), // rewardToken
             800, // newRewardRatio
             100, // durationInBlock
             allowExtras
+            )
         );
         vm.label(address(mainRewarder), "Main Rewarder");
 

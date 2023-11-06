@@ -9,7 +9,7 @@ import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
 import { ILMPVault, LMPVault } from "src/vault/LMPVault.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
-import { MainRewarder } from "src/rewarders/MainRewarder.sol";
+import { LMPVaultMainRewarder } from "src/rewarders/LMPVaultMainRewarder.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
@@ -73,7 +73,7 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
 
         address newToken = template.predictDeterministicAddress(salt);
 
-        MainRewarder mainRewarder = new MainRewarder{ salt: salt}(
+        LMPVaultMainRewarder mainRewarder = new LMPVaultMainRewarder{ salt: salt}(
             systemRegistry,
             newToken,
             address(systemRegistry.toke()),

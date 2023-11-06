@@ -35,8 +35,11 @@ contract Rewarder is AbstractRewarder {
         ISystemRegistry _systemRegistry,
         address _rewardToken,
         uint256 _newRewardRatio,
-        uint256 _durationInBlock
-    ) AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock) { }
+        uint256 _durationInBlock,
+        bytes32 _rewardRole
+    ) AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock) {
+        rewardRole = _rewardRole;
+    }
 
     function getReward() external pure override {
         revert NotImplemented();
@@ -141,7 +144,8 @@ contract AbstractRewarderTest is Test {
             systemRegistry,
             address(rewardToken),
             newRewardRatio,
-            durationInBlock
+            durationInBlock,
+            Roles.DV_REWARD_MANAGER_ROLE
         );
 
         // mint reward token to liquidator
@@ -212,7 +216,8 @@ contract AbstractRewarderTest is Test {
             systemRegistry,
             TOKE_MAINNET,
             newRewardRatio,
-            durationInBlock
+            durationInBlock,
+            Roles.DV_REWARD_MANAGER_ROLE
         );
 
         // send 1_000_000_000 TOKE to liquidator for tests where reward token is TOKE
@@ -258,7 +263,8 @@ contract Constructor is AbstractRewarderTest {
             systemRegistry,
             address(0),
             newRewardRatio,
-            durationInBlock
+            durationInBlock,
+            Roles.DV_REWARD_MANAGER_ROLE
         );
     }
 
@@ -269,7 +275,8 @@ contract Constructor is AbstractRewarderTest {
             systemRegistry,
             address(1),
             newRewardRatio,
-            0
+            0,
+            Roles.DV_REWARD_MANAGER_ROLE
         );
     }
 
@@ -280,7 +287,8 @@ contract Constructor is AbstractRewarderTest {
             systemRegistry,
             address(1),
             0,
-            durationInBlock
+            durationInBlock,
+            Roles.DV_REWARD_MANAGER_ROLE
         );
     }
 }

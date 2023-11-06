@@ -6,7 +6,7 @@ import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
-import { MainRewarder } from "src/rewarders/MainRewarder.sol";
+import { DestinationVaultMainRewarder } from "src/rewarders/DestinationVaultMainRewarder.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
@@ -75,7 +75,7 @@ contract DestinationVaultFactory is SystemComponent, IDestinationVaultFactory, S
 
         address newVaultAddress = template.predictDeterministicAddress(salt);
 
-        MainRewarder mainRewarder = new MainRewarder{ salt: salt}(
+        DestinationVaultMainRewarder mainRewarder = new DestinationVaultMainRewarder{ salt: salt}(
             systemRegistry,
             newVaultAddress,
             baseAsset, // Main rewards for a dv are always in base asset

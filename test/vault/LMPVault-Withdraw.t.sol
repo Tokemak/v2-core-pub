@@ -542,7 +542,7 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.balanceOf(address(this)), 0);
         assertEq(_lmpVault.rewarder().balanceOf(address(this)), 0);
 
-        _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
         _lmpVault.rewarder().addToWhitelist(address(this));
         _toke.mint(address(this), 1000e18);
         _toke.approve(address(_lmpVault.rewarder()), 1000e18);
@@ -753,7 +753,7 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.balanceOf(address(this)), 0);
         assertEq(_lmpVault.rewarder().balanceOf(address(this)), 0);
 
-        _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
         _lmpVault.rewarder().addToWhitelist(address(this));
         _toke.mint(address(this), 1000e18);
         _toke.approve(address(_lmpVault.rewarder()), 1000e18);
@@ -928,7 +928,7 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.balanceOf(address(this)), 0);
         assertEq(_lmpVault.rewarder().balanceOf(address(this)), 0);
 
-        _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
         _lmpVault.rewarder().addToWhitelist(address(this));
         _toke.mint(address(this), 1000e18);
         _toke.approve(address(_lmpVault.rewarder()), 1000e18);
@@ -1039,7 +1039,7 @@ contract LMPVaultMintingTests is Test {
         _lmpVault.deposit(1000, address(this));
 
         // Queue up some Destination Vault rewards
-        _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
         _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
 
         // Deployed 200 asset to DV1
@@ -1392,7 +1392,7 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.totalIdle(), 890);
 
         // Queue up some Destination Vault rewards
-        _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
         _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
 
         _asset.mint(address(this), 1000);
@@ -1475,7 +1475,7 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.balanceOf(address(this)), 0);
         assertEq(_lmpVault.rewarder().balanceOf(address(this)), 0);
 
-        _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
         _lmpVault.rewarder().addToWhitelist(address(this));
         _toke.mint(address(this), 1000e18);
         _toke.approve(address(_lmpVault.rewarder()), 1000e18);
@@ -1653,7 +1653,7 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.balanceOf(address(this)), 0);
         assertEq(_lmpVault.rewarder().balanceOf(address(this)), 0);
 
-        _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
         _lmpVault.rewarder().addToWhitelist(address(this));
         _toke.mint(address(this), 1000e18);
         _toke.approve(address(_lmpVault.rewarder()), 1000e18);
@@ -1774,7 +1774,7 @@ contract LMPVaultMintingTests is Test {
         _asset.approve(address(_lmpVault), 1000);
         _lmpVault.deposit(1000, address(this));
 
-        _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
         _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
 
         // At time of writing LMPVault always returned true for verifyRebalance
@@ -3433,7 +3433,7 @@ contract LMPVaultMintingTests is Test {
         vm.stopPrank();
 
         // Queue up some Destination Vault rewards
-        _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
         _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
 
         // At time of writing LMPVault always returned true for verifyRebalance
@@ -3503,7 +3503,7 @@ contract LMPVaultMintingTests is Test {
         assertEq(_lmpVault.rewarder().balanceOf(address(this)), 0);
 
         // Add rewarder to the system
-        _accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
         _lmpVault.rewarder().addToWhitelist(address(this));
 
         // Hal-04: Adding 100 TOKE as vault rewards and waiting until they are claimable.

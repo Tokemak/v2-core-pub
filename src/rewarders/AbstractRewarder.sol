@@ -75,6 +75,9 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
     /// @notice Whitelisted addresses for queuing new rewards.
     mapping(address => bool) public whitelistedAddresses;
 
+    /// @notice Role that manages rewarder contract.
+    bytes32 internal rewardRole;
+
     /**
      * @param _systemRegistry Address of the system registry.
      * @param _rewardToken Address of the reward token.
@@ -264,7 +267,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
      * requirement of the gpToke contract.
      * @param _tokeLockDuration The lock duration for staked Toke tokens.
      */
-    function setTokeLockDuration(uint256 _tokeLockDuration) external hasRole(Roles.DV_REWARD_MANAGER_ROLE) {
+    function setTokeLockDuration(uint256 _tokeLockDuration) external hasRole(rewardRole) {
         // if duration is not set to 0 (that would turn off functionality), make sure it's long enough for gpToke
         if (_tokeLockDuration > 0) {
             Errors.verifyNotZero(address(systemRegistry.gpToke()), "gpToke");
@@ -281,7 +284,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
      * @notice Add an address to the whitelist.
      * @param wallet The address to be added to the whitelist.
      */
-    function addToWhitelist(address wallet) external override hasRole(Roles.DV_REWARD_MANAGER_ROLE) {
+    function addToWhitelist(address wallet) external override hasRole(rewardRole) {
         Errors.verifyNotZero(wallet, "wallet");
         if (whitelistedAddresses[wallet]) {
             revert Errors.ItemExists();
@@ -295,7 +298,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
      * @notice Remove an address from the whitelist.
      * @param wallet The address to be removed from the whitelist.
      */
-    function removeFromWhitelist(address wallet) external override hasRole(Roles.DV_REWARD_MANAGER_ROLE) {
+    function removeFromWhitelist(address wallet) external override hasRole(rewardRole) {
         if (!whitelistedAddresses[wallet]) {
             revert Errors.ItemNotFound();
         }

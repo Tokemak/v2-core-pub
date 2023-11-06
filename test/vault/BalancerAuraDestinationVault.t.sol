@@ -20,7 +20,6 @@ import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol
 import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
-import { MainRewarder } from "src/rewarders/MainRewarder.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { SwapRouter } from "src/swapper/SwapRouter.sol";
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
@@ -55,7 +54,6 @@ contract BalancerAuraDestinationVaultTests is Test {
     IRootPriceOracle private _rootPriceOracle;
 
     IWETH9 private _asset;
-    MainRewarder private _rewarder;
 
     IERC20 private _underlyer;
 

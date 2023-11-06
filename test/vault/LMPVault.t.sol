@@ -10,7 +10,6 @@ import { ERC20Mock } from "openzeppelin-contracts/mocks/ERC20Mock.sol";
 import { ERC4626Mock, IERC20Metadata } from "openzeppelin-contracts/mocks/ERC4626Mock.sol";
 import { BaseTest } from "test/BaseTest.t.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import { IMainRewarder, MainRewarder } from "src/rewarders/MainRewarder.sol";
 
 import { ILMPVault, LMPVault } from "src/vault/LMPVault.sol";
 

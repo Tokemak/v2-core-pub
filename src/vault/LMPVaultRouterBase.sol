@@ -16,9 +16,6 @@ import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multicall, PeripheryPayments {
     using SafeERC20 for IERC20;
 
-    error InvalidAsset();
-    error InvalidEthAmount(uint256 amountNeeded, uint256 amountSent);
-
     constructor(address _weth9) PeripheryPayments(IWETH9(_weth9)) { }
 
     /// @inheritdoc ILMPVaultRouterBase
@@ -32,9 +29,10 @@ abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multica
         uint256 assets = vault.previewMint(shares);
 
         if (msg.value > 0 && address(vaultAsset) == address(weth9)) {
-            if (msg.value != assets) revert InvalidEthAmount(assets, msg.value);
-
-            _processEthIn(vault);
+            // We allow different amounts for different functions while performing a multicall now
+            // and msg.value can be more than a single instructions amount
+            // so we don't verify msg.value == assets
+            _processEthIn(vault, assets);
         } else {
             pullToken(vaultAsset, assets, address(this));
         }
@@ -56,9 +54,10 @@ abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multica
         IERC20 vaultAsset = IERC20(vault.asset());
 
         if (msg.value > 0 && address(vaultAsset) == address(weth9)) {
-            if (msg.value != amount) revert InvalidEthAmount(amount, msg.value);
-
-            _processEthIn(vault);
+            // We allow different amounts for different functions while performing a multicall now
+            // and msg.value can be more than a single instructions amount
+            // so we don't verify msg.value == amount
+            _processEthIn(vault, amount);
         } else {
             pullToken(vaultAsset, amount, address(this));
         }
@@ -118,15 +117,11 @@ abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multica
         }
     }
 
-    function _processEthIn(ILMPVault vault) internal {
-        if (address(this).balance > 0) {
-            // if asset is not weth, revert
-            if (address(vault.asset()) != address(weth9)) {
-                revert InvalidAsset();
-            }
-
+    ///@dev Function assumes that vault.asset() is verified externally to be weth9
+    function _processEthIn(ILMPVault vault, uint256 amount) internal {
+        if (amount > 0) {
             // wrap eth
-            weth9.deposit{ value: address(this).balance }();
+            weth9.deposit{ value: amount }();
         }
     }
 

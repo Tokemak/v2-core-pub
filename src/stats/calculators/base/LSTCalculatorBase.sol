@@ -37,7 +37,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
     uint256 public lastBaseAprSnapshotTimestamp;
 
     /// @notice timestamp of the last discount snapshot
-    uint256 public lastDiscountSnapshot;
+    uint256 public lastDiscountSnapshotTimestamp;
 
     /// @notice ethPerToken at the last snapshot for slashing events
     uint256 public lastSlashingEthPerToken;
@@ -195,7 +195,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
     function _timeForDiscountSnapshot() private view returns (bool) {
         // slither-disable-next-line timestamp
-        return block.timestamp >= lastBaseAprSnapshotTimestamp + DISCOUNT_SNAPSHOT_INTERVAL_IN_SEC;
+        return block.timestamp >= lastDiscountSnapshotTimestamp + DISCOUNT_SNAPSHOT_INTERVAL_IN_SEC;
     }
 
     function _timeForSlashingSnapshot() private view returns (bool) {
@@ -266,7 +266,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
         discountHistory[discountHistoryIndex] = trackedDiscount;
         discountHistoryIndex = (discountHistoryIndex + 1) % uint8(discountHistory.length);
-        lastDiscountSnapshot = block.timestamp;
+        lastDiscountSnapshotTimestamp = block.timestamp;
     }
 
     /// @inheritdoc ILSTStats

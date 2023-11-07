@@ -76,23 +76,26 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
     mapping(address => bool) public whitelistedAddresses;
 
     /// @notice Role that manages rewarder contract.
-    bytes32 internal rewardRole;
+    bytes32 internal immutable rewardRole;
 
     /**
      * @param _systemRegistry Address of the system registry.
      * @param _rewardToken Address of the reward token.
      * @param _newRewardRatio The new reward rate.
      * @param _durationInBlock The duration of the reward period in blocks.
+     * @param _rewardRole Role that controls role based functions in Rewarder.
      */
     constructor(
         ISystemRegistry _systemRegistry,
         address _rewardToken,
         uint256 _newRewardRatio,
-        uint256 _durationInBlock
+        uint256 _durationInBlock,
+        bytes32 _rewardRole
     ) SecurityBase(address(_systemRegistry.accessController())) {
         Errors.verifyNotZero(_rewardToken, "_rewardToken");
         Errors.verifyNotZero(_durationInBlock, "_durationInBlock");
         Errors.verifyNotZero(_newRewardRatio, "_newRewardRatio");
+        Errors.verifyNotZero(_rewardRole, "_rewardRole");
 
         systemRegistry = _systemRegistry;
         if (!systemRegistry.isRewardToken(_rewardToken)) {
@@ -101,6 +104,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
         rewardToken = _rewardToken;
         newRewardRatio = _newRewardRatio;
         durationInBlock = _durationInBlock;
+        rewardRole = _rewardRole;
     }
 
     /// @notice Restricts access to whitelisted addresses or holders of the liquidator role.

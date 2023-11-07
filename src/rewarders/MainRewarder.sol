@@ -43,8 +43,9 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         address _rewardToken,
         uint256 _newRewardRatio,
         uint256 _durationInBlock,
+        bytes32 _rewardRole,
         bool _allowExtraRewards
-    ) AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock) {
+    ) AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock, _rewardRole) {
         Errors.verifyNotZero(_stakeTracker, "_stakeTracker");
 
         // slither-disable-next-line missing-zero-check

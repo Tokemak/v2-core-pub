@@ -12,6 +12,7 @@ import { IExtraRewarder } from "src/interfaces/rewarders/IExtraRewarder.sol";
 import { AbstractRewarder } from "./AbstractRewarder.sol";
 
 import { Errors } from "src/utils/Errors.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 contract ExtraRewarder is AbstractRewarder, IExtraRewarder, ReentrancyGuard {
     IMainRewarder public immutable mainReward;
@@ -24,7 +25,10 @@ contract ExtraRewarder is AbstractRewarder, IExtraRewarder, ReentrancyGuard {
         address _mainReward,
         uint256 _newRewardRatio,
         uint256 _durationInBlock
-    ) AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock) {
+    )
+        // solhint-disable-next-line max-line-length
+        AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock, Roles.EXTRA_REWARD_MANAGER_ROLE)
+    {
         Errors.verifyNotZero(_mainReward, "_mainReward");
 
         // slither-disable-next-line missing-zero-check

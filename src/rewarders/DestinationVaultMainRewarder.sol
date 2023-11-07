@@ -8,7 +8,7 @@ import { Roles } from "src/libs/Roles.sol";
 /**
  * @title DestinationVaultMainRewarder
  * @notice Main rewarder for Destination Vault contracts.  This is used to enforce role based
- *      access control between rewarders used in LMP and Destination vaults.
+ *      access control for Destination Vault rewarders.
  */
 contract DestinationVaultMainRewarder is MainRewarder {
     constructor(
@@ -19,8 +19,14 @@ contract DestinationVaultMainRewarder is MainRewarder {
         uint256 _durationInBlock,
         bool _allowExtraReward
     )
-        MainRewarder(_systemRegistry, _stakeTracker, _rewardToken, _newRewardRatio, _durationInBlock, _allowExtraReward)
-    {
-        rewardRole = Roles.DV_REWARD_MANAGER_ROLE;
-    }
+        MainRewarder(
+            _systemRegistry,
+            _stakeTracker,
+            _rewardToken,
+            _newRewardRatio,
+            _durationInBlock,
+            Roles.DV_REWARD_MANAGER_ROLE,
+            _allowExtraReward
+        )
+    { }
 }

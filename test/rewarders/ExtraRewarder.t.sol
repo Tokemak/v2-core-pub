@@ -15,6 +15,7 @@ import { AccessController } from "src/security/AccessController.sol";
 import { ExtraRewarder } from "src/rewarders/ExtraRewarder.sol";
 import { IStakeTracking } from "src/interfaces/rewarders/IStakeTracking.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { Roles } from "src/libs/Roles.sol";
 import { RANDOM, WETH_MAINNET, TOKE_MAINNET } from "test/utils/Addresses.sol";
 
 contract ExtraRewarderTest is Test {
@@ -23,6 +24,7 @@ contract ExtraRewarderTest is Test {
 
     address public mainRewarder;
     SystemRegistry public systemRegistry;
+    AccessController public accessController;
 
     uint256 public newRewardRatio = 800;
     uint256 public durationInBlock = 100;
@@ -30,7 +32,7 @@ contract ExtraRewarderTest is Test {
 
     function setUp() public {
         systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
-        AccessController accessController = new AccessController(address(systemRegistry));
+        accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
         rewardToken = new ERC20Mock("MAIN_REWARD", "MAIN_REWARD", address(this), 0);
         mainRewarder = makeAddr("MAIN_REWARDER");
@@ -72,5 +74,57 @@ contract GetReward is ExtraRewarderTest {
 
         vm.prank(mainRewarder);
         rewarder.getReward(RANDOM);
+    }
+}
+
+// Testing inherited AbstractRewarder RBAC functionalities with rewarder specific to extra rewards.
+contract RoleBasedAccessControlTests is ExtraRewarderTest {
+    function test_RBAC_setTokeLockDuration() external {
+        // Mock registry / gptoke calls.
+        address fakeGPToke = makeAddr("FAKE_GPTOKE");
+        vm.mockCall(address(systemRegistry), abi.encodeWithSignature("gpToke()"), abi.encode(fakeGPToke));
+        vm.mockCall(fakeGPToke, abi.encodeWithSignature("minStakeDuration()"), abi.encode(0));
+
+        // `address(this)` does not have `EXTRA_REWARD_MANAGER_ROLE`.
+        vm.expectRevert(Errors.AccessDenied.selector);
+        rewarder.setTokeLockDuration(5);
+
+        // Grant `EXTRA_REWARD_MANAGER_ROLE` to `address(this)`.
+        accessController.setupRole(Roles.EXTRA_REWARD_MANAGER_ROLE, address(this));
+        rewarder.setTokeLockDuration(5);
+        assertEq(rewarder.tokeLockDuration(), 5);
+    }
+
+    function test_RBAC_addToWhitelist() external {
+        address fakeWhitelisted = makeAddr("FAKE_WHITELIST");
+
+        // `address(this)` does not have correct role.
+        vm.expectRevert(Errors.AccessDenied.selector);
+        rewarder.addToWhitelist(fakeWhitelisted);
+
+        // Grant role, try again.
+        accessController.setupRole(Roles.EXTRA_REWARD_MANAGER_ROLE, address(this));
+        rewarder.addToWhitelist(fakeWhitelisted);
+        assertEq(rewarder.whitelistedAddresses(fakeWhitelisted), true);
+    }
+
+    function test_RBAC_removeFromWhitelist() external {
+        address fakeWhitelisted = makeAddr("FAKE_WHITELIST");
+        address extraRewardRoleAddress = vm.addr(1);
+
+        // Set up role for `vm.addr(1)`, add address to whitelist.
+        accessController.setupRole(Roles.EXTRA_REWARD_MANAGER_ROLE, extraRewardRoleAddress);
+        vm.startPrank(extraRewardRoleAddress);
+        rewarder.addToWhitelist(fakeWhitelisted);
+        vm.stopPrank();
+
+        // `address(this)` does not have correct role.
+        vm.expectRevert(Errors.AccessDenied.selector);
+        rewarder.removeFromWhitelist(fakeWhitelisted);
+
+        // Grant role, try again.
+        accessController.setupRole(Roles.EXTRA_REWARD_MANAGER_ROLE, address(this));
+        rewarder.removeFromWhitelist(fakeWhitelisted);
+        assertEq(rewarder.whitelistedAddresses(fakeWhitelisted), false);
     }
 }

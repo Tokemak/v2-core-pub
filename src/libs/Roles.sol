@@ -21,6 +21,7 @@ library Roles {
 
     bytes32 public constant DV_REWARD_MANAGER_ROLE = keccak256("DV_REWARD_MANAGER_ROLE");
     bytes32 public constant LMP_REWARD_MANAGER_ROLE = keccak256("LMP_REWARD_MANAGER_ROLE");
+    bytes32 public constant EXTRA_REWARD_MANAGER_ROLE = keccak256("EXTRA_REWARD_MANAGER_ROLE");
 
     bytes32 public constant LIQUIDATOR_ROLE = keccak256("LIQUIDATOR_ROLE");
 

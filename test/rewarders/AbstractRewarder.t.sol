@@ -37,9 +37,7 @@ contract Rewarder is AbstractRewarder {
         uint256 _newRewardRatio,
         uint256 _durationInBlock,
         bytes32 _rewardRole
-    ) AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock) {
-        rewardRole = _rewardRole;
-    }
+    ) AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock, _rewardRole) { }
 
     function getReward() external pure override {
         revert NotImplemented();

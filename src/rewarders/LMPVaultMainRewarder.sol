@@ -11,6 +11,7 @@ import { Roles } from "src/libs/Roles.sol";
  *      access control for LMP rewarders.
  */
 contract LMPVaultMainRewarder is MainRewarder {
+    // slither-disable-start similar-names
     constructor(
         ISystemRegistry _systemRegistry,
         address _stakeTracker,
@@ -29,4 +30,5 @@ contract LMPVaultMainRewarder is MainRewarder {
             _allowExtraReward
         )
     { }
+    // slither-disable-end
 }

@@ -423,8 +423,11 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         for (uint256 i = 0; i < numLsts; ++i) {
             uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
             uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], params.tokenOut);
-            if (((priceSafe * 1.0e18 / priceSpot - 1.0e18) * 10_000) / 1.0e18 > tolerance) {
-                return false;
+            // For out destination, the pool tokens should not be lower than safe price by tolerance
+            if (priceSafe > priceSpot) {
+                if (((priceSafe * 1.0e18 / priceSpot - 1.0e18) * 10_000) / 1.0e18 > tolerance) {
+                    return false;
+                }
             }
         }
 
@@ -435,8 +438,11 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         for (uint256 i = 0; i < numLsts; ++i) {
             uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
             uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], params.tokenIn);
-            if (((priceSpot * 1.0e18 / priceSafe - 1.0e18) * 10_000) / 1.0e18 > tolerance) {
-                return false;
+            // For in destination, the pool tokens should not be higher than safe price by tolerance
+            if (priceSpot > priceSafe) {
+                if (((priceSpot * 1.0e18 / priceSafe - 1.0e18) * 10_000) / 1.0e18 > tolerance) {
+                    return false;
+                }
             }
         }
 

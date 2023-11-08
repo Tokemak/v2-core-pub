@@ -21,7 +21,6 @@ import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IE
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
-
 // TODO: how do we ensure that we don't have dust positions -- require min positions on rebalance
 // TODO: confirm the order that verification occurs vs the actual creation/burning of LP tokens from rebalances
 
@@ -127,6 +126,9 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     /// @notice model weight applied to an LST premium when entering or exiting the position
     int256 public immutable weightPricePremium;
 
+    /// @notice model weight applied to an LST premium when entering or exiting the position
+    uint256 public immutable lstPriceGapTolerance;
+
     /* ******************************** */
     /* State Variables                  */
     /* ******************************** */
@@ -171,6 +173,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     error InsufficientAssets(address asset);
     error SystemRegistryMismatch();
     error UnregisteredDestination(address dest);
+    error LSTPriceGapToleranceExceeded();
 
     struct SummaryStats {
         address destination;
@@ -254,6 +257,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         weightPriceDiscountExit = conf.modelWeights.priceDiscountExit;
         weightPriceDiscountEnter = conf.modelWeights.priceDiscountEnter;
         weightPricePremium = conf.modelWeights.pricePremium;
+        lstPriceGapTolerance = conf.lstPriceGapTolerance;
 
         _swapCostOffsetPeriod = conf.swapCostOffset.initInDays;
         lastRebalanceTimestamp = uint40(block.timestamp);
@@ -279,6 +283,8 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // rebalances back to idle are allowed even when a strategy is paused
         // all other rebalances should be blocked in a paused state
         ensureNotPaused();
+        // Verify spot & safe price for the individual tokens in the pool are not far apart.
+        if (!verifyLSTPriceGap(params, lstPriceGapTolerance)) revert LSTPriceGapToleranceExceeded();
 
         // ensure that we're not exceeding top-level max slippage
         if (valueStats.slippage > maxNormalOperationSlippage) revert MaxSlippageExceeded();
@@ -402,6 +408,39 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             swapCost: swapCost,
             slippage: slippage
         });
+    }
+
+    // Calculate the largest difference between spot & safe price for the underlying LST tokens.
+    // This does not support Curve meta pools
+    function verifyLSTPriceGap(IStrategy.RebalanceParams memory params, uint256 tolerance) internal returns (bool) {
+        // Pricer
+        IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
+
+        // Out Destination
+        IDestinationVaultForStrategy dest = IDestinationVaultForStrategy(params.destinationOut);
+        address[] memory lstTokens = dest.underlyingTokens();
+        uint256 numLsts = lstTokens.length;
+        for (uint256 i = 0; i < numLsts; ++i) {
+            uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
+            uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], params.tokenOut);
+            if (((priceSafe * 1.0e18 / priceSpot - 1.0e18) * 10_000) / 1.0e18 > tolerance) {
+                return false;
+            }
+        }
+
+        // In Destination
+        dest = IDestinationVaultForStrategy(params.destinationIn);
+        lstTokens = dest.underlyingTokens();
+        numLsts = lstTokens.length;
+        for (uint256 i = 0; i < numLsts; ++i) {
+            uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
+            uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], params.tokenIn);
+            if (((priceSpot * 1.0e18 / priceSafe - 1.0e18) * 10_000) / 1.0e18 > tolerance) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     // TODO: perhaps we should just have a set order to the checks to push expensive operations out

@@ -41,6 +41,8 @@ contract LMPStrategyTest is Test {
     address private mockBaseAsset = vm.addr(600);
     address private mockInToken = vm.addr(701);
     address private mockOutToken = vm.addr(702);
+    address private immutable mockInLSTToken = vm.addr(703);
+    address private immutable mockOutLSTToken = vm.addr(704);
     address private mockInDest = vm.addr(801);
     address private mockOutDest = vm.addr(802);
     address private mockInStats = vm.addr(501);
@@ -143,6 +145,20 @@ contract LMPStrategyTest is Test {
 
         (bool success,) = defaultStrat.verifyRebalance(defaultParams);
         assertTrue(success);
+    }
+
+    function test_verifyLSTPriceGap_Revert() public {
+        // this test verifies that revert logic is followed based on tolerance
+        // of safe-spot price for LST
+        setTokenSpotPrice(mockOutLSTToken, 99e16); // set spot OutToken price slightly lower than safe
+        setTokenSpotPrice(mockInLSTToken, 101e16); // set spot OutToken price slightly higher than safe
+        vm.expectRevert(abi.encodeWithSelector(LMPStrategy.LSTPriceGapToleranceExceeded.selector));
+        defaultStrat.verifyRebalance(defaultParams);
+
+        setTokenSpotPrice(mockOutLSTToken, 99.89e16); // set spot price slightly lower than safe near tolerance
+        setTokenSpotPrice(mockInLSTToken, 100e16); // set spot = safe
+        vm.expectRevert(abi.encodeWithSelector(LMPStrategy.LSTPriceGapToleranceExceeded.selector));
+        defaultStrat.verifyRebalance(defaultParams);
     }
 
     function test_verifyRebalance_RevertIf_invalidParams() public {
@@ -1687,6 +1703,9 @@ contract LMPStrategyTest is Test {
     /* **************************************** */
     function setInDestDefaultMocks() private {
         setDestinationUnderlying(mockInDest, mockInToken);
+        address[] memory underlyingLSTs = new address[](1);
+        underlyingLSTs[0] = mockInLSTToken;
+        setDestinationUnderlyingTokens(mockInDest, underlyingLSTs);
         setDestinationIsShutdown(mockInDest, false);
         setDestinationStats(mockInDest, mockInStats);
         setLmpDestinationBalanceOf(mockInDest, 100e18);
@@ -1695,6 +1714,9 @@ contract LMPStrategyTest is Test {
 
     function setOutDestDefaultMocks() private {
         setDestinationUnderlying(mockOutDest, mockOutToken);
+        address[] memory underlyingLSTs = new address[](1);
+        underlyingLSTs[0] = mockOutLSTToken;
+        setDestinationUnderlyingTokens(mockOutDest, underlyingLSTs);
         setDestinationIsShutdown(mockOutDest, false);
         setDestinationStats(mockOutDest, mockOutStats);
         setLmpDestinationBalanceOf(mockOutDest, 100e18);
@@ -1703,6 +1725,12 @@ contract LMPStrategyTest is Test {
 
     function setDestinationUnderlying(address dest, address underlying) private {
         vm.mockCall(dest, abi.encodeWithSelector(IDestinationVault.underlying.selector), abi.encode(underlying));
+    }
+
+    function setDestinationUnderlyingTokens(address dest, address[] memory underlyingLSTs) private {
+        vm.mockCall(
+            dest, abi.encodeWithSelector(IDestinationVault.underlyingTokens.selector), abi.encode(underlyingLSTs)
+        );
     }
 
     function setDestinationIsShutdown(address dest, bool shutdown) private {
@@ -1733,10 +1761,15 @@ contract LMPStrategyTest is Test {
     /* **************************************** */
     function setTokenDefaultMocks() private {
         setTokenPrice(mockInToken, 1e18);
+        setTokenPrice(mockInLSTToken, 1e18);
+        setTokenSpotPrice(mockInLSTToken, 1e18);
         setTokenDecimals(mockInToken, 18);
         setTokenPrice(mockOutToken, 1e18);
+        setTokenPrice(mockOutLSTToken, 1e18);
+        setTokenSpotPrice(mockOutLSTToken, 1e18);
         setTokenDecimals(mockOutToken, 18);
         setTokenPrice(mockBaseAsset, 1e18);
+        setTokenSpotPrice(mockBaseAsset, 1e18);
         setTokenDecimals(mockBaseAsset, 18);
     }
 
@@ -1747,6 +1780,14 @@ contract LMPStrategyTest is Test {
         vm.mockCall(
             address(rootPriceOracle),
             abi.encodeWithSelector(IRootPriceOracle.getPriceInEth.selector, token),
+            abi.encode(price)
+        );
+    }
+
+    function setTokenSpotPrice(address token, uint256 price) private {
+        vm.mockCall(
+            address(rootPriceOracle),
+            abi.encodeWithSelector(IRootPriceOracle.getSpotPriceInEth.selector, token),
             abi.encode(price)
         );
     }

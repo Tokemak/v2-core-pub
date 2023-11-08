@@ -24,6 +24,8 @@ library LMPStrategyConfig {
         uint40 staleDataToleranceInSeconds;
         // the maximum discount incorporated in price return
         int256 maxAllowedDiscount;
+        // the maximum deviation between spot & safe price for individual LSTs
+        uint256 lstPriceGapTolerance;
     }
 
     struct SwapCostOffsetConfig {

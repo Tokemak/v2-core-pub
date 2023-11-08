@@ -40,7 +40,8 @@ library LMPStrategyTestHelpers {
             maxPremium: 0.01e18, // 1%
             maxDiscount: 0.02e18, // 2%
             staleDataToleranceInSeconds: 2 days,
-            maxAllowedDiscount: 0.05e18
-        });
+            maxAllowedDiscount: 0.05e18,
+            lstPriceGapTolerance: 10 // 10 bps
+         });
     }
 }

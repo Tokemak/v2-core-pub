@@ -159,6 +159,18 @@ contract CurveConvexDestinationVault is DestinationVault {
         curveLpToken = lpToken;
     }
 
+    /// @inheritdoc DestinationVault
+    /// @notice In this vault all underlyer should be staked externally, so internal debt should be 0.
+    function internalDebtBalance() public pure override returns (uint256) {
+        return 0;
+    }
+
+    /// @inheritdoc DestinationVault
+    /// @notice In this vault all underlyer should be staked, and mint is 1:1, so external debt is `totalSupply()`.
+    function externalDebtBalance() public view override returns (uint256) {
+        return totalSupply();
+    }
+
     /// @notice Get the balance of underlyer currently staked in Convex
     /// @return Balance of underlyer currently staked in Convex
     function externalQueriedBalance() public view override returns (uint256) {

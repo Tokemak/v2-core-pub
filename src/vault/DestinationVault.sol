@@ -132,8 +132,6 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     }
 
     /// @inheritdoc IDestinationVault
-<<<<<<< HEAD
-<<<<<<< HEAD
     function internalDebtBalance() public view virtual override returns (uint256);
 
     /// @inheritdoc IDestinationVault
@@ -145,25 +143,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     }
 
     /// @inheritdoc IDestinationVault
-=======
-    function internalDebtBalance() public view virtual override returns (uint256) {
-        return 0;
-    }
-=======
-    function internalDebtBalance() public view virtual override returns (uint256);
->>>>>>> acc9b24 (feat(destinations): Force internal and external debt functions to be set in inheriting DV contracts)
-
-    /// @inheritdoc IDestinationVault
-    function externalDebtBalance() public view virtual override returns (uint256);
-
-    /// @inheritdoc IDestinationVault
-    function internalQueriedBalance() external view virtual override returns (uint256) {
-        return IERC20(_underlying).balanceOf(address(this));
-    }
-
-    /// @inheritdoc IDestinationVault
->>>>>>> d1f55a5 (feat(destinations): Updates to how debt balances, actual balances are tracked)
-    function externalQueriedBalance() external view virtual override returns (uint256);
+    function externalQueriedBalance() public view virtual override returns (uint256);
 
     /// @inheritdoc IDestinationVault
     function rewarder() external view virtual override returns (address) {
@@ -289,7 +269,6 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
         return _withdrawBaseAsset(msg.sender, shares, to);
     }
 
-<<<<<<< HEAD
     /// @inheritdoc IDestinationVault
     //slither-disable-start assembly
     function estimateWithdrawBaseAsset(uint256 shares, address to, address account) public returns (uint256) {
@@ -312,15 +291,6 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
             if (success) {
                 revert UnreachableError();
             }
-=======
-        // Does a balance check, will revert if trying to burn too much
-        _burn(msg.sender, shares);
-
-        // Accounts for shares that may be staked
-        _ensureLocalUnderlyingBalance(shares);
-
-        (address[] memory tokens, uint256[] memory amounts) = _burnUnderlyer(shares);
->>>>>>> acc9b24 (feat(destinations): Force internal and external debt functions to be set in inheriting DV contracts)
 
             // Extract the error signature (first 4 bytes) from the revert reason.
             bytes4 errorSignature;
@@ -394,10 +364,15 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     function recoverUnderlying(address destination) external override hasRole(Roles.TOKEN_RECOVERY_ROLE) {
         Errors.verifyNotZero(destination, "destination");
 
-        uint256 amount = internalQueriedBalance() - internalDebtBalance();
-        if (amount > 0) {
-            emit UnderlyerRecovered(destination, amount);
-            IERC20(_underlying).safeTransfer(destination, amount);
+        // TODO: Is there a situation where we would expect debt on the vault to be > queried balance on the vault?
+        uint256 externalAmount = externalQueriedBalance() - externalDebtBalance();
+        uint256 totalAmount = externalAmount + internalQueriedBalance() - internalDebtBalance();
+        if (totalAmount > 0) {
+            if (externalAmount > 0) {
+                _ensureLocalUnderlyingBalance(externalAmount);
+            }
+            emit UnderlyerRecovered(destination, totalAmount);
+            IERC20(_underlying).safeTransfer(destination, totalAmount);
         } else {
             revert NothingToRecover();
         }

@@ -282,7 +282,7 @@ contract DestinationVaultBaseTests is Test {
         testVault.recoverUnderlying(vm.addr(55));
     }
 
-    function test_recoverUnderlying_RunsProperly() external {
+    function test_recoverUnderlying_RunsProperly_RecoverInternal() external {
         // Set up access
         accessController.setupRole(Roles.TOKEN_RECOVERY_ROLE, vm.addr(4));
 

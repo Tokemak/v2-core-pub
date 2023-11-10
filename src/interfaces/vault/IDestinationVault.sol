@@ -117,7 +117,7 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @dev Should be limited to TOKEN_RECOVERY_ROLE
     function recover(address[] calldata tokens, uint256[] calldata amounts, address[] calldata destinations) external;
 
-    /// @notice Recovers any extra underlying sitting in DV outside of debt tracked tokens.
+    /// @notice Recovers any extra underlying both in DV and staked externally not tracked as debt.
     /// @dev Should be limited to TOKEN_SAVER_ROLE.
     /// @param destination The address to send excess underlyer to.
     function recoverUnderlying(address destination) external;

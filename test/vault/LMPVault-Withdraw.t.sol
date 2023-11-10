@@ -2617,7 +2617,7 @@ contract TestDestinationVault is DestinationVault {
         return 0;
     }
 
-    function externalQueriedBalance() external pure override returns (uint256) {
+    function externalQueriedBalance() public pure override returns (uint256) {
         return 0;
     }
 

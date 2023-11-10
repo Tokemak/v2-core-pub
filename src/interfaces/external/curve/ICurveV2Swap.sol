@@ -10,4 +10,8 @@ interface ICurveV2Swap {
         uint256 sellAmount,
         uint256 minBuyAmount
     ) external payable returns (uint256);
+
+    function get_dy(uint256 i, uint256 j, uint256 dx) external view returns (uint256);
+
+    function fee() external view returns (uint256);
 }

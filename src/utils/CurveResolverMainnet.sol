@@ -47,4 +47,9 @@ contract CurveResolverMainnet is ICurveResolver {
 
         lpToken = curveMetaRegistry.get_lp_token(poolAddress);
     }
+
+    /// @inheritdoc ICurveResolver
+    function getLpToken(address poolAddress) external view returns (address) {
+        return curveMetaRegistry.get_lp_token(poolAddress);
+    }
 }

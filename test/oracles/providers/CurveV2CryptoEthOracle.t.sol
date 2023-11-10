@@ -16,7 +16,12 @@ import {
     CVX_ETH_CURVE_V2_LP,
     STG_USDC_V2_POOL,
     STG_USDC_CURVE_V2_LP,
-    CRV_MAINNET
+    CRV_MAINNET,
+    WETH9_ADDRESS,
+    RETH_WETH_CURVE_POOL,
+    RETH_ETH_CURVE_LP,
+    RETH_MAINNET,
+    WETH9_ADDRESS
 } from "test/utils/Addresses.sol";
 
 import { CurveV2CryptoEthOracle } from "src/oracles/providers/CurveV2CryptoEthOracle.sol";
@@ -124,10 +129,12 @@ contract CurveV2CryptoEthOracleTest is Test {
 
         curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP, false);
 
-        (address pool, uint8 reentrancy, address priceToken) = curveOracle.lpTokenToPool(CRV_ETH_CURVE_V2_LP);
+        (address pool, uint8 reentrancy, address priceToken, address tokenFromPrice) =
+            curveOracle.lpTokenToPool(CRV_ETH_CURVE_V2_LP);
         assertEq(pool, CRV_ETH_CURVE_V2_POOL);
         assertEq(reentrancy, 0);
         assertEq(priceToken, CRV_MAINNET);
+        assertEq(tokenFromPrice, WETH9_ADDRESS);
     }
 
     // Unregister
@@ -156,10 +163,12 @@ contract CurveV2CryptoEthOracleTest is Test {
 
         curveOracle.unregister(CRV_ETH_CURVE_V2_LP);
 
-        (address pool, uint8 reentrancy, address tokenToPrice) = curveOracle.lpTokenToPool(CRV_ETH_CURVE_V2_LP);
+        (address pool, uint8 reentrancy, address tokenToPrice, address tokenFromPrice) =
+            curveOracle.lpTokenToPool(CRV_ETH_CURVE_V2_LP);
         assertEq(pool, address(0));
         assertEq(reentrancy, 0);
         assertEq(tokenToPrice, address(0));
+        assertEq(tokenFromPrice, address(0));
     }
 
     // getPriceInEth
@@ -172,5 +181,23 @@ contract CurveV2CryptoEthOracleTest is Test {
     function test_RevertTokenNotRegistered() external {
         vm.expectRevert(abi.encodeWithSelector(CurveV2CryptoEthOracle.NotRegistered.selector, CRV_ETH_CURVE_V2_LP));
         curveOracle.getPriceInEth(CRV_ETH_CURVE_V2_LP);
+    }
+
+    function testRethWethSpotPrice() public {
+        curveOracle.registerPool(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP, true);
+
+        (uint256 price, address quote) = curveOracle.getSpotPrice(RETH_MAINNET, RETH_WETH_CURVE_POOL, WETH9_ADDRESS);
+
+        // Asking for WETH but getting USDC as WETH is not in the pool
+        assertEq(quote, WETH9_ADDRESS);
+
+        // Data at block 17_671_884
+        // dy: 1076347103771414425
+        // fee: 3531140
+        // FEE_PRECISION: 10000000000
+        // denominator: 9996468860
+        // netDy: 1076727311259202406
+
+        assertEq(price, 1_076_727_311_259_202_406);
     }
 }

@@ -28,4 +28,8 @@ interface ICurveResolver {
         external
         view
         returns (address[8] memory tokens, uint256 numTokens, address lpToken, bool isStableSwap);
+
+    /// @notice Get the lp token of a Curve pool
+    /// @param poolAddress pool address to lookup
+    function getLpToken(address poolAddress) external view returns (address);
 }

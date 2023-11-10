@@ -5,26 +5,31 @@ pragma solidity 0.8.17;
 
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
+import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { ICryptoSwapPool } from "src/interfaces/external/curve/ICryptoSwapPool.sol";
+import { ICurveV2Swap } from "src/interfaces/external/curve/ICurveV2Swap.sol";
 
-contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle {
+contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, ISpotPriceOracle {
     address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     ICurveResolver public immutable curveResolver;
+    uint256 public constant FEE_PRECISION = 1e10;
 
     /**
      * @notice Struct for neccessary information for single Curve pool.
      * @param pool The address of the curve pool.
      * @param checkReentrancy uint8 representing a boolean.  0 for false, 1 for true.
      * @param tokentoPrice Address of the token being priced in the Curve pool.
+     * @param tokenFromPrice Addre of the token being used to price the token in the Curve pool.
      */
     struct PoolData {
         address pool;
         uint8 checkReentrancy;
         address tokenToPrice;
+        address tokenFromPrice;
     }
 
     /**
@@ -122,8 +127,12 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle {
          *    if `coins[0]` is Weth, and `coins[1]` is rEth, the price will be rEth as base and weth as quote.  Hence
          *    to get lp price we will always want to use the second token in the array, priced in eth.
          */
-        lpTokenToPool[lpToken] =
-            PoolData({ pool: curvePool, checkReentrancy: checkReentrancy ? 1 : 0, tokenToPrice: tokens[1] });
+        lpTokenToPool[lpToken] = PoolData({
+            pool: curvePool,
+            checkReentrancy: checkReentrancy ? 1 : 0,
+            tokenToPrice: tokens[1],
+            tokenFromPrice: tokens[0]
+        });
 
         emit TokenRegistered(lpToken);
     }
@@ -184,5 +193,43 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle {
             }
         }
         revert SqrtError();
+    }
+
+    /// @inheritdoc ISpotPriceOracle
+    function getSpotPrice(
+        address token,
+        address pool,
+        address requestedQuoteToken
+    ) public view returns (uint256 price, address actualQuoteToken) {
+        address lpToken = curveResolver.getLpToken(pool);
+        int256 tokenIndex = -1;
+        int256 quoteTokenIndex = -1;
+        // Find the token and quote token indices
+        PoolData storage poolInfo = lpTokenToPool[lpToken];
+
+        if (poolInfo.tokenToPrice == token) {
+            tokenIndex = 1;
+        } else if (poolInfo.tokenFromPrice == token) {
+            tokenIndex = 0;
+        } else {
+            revert NotRegistered(lpToken);
+        }
+        if (poolInfo.tokenToPrice == requestedQuoteToken) {
+            quoteTokenIndex = 1;
+        } else if (poolInfo.tokenFromPrice == requestedQuoteToken) {
+            quoteTokenIndex = 0;
+        } else {
+            // Selecting a different quote token if the requested one is not found.
+            quoteTokenIndex = tokenIndex == 0 ? int256(1) : int256(0);
+        }
+        uint256 dy = ICurveV2Swap(pool).get_dy(uint256(tokenIndex), uint256(quoteTokenIndex), 1e18);
+
+        /// @dev The fee is dynamically based on current balances; slight discrepancies post-calculation are acceptable
+        /// for low-value swaps.
+        uint256 fee = ICurveV2Swap(pool).fee();
+        uint256 netDy = (dy * FEE_PRECISION) / (FEE_PRECISION - fee);
+
+        address actualQuoteTokenAddress = ICurveV2Swap(pool).coins(uint256(quoteTokenIndex));
+        return (netDy, actualQuoteTokenAddress);
     }
 }

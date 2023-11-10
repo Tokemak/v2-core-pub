@@ -29,7 +29,11 @@ import {
     USDT_MAINNET,
     THREE_CURVE_POOL_MAINNET_LP,
     THREE_CURVE_MAINNET,
-    STETH_STABLESWAP_NG_POOL
+    STETH_STABLESWAP_NG_POOL,
+    FRAX_USDC,
+    CRV_FRAX,
+    FRAX_MAINNET,
+    WETH9_ADDRESS
 } from "test/utils/Addresses.sol";
 
 contract CurveV1StableEthOracleTests is Test {
@@ -265,6 +269,24 @@ contract CurveV1StableEthOracleTests is Test {
         uint256 price = oracle.getPriceInEth(STETH_STABLESWAP_NG_POOL);
 
         assertApproxEqAbs(price, 1 ether, 1e17);
+    }
+
+    function testStEthEthSpotPrice() public {
+        oracle.registerPool(FRAX_USDC, CRV_FRAX, true);
+
+        (uint256 price, address quote) = oracle.getSpotPrice(FRAX_MAINNET, FRAX_USDC, WETH9_ADDRESS);
+
+        // Asking for WETH but getting USDC as WETH is not in the pool
+        assertEq(quote, USDC_MAINNET);
+
+        // Data at block 17_379_099
+        // dy: 999187
+        // fee: 1000000
+        // FEE_PRECISION: 10000000000
+        // denominator: 9999000000
+        // netDy: 999286
+
+        assertEq(price, 999_286);
     }
 
     function mockRootPrice(address token, uint256 price) internal {

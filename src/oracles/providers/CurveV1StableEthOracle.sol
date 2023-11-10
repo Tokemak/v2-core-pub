@@ -7,6 +7,7 @@ import { Errors } from "src/utils/Errors.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
+import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
 import { ICurveOwner } from "src/interfaces/external/curve/ICurveOwner.sol";
 import { ICurveV1StableSwap } from "src/interfaces/external/curve/ICurveV1StableSwap.sol";
@@ -15,8 +16,9 @@ import { LibAdapter } from "src/libs/LibAdapter.sol";
 
 /// @title Price oracle for Curve StableSwap pools
 /// @dev getPriceEth is not a view fn to support reentrancy checks. Don't actually change state.
-contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle {
+contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, ISpotPriceOracle {
     ICurveResolver public immutable curveResolver;
+    uint256 public constant FEE_PRECISION = 1e10;
 
     struct PoolData {
         address pool;
@@ -163,5 +165,51 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle {
         for (uint256 i = 0; i < len; i++) {
             tokens[i] = lpTokenToUnderlying[lpToken][i];
         }
+    }
+
+    /// @inheritdoc ISpotPriceOracle
+    function getSpotPrice(
+        address token,
+        address pool,
+        address requestedQuoteToken
+    ) public view returns (uint256 price, address actualQuoteToken) {
+        address lpToken = curveResolver.getLpToken(pool);
+        address[] memory tokens = lpTokenToUnderlying[lpToken];
+
+        uint256 nTokens = tokens.length;
+        int256 tokenIndex = -1;
+        int256 quoteTokenIndex = -1;
+
+        // Find the token and quote token indices
+        for (uint256 i = 0; i < nTokens; ++i) {
+            address t = tokens[i];
+            if (t == token) {
+                tokenIndex = int256(i);
+            }
+            if (t == requestedQuoteToken) {
+                quoteTokenIndex = int256(i);
+            }
+
+            // Break out of the loop if both indices are found.
+            if (tokenIndex != -1 && quoteTokenIndex != -1) {
+                break;
+            }
+        }
+
+        if (tokenIndex == -1) revert NotRegistered(token);
+
+        // Selecting a different quote token if the requested one is not found.
+        if (quoteTokenIndex == -1) {
+            quoteTokenIndex = tokenIndex == 0 ? int256(1) : int256(0);
+        }
+
+        uint256 dy = ICurveV1StableSwap(pool).get_dy(int128(tokenIndex), int128(quoteTokenIndex), 1e18);
+
+        uint256 fee = ICurveV1StableSwap(pool).fee();
+        uint256 netDy = (dy * FEE_PRECISION) / (FEE_PRECISION - fee);
+
+        address actualQuoteTokenAddress = ICurveV1StableSwap(pool).coins(uint256(quoteTokenIndex));
+
+        return (netDy, actualQuoteTokenAddress);
     }
 }

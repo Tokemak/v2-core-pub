@@ -38,5 +38,9 @@ interface ICurveV1StableSwap {
     function owner() external view returns (address);
 
     function admin_balances(uint256 i) external view returns (uint256);
+
+    function get_dy(int128 i, int128 j, uint256 dx) external view returns (uint256);
+
+    function fee() external view returns (uint256);
 }
 // slither-disable-end naming-convention

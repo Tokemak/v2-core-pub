@@ -511,7 +511,7 @@ contract BalancerAuraDestinationVaultTests is Test {
     }
 
     /**
-     * Below two functions test `DestinationVault.recoverUnderlying()`.  When there is an excess externally staked
+     * Below three functions test `DestinationVault.recoverUnderlying()`.  When there is an excess externally staked
      *      balance, this function interacts with the  protocol that the underlyer is staked into, making it easier
      *      to test here with a full working DV rather than the TestDestinationVault contract in
      *      `DestinationVault.t.sol`.
@@ -543,7 +543,48 @@ contract BalancerAuraDestinationVaultTests is Test {
         // Ensure that balanceOf(address(this)) is 0 in Aura.
         (bool success, bytes memory data) = AURA_STAKING.call(abi.encodeWithSignature("balanceOf(address)", address(this)));
         assertEq(success, true);
-        assertEq(abi.decode(data, (uint256)), 0);
+        assertEq(abi.decode(data2, (uint256)), 0);
+
+        // Make sure underlyer made its way to recoveryAddress.
+        assertEq(_underlyer.balanceOf(recoveryAddress), 555);
+    }
+
+    // Tests to make sure that excess external debt is being calculated properly.
+    function test_recoverUnderlying_RunsProperly_ExternalDebt() external {
+        address recoveryAddress = vm.addr(1);
+
+        // Give contract TOKEN_RECOVERY_ROLE.
+        _accessController.setupRole(Roles.TOKEN_RECOVERY_ROLE, address(this));
+
+        // Transfer tokens to this contract.
+        vm.prank(LP_TOKEN_WHALE);
+        _underlyer.transfer(address(this), 2000);
+
+        // Approve Aura to take tokens.
+        _underlyer.approve(AURA_STAKING, 1000);
+
+        // Deposit underlying through DV.
+        _mockIsVault(address(this), true);
+        _underlyer.approve(address(_destVault), 44);
+        _destVault.depositUnderlying(44);
+
+        // Stake in Aura.
+        (, bytes memory data) =
+            AURA_STAKING.call(abi.encodeWithSignature("deposit(uint256,address)", uint256(555), address(_destVault)));
+
+        // Make sure `deposit()` returning correct amount.
+        assertEq(abi.decode(data, (uint256)), 555);
+
+        // Recover underlying, check event.
+        vm.expectEmit(false, false, false, true);
+        emit UnderlyerRecovered(recoveryAddress, 555);
+        _destVault.recoverUnderlying(recoveryAddress);
+
+        // Ensure that amount staked through DV is still present.
+        (bool success, bytes memory data2) =
+            AURA_STAKING.call(abi.encodeWithSignature("balanceOf(address)", address(_destVault)));
+        assertEq(success, true);
+        assertEq(abi.decode(data2, (uint256)), 44);
 
         // Make sure underlyer made its way to recoveryAddress.
         assertEq(_underlyer.balanceOf(recoveryAddress), 555);
@@ -579,7 +620,7 @@ contract BalancerAuraDestinationVaultTests is Test {
         // Ensure that balanceOf(address(this)) is 0 in Aura.
         (bool success, bytes memory data) = AURA_STAKING.call(abi.encodeWithSignature("balanceOf(address)", address(this)));
         assertEq(success, true);
-        assertEq(abi.decode(data, (uint256)), 0);
+        assertEq(abi.decode(data2, (uint256)), 0);
 
         // Make sure underlyer made its way to recoveryAddress.
         assertEq(_underlyer.balanceOf(recoveryAddress), externalbalance + internalBalance);

@@ -89,10 +89,6 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
     event SlashingEventRecorded(uint256 slashingCost, uint256 slashingTimestamp);
 
     uint40 private timestampOfDecayStart;
-    // the timestampOfDecayStart is of the start of a discount episode.
-    // discount episode is the stretch of concurrent days where the LST discount  > 1%
-    // this is needed to prevent retracing on the way back up
-    uint40[5] private percentileByIndex = [1e5, 2e5, 3e5, 4e5, 5e5]; // 1%, 2%, 3%, 4%, 5%
 
     constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
 
@@ -261,7 +257,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         timestampOfDecayStart = uint40(block.timestamp);
         for (uint256 i; i < 5; i++) {
             // slither-disable-next-line timestamp
-            if (currentDiscount >= percentileByIndex[i]) {
+            if (currentDiscount >= (i + 1) * 1e5) {
                 // overwrite the ith percentile slot with the current timestamp
                 discountTimestampByPercent[i] = uint40(block.timestamp);
             } else {
@@ -272,12 +268,15 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
     }
 
     function _handleIncreaseDecay(uint40 currentDiscount) private {
-        for (uint256 i; i < 5; i++) {
+        uint40 precentile;
+        // iterate over discounts of 1%, 2%, 3%, 4%, 5%
+        for (uint40 i; i < 5; i++) {
+            precentile = (i + 1) * 1e5;
             // don't overwrite any timestamps that were recorded as part of this discount episode
             // slither-disable-next-line timestamp
-            if ((currentDiscount >= percentileByIndex[i]) && (discountTimestampByPercent[i] < timestampOfDecayStart)) {
+            if ((currentDiscount >= precentile) && (discountTimestampByPercent[i] < timestampOfDecayStart)) {
                 discountTimestampByPercent[i] = uint40(block.timestamp);
-            } else if (currentDiscount < percentileByIndex[i]) {
+            } else if (currentDiscount < precentile) {
                 // early stopping if the discount is less than 1% then it is also less than 2% etc
                 break;
             }
@@ -315,7 +314,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
                     _handleIncreaseDecay(currentDiscount);
                 }
             }
-        } // all other branche of this decision tree don't modify discountTimestampByPercent
+        } // all other branches of this decision tree don't modify discountTimestampByPercent
     }
 
     function updateDiscountHistory(uint256 backing) private {

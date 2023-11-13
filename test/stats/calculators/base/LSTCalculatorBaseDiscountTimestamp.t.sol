@@ -214,8 +214,7 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
 
     // ############################### Test Retracing With Decay Episode #############################
 
-    function testWontRetraceBackwardsInSameDecayEpisode() public {
-        // This verifies that discountTimestampByPercent won't retrace backwards
+    function testCorrectlyRetraces() public {
         setBlockAndTimestamp(1);
         setDiscount(int256(40e15)); // 4%
         testCalculator.snapshot();
@@ -226,7 +225,7 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         );
 
         setBlockAndTimestamp(2);
-        setDiscount(int256(20e15)); // 3%
+        setDiscount(int256(20e15)); // 2%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
@@ -235,51 +234,12 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         );
 
         setBlockAndTimestamp(3);
-        setDiscount(int256(10e15)); // 1%
+        setDiscount(int256(30e15)); // 3% # from 2 -> 3 means to overwrite many of the values
         testCalculator.snapshot();
 
         stats = testCalculator.current();
         verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
-        );
-
-        setBlockAndTimestamp(4);
-        setDiscount(int256(0)); // 0%
-        testCalculator.snapshot();
-
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
-        );
-    }
-
-    function testWillRetraceBackwardsInDifferntDecayEpisode() public {
-        // This verifies that discountTimestampByPercent won't retrace backwards
-        setBlockAndTimestamp(1);
-        setDiscount(int256(40e15)); // 4%
-        testCalculator.snapshot();
-
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
-        );
-
-        setBlockAndTimestamp(2);
-        setDiscount(int256(20e15)); // 3%
-        testCalculator.snapshot();
-
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
-        );
-
-        setBlockAndTimestamp(3);
-        setDiscount(int256(0)); // 0%
-        testCalculator.snapshot();
-
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+            [timestamps[3], timestamps[3], timestamps[3], timestamps[1], 0], stats.discountTimestampByPercent
         );
 
         setBlockAndTimestamp(4);
@@ -288,18 +248,55 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
 
         stats = testCalculator.current();
         verifyDiscountTimestampByPercent(
-            [timestamps[4], timestamps[4], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+            [timestamps[3], timestamps[3], timestamps[3], timestamps[1], 0], stats.discountTimestampByPercent
+        );
+    }
+
+    function testHighThenDecliningDiscount() public {
+        setBlockAndTimestamp(1);
+        setDiscount(int256(40e15)); // 4%
+        testCalculator.snapshot();
+
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+        );
+
+        setBlockAndTimestamp(2);
+        setDiscount(int256(20e15)); // 3%
+        testCalculator.snapshot();
+
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+        );
+
+        setBlockAndTimestamp(3);
+        setDiscount(int256(10e15)); // 1%
+        testCalculator.snapshot();
+
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+        );
+
+        setBlockAndTimestamp(4);
+        setDiscount(int256(0)); // 0%
+        testCalculator.snapshot();
+
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
         );
     }
 
     function testTwoDecayEpisodes() public {
-        uint40[5] memory expecteDiscountTimestampByPercentStart = [timestamps[1], 0, 0, 0, 0];
         setBlockAndTimestamp(1);
         setDiscount(int256(10e15)); // 1%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(expecteDiscountTimestampByPercentStart, stats.discountTimestampByPercent);
+        verifyDiscountTimestampByPercent([timestamps[1], 0, 0, 0, 0], stats.discountTimestampByPercent);
 
         setBlockAndTimestamp(2);
         setDiscount(int256(0)); // 0%
@@ -309,9 +306,8 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         setDiscount(int256(10e15)); // 1%
         testCalculator.snapshot();
 
-        uint40[5] memory expecteDiscountTimestampByPercentSecond = [timestamps[3], 0, 0, 0, 0];
         stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(expecteDiscountTimestampByPercentSecond, stats.discountTimestampByPercent);
+        verifyDiscountTimestampByPercent([timestamps[3], 0, 0, 0, 0], stats.discountTimestampByPercent);
     }
 
     function verifyDiscountTimestampByPercent(uint40[5] memory expected, uint40[5] memory actual) private {

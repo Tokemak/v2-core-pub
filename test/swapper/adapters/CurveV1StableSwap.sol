@@ -107,7 +107,11 @@ contract CurveV1StableSwapTest is Test {
         // Snapshot balance before.
         uint256 ethBalanceBefore = address(this).balance;
 
-        // Delegatecall swapper with random address.
+        // Make sure that address(this).balance > 0 before swap.  Neccessary to make sure if statement
+        //      operating correctly.
+        assertGt(ethBalanceBefore, 0);
+
+        // Delegatecall swapper with random address.  This ensures that we do not swap to weth.
         (bool success,) = address(adapter).delegatecall(
             abi.encodeWithSelector(
                 ISyncSwapper.swap.selector, routeEth.pool, STETH_MAINNET, sellAmount, vm.addr(1), 1, routeEth.data
@@ -127,57 +131,8 @@ contract CurveV1StableSwapTest is Test {
         assertGt(ethBalanceAfter, ethBalanceBefore);
     }
 
-    function test_swap_WrapsEthWith_BuyToken_SetAsEth() external {
-        vm.selectFork(forkIdBlock_18_392_259);
-
-        // Mock whale, send funds.
-        vm.prank(STETH_WHALE);
-        IERC20(STETH_MAINNET).transfer(address(this), 10 * sellAmount);
-        IERC20(STETH_MAINNET).approve(address(adapter), 10 * sellAmount);
-
-        // Make sure that weth balance is 0 before swap.
-        assertEq(IERC20(WETH_MAINNET).balanceOf(address(this)), 0);
-
-        // Delegatecall swapper with Eth placeholder address as buyToken
-        (bool success,) = address(adapter).delegatecall(
-            abi.encodeWithSelector(
-                ISyncSwapper.swap.selector, routeEth.pool, STETH_MAINNET, sellAmount, CURVE_ETH, 1, routeEth.data
-            )
-        );
-
-        // Make sure call passed.
-        assertTrue(success);
-
-        // Make sure weth balance increased.
-        assertGt(IERC20(WETH_MAINNET).balanceOf(address(this)), 0);
-    }
-
-    function test_swap_WrapsEthWith_BuyToken_SetAsWeth() external {
-        vm.selectFork(forkIdBlock_18_392_259);
-
-        // Mock whale, send funds.
-        vm.prank(STETH_WHALE);
-        IERC20(STETH_MAINNET).transfer(address(this), 10 * sellAmount);
-        IERC20(STETH_MAINNET).approve(address(adapter), 10 * sellAmount);
-
-        // Assert that weth balance is zero before swapping.
-        assertEq(IERC20(WETH_MAINNET).balanceOf(address(this)), 0);
-
-        // Delegatecall swapper with weth address as buyToken.
-        (bool success,) = address(adapter).delegatecall(
-            abi.encodeWithSelector(
-                ISyncSwapper.swap.selector, routeEth.pool, STETH_MAINNET, sellAmount, WETH_MAINNET, 1, routeEth.data
-            )
-        );
-
-        // Assert that call passed.
-        assertTrue(success);
-
-        // Make sure that weth balance increased.
-        assertGt(IERC20(WETH_MAINNET).balanceOf(address(this)), 0);
-    }
-
-    function test_AmountCalculatedProperly_swap() external {
+    // Testing for eth swap with extra Eth in swap router.
+    function test_swap_UpdatesAmountProperlyWhen_SwappingForEth() external {
         vm.selectFork(forkIdBlock_18_392_259);
 
         // stEth - eth pool.
@@ -203,25 +158,80 @@ contract CurveV1StableSwapTest is Test {
         uint256 exchangeAmount = pool.exchange(1, 0, sellAmount, 1);
         vm.revertTo(snapshot);
 
-        // Remove all but 1000 wei worth of Eth from this address.
+        // Make sure that weth balance is 0 before swap.
+        assertEq(IERC20(WETH_MAINNET).balanceOf(address(this)), 0);
+
+        // Transfer some Eth out, snapshot.
         payable(vm.addr(1)).transfer(address(this).balance - 1000);
-        uint256 amountBefore = address(this).balance;
+        uint256 ethBalanceBefore = address(this).balance;
 
-        // Check that amount before is what we expect it to be.
-        assertEq(amountBefore, 1000);
+        // Make sure that there is some dust for swapper to pick up.
+        assertGt(ethBalanceBefore, 0);
 
-        // Call adapter with exact same params as swap directly on pool.
-        (bool success, bytes memory data) = address(adapter).delegatecall(
+        // Delegatecall swapper with Eth placeholder address as buyToken
+        (bool success,) = address(adapter).delegatecall(
             abi.encodeWithSelector(
-                ISyncSwapper.swap.selector, routeEth.pool, STETH_MAINNET, sellAmount, WETH_MAINNET, 1, routeEth.data
+                ISyncSwapper.swap.selector, routeEth.pool, STETH_MAINNET, sellAmount, CURVE_ETH, 1, routeEth.data
             )
         );
 
-        // Ensure that call succeeds.
+        // Make sure call passed.
         assertTrue(success);
 
-        // Ensure that correct amount is returned from `swap()`.
-        assertEq(abi.decode(data, (uint256)), exchangeAmount + amountBefore);
+        // Make sure weth balance increased.
+        assertEq(IERC20(WETH_MAINNET).balanceOf(address(this)), exchangeAmount + ethBalanceBefore);
+    }
+
+    // Testing for weth swap with extra Eth laying in swap router (address(this) in this case)
+    function test_swap_UpdatesAmountProperlyWhen_SwappingForWeth() external {
+        vm.selectFork(forkIdBlock_18_392_259);
+
+        // stEth - weth pool.
+        ICurveV1StableSwap pool = ICurveV1StableSwap(0x828b154032950C8ff7CF8085D841723Db2696056);
+
+        // Mock whale, send funds.
+        vm.prank(STETH_WHALE);
+        IERC20(STETH_MAINNET).transfer(address(this), 10 * sellAmount);
+        IERC20(STETH_MAINNET).approve(address(adapter), 10 * sellAmount); // Approve adapter.
+        IERC20(STETH_MAINNET).approve(address(pool), 10 * sellAmount); // Approve pool.
+
+        /**
+         * Goal here is to make a swap on the pool with the exact same amount that we will be swapping with
+         *      in the adapter, then reset the EVM to the state it was before the original swap,
+         *      so that we can have an exact amount of Eth back to compare to.  Steps:
+         *
+         *      - Snapshot EVM.
+         *      - Perform swap, save amount of Eth returned.
+         *      - Revert EVM.
+         *      - Perform swap with adapter.
+         */
+        uint256 snapshot = vm.snapshot();
+        uint256 exchangeAmount = pool.exchange(1, 0, sellAmount, 1);
+        vm.revertTo(snapshot);
+
+        // Assert that weth balance is 0 before swapping.
+        assertEq(IERC20(WETH_MAINNET).balanceOf(address(this)), 0);
+
+        // Transfer some Eth out, snapshot amount that is left.
+        payable(vm.addr(1)).transfer(address(this).balance - 1000);
+        uint256 ethBalanceBefore = address(this).balance;
+
+        // Just need Eth balance to be > 0 to test properly.
+        assertGt(ethBalanceBefore, 0);
+
+        // Delegatecall swapper with weth address as buyToken.
+        (bool success,) = address(adapter).delegatecall(
+            abi.encodeWithSelector(
+                ISyncSwapper.swap.selector, address(pool), STETH_MAINNET, sellAmount, WETH_MAINNET, 1, abi.encode(1, 0)
+            )
+        );
+
+        // Assert that call passed.
+        assertTrue(success);
+
+        // Make sure that weth balance is what we expect, weth gained from swap + eth balance
+        //      of this address before swap.
+        assertEq(IERC20(WETH_MAINNET).balanceOf(address(this)), exchangeAmount + ethBalanceBefore);
     }
 
     receive() external payable { }

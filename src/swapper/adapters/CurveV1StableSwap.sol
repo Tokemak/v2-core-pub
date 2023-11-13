@@ -52,17 +52,20 @@ contract CurveV1StableSwap is BaseAdapter {
         /**
          * The rest of the system only deals in WETH, swap if Eth.  This if statement makes sure that we cannot
          *      accidentally leave weth locked in the contract by wrapping it during the wrong operation.
+         *      It also differentiates how the amount returned to swap router is calculated when swapping for
+         *      Eth and swapping for weth.
          */
-        if (
-            (buyTokenAddress == address(weth) || buyTokenAddress == LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER)
-                && address(this).balance > 0
-        ) {
+        if (address(this).balance > 0) {
             uint256 addressBalance = address(this).balance;
+            if (buyTokenAddress == address(weth)) {
+                amount += addressBalance;
+            } else if (buyTokenAddress == LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER) {
+                amount = addressBalance;
+            } else {
+                return amount;
+            }
             // slither-disable-next-line arbitrary-send-eth
             weth.deposit{ value: addressBalance }();
-
-            // Will not underflow, `address(this).balance` will always be >= amount of Eth coming out of pool.
-            amount += addressBalance - amount;
         }
     }
 

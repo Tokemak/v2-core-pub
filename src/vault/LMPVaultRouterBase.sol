@@ -32,7 +32,7 @@ abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multica
             // We allow different amounts for different functions while performing a multicall now
             // and msg.value can be more than a single instructions amount
             // so we don't verify msg.value == assets
-            _processEthIn(vault, assets);
+            _processEthIn(assets);
         } else {
             pullToken(vaultAsset, assets, address(this));
         }
@@ -57,7 +57,7 @@ abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multica
             // We allow different amounts for different functions while performing a multicall now
             // and msg.value can be more than a single instructions amount
             // so we don't verify msg.value == amount
-            _processEthIn(vault, amount);
+            _processEthIn(amount);
         } else {
             pullToken(vaultAsset, amount, address(this));
         }
@@ -118,7 +118,7 @@ abstract contract LMPVaultRouterBase is ILMPVaultRouterBase, SelfPermit, Multica
     }
 
     ///@dev Function assumes that vault.asset() is verified externally to be weth9
-    function _processEthIn(ILMPVault vault, uint256 amount) internal {
+    function _processEthIn(uint256 amount) internal {
         if (amount > 0) {
             // wrap eth
             weth9.deposit{ value: amount }();

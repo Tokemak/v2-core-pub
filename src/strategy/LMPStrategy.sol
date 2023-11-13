@@ -841,6 +841,20 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             tightenSwapCostOffset();
             violationTrackingState.reset();
         }
+        updateWithdrawalQueueAfterRebalance(params);
+    }
+
+    /// @notice
+    /// Move IStrategy.RebalanceParams.destinationOut to the head of the LMPVault.withdrawalQueue
+    /// Move IStrategy.RebalanceParams.destinationIn to the tail of the LMPVault.withdrawalQueue
+    /// Don't add Idle ETH to either head or tail of the LMPVault.withdrawalQueue
+    function updateWithdrawalQueueAfterRebalance(IStrategy.RebalanceParams memory params) internal {
+        if (params.destinationOut != address(lmpVault)) {
+            ILMPVaultForStrategy(lmpVault).addToWithdrawalQueueHead(params.destinationOut);
+        }
+        if (params.destinationIn != address(lmpVault)) {
+            ILMPVaultForStrategy(lmpVault).addToWithdrawalQueueTail(params.destinationIn);
+        }
     }
 
     function swapCostOffsetPeriodInDays() public view returns (uint16) {
@@ -957,4 +971,10 @@ interface ILMPVaultForStrategy is ILMPVault {
     /// @param dest the address of the target destination
     /// @return true if the target destination is queued for removal
     function isDestinationQueuedForRemoval(address dest) external view returns (bool);
+
+    /// @notice add a destination to the head of the withdrawal queue
+    function addToWithdrawalQueueHead(address destinationVault) external;
+
+    /// @notice add (or move to if it already exists) a destination to the tail of the withdrawal queue
+    function addToWithdrawalQueueTail(address destinationVault) external;
 }

@@ -329,6 +329,64 @@ contract LMPStrategyTest is Test {
         assertTrue(success);
     }
 
+    /* ****************************************** */
+    /* updateWithdrawalQueueAfterRebalance Tests  */
+    /* ****************************************** */
+
+    function test_updateWithdrawalQueueAfterRebalance_betweenDestinations() public {
+        vm.prank(mockLMPVault);
+        vm.expectCall(
+            address(mockLMPVault),
+            abi.encodeCall(ILMPVaultForStrategy.addToWithdrawalQueueHead, defaultParams.destinationOut),
+            1
+        );
+        vm.expectCall(
+            address(mockLMPVault),
+            abi.encodeCall(ILMPVaultForStrategy.addToWithdrawalQueueTail, defaultParams.destinationIn),
+            1
+        );
+
+        defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
+    }
+
+    function test_updateWithdrawalQueueAfterRebalance_fromIdle() public {
+        defaultParams.destinationOut = address(mockLMPVault);
+
+        vm.prank(mockLMPVault);
+
+        vm.expectCall(
+            address(mockLMPVault),
+            abi.encodeCall(ILMPVaultForStrategy.addToWithdrawalQueueHead, defaultParams.destinationOut),
+            0
+        );
+        vm.expectCall(
+            address(mockLMPVault),
+            abi.encodeCall(ILMPVaultForStrategy.addToWithdrawalQueueTail, defaultParams.destinationIn),
+            1
+        );
+
+        defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
+    }
+
+    function test_updateWithdrawalQueueAfterRebalance_toIdle() public {
+        defaultParams.destinationIn = address(mockLMPVault);
+
+        vm.prank(mockLMPVault);
+
+        vm.expectCall(
+            address(mockLMPVault),
+            abi.encodeCall(ILMPVaultForStrategy.addToWithdrawalQueueHead, defaultParams.destinationOut),
+            1
+        );
+        vm.expectCall(
+            address(mockLMPVault),
+            abi.encodeCall(ILMPVaultForStrategy.addToWithdrawalQueueTail, defaultParams.destinationIn),
+            0
+        );
+
+        defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
+    }
+
     /* **************************************** */
     /* validateRebalanceParams Tests            */
     /* **************************************** */

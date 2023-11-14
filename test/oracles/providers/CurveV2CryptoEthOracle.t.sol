@@ -200,4 +200,9 @@ contract CurveV2CryptoEthOracleTest is Test {
 
         assertEq(price, 1_076_727_311_259_202_406);
     }
+
+    function tesSpotPriceRevertIfNotRegistered() public {
+        vm.expectRevert(abi.encodeWithSelector(CurveV2CryptoEthOracle.NotRegistered.selector, RETH_ETH_CURVE_LP));
+        (uint256 price, address quote) = curveOracle.getSpotPrice(RETH_MAINNET, RETH_WETH_CURVE_POOL, WETH9_ADDRESS);
+    }
 }

@@ -23,7 +23,7 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
      * @param pool The address of the curve pool.
      * @param checkReentrancy uint8 representing a boolean.  0 for false, 1 for true.
      * @param tokentoPrice Address of the token being priced in the Curve pool.
-     * @param tokenFromPrice Addre of the token being used to price the token in the Curve pool.
+     * @param tokenFromPrice Address of the token being used to price the token in the Curve pool.
      */
     struct PoolData {
         address pool;
@@ -209,19 +209,14 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
 
         if (poolInfo.tokenToPrice == token) {
             tokenIndex = 1;
+            quoteTokenIndex = 0;
         } else if (poolInfo.tokenFromPrice == token) {
             tokenIndex = 0;
+            quoteTokenIndex = 1;
         } else {
             revert NotRegistered(lpToken);
         }
-        if (poolInfo.tokenToPrice == requestedQuoteToken) {
-            quoteTokenIndex = 1;
-        } else if (poolInfo.tokenFromPrice == requestedQuoteToken) {
-            quoteTokenIndex = 0;
-        } else {
-            // Selecting a different quote token if the requested one is not found.
-            quoteTokenIndex = tokenIndex == 0 ? int256(1) : int256(0);
-        }
+
         uint256 dy = ICurveV2Swap(pool).get_dy(uint256(tokenIndex), uint256(quoteTokenIndex), 1e18);
 
         /// @dev The fee is dynamically based on current balances; slight discrepancies post-calculation are acceptable

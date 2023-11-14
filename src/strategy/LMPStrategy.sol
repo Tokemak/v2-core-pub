@@ -469,6 +469,11 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             maxSlippage = maxShutdownOperationSlippage;
         }
 
+        // Scenario 3: position is a dust position and should be trimmed
+        if (verifyCleanUpOperation(params)) {
+            maxSlippage = maxNormalOperationSlippage;
+        }
+
         // Scenario 3: the destination has been moved out of the LMPs active destinations
         if (lmpVault.isDestinationQueuedForRemoval(params.destinationOut) && maxNormalOperationSlippage > maxSlippage) {
             maxSlippage = maxNormalOperationSlippage;
@@ -486,6 +491,28 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         if (maxSlippage == 0) revert InvalidRebalanceToIdle();
 
         if (slippage > maxSlippage) revert MaxSlippageExceeded();
+    }
+
+    function verifyCleanUpOperation(IStrategy.RebalanceParams memory params) internal view returns (bool) {
+        IDestinationVaultForStrategy outDest = IDestinationVaultForStrategy(params.destinationOut);
+
+        // TODO: revert if information is too old?
+        LMPDebt.DestinationInfo memory destInfo = lmpVault.getDestinationInfo(params.destinationOut);
+
+        // shares of the destination currently held by the LMPVault
+        uint256 currentShares = outDest.balanceOf(address(lmpVault));
+
+        // withdrawals reduce totalAssets, but do not update the destinationInfo
+        // adjust the current debt based on the currently owned shares
+        // TODO: triple check that currentShares <= destInfo.ownedShares (always)
+        uint256 currentDebt = destInfo.currentDebt * currentShares / destInfo.ownedShares;
+
+        // If the current position is < 2%, trim to idle is allowed
+        if (currentDebt < lmpVault.totalAssets() / 50) {
+            return true;
+        }
+
+        return false;
     }
 
     function verifyTrimOperation(IStrategy.RebalanceParams memory params, uint256 trimAmount) internal returns (bool) {

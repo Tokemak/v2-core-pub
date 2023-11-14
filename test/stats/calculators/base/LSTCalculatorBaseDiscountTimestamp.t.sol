@@ -174,7 +174,7 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
 
     function testDecreasingDiscountSignificantDecrease() public {
         setBlockAndTimestamp(1);
-        setDiscount(int256(40e15));
+        setDiscount(int256(40e15)); // 4%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
@@ -183,7 +183,7 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         );
 
         setBlockAndTimestamp(2);
-        setDiscount(int256(20e15));
+        setDiscount(int256(20e15)); // 2%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
@@ -192,7 +192,7 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         );
 
         setBlockAndTimestamp(3);
-        setDiscount(int256(10e15));
+        setDiscount(int256(10e15)); // 1%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
@@ -201,7 +201,7 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         );
 
         setBlockAndTimestamp(4);
-        setDiscount(int256(0));
+        setDiscount(int256(0)); // 0%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
@@ -212,7 +212,7 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
 
     function testDecreasingDiscountInsignificantDecrease() public {
         setBlockAndTimestamp(1);
-        setDiscount(int256(40e15));
+        setDiscount(int256(40e15)); // 4%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
@@ -221,7 +221,7 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         );
 
         setBlockAndTimestamp(2);
-        setDiscount(int256(39e15));
+        setDiscount(int256(39e15)); // 3.9%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
@@ -230,7 +230,7 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         );
 
         setBlockAndTimestamp(3);
-        setDiscount(int256(38e15));
+        setDiscount(int256(38e15)); // 3.8%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
@@ -239,7 +239,7 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         );
 
         setBlockAndTimestamp(4);
-        setDiscount(int256(37e15));
+        setDiscount(int256(37e15)); // 3.7%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
@@ -309,6 +309,10 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         setDiscount(int256(10e15)); // 1%
         testCalculator.snapshot();
 
+        stats = testCalculator.current();
+
+        verifyDiscountTimestampByPercent([timestamps[1], 0, 0, 0, 0], stats.discountTimestampByPercent);
+
         setBlockAndTimestamp(2);
         setDiscount(int256(40e15)); // 4%
         testCalculator.snapshot();
@@ -320,7 +324,7 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         );
 
         setBlockAndTimestamp(3);
-        setDiscount(int256(10e15)); // 1`%
+        setDiscount(int256(10e15)); // 1%
         testCalculator.snapshot();
 
         stats = testCalculator.current();

@@ -15,17 +15,8 @@ import { TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 
-// struct LSTStatsData {
-//     uint256 lastSnapshotTimestamp;
-//     uint256 baseApr;
-//     int256 discount; // positive number is a discount, negative is a premium
-//     uint24[10] discountHistory; // 7 decimal precision
-//     uint40[5] discountTimestampByPercent; // each index is the timestamp that the token reached that discount
-//     uint256[] slashingCosts;
-//     uint256[] slashingTimestamps;
-// }
 
-// just a placeholder, will move to the main file later
+
 contract LSTCalculatorBaseDiscountTimestamp is Test {
     SystemRegistry private systemRegistry;
     AccessController private accessController;
@@ -35,29 +26,46 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
     address private mockToken = vm.addr(1);
     ILSTStats.LSTStatsData private stats;
 
-    uint256 private constant START_BLOCK = 17_371_713; // start block is before timestamps[0] but by less than a day
+    uint256 private constant START_BLOCK = 17_371_713;
     uint256 private constant START_TIMESTAMP = 1_685_449_343;
     uint256 private constant END_BLOCK = 17_393_019;
     uint256 private constant END_TIMESTAMP = 1_686_486_143;
 
-    // TODO: update these to be +1 days, eg 06-02 -> 06-06
-    // date         block      timestamp
-    // 2023-06-01	17382266   1685577611
-    // 2023-06-02	17389365   1685664011
-    // 2023-06-03	17396455   1685750411
-    // 2023-06-04	17403556   1685836811
-    // 2023-06-05   17410646   1685923211
+    // dates
+    // ['2023-06-02', '2023-06-03', '2023-06-04', '2023-06-05',
+    //  '2023-06-06', '2023-06-07', '2023-06-08', '2023-06-09',
+    //  '2023-06-10', '2023-06-11', '2023-06-12', '2023-06-13',
+    //  '2023-06-14', '2023-06-15', '2023-06-16']
 
-    // 1 day = 86400
+    uint256[15] private blocksToCheck = [
+        17_403_555,
+        17_410_645,
+        17_417_719,
+        17_424_814,
+        17_431_903,
+        17_438_980,
+        17_446_080,
+        17_453_185,
+        17_460_280,
+        17_467_375
+    ];
 
-    uint256[5] private blocksToCheck = [17_382_266, 17_389_365, 17_396_455, 17_403_556, 17_410_646];
-
-    uint40[5] private timestamps = [
-        uint40(1_685_491_211), // start > timestamps[0] your timestamps are wrong
-        uint40(1_685_577_611),
-        uint40(1_685_664_011),
-        uint40(1_685_750_411),
-        uint40(1_685_836_811)
+    uint40[15] private timestamps = [
+        uint40(1_685_836_799),
+        uint40(1_685_923_199),
+        uint40(1_686_009_599),
+        uint40(1_686_095_999),
+        uint40(1_686_182_399),
+        uint40(1_686_268_799),
+        uint40(1_686_355_199),
+        uint40(1_686_441_599),
+        uint40(1_686_527_999),
+        uint40(1_686_614_399),
+        uint40(1_686_700_799),
+        uint40(1_686_787_199),
+        uint40(1_686_873_599),
+        uint40(1_686_959_999),
+        uint40(1_686_614_291)
     ];
 
     function setUp() public {
@@ -78,30 +86,9 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         initCalculator(1e18);
     }
 
-    function testSetDisount() public {
-        int256 onePercent = 1e16;
-        setDiscount(onePercent);
-        verifyDiscount(onePercent);
+    //######################################## Test Discount Sizes ########################################
 
-        int256 zeroPercent = 0;
-        setDiscount(zeroPercent);
-        verifyDiscount(zeroPercent);
-
-        int256 hundredPercent = 100e16;
-        setDiscount(hundredPercent);
-        verifyDiscount(hundredPercent);
-    }
-
-    function testZeroDiscounts() public {
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [uint40(0), uint40(0), uint40(0), uint40(0), uint40(0)], stats.discountTimestampByPercent
-        );
-    }
-
-    // ######################## test start to decay ########################################
-
-    function testNegligibleOneTimeDiscount() public {
+    function testBelowThresholdOneTimeDiscount() public {
         setBlockAndTimestamp(1);
         setDiscount(int256(9e15)); // .9% just under the 1% threshold
         testCalculator.snapshot();
@@ -111,7 +98,7 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         );
     }
 
-    function testSmallOneTimeDiscount() public {
+    function testAtThresholdOneTimeDiscount() public {
         setBlockAndTimestamp(1);
         setDiscount(int256(10e15)); // 1%
         testCalculator.snapshot();
@@ -128,17 +115,17 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
     }
 
     function testLargeOneTimeDiscount() public {
-        uint40[5] memory expecteDiscountTimestampByPercent =
-            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], timestamps[1]];
         setBlockAndTimestamp(1);
         setDiscount(int256(50e15)); // 5%
         testCalculator.snapshot();
         stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(expecteDiscountTimestampByPercent, stats.discountTimestampByPercent);
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], timestamps[1]],
+            stats.discountTimestampByPercent
+        );
     }
 
-    // ######################## test decay increases ########################################
-    // behavior when the decay increases
+    // ######################################## Test Increasing Discount ########################################
 
     function testIncreasingDiscountOneSubstantialIncrease() public {
         setBlockAndTimestamp(1);
@@ -166,7 +153,7 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         verifyDiscountTimestampByPercent([timestamps[1], 0, 0, 0, 0], stats.discountTimestampByPercent);
     }
 
-    function testIncreasingDiscountTwoSubstantialIncrease() public {
+    function testIncreasingDiscountTwoSignificantIncrease() public {
         setBlockAndTimestamp(1);
         setDiscount(int256(10e15)); // 1%
         testCalculator.snapshot();
@@ -185,9 +172,87 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         );
     }
 
-    // ######################## Test Two Decay Periods ###########################
+    // ######################################## Test Decreasing Discount ########################################
 
-    function testTwoDecayPeriods() public {
+    function testDecreasingDiscountSignificantDecrease() public {
+        setBlockAndTimestamp(1);
+        setDiscount(int256(40e15));
+        testCalculator.snapshot();
+
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+        );
+
+        setBlockAndTimestamp(2);
+        setDiscount(int256(20e15));
+        testCalculator.snapshot();
+
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+        );
+
+        setBlockAndTimestamp(3);
+        setDiscount(int256(10e15));
+        testCalculator.snapshot();
+
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+        );
+
+        setBlockAndTimestamp(4);
+        setDiscount(int256(0));
+        testCalculator.snapshot();
+
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+        );
+    }
+
+    function testDecreasingDiscountInsignificantDecrease() public {
+        setBlockAndTimestamp(1);
+        setDiscount(int256(40e15));
+        testCalculator.snapshot();
+
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+        );
+
+        setBlockAndTimestamp(2);
+        setDiscount(int256(39e15));
+        testCalculator.snapshot();
+
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+        );
+
+        setBlockAndTimestamp(3);
+        setDiscount(int256(38e15));
+        testCalculator.snapshot();
+
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+        );
+
+        setBlockAndTimestamp(4);
+        setDiscount(int256(37e15));
+        testCalculator.snapshot();
+
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+        );
+    }
+
+    // ######################################## Test Jittering ########################################
+
+    function testJitterHighZeroLow() public {
         setBlockAndTimestamp(1);
         setDiscount(int256(30e15)); // 3%
         testCalculator.snapshot();
@@ -212,9 +277,7 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         );
     }
 
-    // ############################### Test Retracing With Decay Episode #############################
-
-    function testCorrectlyRetraces() public {
+    function testJitterHighLowHigh() public {
         setBlockAndTimestamp(1);
         setDiscount(int256(40e15)); // 4%
         testCalculator.snapshot();
@@ -225,7 +288,7 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         );
 
         setBlockAndTimestamp(2);
-        setDiscount(int256(20e15)); // 2%
+        setDiscount(int256(10e15)); // 1%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
@@ -234,81 +297,102 @@ contract LSTCalculatorBaseDiscountTimestamp is Test {
         );
 
         setBlockAndTimestamp(3);
-        setDiscount(int256(30e15)); // 3% # from 2 -> 3 means to overwrite many of the values
+        setDiscount(int256(30e15)); // 3%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
         verifyDiscountTimestampByPercent(
-            [timestamps[3], timestamps[3], timestamps[3], timestamps[1], 0], stats.discountTimestampByPercent
-        );
-
-        setBlockAndTimestamp(4);
-        setDiscount(int256(20e15)); // 2%
-        testCalculator.snapshot();
-
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[3], timestamps[3], timestamps[3], timestamps[1], 0], stats.discountTimestampByPercent
+            [timestamps[1], timestamps[3], timestamps[3], timestamps[1], 0], stats.discountTimestampByPercent
         );
     }
 
-    function testHighThenDecliningDiscount() public {
+    function testJitterLowHighLow() public {
         setBlockAndTimestamp(1);
+        setDiscount(int256(10e15)); // 1%
+        testCalculator.snapshot();
+
+        setBlockAndTimestamp(2);
         setDiscount(int256(40e15)); // 4%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
-        );
 
-        setBlockAndTimestamp(2);
-        setDiscount(int256(20e15)); // 3%
-        testCalculator.snapshot();
-
-        stats = testCalculator.current();
         verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+            [timestamps[1], timestamps[2], timestamps[2], timestamps[2], 0], stats.discountTimestampByPercent
         );
 
         setBlockAndTimestamp(3);
-        setDiscount(int256(10e15)); // 1%
+        setDiscount(int256(10e15)); // 1`%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
         verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+            [timestamps[1], timestamps[2], timestamps[2], timestamps[2], 0], stats.discountTimestampByPercent
+        );
+    }
+
+    function testJitterAroundMedium() public {
+        setBlockAndTimestamp(1);
+        setDiscount(int256(30e15)); // 3%
+        testCalculator.snapshot();
+
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], 0, 0], stats.discountTimestampByPercent
+        );
+
+        setBlockAndTimestamp(2);
+        setDiscount(int256(32e15)); // 3.2%
+        testCalculator.snapshot();
+
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], 0, 0], stats.discountTimestampByPercent
+        );
+
+        setBlockAndTimestamp(3);
+        setDiscount(int256(29e15)); // 2.9%
+        testCalculator.snapshot();
+
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[1], timestamps[1], timestamps[1], 0, 0], stats.discountTimestampByPercent
         );
 
         setBlockAndTimestamp(4);
-        setDiscount(int256(0)); // 0%
+        setDiscount(int256(32e15)); // 3.2%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
         verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
+            [timestamps[1], timestamps[1], timestamps[4], 0, 0], stats.discountTimestampByPercent
         );
     }
 
-    function testTwoDecayEpisodes() public {
-        setBlockAndTimestamp(1);
-        setDiscount(int256(10e15)); // 1%
-        testCalculator.snapshot();
+    // ######################################## Helper Method Tests ########################################
 
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent([timestamps[1], 0, 0, 0, 0], stats.discountTimestampByPercent);
+    function testSetDisount() public {
+        int256 onePercent = 1e16;
+        setDiscount(onePercent);
+        verifyDiscount(onePercent);
 
-        setBlockAndTimestamp(2);
-        setDiscount(int256(0)); // 0%
-        testCalculator.snapshot();
+        int256 zeroPercent = 0;
+        setDiscount(zeroPercent);
+        verifyDiscount(zeroPercent);
 
-        setBlockAndTimestamp(3);
-        setDiscount(int256(10e15)); // 1%
-        testCalculator.snapshot();
-
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent([timestamps[3], 0, 0, 0, 0], stats.discountTimestampByPercent);
+        int256 hundredPercent = 100e16;
+        setDiscount(hundredPercent);
+        verifyDiscount(hundredPercent);
     }
+
+    function testZeroDiscounts() public {
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [uint40(0), uint40(0), uint40(0), uint40(0), uint40(0)], stats.discountTimestampByPercent
+        );
+    }
+
+    // ######################################## Helper Methods ########################################
 
     function verifyDiscountTimestampByPercent(uint40[5] memory expected, uint40[5] memory actual) private {
         for (uint256 i = 0; i < 5; i += 1) {

@@ -88,8 +88,6 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
     event SlashingEventRecorded(uint256 slashingCost, uint256 slashingTimestamp);
 
-    uint40 private timestampOfDecayStart;
-
     constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
 
     /// @inheritdoc IStatsCalculator
@@ -151,7 +149,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         if (_timeForDiscountSnapshot()) {
             // slither-disable-next-line reentrancy-benign,reentrancy-events
             updateDiscountHistory(currentEthPerToken);
-            updateDiscountTimestampbyPercent();
+            updateDiscountTimestampByPercent();
         }
 
         if (_hasSlashingOccurred(currentEthPerToken)) {
@@ -251,70 +249,33 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         return 1e18 - int256(priceToBacking);
     }
 
-    function _handleStartToDecay(uint40 currentDiscount) private {
-        // save timestampOfDecayStart as the start of this decay episode
-        // don't overwrite any values that are newer than timestampOfDecayStart in the same discount
-        timestampOfDecayStart = uint40(block.timestamp);
-        for (uint256 i; i < 5; i++) {
-            // slither-disable-next-line timestamp
-            if (currentDiscount >= (i + 1) * 1e5) {
-                // overwrite the ith percentile slot with the current timestamp
-                discountTimestampByPercent[i] = uint40(block.timestamp);
-            } else {
-                // early stopping if the discount is less than 1% then it is also less than 2% etc
-                break;
-            }
-        }
-    }
+    function updateDiscountTimestampByPercent() private {
+        uint40 previousDiscount =
+            discountHistory[(discountHistoryIndex + discountHistory.length - 2) % discountHistory.length];
+        uint40 currentDiscount =
+            discountHistory[(discountHistoryIndex + discountHistory.length - 1) % discountHistory.length];
 
-    function _handleIncreaseDecay(uint40 currentDiscount) private {
-        uint40 precentile;
-        // iterate over discounts of 1%, 2%, 3%, 4%, 5%
+        // for each percentile slot ask is " did this slot go from not in violation to "yes in violation""
+        // 1. if yes, update with current timestamp
+        // 2. if no, do nothing
+
+        uint40 discountPercentile;
+        bool inViolationLastSnapshot;
+        bool inViolationThisSnaphot;
+
         for (uint40 i; i < 5; i++) {
-            precentile = (i + 1) * 1e5;
-            // don't overwrite any timestamps that were recorded as part of this discount episode
-            // slither-disable-next-line timestamp
-            if ((currentDiscount >= precentile) && (discountTimestampByPercent[i] < timestampOfDecayStart)) {
+            // iterate over discounts of 1%, 2%, 3%, 4%, 5%
+            discountPercentile = (i + 1) * 1e5;
+
+            inViolationLastSnapshot = discountPercentile <= previousDiscount;
+            inViolationThisSnaphot = discountPercentile <= currentDiscount;
+
+            // at the current discount percentile if it was not in violation last round and is in this round
+            // then update it.
+            if (inViolationThisSnaphot && !inViolationLastSnapshot) {
                 discountTimestampByPercent[i] = uint40(block.timestamp);
-            } else if (currentDiscount < precentile) {
-                // early stopping if the discount is less than 1% then it is also less than 2% etc
-                break;
             }
         }
-    }
-
-    function _getCurrentDiscount() private view returns (uint40) {
-        if (discountHistoryIndex != 0) {
-            return discountHistory[discountHistoryIndex - 1];
-        } else {
-            return discountHistory[9];
-        }
-    }
-
-    function _getPreviousDiscount() private view returns (uint40) {
-        if (discountHistoryIndex == 0) {
-            return discountHistory[8];
-        } else if (discountHistoryIndex == 1) {
-            return discountHistory[9];
-        } else {
-            return discountHistory[discountHistoryIndex - 2];
-        }
-    }
-
-    function updateDiscountTimestampbyPercent() private {
-        uint40 currentDiscount = _getCurrentDiscount();
-        uint40 previousDiscount = _getPreviousDiscount();
-
-        // 1e5 == 1% in the discountHistory array
-        if (currentDiscount >= 1e5) {
-            if (previousDiscount < 1e5) {
-                _handleStartToDecay(currentDiscount);
-            } else {
-                if (currentDiscount > previousDiscount) {
-                    _handleIncreaseDecay(currentDiscount);
-                }
-            }
-        } // all other branches of this decision tree don't modify discountTimestampByPercent
     }
 
     function updateDiscountHistory(uint256 backing) private {

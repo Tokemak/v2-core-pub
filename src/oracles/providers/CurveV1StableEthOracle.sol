@@ -177,6 +177,10 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         address[] memory tokens = lpTokenToUnderlying[lpToken];
 
         uint256 nTokens = tokens.length;
+        if (nTokens == 0) {
+            revert NotRegistered(lpToken);
+        }
+
         int256 tokenIndex = -1;
         int256 quoteTokenIndex = -1;
 
@@ -185,8 +189,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
             address t = tokens[i];
             if (t == token) {
                 tokenIndex = int256(i);
-            }
-            if (t == requestedQuoteToken) {
+            } else if (t == requestedQuoteToken) {
                 quoteTokenIndex = int256(i);
             }
 

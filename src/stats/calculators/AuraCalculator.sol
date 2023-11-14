@@ -20,4 +20,19 @@ contract AuraCalculator is IncentiveCalculatorBase {
     ) public view override returns (uint256) {
         return AuraRewards.getAURAMintAmount(_platformToken, booster, address(rewarder), _annualizedReward);
     }
+
+    function resolveRewardToken(
+        address baseRewarder,
+        address extraRewarder
+    ) public pure override returns (address rewardToken) {
+        // For the Aura implementation every rewardToken() is a stash token
+        // rewardToken = extraRewarder.rewardToken().baseToken();
+
+
+        // extraRewarder = address(IBaseRewardPool(rewardPool.extraRewards(i));
+        IAuraStashToken stashToken = IAuraStashToken().rewardToken();
+        if (stashToken.isValid()) {
+            rewardToken = stashToken.baseToken();
+        }
+    }
 }

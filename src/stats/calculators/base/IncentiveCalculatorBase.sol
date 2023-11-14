@@ -530,4 +530,10 @@ abstract contract IncentiveCalculatorBase is
         address _platformToken,
         uint256 _annualizedReward
     ) public view virtual returns (uint256);
+
+    /// @notice returns the address of the stash token for Convex & Aura
+    function resolveRewardToken(
+        address baseRewarder,
+        address extraRewarder
+    ) public pure virtual returns (address rewardToken);
 }

@@ -257,15 +257,15 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
         // for each percentile slot ask:
         // "was this not in violation last round and now in violation this round?"
-        // 1. if yes, update discountTimestampByPercent with current timestamp
-        // 2. if no, do nothing
+        // if yes, update discountTimestampByPercent with current timestamp
+        // if no, do nothing
         // TODO: There is gas optimization here with early stopping
 
         uint40 discountPercentile;
         bool inViolationLastSnapshot;
         bool inViolationThisSnaphot;
 
-        // iterate over discounts of 1%, 2%, 3%, 4%, 5%
+        // iterate over discounts of 1%, 2%, 3%, 4%, 5% ... discountTimestampByPercent.length
         for (uint40 i; i < discountTimestampByPercent.length; i++) {
             // 1e5 in discountHistory means a 1 % LST discount.
             discountPercentile = (i + 1) * 1e5;

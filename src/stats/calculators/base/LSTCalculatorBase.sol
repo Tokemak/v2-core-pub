@@ -265,8 +265,11 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         bool inViolationLastSnapshot;
         bool inViolationThisSnaphot;
 
-        // iterate over discounts of 1%, 2%, 3%, 4%, 5% ... discountTimestampByPercent.length
-        for (uint40 i; i < discountTimestampByPercent.length; i++) {
+        // cached for gas efficiency see slither: cache-array-length
+        uint256 discountTimestampByPercentLength = discountTimestampByPercent.length;
+
+        // iterate over discounts of 1%, 2%, 3%, 4%, 5% ... discountTimestampByPercentLength
+        for (uint40 i; i < discountTimestampByPercentLength; i++) {
             // 1e5 in discountHistory means a 1 % LST discount.
             discountPercentile = (i + 1) * 1e5;
 

@@ -405,8 +405,6 @@ contract LSTCalculatorBaseTest is Test {
             abi.encode(price)
         );
     }
-
-    // forge test -vvv  --match-path test/stats/calculators/base/LSTCalculatorBase.t.sol
 }
 
 interface MockToken {

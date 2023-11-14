@@ -15,8 +15,6 @@ import { TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 
-
-
 contract LSTCalculatorBaseDiscountTimestamp is Test {
     SystemRegistry private systemRegistry;
     AccessController private accessController;

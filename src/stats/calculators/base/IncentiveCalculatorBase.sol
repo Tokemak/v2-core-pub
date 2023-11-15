@@ -155,7 +155,7 @@ abstract contract IncentiveCalculatorBase is
 
         // Compute main reward statistics
         (uint256 safeSupply, address rewardToken, uint256 annualizedReward, uint256 periodFinish) =
-            _computeStakingIncentiveStats(rewarder, false);
+            _getStakingIncentiveStats(rewarder, false);
 
         // Store main reward stats
         safeTotalSupply[0] = safeSupply;
@@ -172,8 +172,7 @@ abstract contract IncentiveCalculatorBase is
         // Loop through and compute stats for each extra rewarder
         for (uint256 i = 0; i < extraRewardsLength; ++i) {
             IBaseRewardPool extraReward = IBaseRewardPool(rewarder.extraRewards(i));
-            (safeSupply, rewardToken, annualizedReward, periodFinish) = 
-                        _computeStakingIncentiveStats(extraReward, true);
+            (safeSupply, rewardToken, annualizedReward, periodFinish) = _getStakingIncentiveStats(extraReward, true);
 
             // Store stats for the current extra reward
             rewardTokens[i + 2] = rewardToken;
@@ -400,7 +399,7 @@ abstract contract IncentiveCalculatorBase is
      * @return annualizedRewardAmount The annual equivalent of the reward rate.
      * @return periodFinishForReward The timestamp when the reward period ends for the rewarder.
      */
-    function _computeStakingIncentiveStats(
+    function _getStakingIncentiveStats(
         IBaseRewardPool _rewarder,
         bool isExtraReward
     )

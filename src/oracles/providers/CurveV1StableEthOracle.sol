@@ -209,10 +209,8 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         uint256 dy = ICurveV1StableSwap(pool).get_dy(int128(tokenIndex), int128(quoteTokenIndex), 1e18);
 
         uint256 fee = ICurveV1StableSwap(pool).fee();
-        uint256 netDy = (dy * FEE_PRECISION) / (FEE_PRECISION - fee);
+        price = (dy * FEE_PRECISION) / (FEE_PRECISION - fee);
 
-        address actualQuoteTokenAddress = ICurveV1StableSwap(pool).coins(uint256(quoteTokenIndex));
-
-        return (netDy, actualQuoteTokenAddress);
+        actualQuoteToken = ICurveV1StableSwap(pool).coins(uint256(quoteTokenIndex));
     }
 }

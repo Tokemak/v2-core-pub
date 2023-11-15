@@ -289,6 +289,39 @@ contract CurveV1StableEthOracleTests is Test {
         assertEq(price, 999_286);
     }
 
+    function testGetSpotPriceFraxUsdc() public {
+        oracle.registerPool(FRAX_USDC, CRV_FRAX, true);
+
+        (uint256 price, address quote) = oracle.getSpotPrice(FRAX_MAINNET, FRAX_USDC, WETH9_ADDRESS);
+
+        // Asking for WETH but getting USDC as WETH is not in the pool
+        assertEq(quote, USDC_MAINNET);
+
+        // Data at block 17_379_099
+        // dy: 999187
+        // fee: 1000000
+        // FEE_PRECISION: 10000000000
+        // price: 999286
+
+        assertEq(price, 999_286);
+    }
+
+    function testGetSpotPriceUsdcFrax() public {
+        oracle.registerPool(FRAX_USDC, CRV_FRAX, true);
+
+        (uint256 price, address quote) = oracle.getSpotPrice(USDC_MAINNET, FRAX_USDC, FRAX_MAINNET);
+
+        assertEq(quote, FRAX_MAINNET);
+
+        // Data at block 17_379_099
+        // dy: 345728503015501503828553686
+        // fee: 1000000
+        // FEE_PRECISION: 10000000000
+        // price: 345763079323433847213275013
+
+        assertEq(price, 345_763_079_323_433_847_213_275_013);
+    }
+
     function mockRootPrice(address token, uint256 price) internal {
         vm.mockCall(
             address(rootPriceOracle),

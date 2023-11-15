@@ -21,7 +21,7 @@ import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IE
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
-import { console2 as console } from "forge-std/console2.sol";
+
 // TODO: how do we ensure that we don't have dust positions -- require min positions on rebalance
 // TODO: confirm the order that verification occurs vs the actual creation/burning of LP tokens from rebalances
 

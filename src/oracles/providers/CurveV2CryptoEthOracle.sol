@@ -199,7 +199,7 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
     function getSpotPrice(
         address token,
         address pool,
-        address requestedQuoteToken
+        address
     ) public view returns (uint256 price, address actualQuoteToken) {
         address lpToken = curveResolver.getLpToken(pool);
         int256 tokenIndex = -1;
@@ -222,9 +222,8 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         /// @dev The fee is dynamically based on current balances; slight discrepancies post-calculation are acceptable
         /// for low-value swaps.
         uint256 fee = ICurveV2Swap(pool).fee();
-        uint256 netDy = (dy * FEE_PRECISION) / (FEE_PRECISION - fee);
+        price = (dy * FEE_PRECISION) / (FEE_PRECISION - fee);
 
-        address actualQuoteTokenAddress = ICurveV2Swap(pool).coins(uint256(quoteTokenIndex));
-        return (netDy, actualQuoteTokenAddress);
+        actualQuoteToken = ICurveV2Swap(pool).coins(uint256(quoteTokenIndex));
     }
 }

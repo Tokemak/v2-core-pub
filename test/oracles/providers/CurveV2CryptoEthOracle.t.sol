@@ -183,7 +183,7 @@ contract CurveV2CryptoEthOracleTest is Test {
         curveOracle.getPriceInEth(CRV_ETH_CURVE_V2_LP);
     }
 
-    function testRethWethSpotPrice() public {
+    function testGetSpotPriceRethWeth() public {
         curveOracle.registerPool(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP, true);
 
         (uint256 price, address quote) = curveOracle.getSpotPrice(RETH_MAINNET, RETH_WETH_CURVE_POOL, WETH9_ADDRESS);
@@ -195,14 +195,30 @@ contract CurveV2CryptoEthOracleTest is Test {
         // dy: 1076347103771414425
         // fee: 3531140
         // FEE_PRECISION: 10000000000
-        // denominator: 9996468860
-        // netDy: 1076727311259202406
+        // price: 1076727311259202406
 
         assertEq(price, 1_076_727_311_259_202_406);
     }
 
+    function testGetSpotPriceWethReth() public {
+        curveOracle.registerPool(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP, true);
+
+        (uint256 price, address quote) = curveOracle.getSpotPrice(WETH9_ADDRESS, RETH_WETH_CURVE_POOL, RETH_MAINNET);
+
+        // Asking for WETH but getting USDC as WETH is not in the pool
+        assertEq(quote, RETH_MAINNET);
+
+        // Data at block 17_671_884
+        // dy: 928409014372911276
+        // fee: 3531140
+        // FEE_PRECISION: 10000000000
+        // price: 928736964397357484
+
+        assertEq(price, 928_736_964_397_357_484);
+    }
+
     function tesSpotPriceRevertIfNotRegistered() public {
         vm.expectRevert(abi.encodeWithSelector(CurveV2CryptoEthOracle.NotRegistered.selector, RETH_ETH_CURVE_LP));
-        (uint256 price, address quote) = curveOracle.getSpotPrice(RETH_MAINNET, RETH_WETH_CURVE_POOL, WETH9_ADDRESS);
+        curveOracle.getSpotPrice(RETH_MAINNET, RETH_WETH_CURVE_POOL, WETH9_ADDRESS);
     }
 }

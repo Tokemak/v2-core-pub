@@ -155,7 +155,7 @@ abstract contract IncentiveCalculatorBase is
 
         // Compute main reward statistics
         (uint256 safeSupply, address rewardToken, uint256 annualizedReward, uint256 periodFinish) =
-            _computeStakingIncentiveStats(rewarder);
+            _computeStakingIncentiveStats(rewarder, false);
 
         // Store main reward stats
         safeTotalSupply[0] = safeSupply;
@@ -172,7 +172,8 @@ abstract contract IncentiveCalculatorBase is
         // Loop through and compute stats for each extra rewarder
         for (uint256 i = 0; i < extraRewardsLength; ++i) {
             IBaseRewardPool extraReward = IBaseRewardPool(rewarder.extraRewards(i));
-            (safeSupply, rewardToken, annualizedReward, periodFinish) = _computeStakingIncentiveStats(extraReward);
+            (safeSupply, rewardToken, annualizedReward, periodFinish) = 
+                        _computeStakingIncentiveStats(extraReward, true);
 
             // Store stats for the current extra reward
             rewardTokens[i + 2] = rewardToken;
@@ -399,7 +400,10 @@ abstract contract IncentiveCalculatorBase is
      * @return annualizedRewardAmount The annual equivalent of the reward rate.
      * @return periodFinishForReward The timestamp when the reward period ends for the rewarder.
      */
-    function _computeStakingIncentiveStats(IBaseRewardPool _rewarder)
+    function _computeStakingIncentiveStats(
+        IBaseRewardPool _rewarder,
+        bool isExtraReward
+    )
         internal
         view
         returns (
@@ -409,7 +413,8 @@ abstract contract IncentiveCalculatorBase is
             uint256 periodFinishForReward
         )
     {
-        rewardToken = address(_rewarder.rewardToken());
+        rewardToken = isExtraReward ? resolveRewardToken(address(_rewarder)) : address(_rewarder.rewardToken());
+
         periodFinishForReward = _rewarder.periodFinish();
 
         uint256 rewardRate = _rewarder.rewardRate();
@@ -477,15 +482,16 @@ abstract contract IncentiveCalculatorBase is
         if (_shouldSnapshot(address(rewarder), rewardRate, periodFinish, totalSupply)) {
             _snapshot(address(rewarder), totalSupply, rewardRate);
         }
+        address rewardToken = address(_rewarder.rewardToken());
 
         // Compute APR factors for the main rewarder if the period is still active
         // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
-        apr += _computeAPR(_rewarder, rewardRate, periodFinish);
+        apr += _computeAPR(_rewarder, rewardToken, rewardRate, periodFinish);
 
         // Compute APR factors for the platform rewarder if the period is still active
         // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
         rewardRate = getPlatformTokenMintAmount(platformToken, rewardRate);
-        apr += _computeAPR(_rewarder, rewardRate, periodFinish);
+        apr += _computeAPR(_rewarder, rewardToken, rewardRate, periodFinish);
 
         // Determine the number of extra rewarders and process each one
         uint256 extraRewardsLength = _rewarder.extraRewardsLength();
@@ -497,16 +503,18 @@ abstract contract IncentiveCalculatorBase is
             if (_shouldSnapshot(extraRewarder, rewardRate, periodFinish, totalSupply)) {
                 _snapshot(extraRewarder, totalSupply, rewardRate);
             }
+            rewardToken = resolveRewardToken(extraRewarder);
 
             // Accumulate APR data from each extra rewarder if the period is still active
             // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
-            apr += _computeAPR(IBaseRewardPool(extraRewarder), rewardRate, periodFinish);
+            apr += _computeAPR(IBaseRewardPool(extraRewarder), rewardToken, rewardRate, periodFinish);
         }
         return apr;
     }
 
     function _computeAPR(
         IBaseRewardPool _rewarder,
+        address rewardToken,
         uint256 rewardRate,
         uint256 periodFinish
     ) internal returns (uint256 apr) {
@@ -514,8 +522,6 @@ abstract contract IncentiveCalculatorBase is
         if (block.timestamp > periodFinish) return 0;
 
         address lpToken = _rewarder.stakingToken();
-        address rewardToken = address(_rewarder.rewardToken());
-
         uint256 lpPrice = _getPriceInEth(lpToken);
         uint256 price = _getIncentivePrice(rewardToken);
 
@@ -532,8 +538,5 @@ abstract contract IncentiveCalculatorBase is
     ) public view virtual returns (uint256);
 
     /// @notice returns the address of the stash token for Convex & Aura
-    function resolveRewardToken(
-        address baseRewarder,
-        address extraRewarder
-    ) public pure virtual returns (address rewardToken);
+    function resolveRewardToken(address rewarder) public view virtual returns (address rewardToken);
 }

@@ -4,6 +4,8 @@ pragma solidity 0.8.17;
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { AuraRewards } from "src/libs/AuraRewards.sol";
+import { IAuraStashToken } from "src/interfaces/external/aura/IAuraStashToken.sol";
+import { IBaseRewardPool } from "src/interfaces/external/convex/IBaseRewardPool.sol";
 import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 
 contract AuraCalculator is IncentiveCalculatorBase {
@@ -21,16 +23,9 @@ contract AuraCalculator is IncentiveCalculatorBase {
         return AuraRewards.getAURAMintAmount(_platformToken, booster, address(rewarder), _annualizedReward);
     }
 
-    function resolveRewardToken(
-        address baseRewarder,
-        address extraRewarder
-    ) public pure override returns (address rewardToken) {
-        // For the Aura implementation every rewardToken() is a stash token
-        // rewardToken = extraRewarder.rewardToken().baseToken();
-
-
-        // extraRewarder = address(IBaseRewardPool(rewardPool.extraRewards(i));
-        IAuraStashToken stashToken = IAuraStashToken().rewardToken();
+    /// @dev For the Aura implementation every `rewardToken()` is a stash token
+    function resolveRewardToken(address rewarder) public view override returns (address rewardToken) {
+        IAuraStashToken stashToken = IAuraStashToken(address(IBaseRewardPool(rewarder).rewardToken()));
         if (stashToken.isValid()) {
             rewardToken = stashToken.baseToken();
         }

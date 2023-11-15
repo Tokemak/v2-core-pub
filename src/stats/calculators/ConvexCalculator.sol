@@ -18,20 +18,17 @@ contract ConvexCalculator is IncentiveCalculatorBase {
         return ConvexRewards.getCVXMintAmount(_platformToken, _annualizedReward);
     }
 
-    function resolveRewardToken(
-        address baseRewarder,
-        address extraRewarder
-    ) public pure override returns (address rewardToken) {
-        IBaseRewardPool xRewarder = IBaseRewardPool(extraRewarder);
+    function resolveRewardToken(address rewarder) public view override returns (address rewardToken) {
+        IBaseRewardPool extraRewarder = IBaseRewardPool(rewarder);
 
         // 151+ PID reference: https://docs.convexfinance.com/convexfinanceintegration/baserewardpool
-        uint256 pid = IBaseRewardPool(baseRewarder).pid();
+        uint256 pid = extraRewarder.pid();
         if (pid >= 151) {
             // If the pool id is >= 151, then it is a stash token. Retrieving the actual token value
-            rewardToken = ITokenWrapper(address(xRewarder.rewardToken())).token();
+            rewardToken = ITokenWrapper(address(extraRewarder.rewardToken())).token();
         } else {
             // If the pool id is < 151, then taking the reward token
-            rewardToken = address(xRewarder.rewardToken());
+            rewardToken = address(extraRewarder.rewardToken());
         }
     }
 }

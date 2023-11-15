@@ -5,7 +5,14 @@ pragma solidity 0.8.17;
 
 import { Test } from "forge-std/Test.sol";
 
-import { WETH9_ADDRESS, TOKE_MAINNET, WSTETH_MAINNET } from "test/utils/Addresses.sol";
+import {
+    WETH9_ADDRESS,
+    TOKE_MAINNET,
+    WSTETH_MAINNET,
+    MAV_WSTETH_WETH_POOL,
+    MAV_POOL_INFORMATION,
+    WETH_MAINNET
+} from "test/utils/Addresses.sol";
 
 import { MavEthOracle } from "src/oracles/providers/MavEthOracle.sol";
 import { SystemRegistry, ISystemRegistry } from "src/SystemRegistry.sol";
@@ -18,6 +25,7 @@ import { Errors } from "src/utils/Errors.sol";
 
 contract MavEthOracleTest is Test {
     event MaxTotalBinWidthSet(uint256 newMaxBinWidth);
+    event PoolInformationSet(address poolInformation);
 
     SystemRegistry public registry;
     AccessController public accessControl;
@@ -25,6 +33,9 @@ contract MavEthOracleTest is Test {
     MavEthOracle public mavOracle;
 
     function setUp() external {
+        uint256 mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), 18_579_296);
+        vm.selectFork(mainnetFork);
+
         registry = new SystemRegistry(TOKE_MAINNET, WETH9_ADDRESS);
         accessControl = new AccessController(address(registry));
         registry.setAccessController(address(accessControl));
@@ -81,5 +92,58 @@ contract MavEthOracleTest is Test {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_boostedPosition"));
 
         mavOracle.getPriceInEth(address(0));
+    }
+
+    // Test setPoolInformation error case
+    function test_SetPoolInformation_RevertIf_ZeroAddress() external {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_poolInformation"));
+        mavOracle.setPoolInformation(address(0));
+    }
+
+    // Test setPoolInformation event
+    function test_SetPoolInformation_Emits_PoolInformationSetEvent() external {
+        vm.expectEmit(false, false, false, true);
+        emit PoolInformationSet(MAV_POOL_INFORMATION);
+
+        mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
+    }
+
+    // Test setPoolInformation state
+    function test_SetPoolInformation() external {
+        mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
+
+        assertEq(address(mavOracle.poolInformation()), MAV_POOL_INFORMATION);
+    }
+
+    // Test getSpotPrice error case
+    function test_GetSpotPrice_RevertIf_InvalidToken() external {
+        vm.expectRevert(abi.encodeWithSelector(MavEthOracle.InvalidToken.selector));
+        mavOracle.getSpotPrice(address(0), MAV_WSTETH_WETH_POOL, WETH_MAINNET);
+    }
+
+    /// @dev WestEth -> Weth at block 18_579_296 is 1.145922898242024117
+    function test_GetSpotPrice_WstEthWeth() external {
+        mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
+
+        (uint256 price,) = mavOracle.getSpotPrice(WSTETH_MAINNET, MAV_WSTETH_WETH_POOL, WETH_MAINNET);
+
+        assertEq(price, 1_145_922_898_242_024_117);
+    }
+
+    /// @dev Weth -> WestEth at block 18_579_296 is 0.872484144044867775
+    function test_GetSpotPrice_WethWstEth() external {
+        mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
+
+        (uint256 price,) = mavOracle.getSpotPrice(WETH_MAINNET, MAV_WSTETH_WETH_POOL, WSTETH_MAINNET);
+
+        assertEq(price, 872_484_144_044_867_775);
+    }
+
+    function test_GetSpotPrice_ReturnActualQuoteToken() external {
+        mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
+
+        (, address actualQuoteToken) = mavOracle.getSpotPrice(WETH_MAINNET, MAV_WSTETH_WETH_POOL, address(0));
+
+        assertEq(actualQuoteToken, WETH_MAINNET);
     }
 }

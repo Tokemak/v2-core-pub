@@ -172,12 +172,60 @@ contract LMPStrategyTest is Test {
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
 
+        // set the destination to be 29% of the portfolio
+        uint256 startingBalance = 250e18;
+        LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
+            currentDebt: 330e18, // implied price of 1.1
+            lastReport: 0, // unused
+            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
+            debtBasis: 0 // unused
+         });
+
+        defaultParams.amountOut = 50e18;
+        defaultParams.amountIn = 50e18;
+        setLmpTotalAssets(1000e18);
+        setLmpDestInfo(mockOutDest, info);
+        setLmpDestinationBalanceOf(mockOutDest, startingBalance);
+        setDestinationDebtValue(mockOutDest, 200e18, 220e18);
+
         // set the in token to idle
         defaultParams.destinationIn = mockLMPVault;
         defaultParams.tokenIn = mockBaseAsset;
 
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.InvalidRebalanceToIdle.selector));
         defaultStrat.verifyRebalance(defaultParams);
+    }
+
+    function test_verifyRebalance_returnTrueOnValidRebalanceToIdleCleanUpDust() public {
+        // make the strategy paused to ensure that rebalances to idle can still occur
+        setDestinationIsShutdown(mockOutDest, false); // force trim
+        setLmpVaultIsShutdown(false); // ensure lmp is not shutdown
+        setLmpDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from LMP
+        IDexLSTStats.DexLSTStatsData memory result;
+        setStatsCurrent(mockOutStats, result);
+
+        // set the destination to be 29% of the portfolio
+        uint256 startingBalance = 90e17;
+        LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
+            currentDebt: 99e17, // implied price of 1.1
+            lastReport: 0, // unused
+            ownedShares: 90e17, // set higher than starting balance to handle withdraw scenario
+            debtBasis: 0 // unused
+         });
+
+        defaultParams.amountOut = 90e17;
+        defaultParams.amountIn = 90e17;
+        setLmpTotalAssets(1000e18);
+        setLmpDestInfo(mockOutDest, info);
+        setLmpDestinationBalanceOf(mockOutDest, startingBalance);
+        setDestinationDebtValue(mockOutDest, 90e17, 99e17);
+
+        // set the in token to idle
+        defaultParams.destinationIn = mockLMPVault;
+        defaultParams.tokenIn = mockBaseAsset;
+
+        (bool success,) = defaultStrat.verifyRebalance(defaultParams);
+        assertTrue(success);
     }
 
     function test_verifyRebalance_returnTrueOnValidRebalanceToIdle() public {
@@ -190,6 +238,22 @@ contract LMPStrategyTest is Test {
         setLmpDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from LMP
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
+
+        // set the destination to be 29% of the portfolio
+        uint256 startingBalance = 250e18;
+        LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
+            currentDebt: 330e18, // implied price of 1.1
+            lastReport: 0, // unused
+            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
+            debtBasis: 0 // unused
+         });
+
+        defaultParams.amountOut = 50e18;
+        defaultParams.amountIn = 50e18;
+        setLmpTotalAssets(1000e18);
+        setLmpDestInfo(mockOutDest, info);
+        setLmpDestinationBalanceOf(mockOutDest, startingBalance);
+        setDestinationDebtValue(mockOutDest, 200e18, 220e18);
 
         // set the in token to idle
         defaultParams.destinationIn = mockLMPVault;
@@ -600,6 +664,22 @@ contract LMPStrategyTest is Test {
         setLmpVaultIsShutdown(false); // ensure lmp is not shutdown
         setLmpDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from LMP
 
+        // set the destination to be 29% of the portfolio
+        uint256 startingBalance = 250e18;
+        LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
+            currentDebt: 330e18, // implied price of 1.1
+            lastReport: 0, // unused
+            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
+            debtBasis: 0 // unused
+         });
+
+        defaultParams.amountOut = 50e18;
+        defaultParams.amountIn = 50e18;
+        setLmpTotalAssets(1000e18);
+        setLmpDestInfo(mockOutDest, info);
+        setLmpDestinationBalanceOf(mockOutDest, startingBalance);
+        setDestinationDebtValue(mockOutDest, 200e18, 220e18);
+
         // ensure that the out destination should not be trimmed
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
@@ -655,6 +735,22 @@ contract LMPStrategyTest is Test {
         setLmpVaultIsShutdown(false); // ensure lmp is not shutdown
         setLmpDestQueuedForRemoval(mockOutDest, false); // ensure not queued for removal
 
+        // set the destination to be 29% of the portfolio
+        uint256 startingBalance = 250e18;
+        LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
+            currentDebt: 330e18, // implied price of 1.1
+            lastReport: 0, // unused
+            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
+            debtBasis: 0 // unused
+         });
+
+        defaultParams.amountOut = 50e18;
+        defaultParams.amountIn = 50e18;
+        setLmpTotalAssets(1000e18);
+        setLmpDestInfo(mockOutDest, info);
+        setLmpDestinationBalanceOf(mockOutDest, startingBalance);
+        setDestinationDebtValue(mockOutDest, 200e18, 220e18);
+
         // ensure that the out destination should not be trimmed
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
@@ -671,6 +767,22 @@ contract LMPStrategyTest is Test {
         setLmpVaultIsShutdown(true); // lmp is shutdown, 1.5% slippage
         setLmpDestQueuedForRemoval(mockOutDest, false); // ensure not queued for removal
 
+        // set the destination to be 29% of the portfolio
+        uint256 startingBalance = 250e18;
+        LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
+            currentDebt: 330e18, // implied price of 1.1
+            lastReport: 0, // unused
+            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
+            debtBasis: 0 // unused
+         });
+
+        defaultParams.amountOut = 50e18;
+        defaultParams.amountIn = 50e18;
+        setLmpTotalAssets(1000e18);
+        setLmpDestInfo(mockOutDest, info);
+        setLmpDestinationBalanceOf(mockOutDest, startingBalance);
+        setDestinationDebtValue(mockOutDest, 200e18, 220e18);
+
         // ensure that the out destination should not be trimmed
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
@@ -686,6 +798,22 @@ contract LMPStrategyTest is Test {
         setDestinationIsShutdown(mockOutDest, false); // ensure destination is not shutdown
         setLmpVaultIsShutdown(false); // ensure lmp is not shutdown
         setLmpDestQueuedForRemoval(mockOutDest, true); // will return maxNormalOperationSlippage as max (1%)
+
+        // set the destination to be 29% of the portfolio
+        uint256 startingBalance = 250e18;
+        LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
+            currentDebt: 330e18, // implied price of 1.1
+            lastReport: 0, // unused
+            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
+            debtBasis: 0 // unused
+         });
+
+        defaultParams.amountOut = 50e18;
+        defaultParams.amountIn = 50e18;
+        setLmpTotalAssets(1000e18);
+        setLmpDestInfo(mockOutDest, info);
+        setLmpDestinationBalanceOf(mockOutDest, startingBalance);
+        setDestinationDebtValue(mockOutDest, 200e18, 220e18);
 
         // ensure that the out destination should not be trimmed
         IDexLSTStats.DexLSTStatsData memory result;
@@ -704,6 +832,22 @@ contract LMPStrategyTest is Test {
         setDestinationIsShutdown(mockOutDest, true);
         setLmpVaultIsShutdown(true);
         setLmpDestQueuedForRemoval(mockOutDest, true);
+
+        // set the destination to be 29% of the portfolio
+        uint256 startingBalance = 250e18;
+        LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
+            currentDebt: 330e18, // implied price of 1.1
+            lastReport: 0, // unused
+            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
+            debtBasis: 0 // unused
+         });
+
+        defaultParams.amountOut = 50e18;
+        defaultParams.amountIn = 50e18;
+        setLmpTotalAssets(1000e18);
+        setLmpDestInfo(mockOutDest, info);
+        setLmpDestinationBalanceOf(mockOutDest, startingBalance);
+        setDestinationDebtValue(mockOutDest, 200e18, 220e18);
 
         // excluding trim for simplicity
         IDexLSTStats.DexLSTStatsData memory result;

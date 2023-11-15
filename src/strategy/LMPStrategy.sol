@@ -21,6 +21,7 @@ import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IE
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
+import { console2 as console } from "forge-std/console2.sol";
 // TODO: how do we ensure that we don't have dust positions -- require min positions on rebalance
 // TODO: confirm the order that verification occurs vs the actual creation/burning of LP tokens from rebalances
 
@@ -470,16 +471,16 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         }
 
         // Scenario 3: position is a dust position and should be trimmed
-        if (verifyCleanUpOperation(params)) {
+        if (verifyCleanUpOperation(params) && maxNormalOperationSlippage > maxSlippage) {
             maxSlippage = maxNormalOperationSlippage;
         }
 
-        // Scenario 3: the destination has been moved out of the LMPs active destinations
+        // Scenario 4: the destination has been moved out of the LMPs active destinations
         if (lmpVault.isDestinationQueuedForRemoval(params.destinationOut) && maxNormalOperationSlippage > maxSlippage) {
             maxSlippage = maxNormalOperationSlippage;
         }
 
-        // Scenario 4: the destination needs to be trimmed because it violated a constraint
+        // Scenario 5: the destination needs to be trimmed because it violated a constraint
         if (maxTrimOperationSlippage > maxSlippage) {
             uint256 trimAmount = getDestinationTrimAmount(outDest); // this is expensive, can it be refactored?
             if (trimAmount < 1e18 && verifyTrimOperation(params, trimAmount)) {
@@ -495,19 +496,16 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
     function verifyCleanUpOperation(IStrategy.RebalanceParams memory params) internal view returns (bool) {
         IDestinationVaultForStrategy outDest = IDestinationVaultForStrategy(params.destinationOut);
-
         // TODO: revert if information is too old?
         LMPDebt.DestinationInfo memory destInfo = lmpVault.getDestinationInfo(params.destinationOut);
-
         // shares of the destination currently held by the LMPVault
         uint256 currentShares = outDest.balanceOf(address(lmpVault));
-
         // withdrawals reduce totalAssets, but do not update the destinationInfo
         // adjust the current debt based on the currently owned shares
         // TODO: triple check that currentShares <= destInfo.ownedShares (always)
         uint256 currentDebt = destInfo.currentDebt * currentShares / destInfo.ownedShares;
 
-        // If the current position is < 2%, trim to idle is allowed
+        // If the current position is < 2% of total assets, trim to idle is allowed
         if (currentDebt < lmpVault.totalAssets() / 50) {
             return true;
         }

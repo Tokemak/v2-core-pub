@@ -537,5 +537,5 @@ abstract contract IncentiveCalculatorBase is
     ) public view virtual returns (uint256);
 
     /// @notice returns the address of the stash token for Convex & Aura
-    function resolveRewardToken(address rewarder) public view virtual returns (address rewardToken);
+    function resolveRewardToken(address extraRewarder) public view virtual returns (address rewardToken);
 }

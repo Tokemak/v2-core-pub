@@ -224,6 +224,6 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         uint256 fee = ICurveV2Swap(pool).fee();
         price = (dy * FEE_PRECISION) / (FEE_PRECISION - fee);
 
-        actualQuoteToken = ICurveV2Swap(pool).coins(uint256(quoteTokenIndex));
+        actualQuoteToken = quoteTokenIndex == 0 ? poolInfo.tokenFromPrice : poolInfo.tokenToPrice;
     }
 }

@@ -6,6 +6,7 @@ import { IERC4626 } from "openzeppelin-contracts/interfaces/IERC4626.sol";
 import { IERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
+import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
 
 interface ILMPVault is IERC4626, IERC20Permit {
     enum VaultShutdownStatus {
@@ -89,4 +90,15 @@ interface ILMPVault is IERC4626, IERC20Permit {
 
     /// @notice The current (though cached) value of assets we've deployed
     function totalDebt() external view returns (uint256);
+
+    /// @notice get a destinations last reported debt value
+    /// @param destVault the address of the target destination
+    /// @return destinations last reported debt value
+    function getDestinationInfo(address destVault) external view returns (LMPDebt.DestinationInfo memory);
+
+    /// @notice check if a destination is registered with the vault
+    function isDestinationRegistered(address destination) external view returns (bool);
+
+    /// @notice get if a destinationVault is queued for removal by the LMPVault
+    function isDestinationQueuedForRemoval(address destination) external view returns (bool);
 }

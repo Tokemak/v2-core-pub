@@ -42,7 +42,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     ISystemRegistry public immutable systemRegistry;
 
     /// @notice The LMPVault that this strategy is associated with
-    ILMPVaultForStrategy public immutable lmpVault;
+    ILMPVault public immutable lmpVault;
 
     /// @notice the number of days to pause rebalancing due to NAV decay
     uint16 public immutable pauseRebalancePeriodInDays;
@@ -229,7 +229,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             revert SystemRegistryMismatch();
         }
 
-        lmpVault = ILMPVaultForStrategy(_lmpVault);
+        lmpVault = ILMPVault(_lmpVault);
 
         LMPStrategyConfig.validate(conf);
 
@@ -984,27 +984,4 @@ library SubSaturateMath {
         if (other >= self) return 0;
         return self - other;
     }
-}
-
-interface ILMPVaultForStrategy is ILMPVault {
-    /// @notice get a destinations last reported debt value
-    /// @param dest the address of the target destination
-    /// @return destinations last reported debt value
-    function getDestinationInfo(address dest) external view returns (LMPDebt.DestinationInfo memory);
-
-    /// @notice check if a destination is registered with the vault and not queued for removal
-    /// @param dest the address of the target destination
-    /// @return bool true if it is registered
-    function isDestinationRegistered(address dest) external view returns (bool);
-
-    /// @notice get if a destinationVault is queued for removal by the LMPVault
-    /// @param dest the address of the target destination
-    /// @return true if the target destination is queued for removal
-    function isDestinationQueuedForRemoval(address dest) external view returns (bool);
-
-    /// @notice add (or move to if it already exists) a destination to the head of the withdrawal queue
-    function addToWithdrawalQueueHead(address destinationVault) external;
-
-    /// @notice add (or move to if it already exists) a destination to the tail of the withdrawal queue
-    function addToWithdrawalQueueTail(address destinationVault) external;
 }

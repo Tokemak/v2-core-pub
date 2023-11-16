@@ -1946,7 +1946,7 @@ contract LMPStrategyTest is Test {
     function setLmpDestQueuedForRemoval(address dest, bool isRemoved) private {
         vm.mockCall(
             mockLMPVault,
-            abi.encodeWithSelector(ILMPVaultForStrategy.isDestinationQueuedForRemoval.selector, dest),
+            abi.encodeWithSelector(ILMPVault.isDestinationQueuedForRemoval.selector, dest),
             abi.encode(isRemoved)
         );
     }
@@ -1956,11 +1956,9 @@ contract LMPStrategyTest is Test {
     }
 
     function setLmpDestInfo(address dest, LMPDebt.DestinationInfo memory info) private {
-        vm.mockCall(
-            mockLMPVault,
-            abi.encodeWithSelector(ILMPVaultForStrategy.getDestinationInfo.selector, dest),
-            abi.encode(info)
-        );
+        // split up in order to get around formatter issue
+        bytes4 selector = ILMPVault.getDestinationInfo.selector;
+        vm.mockCall(mockLMPVault, abi.encodeWithSelector(selector, dest), abi.encode(info));
     }
 
     function setLmpTotalAssets(uint256 amount) private {
@@ -1978,7 +1976,7 @@ contract LMPStrategyTest is Test {
     function setLmpDestinationRegistered(address dest, bool isRegistered) private {
         vm.mockCall(
             mockLMPVault,
-            abi.encodeWithSelector(ILMPVaultForStrategy.isDestinationRegistered.selector, dest),
+            abi.encodeWithSelector(ILMPVault.isDestinationRegistered.selector, dest),
             abi.encode(isRegistered)
         );
     }

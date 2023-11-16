@@ -695,6 +695,7 @@ contract LMPVault is
         return destinations.values();
     }
 
+    /// @inheritdoc ILMPVault
     function isDestinationRegistered(address destination) external view returns (bool) {
         return destinations.contains(destination);
     }
@@ -729,7 +730,7 @@ contract LMPVault is
         return withdrawalQueue;
     }
 
-    /// @notice Get the current snapshot debt info for a destination
+    /// @inheritdoc ILMPVault
     function getDestinationInfo(address destVault)
         external
         view
@@ -810,6 +811,11 @@ contract LMPVault is
                 amountOut: amountOut
             })
         );
+    }
+
+    /// @inheritdoc ILMPVault
+    function isDestinationQueuedForRemoval(address dest) external view returns (bool) {
+        return removalQueue.contains(dest);
     }
 
     /// @notice Process the destinations calculating current value and snapshotting for safe deposit/mint'ing

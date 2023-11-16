@@ -180,6 +180,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         uint256 baseApr;
         uint256 feeApr;
         uint256 incentiveApr;
+        uint256 safeTotalSupply;
         int256 priceReturn;
         int256 maxDiscount;
         int256 maxPremium;
@@ -647,6 +648,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         result.destination = destAddress;
         result.feeApr = stats.feeApr;
         result.incentiveApr = calculateIncentiveApr(stats.stakingIncentiveStats, direction, destAddress, amount, price);
+        result.safeTotalSupply = stats.stakingIncentiveStats.safeTotalSupply;
         result.ownedShares = dest.balanceOf(address(lmpVault));
         result.pricePerShare = price;
         result.maxPremium = interimStats.maxPremium;

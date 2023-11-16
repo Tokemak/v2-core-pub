@@ -271,24 +271,6 @@ contract CurveV1StableEthOracleTests is Test {
         assertApproxEqAbs(price, 1 ether, 1e17);
     }
 
-    function testStEthEthSpotPrice() public {
-        oracle.registerPool(FRAX_USDC, CRV_FRAX, true);
-
-        (uint256 price, address quote) = oracle.getSpotPrice(FRAX_MAINNET, FRAX_USDC, WETH9_ADDRESS);
-
-        // Asking for WETH but getting USDC as WETH is not in the pool
-        assertEq(quote, USDC_MAINNET);
-
-        // Data at block 17_379_099
-        // dy: 999187
-        // fee: 1000000
-        // FEE_PRECISION: 10000000000
-        // denominator: 9999000000
-        // netDy: 999286
-
-        assertEq(price, 999_286);
-    }
-
     function testGetSpotPriceFraxUsdc() public {
         oracle.registerPool(FRAX_USDC, CRV_FRAX, true);
 

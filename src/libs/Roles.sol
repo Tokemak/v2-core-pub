@@ -33,6 +33,7 @@ library Roles {
     bytes32 public constant SOLVER_ROLE = keccak256("SOLVER_ROLE");
 
     bytes32 public constant LMP_FEE_SETTER_ROLE = keccak256("LMP_FEE_SETTER_ROLE");
+    bytes32 public constant LMP_MANAGEMENT_FEE_SETTER_ROLE = keccak256("LMP_MANAGEMENT_FEE_SETTER_ROLE");
 
     bytes32 public constant EMERGENCY_PAUSER = keccak256("EMERGENCY_PAUSER");
 

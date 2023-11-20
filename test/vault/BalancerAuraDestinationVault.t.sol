@@ -403,6 +403,34 @@ contract BalancerAuraDestinationVaultTests is Test {
         assertEq(received, _asset.balanceOf(receiver) - startingBalance);
     }
 
+    /// @dev Based on the same data as test_withdrawBaseAsset_ReturnsAppropriateAmount
+    function test_estimateWithdrawBaseAsset_ReturnsAppropriateAmount() public {
+        // Get some tokens to play with
+        vm.prank(LP_TOKEN_WHALE);
+        _underlyer.transfer(address(this), 10e18);
+
+        // Give us deposit rights
+        _mockIsVault(address(this), true);
+
+        // Deposit
+        _underlyer.approve(address(_destVault), 10e18);
+        _destVault.depositUnderlying(10e18);
+
+        address receiver = vm.addr(555);
+
+        uint256 beforeBalance = _asset.balanceOf(receiver);
+        uint256 received = _destVault.estimateWithdrawBaseAsset(10e18, receiver, address(0));
+        uint256 afterBalance = _asset.balanceOf(receiver);
+
+        // Bal pool has a rough pool value of $96,362,068
+        // Total Supply of 50180.410952857663703844
+        // Eth Price: $1855
+        // PPS: 1.035208869 w/10 shares ~= 10.35208869
+
+        assertEq(received, 10_356_898_854_512_073_834);
+        assertEq(beforeBalance, afterBalance);
+    }
+
     function _mockSystemBound(address registry, address addr) internal {
         vm.mockCall(addr, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(registry));
     }

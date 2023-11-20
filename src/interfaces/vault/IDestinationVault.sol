@@ -15,6 +15,10 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
         Exploit
     }
 
+    error LogicDefect();
+    error UnreachableError();
+    error BaseAmountReceived(uint256 amount);
+
     /* ******************************** */
     /* View                             */
     /* ******************************** */
@@ -114,6 +118,15 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @param to destination of the base asset
     /// @return amount base asset amount 'to' received
     function withdrawBaseAsset(uint256 shares, address to) external returns (uint256 amount);
+
+    /// @notice Estimate the base asset amount that can be withdrawn given a certain number of shares. This function
+    /// performs a "simulation" of the withdrawal process. It will actually execute the withdrawal, but will then revert
+    /// the transaction, returning the estimated amount in the revert reason.
+    /// @param shares The number of shares to be used in the estimation.
+    /// @param to The address to receive the withdrawn amount.
+    /// @param account Address involved in the withdrawal; Must be set to address(0).
+    /// @return The estimated base asset amount.
+    function estimateWithdrawBaseAsset(uint256 shares, address to, address account) external returns (uint256);
 
     /// @notice Initiate the shutdown procedures for this vault
     /// @dev Should pull back tokens from staking locations

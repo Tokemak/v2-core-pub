@@ -351,6 +351,29 @@ contract CurveConvexDestinationVaultTests is Test {
         assertEq(received, _asset.balanceOf(receiver) - startingBalance);
     }
 
+    /// @dev Based on the same data as testWithdrawBaseAsset
+    function testEstimateWithdrawBaseAsset() public {
+        // Get some tokens to play with
+        vm.prank(LP_TOKEN_WHALE);
+        _underlyer.transfer(address(this), 100e18);
+
+        // Give us deposit rights
+        _mockIsVault(address(this), true);
+
+        // Deposit
+        _underlyer.approve(address(_destVault), 100e18);
+        _destVault.depositUnderlying(100e18);
+
+        address receiver = vm.addr(555);
+
+        uint256 beforeBalance = _asset.balanceOf(receiver);
+        uint256 received = _destVault.estimateWithdrawBaseAsset(50e18, receiver, address(0));
+        uint256 afterBalance = _asset.balanceOf(receiver);
+
+        assertEq(received, 53_285_100_736_620_025_561);
+        assertEq(beforeBalance, afterBalance);
+    }
+
     function _mockSystemBound(address registry, address addr) internal {
         vm.mockCall(addr, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(registry));
     }

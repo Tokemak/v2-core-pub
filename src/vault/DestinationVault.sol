@@ -257,43 +257,65 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
 
     /// @inheritdoc IDestinationVault
     function withdrawBaseAsset(uint256 shares, address to) external returns (uint256 amount) {
-        Errors.verifyNotZero(shares, "shares");
+        return _withdrawBaseAsset(msg.sender, shares, to);
+    }
 
-        emit BaseAssetWithdraw(shares, msg.sender, to);
+    /// @inheritdoc IDestinationVault
+    //slither-disable-start assembly
+    function estimateWithdrawBaseAsset(uint256 shares, address to, address account) public returns (uint256) {
+        // Check if the function is being called from an external source and not recursively.
+        if (msg.sender != address(this)) {
+            // If `account` is not the zero address during an external call, there's a logic flaw.
+            // External calls to this function must always provide `account` as the zero address.
+            // Only during the recursive call will the `account` be provided.
+            if (account != address(0)) {
+                revert LogicDefect();
+            }
 
-        // Does a balance check, will revert if trying to burn too much
-        _burn(msg.sender, shares);
+            // Perform a recursive call to this function. The intention is to reach the "else" block.
+            // slither-disable-next-line missing-zero-check,low-level-calls
+            (bool success, bytes memory returnData) = address(this).call(
+                abi.encodeWithSelector(this.estimateWithdrawBaseAsset.selector, shares, to, msg.sender)
+            );
 
-        // Accounts for shares that may be staked
-        _ensureLocalUnderlyingBalance(shares);
+            // If the recursive call is successful, it means an unintended code path was taken.
+            if (success) {
+                revert UnreachableError();
+            }
 
-        (address[] memory tokens, uint256[] memory amounts) = _burnUnderlyer(shares);
+            // Extract the error signature (first 4 bytes) from the revert reason.
+            bytes4 errorSignature;
+            assembly {
+                errorSignature := mload(add(returnData, 0x20))
+            }
 
-        uint256 nTokens = tokens.length;
-        Errors.verifyArrayLengths(nTokens, amounts.length, "token+amounts");
+            bytes4 balanceAmountSig = bytes4(keccak256("BaseAmountReceived(uint256)"));
 
-        // Swap what we receive if not already in base asset
-        // This fn is only called during a users withdrawal. The user should be making this
-        // call via the LMP Router, or through one of the other routes where
-        // slippage is controlled for. 0 min amount is expected here.
-        ISwapRouter swapRouter = _systemRegistry.swapRouter();
-        for (uint256 i = 0; i < nTokens; ++i) {
-            address token = tokens[i];
-
-            if (token == _baseAsset) {
-                amount += amounts[i];
+            // If the error matches the expected signature, extract the amount from the revert reason and return.
+            if (errorSignature == balanceAmountSig) {
+                // Extract subsequent 32 bytes for uint256
+                uint256 amount;
+                assembly {
+                    amount := mload(add(returnData, 0x24))
+                }
+                return amount;
             } else {
-                if (amounts[i] > 0) {
-                    LibAdapter._approve(IERC20(token), address(swapRouter), amounts[i]);
-                    amount += swapRouter.swapForQuote(token, amounts[i], _baseAsset, 0);
+                // If the error is not the expected one, forward the original revert reason.
+                assembly {
+                    revert(add(32, returnData), mload(returnData))
                 }
             }
         }
+        // This branch is taken during the recursive call.
+        else {
+            // Perform the actual withdrawal logic to compute the amount. This will be reverted to simulate the action.
+            uint256 amount = _withdrawBaseAsset(account, shares, to);
 
-        if (amount > 0) {
-            IERC20(_baseAsset).safeTransfer(to, amount);
+            // Revert with the computed amount as an error.
+            revert BaseAmountReceived(amount);
         }
     }
+    //slither-disable-end assembly
 
     /// @notice Burn the specified amount of underlyer for the constituent tokens
     /// @dev May return one or multiple assets. Be as efficient as you can here.
@@ -364,6 +386,45 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
 
         if (to != address(0)) {
             _rewarder.stake(to, amount);
+        }
+    }
+
+    function _withdrawBaseAsset(address account, uint256 shares, address to) internal returns (uint256 amount) {
+        Errors.verifyNotZero(shares, "shares");
+
+        emit BaseAssetWithdraw(shares, account, to);
+
+        // Does a balance check, will revert if trying to burn too much
+        _burn(account, shares);
+
+        // Accounts for shares that may be staked
+        _ensureLocalUnderlyingBalance(shares);
+
+        (address[] memory tokens, uint256[] memory amounts) = _burnUnderlyer(shares);
+
+        uint256 nTokens = tokens.length;
+        Errors.verifyArrayLengths(nTokens, amounts.length, "token+amounts");
+
+        // Swap what we receive if not already in base asset
+        // This fn is only called during a users withdrawal. The user should be making this
+        // call via the LMP Router, or through one of the other routes where
+        // slippage is controlled for. 0 min amount is expected here.
+        ISwapRouter swapRouter = _systemRegistry.swapRouter();
+        for (uint256 i = 0; i < nTokens; ++i) {
+            address token = tokens[i];
+
+            if (token == _baseAsset) {
+                amount += amounts[i];
+            } else {
+                if (amounts[i] > 0) {
+                    LibAdapter._approve(IERC20(token), address(swapRouter), amounts[i]);
+                    amount += swapRouter.swapForQuote(token, amounts[i], _baseAsset, 0);
+                }
+            }
+        }
+
+        if (amount > 0) {
+            IERC20(_baseAsset).safeTransfer(to, amount);
         }
     }
 }

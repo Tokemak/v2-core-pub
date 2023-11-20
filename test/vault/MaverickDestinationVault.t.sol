@@ -316,6 +316,28 @@ contract MaverickDestinationVaultTests is Test {
         assertEq(received, _asset.balanceOf(receiver) - startingBalance);
     }
 
+    /// @dev Based on the same data as test_withdrawBaseAsset_SwapsToBaseAndSendsToReceiver
+    function test_EstimatewithdrawBaseAsset_SwapsToBaseAndSendsToReceiver() public {
+        // Get some tokens to play with
+        deal(address(MAV_WSTETH_WETH_BOOSTED_POS), address(this), 1e18);
+
+        // Give us deposit rights
+        _mockIsVault(address(this), true);
+
+        // Deposit
+        _underlyer.approve(address(_destVault), 1e18);
+        _destVault.depositUnderlying(1e18);
+
+        address receiver = vm.addr(555);
+
+        uint256 beforeBalance = _asset.balanceOf(receiver);
+        uint256 received = _destVault.estimateWithdrawBaseAsset(5e17, receiver, address(0));
+        uint256 afterBalance = _asset.balanceOf(receiver);
+
+        assertEq(received, 637_692_400_777_456_012);
+        assertEq(beforeBalance, afterBalance);
+    }
+
     function _mockSystemBound(address registry, address addr) internal {
         vm.mockCall(addr, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(registry));
     }

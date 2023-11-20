@@ -874,10 +874,12 @@ contract LMPVault is
         if (totalSupply == 0) {
             return;
         }
+        uint256 assets = totalAssets();
+
         // slither-disable-next-line incorrect-equality
         if (totalAssetsHighMark == 0) {
             // Initialize our high water mark to the current assets
-            totalAssetsHighMark = totalAssets();
+            totalAssetsHighMark = assets;
         }
 
         uint256 currentNavPerShare = ((idle + debt) * MAX_FEE_BPS) / totalSupply;
@@ -887,7 +889,7 @@ contract LMPVault is
             navPerShareHighMarkTimestamp,
             navPerShareHighMark,
             totalAssetsHighMark,
-            totalAssets()
+            assets
         );
 
         if (currentNavPerShare > effectiveNavPerShareHighMark) {
@@ -903,7 +905,7 @@ contract LMPVault is
                 shares = Math.mulDiv(
                     performanceFeeBps * profit / MAX_FEE_BPS,
                     totalSupply,
-                    (totalAssets() * MAX_FEE_BPS) - (performanceFeeBps * profit / MAX_FEE_BPS),
+                    (assets * MAX_FEE_BPS) - (performanceFeeBps * profit / MAX_FEE_BPS),
                     Math.Rounding.Up
                 );
                 _mint(sink, shares);
@@ -916,14 +918,12 @@ contract LMPVault is
             navPerShareHighMark = currentNavPerShare;
             navPerShareHighMarkTimestamp = block.timestamp;
             emit NewNavHighWatermark(currentNavPerShare, block.timestamp);
-
-            // Set our new high water mark for totalAssets, regardless if we took fees
-            uint256 assets = totalAssets();
-            if (totalAssetsHighMark < assets) {
-                totalAssetsHighMark = assets;
-                totalAssetsHighMarkTimestamp = block.timestamp;
-                emit NewTotalAssetsHighWatermark(totalAssetsHighMark, totalAssetsHighMarkTimestamp);
-            }
+        }
+        // Set our new high water mark for totalAssets, regardless if we took fees
+        if (totalAssetsHighMark < assets) {
+            totalAssetsHighMark = assets;
+            totalAssetsHighMarkTimestamp = block.timestamp;
+            emit NewTotalAssetsHighWatermark(totalAssetsHighMark, totalAssetsHighMarkTimestamp);
         }
         emit FeeCollected(fees, sink, shares, profit, idle, debt);
 

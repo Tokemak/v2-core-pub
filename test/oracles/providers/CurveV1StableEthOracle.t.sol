@@ -296,12 +296,12 @@ contract CurveV1StableEthOracleTests is Test {
         assertEq(quote, FRAX_MAINNET);
 
         // Data at block 17_379_099
-        // dy: 345728503015501503828553686
+        // dy: 1000613407288920551
         // fee: 1000000
         // FEE_PRECISION: 10000000000
-        // price: 345763079323433847213275013
+        // price: 1000713478636784229
 
-        assertEq(price, 345_763_079_323_433_847_213_275_013);
+        assertEq(price, 1_000_713_478_636_784_229);
     }
 
     function mockRootPrice(address token, uint256 price) internal {

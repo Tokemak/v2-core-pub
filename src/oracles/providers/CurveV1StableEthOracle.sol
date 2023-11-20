@@ -3,6 +3,8 @@
 
 pragma solidity 0.8.17;
 
+import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
 import { Errors } from "src/utils/Errors.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -19,6 +21,8 @@ import { LibAdapter } from "src/libs/LibAdapter.sol";
 contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, ISpotPriceOracle {
     ICurveResolver public immutable curveResolver;
     uint256 public constant FEE_PRECISION = 1e10;
+    address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     struct PoolData {
         address pool;
@@ -187,6 +191,11 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         // Find the token and quote token indices
         for (uint256 i = 0; i < nTokens; ++i) {
             address t = tokens[i];
+
+            if (t == ETH) {
+                t = WETH;
+            }
+
             if (t == token) {
                 tokenIndex = int256(i);
             } else if (t == requestedQuoteToken) {
@@ -206,11 +215,18 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
             quoteTokenIndex = tokenIndex == 0 ? int256(1) : int256(0);
         }
 
-        uint256 dy = ICurveV1StableSwap(pool).get_dy(int128(tokenIndex), int128(quoteTokenIndex), 1e18);
+        uint256 dy = ICurveV1StableSwap(pool).get_dy(
+            int128(tokenIndex), int128(quoteTokenIndex), 10 ** IERC20Metadata(token).decimals()
+        );
 
         uint256 fee = ICurveV1StableSwap(pool).fee();
         price = (dy * FEE_PRECISION) / (FEE_PRECISION - fee);
 
         actualQuoteToken = ICurveV1StableSwap(pool).coins(uint256(quoteTokenIndex));
+
+        // If the quote token is ETH, we convert it to WETH.
+        if (actualQuoteToken == ETH) {
+            actualQuoteToken = WETH;
+        }
     }
 }

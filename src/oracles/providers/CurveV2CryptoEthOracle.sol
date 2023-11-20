@@ -3,6 +3,8 @@
 
 pragma solidity 0.8.17;
 
+import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
@@ -15,6 +17,8 @@ import { ICurveV2Swap } from "src/interfaces/external/curve/ICurveV2Swap.sol";
 
 contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, ISpotPriceOracle {
     address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
     ICurveResolver public immutable curveResolver;
     uint256 public constant FEE_PRECISION = 1e10;
 
@@ -202,22 +206,21 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         address
     ) public view returns (uint256 price, address actualQuoteToken) {
         address lpToken = curveResolver.getLpToken(pool);
-        int256 tokenIndex = -1;
-        int256 quoteTokenIndex = -1;
-        // Find the token and quote token indices
+        uint256 tokenIndex = 0;
+        uint256 quoteTokenIndex = 0;
+
         PoolData storage poolInfo = lpTokenToPool[lpToken];
 
+        // Find the token and quote token indices
         if (poolInfo.tokenToPrice == token) {
             tokenIndex = 1;
-            quoteTokenIndex = 0;
         } else if (poolInfo.tokenFromPrice == token) {
-            tokenIndex = 0;
             quoteTokenIndex = 1;
         } else {
             revert NotRegistered(lpToken);
         }
 
-        uint256 dy = ICurveV2Swap(pool).get_dy(uint256(tokenIndex), uint256(quoteTokenIndex), 1e18);
+        uint256 dy = ICurveV2Swap(pool).get_dy(tokenIndex, quoteTokenIndex, 10 ** IERC20Metadata(token).decimals());
 
         /// @dev The fee is dynamically based on current balances; slight discrepancies post-calculation are acceptable
         /// for low-value swaps.

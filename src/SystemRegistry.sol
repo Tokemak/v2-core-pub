@@ -21,6 +21,7 @@ import { IDestinationRegistry } from "src/interfaces/destinations/IDestinationRe
 import { IStatsCalculatorRegistry } from "src/interfaces/stats/IStatsCalculatorRegistry.sol";
 import { IAsyncSwapperRegistry } from "src/interfaces/liquidation/IAsyncSwapperRegistry.sol";
 import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
+import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /// @notice Root contract of the system instance.
@@ -45,6 +46,7 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     IAsyncSwapperRegistry private _asyncSwapperRegistry;
     ISwapRouter private _swapRouter;
     ICurveResolver private _curveResolver;
+    IIncentivesPricingStats private _incentivePricingStats;
     ISystemSecurity private _systemSecurity;
 
     mapping(bytes32 => ILMPVaultFactory) private _lmpVaultFactoryByType;
@@ -71,6 +73,7 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     event CurveResolverSet(address curveResolver);
     event RewardTokenAdded(address rewardToken);
     event RewardTokenRemoved(address rewardToken);
+    event IncentivePricingStatsSet(address incentivePricingStats);
     event SystemSecuritySet(address security);
 
     /* ******************************** */
@@ -163,6 +166,11 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     /// @inheritdoc ISystemRegistry
     function systemSecurity() external view returns (ISystemSecurity) {
         return _systemSecurity;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function incentivePricing() external view returns (IIncentivesPricingStats) {
+        return _incentivePricingStats;
     }
 
     /* ******************************** */
@@ -303,6 +311,23 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
         _rootPriceOracle = IRootPriceOracle(oracle);
 
         _verifySystemsAgree(oracle);
+    }
+
+    /// @notice Set the Incentive Pricing Stats for this instance of the system
+    /// @dev This value can be set multiple times, but never back to 0
+    /// @param incentivePricingStats Address of the IIncentivePricingStats
+    function setIncentivePricingStats(address incentivePricingStats) external onlyOwner {
+        Errors.verifyNotZero(incentivePricingStats, "incentivePricingStats");
+
+        if (incentivePricingStats == address(_incentivePricingStats)) {
+            revert DuplicateSet(incentivePricingStats);
+        }
+
+        emit IncentivePricingStatsSet(incentivePricingStats);
+
+        _incentivePricingStats = IIncentivesPricingStats(incentivePricingStats);
+
+        _verifySystemsAgree(incentivePricingStats);
     }
 
     /// @notice Set the Async Swapper Registry for this instance of the system

@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import { Test } from "forge-std/Test.sol";
 import {
     LMPStrategy,
-    ISystemRegistryForStrategy,
+    ISystemRegistry,
     ILMPVaultForStrategy,
     IDestinationVaultForStrategy
 } from "src/strategy/LMPStrategy.sol";
@@ -89,7 +89,7 @@ contract LMPStrategyTest is Test {
     function test_constructor_RevertIf_lmpVaultZero() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_lmpVault"));
         new LMPStrategyHarness(
-            ISystemRegistryForStrategy(address(systemRegistry)),
+            ISystemRegistry(address(systemRegistry)),
             address(0),
             helpers.getDefaultConfig()
         );
@@ -1618,7 +1618,7 @@ contract LMPStrategyTest is Test {
     /* **************************************** */
     function deployStrategy(LMPStrategyConfig.StrategyConfig memory cfg) internal returns (LMPStrategyHarness strat) {
         strat = new LMPStrategyHarness(
-            ISystemRegistryForStrategy(address(systemRegistry)),
+            ISystemRegistry(address(systemRegistry)),
             mockLMPVault,
             cfg
         );
@@ -1799,7 +1799,7 @@ contract LMPStrategyTest is Test {
     function setIncentivePricing() private {
         vm.mockCall(
             address(systemRegistry),
-            abi.encodeWithSelector(ISystemRegistryForStrategy.incentivePricing.selector),
+            abi.encodeWithSelector(ISystemRegistry.incentivePricing.selector),
             abi.encode(incentivePricing)
         );
     }
@@ -1815,7 +1815,7 @@ contract LMPStrategyTest is Test {
 
 contract LMPStrategyHarness is LMPStrategy {
     constructor(
-        ISystemRegistryForStrategy _systemRegistry,
+        ISystemRegistry _systemRegistry,
         address _lmpVault,
         LMPStrategyConfig.StrategyConfig memory conf
     ) LMPStrategy(_systemRegistry, _lmpVault, conf) { }

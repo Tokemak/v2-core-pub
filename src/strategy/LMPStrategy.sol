@@ -38,7 +38,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     /* Immutable Config                 */
     /* ******************************** */
     /// @notice Tokemak system-level registry. Used to lookup other services (e.g., pricing)
-    ISystemRegistryForStrategy public immutable systemRegistry;
+    ISystemRegistry public immutable systemRegistry;
 
     /// @notice The LMPVault that this strategy is associated with
     ILMPVaultForStrategy public immutable lmpVault;
@@ -217,7 +217,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     }
 
     constructor(
-        ISystemRegistryForStrategy _systemRegistry,
+        ISystemRegistry _systemRegistry,
         address _lmpVault,
         LMPStrategyConfig.StrategyConfig memory conf
     ) SecurityBase(address(_systemRegistry.accessController())) {
@@ -940,12 +940,6 @@ interface IDestinationVaultForStrategy is IDestinationVault {
     /// @return rewardTokens list of reward token addresses
     /// @return rewardRates list of reward rates
     function getMarketplaceRewards() external returns (uint256[] memory rewardTokens, uint256[] memory rewardRates);
-}
-
-interface ISystemRegistryForStrategy is ISystemRegistry {
-    /// @notice Get the Incentive Pricing Stats
-    /// @return incentivePricing the incentive pricing contract
-    function incentivePricing() external view returns (IIncentivesPricingStats);
 }
 
 interface ILMPVaultForStrategy is ILMPVault {

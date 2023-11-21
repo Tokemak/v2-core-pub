@@ -30,6 +30,7 @@ contract SystemRegistryTest is Test {
     event SystemSecuritySet(address security);
     event LMPVaultRouterSet(address router);
     event LMPVaultFactorySet(bytes32 vaultType, address factory);
+    event IncentivePricingStatsSet(address incentivePricingStats);
 
     function setUp() public {
         _systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
@@ -570,6 +571,71 @@ contract SystemRegistryTest is Test {
         _systemRegistry.setRootPriceOracle(emptyContract);
     }
 
+    /* ******************************** */
+    /* Incentive Pricing Stats
+    /* ******************************** */
+
+    function testSystemRegistryIncentivePricingCanSetMultipleTimes() public {
+        address incentivePricing = vm.addr(1);
+        mockSystemComponent(incentivePricing);
+        _systemRegistry.setIncentivePricingStats(incentivePricing);
+        assertEq(address(_systemRegistry.incentivePricing()), incentivePricing);
+
+        address incentivePricing2 = vm.addr(2);
+        mockSystemComponent(incentivePricing2);
+        _systemRegistry.setIncentivePricingStats(incentivePricing2);
+        assertEq(address(_systemRegistry.incentivePricing()), incentivePricing2);
+    }
+
+    function testSystemRegistryIncentivePricingCantSetDup() public {
+        address incentivePricing = vm.addr(1);
+        mockSystemComponent(incentivePricing);
+        _systemRegistry.setIncentivePricingStats(incentivePricing);
+
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.DuplicateSet.selector, address(incentivePricing)));
+        _systemRegistry.setIncentivePricingStats(incentivePricing);
+    }
+
+    function testSystemRegistryIncentivePricingEmitsEventWithNewAddress() public {
+        address incentivePricing = vm.addr(3);
+
+        vm.expectEmit(true, true, true, true);
+        emit IncentivePricingStatsSet(incentivePricing);
+
+        mockSystemComponent(incentivePricing);
+        _systemRegistry.setIncentivePricingStats(incentivePricing);
+    }
+
+    function testSystemRegistryIncentivePricingOnlyCallableByOwner() public {
+        address incentivePricing = vm.addr(3);
+        address newOwner = vm.addr(4);
+
+        vm.expectRevert("Ownable: caller is not the owner");
+        vm.prank(newOwner);
+        _systemRegistry.setIncentivePricingStats(incentivePricing);
+    }
+
+    function testSystemRegistryIncentivePricingSystemsMatch() public {
+        address incentivePricing = vm.addr(1);
+        address fake = vm.addr(2);
+        vm.mockCall(
+            incentivePricing, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(fake)
+        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(_systemRegistry), fake));
+        _systemRegistry.setIncentivePricingStats(incentivePricing);
+    }
+
+    function testSystemRegistryIncentivePricingInvalidContractCaught() public {
+        // When its not a contract
+        address fakeOracle = vm.addr(2);
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeOracle));
+        _systemRegistry.setIncentivePricingStats(fakeOracle);
+
+        // When it is a contract, just incorrect
+        address emptyContract = address(new EmptyContract());
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
+        _systemRegistry.setIncentivePricingStats(emptyContract);
+    }
     /* ******************************** */
     /* Reward Token Registry
     /* ******************************** */

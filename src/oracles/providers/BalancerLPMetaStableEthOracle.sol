@@ -8,29 +8,21 @@ import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
-import { IProtocolFeesCollector } from "src/interfaces/external/balancer/IProtocolFeesCollector.sol";
+import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IBalancerMetaStablePool } from "src/interfaces/external/balancer/IBalancerMetaStablePool.sol";
 import { IRateProvider } from "src/interfaces/external/balancer/IRateProvider.sol";
-import { SystemComponent } from "src/SystemComponent.sol";
+import { BalancerBaseOracle } from "src/oracles/providers/base/BalancerBaseOracle.sol";
 
 /// @title Price oracle for Balancer Meta Stable pools
 /// @dev getPriceEth is not a view fn to support reentrancy checks. Dont actually change state.
-contract BalancerLPMetaStableEthOracle is SystemComponent, IPriceOracle {
-    /// @notice Balancer vault all BPTs registered to point here should reference
-    /// @dev BPTs themselves are configured with an immutable vault reference
-    IBalancerVault public immutable balancerVault;
-
+contract BalancerLPMetaStableEthOracle is BalancerBaseOracle, IPriceOracle {
     error InvalidTokenCount(address token, uint256 length);
     error InvalidPool(address token);
 
-    constructor(ISystemRegistry _systemRegistry, IBalancerVault _balancerVault) SystemComponent(_systemRegistry) {
-        // System registry must be properly initialized first
-        Errors.verifyNotZero(address(_systemRegistry.rootPriceOracle()), "rootPriceOracle");
-        Errors.verifyNotZero(address(_balancerVault), "_balancerVault");
-
-        balancerVault = _balancerVault;
-    }
+    constructor(
+        ISystemRegistry _systemRegistry,
+        IVault _balancerVault
+    ) BalancerBaseOracle(_systemRegistry, _balancerVault) { }
 
     // slither-disable-start missing-zero-check
     // slither-disable-start low-level-calls

@@ -163,27 +163,6 @@ contract BalancerLPComposableStableEthOracleTests is Test {
         assertEq(price < 11e17, true);
     }
 
-    /// @dev rEth -> wstETH at block 17_378_951 is 0.952137719897313936.
-    /// Pool has no WETH so it returns WstETH
-    function testGetSpotPriceWithWETHQuote() public {
-        (uint256 price, address quoteToken) = oracle.getSpotPrice(RETH_MAINNET, WSTETH_RETH_SFRXETH_POOL, WETH_MAINNET);
-
-        assertEq(quoteToken, WSTETH_MAINNET);
-        assertEq(price, 952_137_719_897_313_936);
-    }
-
-    /// @dev rEth -> wstETH at block 17_378_951 is 0.952137719897313936
-    function testGetSpotPriceWithoutWETHQuote() public {
-        (uint256 price, address quoteToken) = oracle.getSpotPrice(
-            RETH_MAINNET, // rEth
-            WSTETH_RETH_SFRXETH_POOL,
-            WSTETH_MAINNET // wstETH
-        );
-
-        assertEq(quoteToken, WSTETH_MAINNET);
-        assertEq(price, 952_137_719_897_313_936);
-    }
-
     function mockRootPrice(address token, uint256 price) internal {
         vm.mockCall(
             address(rootPriceOracle),

@@ -149,7 +149,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         if (_timeForDiscountSnapshot()) {
             // slither-disable-next-line reentrancy-benign,reentrancy-events
             updateDiscountHistory(currentEthPerToken);
-            updateDiscountTimestampByPercent();
+            _updateDiscountTimestampByPercent();
         }
 
         if (_hasSlashingOccurred(currentEthPerToken)) {
@@ -249,7 +249,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         return 1e18 - int256(priceToBacking);
     }
 
-    function updateDiscountTimestampByPercent() private {
+    function _updateDiscountTimestampByPercent() private {
         uint256 discountHistoryLength = discountHistory.length;
         uint40 previousDiscount =
             discountHistory[(discountHistoryIndex + discountHistoryLength - 2) % discountHistoryLength];

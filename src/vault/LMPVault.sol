@@ -335,7 +335,7 @@ contract LMPVault is
          *
          * Fee checked to fit into uint16 above, able to be wrapped without safe cast here.
          */
-
+        // slither-disable-next-line timestamp
         if (block.timestamp > nextManagementFeeTake - MANAGEMENT_FEE_CHANGE_CUTOFF) {
             emit PendingManagementFeeSet(fee);
             pendingManagementFeeBps = uint16(fee);
@@ -361,6 +361,7 @@ contract LMPVault is
     function setManagementFeeSink(address newManagementFeeSink) external onlyOwner {
         emit ManagementFeeSinkSet(newManagementFeeSink);
 
+        // slither-disable-next-line missing-zero-check
         managementFeeSink = newManagementFeeSink;
     }
 
@@ -931,9 +932,14 @@ contract LMPVault is
             totalAssetsHighMark = assets;
         }
 
-        if (managementFeeBps > 0 && managementFeeSink != address(0) && timestamp > nextManagementFeeTake) {
-            totalSupply = _collectManagementFees(totalSupply);
+        // slither-disable-start timestamp
+        if (
+            (managementFeeBps > 0 || pendingManagementFeeBps > 0) && managementFeeSink != address(0)
+                && timestamp > nextManagementFeeTake
+        ) {
+            totalSupply = _collectAndUpdateManagementFees(totalSupply);
         }
+        // slither-disable-end timestamp
 
         uint256 currentNavPerShare = ((idle + debt) * MAX_FEE_BPS) / totalSupply;
         uint256 effectiveNavPerShareHighMark = _calculateEffectiveNavPerShareHighMark(
@@ -1035,27 +1041,26 @@ contract LMPVault is
         return workingHigh;
     }
 
-    function _collectManagementFees(uint256 totalSupply) internal returns (uint256) {
-        address managementSink = managementFeeSink;
-        uint256 assets = totalAssets();
+    /// @notice takes car of both fees and setting management fee when pending is available.
+    ///     Has ability to set management fee when no fee is taken.
+    function _collectAndUpdateManagementFees(uint256 totalSupply) internal returns (uint256) {
+        if (managementFeeBps > 0) {
+            uint256 managementFee = managementFeeBps;
+            address managementSink = managementFeeSink;
+            uint256 assets = totalAssets();
 
-        // We calculate the shares using the same formula as performance fees, without scaling down
-        uint256 shares = Math.mulDiv(
-            managementFeeBps * assets,
-            totalSupply,
-            (assets * MAX_FEE_BPS) - (managementFeeBps * assets),
-            Math.Rounding.Up
-        );
-        _mint(managementSink, shares);
-        totalSupply += shares;
+            // We calculate the shares using the same formula as performance fees, without scaling down
+            uint256 shares = Math.mulDiv(
+                managementFee * assets, totalSupply, (assets * MAX_FEE_BPS) - (managementFee * assets), Math.Rounding.Up
+            );
+            _mint(managementSink, shares);
+            totalSupply += shares;
 
-        // Fee in assets that we are taking.
-        uint256 fees = managementFeeBps * assets / MAX_FEE_BPS;
-        emit Deposit(address(this), managementSink, fees, shares);
-        emit ManagementFeeCollected(fees, managementSink, shares);
-
-        nextManagementFeeTake = uint32(block.timestamp + MANAGEMENT_FEE_TAKE_TIMEFRAME);
-
+            // Fee in assets that we are taking.
+            uint256 fees = managementFee * assets / MAX_FEE_BPS;
+            emit Deposit(address(this), managementSink, fees, shares);
+            emit ManagementFeeCollected(fees, managementSink, shares);
+        }
         if (pendingManagementFeeBps > 0) {
             emit ManagementFeeSet(pendingManagementFeeBps);
             emit PendingManagementFeeSet(0);
@@ -1063,6 +1068,8 @@ contract LMPVault is
             managementFeeBps = pendingManagementFeeBps;
             pendingManagementFeeBps = 0;
         }
+        // Want this updated even if no management fee is collected and we are just updating.
+        nextManagementFeeTake = uint32(block.timestamp + MANAGEMENT_FEE_TAKE_TIMEFRAME);
 
         return totalSupply;
     }

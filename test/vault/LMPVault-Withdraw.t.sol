@@ -2020,6 +2020,51 @@ contract LMPVaultMintingTests is Test {
     }
 
     /**
+     * This test tests that in the situation that `managementFeeBps == 0` and
+     *      `pendingManagementFeeBps > 0` that the pending management fee can
+     *      become the management fee.  This was a bug in the original implementation
+     *      of management fees, we could have gotten stuck in a state where
+     *      the management fee could not be set.
+     */
+    function test_ManagementFeeCanBeReplaced_WhenOnlyPendingSet() public {
+        // Set roles
+        _accessController.setupRole(Roles.LMP_MANAGEMENT_FEE_SETTER_ROLE, address(this));
+        _accessController.setupRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
+
+        // Set sink
+        _lmpVault.setManagementFeeSink(makeAddr("FEE_SINK"));
+
+        // Vault deposit, needed so that `_collectFees()` doesn't return on no supply.
+        _asset.mint(address(this), 10);
+        _asset.approve(address(_lmpVault), 10);
+        _lmpVault.deposit(10, address(this));
+
+        // Warp time so that pending is set.
+        vm.warp(block.timestamp + _lmpVault.nextManagementFeeTake());
+
+        // Set pending.
+        _lmpVault.setManagementFeeBps(1000);
+
+        assertEq(_lmpVault.managementFeeBps(), 0);
+        assertEq(_lmpVault.pendingManagementFeeBps(), 1000);
+
+        /**
+         * Trigger `_collectFees()` through `updateDebtReporting`.  No management fee is set, so nothing
+         *      will be collected. However, a pending fee is set which will replace the management fee of 0.
+         */
+        vm.expectEmit(false, false, false, true);
+        emit ManagementFeeSet(1000);
+        vm.expectEmit(false, false, false, true);
+        emit PendingManagementFeeSet(0);
+
+        address[] memory destinations = new address[](0);
+        _lmpVault.updateDebtReporting(destinations);
+
+        assertEq(_lmpVault.managementFeeBps(), 1000);
+        assertEq(_lmpVault.pendingManagementFeeBps(), 0);
+    }
+
+    /**
      * Check that if statement doesn't run when conditions not met.  Does not check for
      *      `managementFeeBps == 0`, because fees calculated would be zero in this case.
      */

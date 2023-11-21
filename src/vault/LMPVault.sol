@@ -149,7 +149,7 @@ contract LMPVault is
     address public managementFeeSink;
 
     /// @notice Timestamp of next management fee to be taken.
-    uint32 public nextManagementFeeTake;
+    uint48 public nextManagementFeeTake;
 
     /// @notice Current management fee.  100% == 10_000.
     uint16 public managementFeeBps;
@@ -1061,6 +1061,7 @@ contract LMPVault is
             emit Deposit(address(this), managementSink, fees, shares);
             emit ManagementFeeCollected(fees, managementSink, shares);
         }
+
         if (pendingManagementFeeBps > 0) {
             emit ManagementFeeSet(pendingManagementFeeBps);
             emit PendingManagementFeeSet(0);
@@ -1069,7 +1070,8 @@ contract LMPVault is
             pendingManagementFeeBps = 0;
         }
         // Want this updated even if no management fee is collected and we are just updating.
-        nextManagementFeeTake = uint32(block.timestamp + MANAGEMENT_FEE_TAKE_TIMEFRAME);
+        // Prevents us from turning around and immediately claiming another management fee.
+        nextManagementFeeTake = uint48(block.timestamp + MANAGEMENT_FEE_TAKE_TIMEFRAME);
 
         return totalSupply;
     }

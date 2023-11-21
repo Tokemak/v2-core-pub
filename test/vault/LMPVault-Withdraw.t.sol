@@ -119,17 +119,6 @@ contract LMPVaultTests is Test {
         vm.expectRevert(abi.encodeWithSelector(LMPVault.InvalidFee.selector, 1001));
         _lmpVault.setManagementFeeBps(1001);
     }
-
-    // Testing that `managementFee` gets set outside of 45 day window before fee take.
-    function test_setManagementFeeBps_SetsFee_OutsideOfFeeTakeBuffer() public {
-        _accessController.setupRole(Roles.LMP_MANAGEMENT_FEE_SETTER_ROLE, address(this));
-        vm.expectEmit(false, false, false, true);
-        emit ManagementFeeSet(500);
-
-        _lmpVault.setManagementFeeBps(500);
-
-        assertEq(_lmpVault.managementFeeBps(), 500);
-    }
 }
 
 contract LMPVaultMintingTests is Test {
@@ -2015,6 +2004,21 @@ contract LMPVaultMintingTests is Test {
 
     }
     
+    // Testing that `managementFee` gets set outside of 45 day window before fee take.
+    function test_setManagementFeeBps_SetsFee_OutsideOfFeeTakeBuffer() public {
+        _accessController.setupRole(Roles.LMP_MANAGEMENT_FEE_SETTER_ROLE, address(this));
+        vm.expectEmit(false, false, false, true);
+        emit ManagementFeeSet(500);
+
+        // When not forked block.timestamp == 1, need to adjust to avoid underflow.
+        emit log_uint(_lmpVault.nextManagementFeeTake());
+        vm.warp(_lmpVault.nextManagementFeeTake() - 46 days);
+
+        _lmpVault.setManagementFeeBps(500);
+
+        assertEq(_lmpVault.managementFeeBps(), 500);
+    }
+
     /**
      * Check that if statement doesn't run when conditions not met.  Does not check for
      *      `managementFeeBps == 0`, because fees calculated would be zero in this case.
@@ -2196,6 +2200,109 @@ contract LMPVaultMintingTests is Test {
         // Check that correct numbers have been minted.
         assertEq(minted, calculatedShares);
         assertEq(totalSupplyBefore + minted, _lmpVault.totalSupply());
+    }
+
+    function test_ManagmentAndPerformanceFee_TakenTogether_Correctly() public {
+        // Local vars.
+        uint256 depositAmount = 1000;
+        uint256 feeBps = 1000;
+        address solver = makeAddr("solver");
+        address performanceFeeSink = makeAddr("performance");
+        address managementFeeSink = makeAddr("management");
+
+        // Access control setup.
+        _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_MANAGEMENT_FEE_SETTER_ROLE, address(this));
+        _accessController.grantRole(Roles.SOLVER_ROLE, solver);
+
+        // Deploy flash rebalancer.
+        FlashRebalancer rebalancer = new FlashRebalancer();
+
+        // Fee setup. Will not affect anything for the first rebalance, as block.timestamp is too soon
+        // for management fee, and NAV will not increase with how test is set up.
+        _lmpVault.setPerformanceFeeBps(feeBps); // 10%
+        _lmpVault.setFeeSink(performanceFeeSink);
+        _lmpVault.setManagementFeeBps(feeBps); // 10%
+        _lmpVault.setManagementFeeSink(managementFeeSink);
+
+        // Make sure fee setup went correctly.
+        assertEq(_lmpVault.performanceFeeBps(), feeBps);
+        assertEq(_lmpVault.feeSink(), performanceFeeSink);
+        assertEq(_lmpVault.managementFeeBps(), feeBps);
+        assertEq(_lmpVault.pendingManagementFeeBps(), 0);
+        assertEq(_lmpVault.managementFeeSink(), managementFeeSink);
+
+        // LMP deposit.
+        _asset.mint(address(this), depositAmount);
+        _asset.approve(address(_lmpVault), depositAmount);
+        _lmpVault.deposit(depositAmount, address(this));
+
+        // Mint 1k underlyer to solver.
+        _underlyerOne.mint(solver, depositAmount);
+
+        // Prank solver, approve.
+        vm.startPrank(solver);
+        _underlyerOne.approve(address(_lmpVault), depositAmount);
+
+        // Snapshot assets for flash rebalance
+        rebalancer.snapshotAsset(address(_asset), depositAmount);
+
+        // Set price of first underlyer to 1 Eth, will manipulate later.
+        _mockRootPrice(address(_underlyerOne), 1e18);
+
+        _lmpVault.flashRebalance(
+            rebalancer,
+            IStrategy.RebalanceParams({
+                destinationIn: address(_destVaultOne),
+                tokenIn: address(_underlyerOne), // Token to DV1.
+                amountIn: depositAmount, // 1000 of token to DV1.
+                destinationOut: address(0), // Base asset, no destination needed.
+                tokenOut: address(_asset), // base asset.
+                amountOut: depositAmount // 1000 out.
+             }),
+            abi.encode("")
+        );
+        vm.stopPrank();
+
+        // Post rebalance checks.
+        assertEq(_underlyerOne.balanceOf(address(_destVaultOne)), depositAmount);
+        assertEq(_destVaultOne.balanceOf(address(_lmpVault)), depositAmount);
+        assertEq(_lmpVault.totalDebt(), depositAmount);
+        assertEq(_lmpVault.navPerShareHighMark(), 10_000); // Should not be changed from initial yet.
+
+        // Warp timestamp so management fees will be taken.
+        vm.warp(_lmpVault.nextManagementFeeTake() + 1);
+
+        // Up price of underlyer to 2 Eth.
+        _mockRootPrice(address(_underlyerOne), 2e18);
+
+        /**
+         * Update debt reporting, this will update Nav now that price of U1 has increased.
+         *
+         * Nav is 1.80 before performance fees are taken, up from 1.
+         * Profit is 888.
+         *
+         * We expect the management fee to be pulled first, 10% of total assets accounting for total supply not being
+         *      manipulated.  Should be 112 shares minted to the `managementFeeSink` address.
+         *
+         * We expect the performance fee to be 10% of the profit, 52 shares. This value should account for the new
+         *      totalSupply taking into  account the shares minted by a management fee claim, so a total supply of
+         *      1112 after the management fee is taken.
+         *
+         * Total supply of shares after all operations are complete should be 1164.
+         *
+         * Nav per share high mark should be 17_182 scaled up by MAX_FEE_BPS after all operations.
+         */
+        address[] memory destinations = new address[](1);
+        destinations[0] = address(_destVaultOne);
+        _lmpVault.updateDebtReporting(destinations);
+
+        // Check what vault did matches calculations.
+        assertEq(_lmpVault.balanceOf(managementFeeSink), 112);
+        assertEq(_lmpVault.balanceOf(performanceFeeSink), 52);
+        assertEq(_lmpVault.totalSupply(), 1164);
+        assertEq(_lmpVault.navPerShareHighMark(), 17_182);
     }
 
     function _mockSystemBound(address registry, address addr) internal {

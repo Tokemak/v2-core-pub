@@ -250,10 +250,11 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
     }
 
     function updateDiscountTimestampByPercent() private {
+        uint256 discountHistoryLength = discountHistory.length;
         uint40 previousDiscount =
-            discountHistory[(discountHistoryIndex + discountHistory.length - 2) % discountHistory.length];
+            discountHistory[(discountHistoryIndex + discountHistoryLength - 2) % discountHistoryLength];
         uint40 currentDiscount =
-            discountHistory[(discountHistoryIndex + discountHistory.length - 1) % discountHistory.length];
+            discountHistory[(discountHistoryIndex + discountHistoryLength - 1) % discountHistoryLength];
 
         // for each percentile slot ask:
         // "was this not in violation last round and now in violation this round?"
@@ -261,20 +262,20 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         // if no, do nothing
         // TODO: There is gas optimization here with early stopping
 
-        uint40 discountPercentile;
+        uint40 discountPercent;
         bool inViolationLastSnapshot;
         bool inViolationThisSnaphot;
 
         // cached for gas efficiency see slither: cache-array-length
         uint256 discountTimestampByPercentLength = discountTimestampByPercent.length;
 
-        // iterate over discounts of 1%, 2%, 3%, 4%, 5% ... discountTimestampByPercentLength
+        // iterate over 1-5% discounts. max discount = discountTimestampByPercent.length percent
         for (uint40 i; i < discountTimestampByPercentLength; i++) {
-            // 1e5 in discountHistory means a 1 % LST discount.
-            discountPercentile = (i + 1) * 1e5;
+            // 1e5 in discountHistory means a 1% LST discount.
+            discountPercent = (i + 1) * 1e5;
 
-            inViolationLastSnapshot = discountPercentile <= previousDiscount;
-            inViolationThisSnaphot = discountPercentile <= currentDiscount;
+            inViolationLastSnapshot = discountPercent <= previousDiscount; // these matter a lot for the unit tests
+            inViolationThisSnaphot = discountPercent <= currentDiscount;
 
             if (inViolationThisSnaphot && !inViolationLastSnapshot) {
                 discountTimestampByPercent[i] = uint40(block.timestamp);

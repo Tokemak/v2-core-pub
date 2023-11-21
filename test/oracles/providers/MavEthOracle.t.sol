@@ -121,22 +121,22 @@ contract MavEthOracleTest is Test {
         mavOracle.getSpotPrice(address(0), MAV_WSTETH_WETH_POOL, WETH_MAINNET);
     }
 
-    /// @dev WestEth -> Weth at block 18_579_296 is 1.145922898242024117
+    /// @dev WestEth -> Weth at block 18_579_296 is 1.146037501992223339
     function test_GetSpotPrice_WstEthWeth() external {
         mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
 
         (uint256 price,) = mavOracle.getSpotPrice(WSTETH_MAINNET, MAV_WSTETH_WETH_POOL, WETH_MAINNET);
 
-        assertEq(price, 1_145_922_898_242_024_117);
+        assertEq(price, 1_146_037_501_992_223_339);
     }
 
-    /// @dev Weth -> WestEth at block 18_579_296 is 0.872484144044867775
+    /// @dev Weth -> WestEth at block 18_579_296 is 0.872571401184986273
     function test_GetSpotPrice_WethWstEth() external {
         mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
 
         (uint256 price,) = mavOracle.getSpotPrice(WETH_MAINNET, MAV_WSTETH_WETH_POOL, WSTETH_MAINNET);
 
-        assertEq(price, 872_484_144_044_867_775);
+        assertEq(price, 872_571_401_184_986_273);
     }
 
     function test_GetSpotPrice_ReturnActualQuoteToken() external {
@@ -144,6 +144,7 @@ contract MavEthOracleTest is Test {
 
         (, address actualQuoteToken) = mavOracle.getSpotPrice(WETH_MAINNET, MAV_WSTETH_WETH_POOL, address(0));
 
-        assertEq(actualQuoteToken, WETH_MAINNET);
+        // Asking for Weth -> address(0), so should return wsEth.
+        assertEq(actualQuoteToken, WSTETH_MAINNET);
     }
 }

@@ -3,6 +3,8 @@
 
 pragma solidity 0.8.17;
 
+import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
 import { IPool } from "src/interfaces/external/maverick/IPool.sol";
 import { IPoolPositionDynamicSlim } from "src/interfaces/external/maverick/IPoolPositionDynamicSlim.sol";
 import { Errors } from "src/utils/Errors.sol";
@@ -102,18 +104,28 @@ contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPrice
         address
     ) public returns (uint256 price, address actualQuoteToken) {
         IPool pool = IPool(poolAddress);
-        address tokenA = address(pool.tokenA());
-        actualQuoteToken = address(pool.tokenB());
 
-        bool tokenAIn = token == tokenA;
-        if (!tokenAIn && token != actualQuoteToken) revert InvalidToken();
+        address tokenA = address(pool.tokenA());
+        address tokenB = address(pool.tokenB());
+
+        // Determine if the input token is tokenA
+        bool isTokenA = token == tokenA;
+
+        // Determine actualQuoteToken as the opposite of the input token
+        actualQuoteToken = isTokenA ? tokenB : tokenA;
+
+        // Validate if the input token is either tokenA or tokenB
+        if (!isTokenA && token != tokenB) revert InvalidToken();
 
         price = poolInformation.calculateSwap(
             pool,
-            uint128(1e18), // amount
-            tokenAIn,
+            uint128(10 ** IERC20Metadata(token).decimals()), // amount
+            isTokenA, // tokenAIn
             false, // exactOutput
             0 // sqrtPriceLimit
         );
+
+        // Maverick Fee is in 1e18.
+        price = (price * 1e18) / (1e18 - pool.fee());
     }
 }

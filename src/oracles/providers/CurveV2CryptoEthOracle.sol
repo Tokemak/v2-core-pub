@@ -202,6 +202,8 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         address pool,
         address
     ) public view returns (uint256 price, address actualQuoteToken) {
+        Errors.verifyNotZero(pool, "pool");
+
         address lpToken = curveResolver.getLpToken(pool);
         uint256 tokenIndex = 0;
         uint256 quoteTokenIndex = 0;

@@ -183,6 +183,11 @@ contract CurveV2CryptoEthOracleTest is Test {
         curveOracle.getPriceInEth(CRV_ETH_CURVE_V2_LP);
     }
 
+    function testGetSpotPriceRevertIfPoolIsZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "pool"));
+        curveOracle.getSpotPrice(RETH_MAINNET, address(0), WETH9_ADDRESS);
+    }
+
     function testGetSpotPriceRethWeth() public {
         curveOracle.registerPool(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP, true);
 

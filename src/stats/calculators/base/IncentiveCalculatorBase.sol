@@ -139,7 +139,7 @@ abstract contract IncentiveCalculatorBase is
 
         // Determine if incentive credits earned should continue to be decayed
         if (decayState) {
-            uint256 totalAPR = _computeTotalAPR(rewarder);
+            uint256 totalAPR = _computeTotalAPR();
 
             // Apply additional decay if APR is within tolerance
             // slither-disable-next-line incorrect-equality
@@ -222,7 +222,7 @@ abstract contract IncentiveCalculatorBase is
         // Record a new snapshot of total APR across all rewarders
         // Also, triggers a new snapshot or finalize snapshot for total supply across all the rewarders
         // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
-        lastSnapshotTotalAPR = _computeTotalAPR(rewarder);
+        lastSnapshotTotalAPR = _computeTotalAPR();
         uint8 currentCredits = incentiveCredits;
         uint256 elapsedTime = block.timestamp - lastIncentiveTimestamp;
 
@@ -475,44 +475,47 @@ abstract contract IncentiveCalculatorBase is
         periodFinish = IBaseRewardPool(_rewarder).periodFinish();
     }
 
-    function _computeTotalAPR(IBaseRewardPool _rewarder) internal returns (uint256 apr) {
+    function _computeTotalAPR() internal returns (uint256 apr) {
         // Get reward pool metrics for the main rewarder and take a snapshot if necessary
         (uint256 rewardRate, uint256 totalSupply, uint256 periodFinish) = _getRewardPoolMetrics(address(rewarder));
         if (_shouldSnapshot(address(rewarder), rewardRate, periodFinish, totalSupply)) {
             _snapshot(address(rewarder), totalSupply, rewardRate);
         }
-        address rewardToken = address(_rewarder.rewardToken());
+        address lpToken = rewarder.stakingToken();
+        address rewardToken = address(rewarder.rewardToken());
 
         // Compute APR factors for the main rewarder if the period is still active
         // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
-        apr += _computeAPR(_rewarder, rewardToken, rewardRate, periodFinish);
+        apr += _computeAPR(address(rewarder), lpToken, rewardToken, rewardRate, periodFinish);
 
         // Compute APR factors for the platform rewarder if the period is still active
         // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
         rewardRate = getPlatformTokenMintAmount(platformToken, rewardRate);
-        apr += _computeAPR(_rewarder, rewardToken, rewardRate, periodFinish);
+        apr += _computeAPR(address(rewarder), lpToken, rewardToken, rewardRate, periodFinish);
 
         // Determine the number of extra rewarders and process each one
-        uint256 extraRewardsLength = _rewarder.extraRewardsLength();
+        uint256 extraRewardsLength = rewarder.extraRewardsLength();
         for (uint256 i = 0; i < extraRewardsLength; ++i) {
-            address extraRewarder = _rewarder.extraRewards(i);
+            address extraRewarder = rewarder.extraRewards(i);
             (rewardRate, totalSupply, periodFinish) = _getRewardPoolMetrics(extraRewarder);
 
             // Take a snapshot for the extra rewarder if necessary
             if (_shouldSnapshot(extraRewarder, rewardRate, periodFinish, totalSupply)) {
                 _snapshot(extraRewarder, totalSupply, rewardRate);
             }
+            lpToken = address(IBaseRewardPool(extraRewarder).rewardToken());
             rewardToken = resolveRewardToken(extraRewarder);
 
             // Accumulate APR data from each extra rewarder if the period is still active
             // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
-            apr += _computeAPR(IBaseRewardPool(extraRewarder), rewardToken, rewardRate, periodFinish);
+            apr += _computeAPR(extraRewarder, lpToken, rewardToken, rewardRate, periodFinish);
         }
         return apr;
     }
 
     function _computeAPR(
-        IBaseRewardPool _rewarder,
+        address _rewarder,
+        address lpToken,
         address rewardToken,
         uint256 rewardRate,
         uint256 periodFinish
@@ -520,12 +523,11 @@ abstract contract IncentiveCalculatorBase is
         // slither-disable-next-line timestamp
         if (block.timestamp > periodFinish) return 0;
 
-        address lpToken = _rewarder.stakingToken();
         uint256 lpPrice = _getPriceInEth(lpToken);
         uint256 price = _getIncentivePrice(rewardToken);
 
         uint256 numerator = rewardRate * Stats.SECONDS_IN_YEAR * price * 1e18;
-        uint256 denominator = safeTotalSupplies[address(_rewarder)] * lpPrice;
+        uint256 denominator = safeTotalSupplies[_rewarder] * lpPrice;
 
         return denominator == 0 ? 0 : numerator / denominator;
     }

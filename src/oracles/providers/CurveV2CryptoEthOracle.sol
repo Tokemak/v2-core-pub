@@ -16,9 +16,6 @@ import { ICryptoSwapPool } from "src/interfaces/external/curve/ICryptoSwapPool.s
 import { ICurveV2Swap } from "src/interfaces/external/curve/ICurveV2Swap.sol";
 
 contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, ISpotPriceOracle {
-    address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-
     ICurveResolver public immutable curveResolver;
     uint256 public constant FEE_PRECISION = 1e10;
 

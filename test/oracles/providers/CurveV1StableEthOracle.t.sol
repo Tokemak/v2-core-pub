@@ -18,6 +18,7 @@ import { ICurveV1StableSwap } from "src/interfaces/external/curve/ICurveV1Stable
 import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
 import { CurveV1StableEthOracle } from "src/oracles/providers/CurveV1StableEthOracle.sol";
+import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import {
     STETH_ETH_CURVE_POOL,
     CURVE_META_REGISTRY_MAINNET,
@@ -322,6 +323,8 @@ contract CurveV1StableEthOracleTests is Test {
         vm.mockCall(
             registry, abi.encodeWithSelector(ISystemRegistry.accessController.selector), abi.encode(accessControl)
         );
+
+        vm.mockCall(registry, abi.encodeWithSelector(ISystemRegistry.weth.selector), abi.encode(IWETH9(WETH9_ADDRESS)));
 
         return ISystemRegistry(registry);
     }

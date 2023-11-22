@@ -22,7 +22,8 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
     ICurveResolver public immutable curveResolver;
     uint256 public constant FEE_PRECISION = 1e10;
     address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
+    address public immutable WETH;
 
     struct PoolData {
         address pool;
@@ -53,6 +54,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         Errors.verifyNotZero(address(_curveResolver), "_curveResolver");
 
         curveResolver = _curveResolver;
+        WETH = address(_systemRegistry.weth());
     }
 
     /// @notice Register a Curve LP token to this oracle

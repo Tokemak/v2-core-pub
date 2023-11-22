@@ -179,6 +179,8 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         address pool,
         address requestedQuoteToken
     ) public view returns (uint256 price, address actualQuoteToken) {
+        Errors.verifyNotZero(pool, "pool");
+
         address lpToken = curveResolver.getLpToken(pool);
         address[] memory tokens = lpTokenToUnderlying[lpToken];
 

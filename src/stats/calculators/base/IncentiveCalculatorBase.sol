@@ -17,7 +17,7 @@ import { SecurityBase } from "src/security/SecurityBase.sol";
 abstract contract IncentiveCalculatorBase is SystemComponent, SecurityBase, Initializable, IDexLSTStats {
     IDexLSTStats public underlyerStats;
     IBaseRewardPool public rewarder;
-    IIncentivesPricingStats public pricingStats;
+    IIncentivesPricingStats public immutable pricingStats;
     address public platformToken; // like cvx
 
     /// @dev rewarder token address => uint256 safeTotalSupply
@@ -73,23 +73,18 @@ abstract contract IncentiveCalculatorBase is SystemComponent, SecurityBase, Init
     constructor(ISystemRegistry _systemRegistry)
         SystemComponent(_systemRegistry)
         SecurityBase(address(_systemRegistry.accessController()))
-    { }
+    {
+        pricingStats = _systemRegistry.incentivePricing();
+    }
 
-    function initialize(
-        address _rewarder,
-        address _underlyerStats,
-        address _pricingStats,
-        address _platformToken
-    ) external initializer {
+    function initialize(address _rewarder, address _underlyerStats, address _platformToken) external initializer {
         Errors.verifyNotZero(_rewarder, "_rewarder");
         Errors.verifyNotZero(_underlyerStats, "_underlyerStats");
-        Errors.verifyNotZero(_pricingStats, "_pricingStats");
         Errors.verifyNotZero(_platformToken, "_platformToken");
 
         // slither-disable-start missing-zero-check
         rewarder = IBaseRewardPool(_rewarder);
         underlyerStats = IDexLSTStats(_underlyerStats);
-        pricingStats = IIncentivesPricingStats(_pricingStats);
         platformToken = _platformToken;
         // slither-disable-end missing-zero-check
 

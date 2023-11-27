@@ -8,11 +8,12 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
+import { SystemComponent } from "src/SystemComponent.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 
 /// @notice Calculates EWMA prices for incentives tokens
-contract IncentivePricingStats is IIncentivesPricingStats, SecurityBase {
+contract IncentivePricingStats is IIncentivesPricingStats, SystemComponent, SecurityBase {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @notice MIN_INTERVAL is the minimum amount of time (seconds) before a new snapshot is taken
@@ -27,8 +28,6 @@ contract IncentivePricingStats is IIncentivesPricingStats, SecurityBase {
 
     /// @return SLOW_ALPHA the alpha for the slow updating filtered price
     uint256 public constant SLOW_ALPHA = 645e14; // 0.0645
-
-    ISystemRegistry public immutable systemRegistry;
 
     EnumerableSet.AddressSet private registeredTokens;
 
@@ -49,9 +48,10 @@ contract IncentivePricingStats is IIncentivesPricingStats, SecurityBase {
         _;
     }
 
-    constructor(ISystemRegistry _systemRegistry) SecurityBase(address(_systemRegistry.accessController())) {
-        systemRegistry = _systemRegistry;
-    }
+    constructor(ISystemRegistry _systemRegistry)
+        SystemComponent(_systemRegistry)
+        SecurityBase(address(_systemRegistry.accessController()))
+    { }
 
     /// @inheritdoc IIncentivesPricingStats
     function setRegisteredToken(address token) external onlyUpdater {

@@ -74,6 +74,9 @@ contract ConvexCalculatorTest is Test {
         vm.mockCall(
             systemRegistry, abi.encodeWithSelector(ISystemRegistry.accessController.selector), abi.encode(vm.addr(1000))
         );
+        vm.mockCall(
+            systemRegistry, abi.encodeWithSelector(ISystemRegistry.incentivePricing.selector), abi.encode(pricingStats)
+        );
 
         // mock all prices to be 1
         vm.mockCall(rootPriceOracle, abi.encodeWithSelector(IRootPriceOracle.getPriceInEth.selector), abi.encode(1));
@@ -99,7 +102,7 @@ contract ConvexCalculatorTest is Test {
         vm.mockCall(underlyerStats, abi.encodeWithSelector(IDexLSTStats.current.selector), abi.encode(data));
 
         calculator = new ConvexCalculator(ISystemRegistry(systemRegistry));
-        calculator.initialize(mainRewarder, underlyerStats, pricingStats, platformRewarder);
+        calculator.initialize(mainRewarder, underlyerStats, platformRewarder);
     }
 
     function mockRewardRate(address _rewarder, uint256 value) public {

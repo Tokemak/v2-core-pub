@@ -7,6 +7,7 @@ import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/ext
 import { IBaseAssetVault } from "./IBaseAssetVault.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 
 interface IDestinationVault is IBaseAssetVault, IERC20 {
     enum VaultShutdownStatus {
@@ -150,4 +151,12 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
 
     /// @notice Returns the reason for shutdown (or `Active` if not shutdown)
     function shutdownStatus() external view returns (VaultShutdownStatus);
+
+    /// @notice Stats contract for this vault
+    function getStats() external returns (IDexLSTStats);
+
+    /// @notice get the marketplace rewards
+    /// @return rewardTokens list of reward token addresses
+    /// @return rewardRates list of reward rates
+    function getMarketplaceRewards() external returns (uint256[] memory rewardTokens, uint256[] memory rewardRates);
 }

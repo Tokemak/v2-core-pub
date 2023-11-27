@@ -348,7 +348,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
                 revert RebalanceDestinationUnderlyerMismatch(params.destinationIn, params.tokenIn, baseAsset);
             }
         } else {
-            IDestinationVaultForStrategy inDest = IDestinationVaultForStrategy(params.destinationIn);
+            IDestinationVault inDest = IDestinationVault(params.destinationIn);
             if (params.tokenIn != inDest.underlying()) {
                 revert RebalanceDestinationUnderlyerMismatch(params.destinationIn, inDest.underlying(), params.tokenIn);
             }
@@ -362,7 +362,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
                 revert InsufficientAssets(params.tokenOut);
             }
         } else {
-            IDestinationVaultForStrategy outDest = IDestinationVaultForStrategy(params.destinationOut);
+            IDestinationVault outDest = IDestinationVault(params.destinationOut);
             if (params.tokenOut != outDest.underlying()) {
                 revert RebalanceDestinationUnderlyerMismatch(
                     params.destinationOut, outDest.underlying(), params.tokenOut
@@ -418,7 +418,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
 
         // Out Destination
-        IDestinationVaultForStrategy dest = IDestinationVaultForStrategy(params.destinationOut);
+        IDestinationVault dest = IDestinationVault(params.destinationOut);
         address[] memory lstTokens = dest.underlyingTokens();
         uint256 numLsts = lstTokens.length;
         for (uint256 i = 0; i < numLsts; ++i) {
@@ -433,7 +433,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         }
 
         // In Destination
-        dest = IDestinationVaultForStrategy(params.destinationIn);
+        dest = IDestinationVault(params.destinationIn);
         lstTokens = dest.underlyingTokens();
         numLsts = lstTokens.length;
         for (uint256 i = 0; i < numLsts; ++i) {
@@ -453,7 +453,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     // TODO: perhaps we should just have a set order to the checks to push expensive operations out
     // or have the solver tell us why we're moving back to idle
     function verifyRebalanceToIdle(IStrategy.RebalanceParams memory params, uint256 slippage) internal {
-        IDestinationVaultForStrategy outDest = IDestinationVaultForStrategy(params.destinationOut);
+        IDestinationVault outDest = IDestinationVault(params.destinationOut);
 
         // multiple scenarios can be active at a given time. We want to use the highest
         // slippage among the active scenarios.
@@ -494,7 +494,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             return true;
         }
 
-        IDestinationVaultForStrategy outDest = IDestinationVaultForStrategy(params.destinationOut);
+        IDestinationVault outDest = IDestinationVault(params.destinationOut);
 
         // TODO: revert if information is too old?
         LMPDebt.DestinationInfo memory destInfo = lmpVault.getDestinationInfo(params.destinationOut);
@@ -526,7 +526,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     }
 
     // TODO: it is confusing that it returns 100% for no trim
-    function getDestinationTrimAmount(IDestinationVaultForStrategy dest) internal returns (uint256) {
+    function getDestinationTrimAmount(IDestinationVault dest) internal returns (uint256) {
         uint256 discountThreshold = 3e5; // 3% 1e7 precision, discount required to consider trimming
         uint256 discountDaysThreshold = 7; // number of last 10 days that it was >= discountThreshold
         int256 exitDiscountThreshold = 5e16; // 5% 1e18 precision, discount required to completely exit
@@ -603,7 +603,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             return result;
         }
 
-        IDestinationVaultForStrategy dest = IDestinationVaultForStrategy(destAddress);
+        IDestinationVault dest = IDestinationVault(destAddress);
         IDexLSTStats.DexLSTStatsData memory stats = dest.getStats().current();
 
         ensureNotStaleData("DexStats", stats.lastSnapshotTimestamp);
@@ -737,7 +737,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             return 0;
         }
 
-        uint256 lpTokenDivisor = 10 ** IDestinationVaultForStrategy(destAddress).decimals();
+        uint256 lpTokenDivisor = 10 ** IDestinationVault(destAddress).decimals();
         uint256 totalSupplyInEth = 0;
         if (direction == RebalanceDirection.Out) {
             totalSupplyInEth = stats.safeTotalSupply.subSaturate(lpAmountToAddOrRemove) * lpPrice / lpTokenDivisor;
@@ -938,17 +938,6 @@ library SubSaturateMath {
         if (other >= self) return 0;
         return self - other;
     }
-}
-
-// TODO: move the updated interfaces below to the actual contracts
-interface IDestinationVaultForStrategy is IDestinationVault {
-    /// @notice Stats contract for this vault
-    function getStats() external returns (IDexLSTStats);
-
-    /// @notice get the marketplace rewards
-    /// @return rewardTokens list of reward token addresses
-    /// @return rewardRates list of reward rates
-    function getMarketplaceRewards() external returns (uint256[] memory rewardTokens, uint256[] memory rewardRates);
 }
 
 interface ILMPVaultForStrategy is ILMPVault {

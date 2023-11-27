@@ -3,12 +3,7 @@
 pragma solidity 0.8.17;
 
 import { Test } from "forge-std/Test.sol";
-import {
-    LMPStrategy,
-    ISystemRegistry,
-    ILMPVaultForStrategy,
-    IDestinationVaultForStrategy
-} from "src/strategy/LMPStrategy.sol";
+import { LMPStrategy, ISystemRegistry, ILMPVaultForStrategy } from "src/strategy/LMPStrategy.sol";
 import { LMPStrategyConfig } from "src/strategy/LMPStrategyConfig.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
@@ -728,7 +723,7 @@ contract LMPStrategyTest is Test {
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
 
-        uint256 trimAmount = defaultStrat._getDestinationTrimAmount(IDestinationVaultForStrategy(mockOutDest));
+        uint256 trimAmount = defaultStrat._getDestinationTrimAmount(IDestinationVault(mockOutDest));
         assertEq(trimAmount, 1e18);
     }
 
@@ -741,7 +736,7 @@ contract LMPStrategyTest is Test {
         dexStats.lstStatsData[1].discount = 3e16 - 1; // set just below the threshold so we shouldn't hit the trim
 
         setStatsCurrent(mockOutStats, dexStats);
-        uint256 trimAmount = defaultStrat._getDestinationTrimAmount(IDestinationVaultForStrategy(mockOutDest));
+        uint256 trimAmount = defaultStrat._getDestinationTrimAmount(IDestinationVault(mockOutDest));
         assertEq(trimAmount, 1e18);
     }
 
@@ -752,7 +747,7 @@ contract LMPStrategyTest is Test {
         dexStats.lstStatsData[1] = buildFullExitThresholdLst();
 
         setStatsCurrent(mockOutStats, dexStats);
-        uint256 trimAmount = defaultStrat._getDestinationTrimAmount(IDestinationVaultForStrategy(mockOutDest));
+        uint256 trimAmount = defaultStrat._getDestinationTrimAmount(IDestinationVault(mockOutDest));
         assertEq(trimAmount, 0);
     }
 
@@ -764,7 +759,7 @@ contract LMPStrategyTest is Test {
         dexStats.lstStatsData[1] = build10pctExitThresholdLst();
 
         setStatsCurrent(mockOutStats, dexStats);
-        uint256 trimAmount = defaultStrat._getDestinationTrimAmount(IDestinationVaultForStrategy(mockOutDest));
+        uint256 trimAmount = defaultStrat._getDestinationTrimAmount(IDestinationVault(mockOutDest));
         assertEq(trimAmount, 1e17);
     }
 
@@ -1796,7 +1791,7 @@ contract LMPStrategyTest is Test {
     }
 
     function setDestinationStats(address dest, address stats) private {
-        vm.mockCall(dest, abi.encodeWithSelector(IDestinationVaultForStrategy.getStats.selector), abi.encode(stats));
+        vm.mockCall(dest, abi.encodeWithSelector(IDestinationVault.getStats.selector), abi.encode(stats));
     }
 
     function setLmpDestinationBalanceOf(address dest, uint256 amount) private {
@@ -1893,7 +1888,7 @@ contract LMPStrategyHarness is LMPStrategy {
         verifyRebalanceToIdle(params, slippage);
     }
 
-    function _getDestinationTrimAmount(IDestinationVaultForStrategy dest) public returns (uint256) {
+    function _getDestinationTrimAmount(IDestinationVault dest) public returns (uint256) {
         return getDestinationTrimAmount(dest);
     }
 

@@ -19,6 +19,7 @@ import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
+import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 
 import { MainRewarder } from "src/rewarders/MainRewarder.sol";
 
@@ -378,5 +379,18 @@ contract TestDestinationVault is DestinationVault {
 
     function externalQueriedBalance() public pure override returns (uint256) {
         return 0;
+    }
+
+    function getStats() external pure override returns (IDexLSTStats) {
+        return IDexLSTStats(address(0));
+    }
+
+    function getMarketplaceRewards()
+        external
+        pure
+        override
+        returns (uint256[] memory rewardTokens, uint256[] memory rewardRates)
+    {
+        return (new uint256[](0), new uint256[](0));
     }
 }

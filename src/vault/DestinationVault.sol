@@ -16,6 +16,7 @@ import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.so
 import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 
 abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDestinationVault {
     using SafeERC20 for IERC20;
@@ -432,5 +433,21 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
         if (amount > 0) {
             IERC20(_baseAsset).safeTransfer(to, amount);
         }
+    }
+
+    /// @inheritdoc IDestinationVault
+    function getStats() external virtual returns (IDexLSTStats) {
+        // TODO Implement
+        return IDexLSTStats(address(0));
+    }
+
+    /// @inheritdoc IDestinationVault
+    function getMarketplaceRewards()
+        external
+        virtual
+        returns (uint256[] memory rewardTokens, uint256[] memory rewardRates)
+    {
+        // TODO Implement
+        return (new uint256[](0), new uint256[](0));
     }
 }

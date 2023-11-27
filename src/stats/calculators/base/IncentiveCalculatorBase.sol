@@ -17,7 +17,6 @@ import { SecurityBase } from "src/security/SecurityBase.sol";
 abstract contract IncentiveCalculatorBase is SystemComponent, SecurityBase, Initializable, IDexLSTStats {
     IDexLSTStats public underlyerStats;
     IBaseRewardPool public rewarder;
-    IIncentivesPricingStats public immutable pricingStats;
     address public platformToken; // like cvx
 
     /// @dev rewarder token address => uint256 safeTotalSupply
@@ -73,9 +72,7 @@ abstract contract IncentiveCalculatorBase is SystemComponent, SecurityBase, Init
     constructor(ISystemRegistry _systemRegistry)
         SystemComponent(_systemRegistry)
         SecurityBase(address(_systemRegistry.accessController()))
-    {
-        pricingStats = _systemRegistry.incentivePricing();
-    }
+    { }
 
     function initialize(address _rewarder, address _underlyerStats, address _platformToken) external initializer {
         Errors.verifyNotZero(_rewarder, "_rewarder");
@@ -423,6 +420,7 @@ abstract contract IncentiveCalculatorBase is SystemComponent, SecurityBase, Init
     }
 
     function _getIncentivePrice(address _token) internal view returns (uint256) {
+        IIncentivesPricingStats pricingStats = systemRegistry.incentivePricing();
         (uint256 fastPrice, uint256 slowPrice) = pricingStats.getPrice(_token, PRICE_STALE_CHECK);
         return Math.min(fastPrice, slowPrice);
     }

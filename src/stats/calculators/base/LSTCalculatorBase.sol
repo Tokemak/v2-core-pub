@@ -251,14 +251,12 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
     function _updateDiscountTimestampByPercent() private {
         uint256 discountHistoryLength = discountHistory.length;
-        uint40 previousDiscount =
-            discountHistory[(discountHistoryIndex + discountHistoryLength - 2) % discountHistoryLength];
-        uint40 currentDiscount =
-            discountHistory[(discountHistoryIndex + discountHistoryLength - 1) % discountHistoryLength];
+        uint40 previousDiscount = discountHistory[(discountHistoryIndex - 2) % discountHistoryLength];
+        uint40 currentDiscount = discountHistory[(discountHistoryIndex - 1) % discountHistoryLength];
 
         // for each percentile slot ask:
         // "was this not in violation last round and now in violation this round?"
-        // if yes, update discountTimestampByPercent with current timestamp
+        // if yes, overwrite that slot in discountTimestampByPercent with the current timestamp
         // if no, do nothing
         // TODO: There is gas optimization here with early stopping
 
@@ -274,7 +272,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
             // 1e5 in discountHistory means a 1% LST discount.
             discountPercent = (i + 1) * 1e5;
 
-            inViolationLastSnapshot = discountPercent <= previousDiscount; // these matter a lot for the unit tests
+            inViolationLastSnapshot = discountPercent <= previousDiscount;
             inViolationThisSnaphot = discountPercent <= currentDiscount;
 
             if (inViolationThisSnaphot && !inViolationLastSnapshot) {

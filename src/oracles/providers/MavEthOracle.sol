@@ -53,6 +53,7 @@ contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPrice
         emit MaxTotalBinWidthSet(_maxTotalBinWidth);
     }
 
+    /// @notice Gives ability to set PoolInformation contract to system owner
     function setPoolInformation(address _poolInformation) external onlyOwner {
         Errors.verifyNotZero(_poolInformation, "_poolInformation");
         poolInformation = IPoolInformation(_poolInformation);

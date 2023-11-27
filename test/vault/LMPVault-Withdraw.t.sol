@@ -121,6 +121,7 @@ contract LMPVaultMintingTests is Test {
     event Withdraw(
         address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
+    event SymbolAndDescSet(string symbol, string desc);
 
     uint256 private constant MAX_FEE_BPS = 10_000;
 
@@ -464,6 +465,41 @@ contract LMPVaultMintingTests is Test {
         if (_lmpVault.shutdownStatus() != ILMPVault.VaultShutdownStatus.Deprecated) {
             assert(false);
         }
+    }
+
+    function test_shutdown_SetSymbolAndDesc() public {
+        // verify "not shutdown" / "active" first
+        assertEq(_lmpVault.isShutdown(), false);
+        if (_lmpVault.shutdownStatus() != ILMPVault.VaultShutdownStatus.Active) {
+            assert(false);
+        }
+
+        // try to set symbol/desc when still active
+        vm.expectRevert(
+            abi.encodeWithSelector(ILMPVault.InvalidShutdownStatus.selector, ILMPVault.VaultShutdownStatus.Active)
+        );
+        _lmpVault.setSymbolAndDescAfterShutdown("x", "y");
+
+        // do proper vault shutdown
+        vm.expectEmit(true, true, true, true);
+        emit Shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        _lmpVault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        assertEq(_lmpVault.isShutdown(), true);
+
+        // try to set symbol/desc with invalid data
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "newSymbol"));
+        _lmpVault.setSymbolAndDescAfterShutdown("", "y");
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "newDesc"));
+        _lmpVault.setSymbolAndDescAfterShutdown("x", "");
+
+        // set symbol/desc properly
+        vm.expectEmit(true, true, true, true);
+        emit SymbolAndDescSet("x", "y");
+        _lmpVault.setSymbolAndDescAfterShutdown("x", "y");
+
+        // @codenutt due to the getters, we get the combined values below. Is this desired?
+        assertEq(_lmpVault.symbol(), "x");
+        assertEq(_lmpVault.name(), "y");
     }
 
     function test_shutdown_OnlyCallableByOwner() public {

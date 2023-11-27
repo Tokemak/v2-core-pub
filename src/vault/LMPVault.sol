@@ -155,6 +155,7 @@ contract LMPVault is
     event NewTotalAssetsHighWatermark(uint256 assets, uint256 timestamp);
     event TotalSupplyLimitSet(uint256 limit);
     event PerWalletLimitSet(uint256 limit);
+    event SymbolAndDescSet(string symbol, string desc);
 
     struct ExtraData {
         address lmpStrategyAddress;
@@ -201,8 +202,8 @@ contract LMPVault is
         _baseAsset = IERC20(_vaultAsset);
         _baseAssetDecimals = IERC20(_vaultAsset).decimals();
 
-        _symbol = ERC20(_vaultAsset).symbol();
-        _desc = ERC20(_vaultAsset).name();
+        _symbol = string(abi.encodePacked("lmp", ERC20(_vaultAsset).symbol()));
+        _desc = string(abi.encodePacked(ERC20(_vaultAsset).name(), " Pool Token"));
 
         _disableInitializers();
     }
@@ -227,8 +228,8 @@ contract LMPVault is
 
         factory = msg.sender;
 
-        _symbol = symbolSuffix;
-        _desc = descPrefix;
+        _symbol = string(abi.encodePacked("lmp", symbolSuffix));
+        _desc = string(abi.encodePacked(descPrefix, " Pool Token"));
 
         ExtraData memory decodedInitData = abi.decode(extraData, (ExtraData));
         Errors.verifyNotZero(decodedInitData.lmpStrategyAddress, "lmpStrategyAddress");
@@ -239,7 +240,7 @@ contract LMPVault is
      * @dev Returns the name of the token.
      */
     function name() public view virtual override(ERC20, IERC20) returns (string memory) {
-        return string(abi.encodePacked(_desc, " Pool Token"));
+        return _desc;
     }
 
     /**
@@ -247,7 +248,7 @@ contract LMPVault is
      * name.
      */
     function symbol() public view virtual override(ERC20, IERC20) returns (string memory) {
-        return string(abi.encodePacked("lmp", _symbol));
+        return _symbol;
     }
 
     /// @inheritdoc IERC20
@@ -1139,6 +1140,22 @@ contract LMPVault is
         perWalletLimit = newWalletLimit;
 
         emit PerWalletLimitSet(newWalletLimit);
+    }
+
+    /// @notice Allow the updating of symbol/desc for the vault (only AFTER shutdown)
+    function setSymbolAndDescAfterShutdown(string memory newSymbol, string memory newDesc) external onlyOwner {
+        Errors.verifyNotEmpty(newSymbol, "newSymbol");
+        Errors.verifyNotEmpty(newDesc, "newDesc");
+
+        // make sure the vault is no longer active
+        if (_shutdownStatus == VaultShutdownStatus.Active) {
+            revert InvalidShutdownStatus(_shutdownStatus);
+        }
+
+        emit SymbolAndDescSet(newSymbol, newDesc);
+
+        _symbol = newSymbol;
+        _desc = newDesc;
     }
 }
 

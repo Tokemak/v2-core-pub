@@ -124,17 +124,23 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     }
 
     /// @inheritdoc IDestinationVault
-    function balanceOfUnderlying() public view virtual override returns (uint256) {
-        return internalBalance() + externalBalance();
+    function balanceOfUnderlyingDebt() public view virtual override returns (uint256) {
+        return internalDebtBalance() + externalDebtBalance();
     }
 
     /// @inheritdoc IDestinationVault
-    function internalBalance() public view virtual override returns (uint256) {
+    function internalDebtBalance() public view virtual override returns (uint256);
+
+    /// @inheritdoc IDestinationVault
+    function externalDebtBalance() public view virtual override returns (uint256);
+
+    /// @inheritdoc IDestinationVault
+    function internalQueriedBalance() external view virtual override returns (uint256) {
         return IERC20(_underlying).balanceOf(address(this));
     }
 
     /// @inheritdoc IDestinationVault
-    function externalBalance() public view virtual override returns (uint256);
+    function externalQueriedBalance() external view virtual override returns (uint256);
 
     /// @inheritdoc IDestinationVault
     function rewarder() external view virtual override returns (address) {
@@ -148,7 +154,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
 
     /// @inheritdoc IDestinationVault
     function debtValue() public virtual override returns (uint256 value) {
-        value = _debtValue(balanceOfUnderlying());
+        value = _debtValue(balanceOfUnderlyingDebt());
     }
 
     /// @inheritdoc IDestinationVault

@@ -3985,11 +3985,19 @@ contract TestDestinationVault is DestinationVault {
 
     function _onDeposit(uint256 amount) internal virtual override { }
 
-    function balanceOfUnderlying() public view override returns (uint256) {
+    function balanceOfUnderlyingDebt() public view override returns (uint256) {
         return TestERC20(_underlying).balanceOf(address(this));
     }
 
-    function externalBalance() public pure override returns (uint256) {
+    function externalDebtBalance() public pure override returns (uint256) {
+        return 0;
+    }
+
+    function internalDebtBalance() public pure override returns (uint256) {
+        return 0;
+    }
+
+    function externalQueriedBalance() external pure override returns (uint256) {
         return 0;
     }
 

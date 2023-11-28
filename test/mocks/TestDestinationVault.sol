@@ -87,7 +87,7 @@ contract TestDestinationVault is DestinationVault {
 
     function _onDeposit(uint256 amount) internal virtual override { }
 
-    function balanceOfUnderlying() public pure override returns (uint256) {
+    function balanceOfUnderlyingDebt() public pure override returns (uint256) {
         return 0;
     }
 
@@ -95,7 +95,15 @@ contract TestDestinationVault is DestinationVault {
 
     function reset() external { }
 
-    function externalBalance() public pure override returns (uint256) {
+    function externalDebtBalance() public pure override returns (uint256) {
+        return 0;
+    }
+
+    function internalDebtBalance() public pure override returns (uint256) {
+        return 0;
+    }
+
+    function externalQueriedBalance() external pure override returns (uint256) {
         return 0;
     }
 }

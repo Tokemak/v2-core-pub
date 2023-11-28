@@ -7,6 +7,8 @@ pragma solidity >=0.8.17;
 // solhint-disable max-line-length
 // solhint-disable state-visibility
 // solhint-disable const-name-snakecase
+// solhint-disable avoid-low-level-calls
+// solhint-disable const-name-snakecase
 
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.sol";
@@ -53,6 +55,8 @@ import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
 
 contract CurveConvexDestinationVaultTests is Test {
     address private constant LP_TOKEN_WHALE = CURVE_STETH_ETH_WHALE; //~1712
+    address private constant CONVEX_STAKING = 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03; // Curve Eth / stEth
+    uint256 private constant CONVEX_POOL_ID = 25;
 
     uint256 private _mainnetFork;
 
@@ -78,7 +82,7 @@ contract CurveConvexDestinationVaultTests is Test {
 
     address[] internal additionalTrackedTokens;
 
-    address constant zero = address(0);
+    address public constant zero = address(0);
 
     function setUp() public virtual {
         additionalTrackedTokens = new address[](0);
@@ -145,8 +149,8 @@ contract CurveConvexDestinationVaultTests is Test {
 
         CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
             curvePool: STETH_ETH_CURVE_POOL,
-            convexStaking: 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03,
-            convexPoolId: 25,
+            convexStaking: CONVEX_STAKING,
+            convexPoolId: CONVEX_POOL_ID,
             baseAssetBurnTokenIndex: 0
         });
         bytes memory initParamBytes = abi.encode(initParams);
@@ -183,8 +187,8 @@ contract CurveConvexDestinationVaultTests is Test {
     function test_initializer_ConfiguresVault() public {
         CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
             curvePool: STETH_ETH_CURVE_POOL,
-            convexStaking: 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03,
-            convexPoolId: 25,
+            convexStaking: CONVEX_STAKING,
+            convexPoolId: CONVEX_POOL_ID,
             baseAssetBurnTokenIndex: 0
         });
         bytes memory initParamBytes = abi.encode(initParams);
@@ -215,14 +219,6 @@ contract CurveConvexDestinationVaultTests is Test {
         assertEq(IERC20(tokens[1]).symbol(), "stETH");
     }
 
-    function testDebtValueWithCurveBalance() public {
-        vm.prank(LP_TOKEN_WHALE);
-        _underlyer.transfer(address(_destVault), 100e18);
-
-        // We gave the lp token a value of 2 ETH
-        assertEq(_destVault.debtValue(), 200e18);
-    }
-
     function testDepositGoesToConvex() public {
         // Get some tokens to play with
         vm.prank(LP_TOKEN_WHALE);
@@ -236,28 +232,7 @@ contract CurveConvexDestinationVaultTests is Test {
         _destVault.depositUnderlying(100e18);
 
         // Ensure the funds went to Convex
-        assertEq(_destVault.externalBalance(), 100e18);
-    }
-
-    function testDebtValueWithCurveAndConvex() public {
-        // Get some tokens to play with
-        vm.prank(LP_TOKEN_WHALE);
-        _underlyer.transfer(address(this), 200e18);
-
-        // Give us deposit rights
-        _mockIsVault(address(this), true);
-
-        // Deposit
-        _underlyer.approve(address(_destVault), 100e18);
-        _destVault.depositUnderlying(100e18);
-
-        // Send some directly to contract to be Curve balance
-        _underlyer.transfer(address(_destVault), 100e18);
-
-        // We gave the lp token a value of 2 ETH
-        assertEq(_destVault.debtValue(), 400e18);
-        assertEq(_destVault.externalBalance(), 100e18);
-        assertEq(_destVault.internalBalance(), 100e18);
+        assertEq(_destVault.externalQueriedBalance(), 100e18);
     }
 
     function testCollectRewards() public {
@@ -321,7 +296,7 @@ contract CurveConvexDestinationVaultTests is Test {
         _destVault.depositUnderlying(100e18);
 
         // Ensure the funds went to Convex
-        assertEq(_destVault.externalBalance(), 100e18);
+        assertEq(_destVault.externalQueriedBalance(), 100e18);
 
         address receiver = vm.addr(555);
         uint256 received = _destVault.withdrawUnderlying(50e18, receiver);
@@ -372,6 +347,116 @@ contract CurveConvexDestinationVaultTests is Test {
 
         assertEq(received, 53_285_100_736_620_025_561);
         assertEq(beforeBalance, afterBalance);
+    }
+
+    //
+    // Below tests test functionality introduced in response to Sherlock 625.
+    // Link here: https://github.com/Tokemak/2023-06-sherlock-judging/blob/main/invalid/625.md
+    //
+    function test_ExternalDebtBalance_UpdatesProperly_DepositAndWithdrawal() external {
+        uint256 localDepositAmount = 1000;
+        uint256 localWithdrawalAmount = 600;
+
+        // Get some tokens to play with
+        vm.prank(LP_TOKEN_WHALE);
+        _underlyer.transfer(address(this), localDepositAmount);
+
+        // Allow this address to deposit.
+        _mockIsVault(address(this), true);
+
+        // Check balances before deposit.
+        assertEq(_destVault.externalDebtBalance(), 0);
+        assertEq(_destVault.internalDebtBalance(), 0);
+
+        // Approve and deposit.
+        _underlyer.approve(address(_destVault), localDepositAmount);
+        _destVault.depositUnderlying(localDepositAmount);
+
+        // Check balances after deposit.
+        assertEq(_destVault.internalDebtBalance(), 0);
+        assertEq(_destVault.externalDebtBalance(), localDepositAmount);
+
+        _destVault.withdrawUnderlying(localWithdrawalAmount, address(this));
+
+        // Check balances after withdrawing underlyer.
+        assertEq(_destVault.internalDebtBalance(), 0);
+        assertEq(_destVault.externalDebtBalance(), localDepositAmount - localWithdrawalAmount);
+    }
+
+    function test_InternalDebtBalance_CannotBeManipulated() external {
+        // Get some tokens to play with
+        vm.prank(LP_TOKEN_WHALE);
+        _underlyer.transfer(address(this), 1000);
+
+        // Transfer to DV directly.
+        _underlyer.transfer(address(_destVault), 1000);
+
+        // Make sure balance of underlyer is on DV.
+        assertEq(_underlyer.balanceOf(address(_destVault)), 1000);
+
+        // Check to make sure `internalDebtBalance()` not changed. Used to be queried with `balanceOf(_destVault)`.
+        assertEq(_destVault.internalDebtBalance(), 0);
+    }
+
+    function test_ExternalDebtBalance_CannotBeManipulated() external {
+        // Get some tokens to play with, transfer to dest vault because booster takes into account msg.sender.
+        vm.prank(LP_TOKEN_WHALE);
+        _underlyer.transfer(address(_destVault), 1000);
+
+        // Approve staking from dest vault address.
+        vm.startPrank(address(_destVault));
+        _underlyer.approve(CONVEX_BOOSTER, 1000);
+
+        // Low level call, no need for interface for test.
+        (, bytes memory payload) =
+            CONVEX_BOOSTER.call(abi.encodeWithSignature("deposit(uint256,uint256,bool)", CONVEX_POOL_ID, 1000, true));
+        vm.stopPrank();
+
+        // Check that booster deposit returns true.
+        assertEq(abi.decode(payload, (bool)), true);
+
+        // Use low level call to check balance on Convex staking contract.
+        (, payload) = CONVEX_STAKING.call(abi.encodeWithSignature("balanceOf(address)", address(_destVault)));
+        assertEq(abi.decode(payload, (uint256)), 1000);
+
+        // Make sure that DV not picking up external balances.
+        assertEq(_destVault.externalDebtBalance(), 0);
+    }
+
+    function test_InternalQueriedBalance_CapturesUnderlyerInVault() external {
+        // Transfer tokens to address.
+        vm.prank(LP_TOKEN_WHALE);
+        _underlyer.transfer(address(this), 1000);
+
+        // Transfer to DV directly.
+        _underlyer.transfer(address(_destVault), 1000);
+
+        assertEq(_destVault.internalQueriedBalance(), 1000);
+    }
+
+    function test_ExternalQueriedBalance_CapturesUnderlyerNotStakedByVault() external {
+        // Get some tokens to play with, transfer to dest vault because booster takes into account msg.sender.
+        vm.prank(LP_TOKEN_WHALE);
+        _underlyer.transfer(address(_destVault), 1000);
+
+        // Approve staking from dest vault address.
+        vm.startPrank(address(_destVault));
+        _underlyer.approve(CONVEX_BOOSTER, 1000);
+
+        // Low level call, no need for interface for test.
+        (, bytes memory payload) =
+            CONVEX_BOOSTER.call(abi.encodeWithSignature("deposit(uint256,uint256,bool)", CONVEX_POOL_ID, 1000, true));
+        vm.stopPrank();
+
+        // Check that booster deposit returns true.
+        assertEq(abi.decode(payload, (bool)), true);
+
+        // Use low level call to check balance on Convex staking contract.
+        (, payload) = CONVEX_STAKING.call(abi.encodeWithSignature("balanceOf(address)", address(_destVault)));
+        assertEq(abi.decode(payload, (uint256)), 1000);
+
+        // Make sure that DV not picking up external balances.
+        assertEq(_destVault.externalQueriedBalance(), 1000);
     }
 
     function _mockSystemBound(address registry, address addr) internal {

@@ -97,9 +97,21 @@ contract MaverickDestinationVault is DestinationVault {
         constituentTokens[1] = tokenB;
     }
 
+    /// @inheritdoc DestinationVault
+    /// @notice In this vault all underlyer should be staked externally, so internal debt should be 0.
+    function internalDebtBalance() public pure override returns (uint256) {
+        return 0;
+    }
+
+    /// @inheritdoc DestinationVault
+    /// @notice In this vault all underlyer should be staked, and mint is 1:1, so external debt is `totalSupply()`.
+    function externalDebtBalance() public view override returns (uint256) {
+        return totalSupply();
+    }
+
     /// @notice Get the balance of underlyer currently staked in Maverick Rewarder
     /// @return Balance of underlyer currently staked in Maverick Rewarder
-    function externalBalance() public view override returns (uint256) {
+    function externalQueriedBalance() public view override returns (uint256) {
         return maverickRewarder.balanceOf(address(this));
     }
 
@@ -125,11 +137,7 @@ contract MaverickDestinationVault is DestinationVault {
 
     /// @inheritdoc DestinationVault
     function _ensureLocalUnderlyingBalance(uint256 amount) internal virtual override {
-        // We should almost always have our balance of LP in the rewarder
-        uint256 localLpBalance = internalBalance();
-        if (amount > localLpBalance) {
-            MaverickStakingAdapter.unstakeLPs(maverickRewarder, amount - localLpBalance);
-        }
+        MaverickStakingAdapter.unstakeLPs(maverickRewarder, amount);
     }
 
     /// @inheritdoc DestinationVault

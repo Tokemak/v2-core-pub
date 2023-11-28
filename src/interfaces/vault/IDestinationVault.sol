@@ -30,14 +30,27 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @inheritdoc IBaseAssetVault
     function baseAsset() external view override returns (address);
 
-    /// @notice Balance of underlying asset that resides in the contract
-    function internalBalance() external view returns (uint256);
+    /// @notice Debt balance of underlying asset that is in contract.  This
+    ///     value includes only assets that are known as debt by the rest of the
+    ///     system (i.e. transferred in on rebalance), and does not include
+    ///     extraneous amounts of underlyer that may have ended up in this contract.
+    function internalDebtBalance() external view returns (uint256);
 
-    /// @notice Balance of underlying asset that has been staked externally
-    function externalBalance() external view returns (uint256);
+    /// @notice Debt balance of underlyering asset staked externally.  This value only
+    ///     includes assets known as debt to the rest of the system, and does not include
+    ///     any assets staked on behalf of the DV in external contracts.
+    function externalDebtBalance() external view returns (uint256);
 
-    /// @notice Balance of underlying asset wherever it may be staked
-    function balanceOfUnderlying() external view returns (uint256);
+    /// @notice Returns true value of _underlyer in DV.  Debt + tokens that may have
+    ///     been transferred into the contract outside of rebalance.
+    function internalQueriedBalance() external view returns (uint256);
+
+    /// @notice Returns true value of staked _underlyer in external contract.  This
+    ///     will include any _underlyer that has been staked on behalf of the DV.
+    function externalQueriedBalance() external view returns (uint256);
+
+    /// @notice Balance of underlying debt, sum of `externalDebtBalance()` and `internalDebtBalance()`.
+    function balanceOfUnderlyingDebt() external view returns (uint256);
 
     /// @notice Rewarder for this vault
     function rewarder() external view returns (address);

@@ -113,9 +113,21 @@ contract BalancerAuraDestinationVault is DestinationVault {
         }
     }
 
+    /// @inheritdoc DestinationVault
+    /// @notice In this vault all underlyer should be staked externally, so internal debt should be 0.
+    function internalDebtBalance() public pure override returns (uint256) {
+        return 0;
+    }
+
+    /// @inheritdoc DestinationVault
+    /// @notice In this vault all underlyer should be staked, and mint is 1:1, so external debt is `totalSupply()`.
+    function externalDebtBalance() public view override returns (uint256) {
+        return totalSupply();
+    }
+
     /// @notice Get the balance of underlyer currently staked in Aura
     /// @return Balance of underlyer currently staked in Aura
-    function externalBalance() public view override returns (uint256) {
+    function externalQueriedBalance() public view override returns (uint256) {
         return IERC20(auraStaking).balanceOf(address(this));
     }
 
@@ -164,13 +176,7 @@ contract BalancerAuraDestinationVault is DestinationVault {
 
     /// @inheritdoc DestinationVault
     function _ensureLocalUnderlyingBalance(uint256 amount) internal virtual override {
-        // We should almost always have our balance of LP tokens in Aura.
-        // The exception being a donation we've made.
-        // Withdraw from Aura back to this vault for use in a withdrawal
-        uint256 balancerLpBalance = internalBalance();
-        if (amount > balancerLpBalance) {
-            AuraStaking.withdrawStake(balancerPool, auraStaking, amount - balancerLpBalance);
-        }
+        AuraStaking.withdrawStake(balancerPool, auraStaking, amount);
     }
 
     /// @inheritdoc DestinationVault

@@ -42,6 +42,7 @@ import {
 import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
 import { MaverickDestinationVault } from "src/vault/MaverickDestinationVault.sol";
 import { BalancerV2Swap } from "src/swapper/adapters/BalancerV2Swap.sol";
+import { IReward } from "src/interfaces/external/maverick/IReward.sol";
 
 contract MaverickDestinationVaultTests is Test {
     uint256 private _mainnetFork;
@@ -196,13 +197,6 @@ contract MaverickDestinationVaultTests is Test {
         assertEq(IERC20(tokens[1]).symbol(), "WETH");
     }
 
-    function test_debtValue_TakesIntoAccountLocalTokenBalance() public {
-        deal(address(MAV_WSTETH_WETH_BOOSTED_POS), address(_destVault), 100e18);
-
-        // We gave the lp token a value of 2 ETH
-        assertEq(_destVault.debtValue(), 200e18);
-    }
-
     function test_deposit_IsStakedIntoRewarder() public {
         // Get some tokens to play with
         deal(address(MAV_WSTETH_WETH_BOOSTED_POS), address(this), 100e18);
@@ -214,28 +208,8 @@ contract MaverickDestinationVaultTests is Test {
         _underlyer.approve(address(_destVault), 100e18);
         _destVault.depositUnderlying(100e18);
 
-        // Ensure the funds went to Convex
-        assertEq(_destVault.externalBalance(), 100e18);
-    }
-
-    function test_debtValue_TakesIntoAccountLocalAndExternalTokenBalance() public {
-        // Get some tokens to play with
-        deal(address(MAV_WSTETH_WETH_BOOSTED_POS), address(this), 100e18);
-
-        // Give us deposit rights
-        _mockIsVault(address(this), true);
-
-        // Deposit
-        _underlyer.approve(address(_destVault), 500e18);
-        _destVault.depositUnderlying(50e18);
-
-        // Send some directly to contract to be Curve balance
-        _underlyer.transfer(address(_destVault), 50e18);
-
-        // We gave the lp token a value of 2 ETH
-        assertEq(_destVault.debtValue(), 200e18);
-        assertEq(_destVault.externalBalance(), 50e18);
-        assertEq(_destVault.internalBalance(), 50e18);
+        // Ensure the funds went to Mav
+        assertEq(_destVault.externalQueriedBalance(), 100e18);
     }
 
     function test_collectRewards_TransfersToCaller() public {
@@ -286,8 +260,8 @@ contract MaverickDestinationVaultTests is Test {
         _underlyer.approve(address(_destVault), 100e18);
         _destVault.depositUnderlying(100e18);
 
-        // Ensure the funds went to Convex
-        assertEq(_destVault.externalBalance(), 100e18);
+        // Ensure the funds went to Mav
+        assertEq(_destVault.externalQueriedBalance(), 100e18);
 
         address receiver = vm.addr(555);
         uint256 received = _destVault.withdrawUnderlying(50e18, receiver);
@@ -336,6 +310,97 @@ contract MaverickDestinationVaultTests is Test {
 
         assertEq(received, 637_692_400_777_456_012);
         assertEq(beforeBalance, afterBalance);
+    }
+
+    //
+    // Below tests test functionality introduced in response to Sherlock 625.
+    // Link here: https://github.com/Tokemak/2023-06-sherlock-judging/blob/main/invalid/625.md
+    //
+    function test_ExternalDebtBalance_UpdatesProperly_DepositAndWithdrawal() external {
+        uint256 localDepositAmount = 1000;
+        uint256 localWithdrawalAmount = 600;
+
+        // Deal this address some tokens.
+        deal(address(MAV_WSTETH_WETH_BOOSTED_POS), address(this), localDepositAmount);
+
+        // Allow this address to deposit.
+        _mockIsVault(address(this), true);
+
+        // Check balances before deposit.
+        assertEq(_destVault.externalDebtBalance(), 0);
+        assertEq(_destVault.internalDebtBalance(), 0);
+
+        // Approve and deposit.
+        _underlyer.approve(address(_destVault), localDepositAmount);
+        _destVault.depositUnderlying(localDepositAmount);
+
+        // Check balances after deposit.
+        assertEq(_destVault.internalDebtBalance(), 0);
+        assertEq(_destVault.externalDebtBalance(), localDepositAmount);
+
+        _destVault.withdrawUnderlying(localWithdrawalAmount, address(this));
+
+        // Check balances after withdrawing underlyer.
+        assertEq(_destVault.internalDebtBalance(), 0);
+        assertEq(_destVault.externalDebtBalance(), localDepositAmount - localWithdrawalAmount);
+    }
+
+    function test_InternalDebtBalance_CannotBeManipulated() external {
+        // Deal this address some underlyer.
+        deal(address(MAV_WSTETH_WETH_BOOSTED_POS), address(this), 1000);
+
+        // Transfer to DV directly.
+        _underlyer.transfer(address(_destVault), 1000);
+
+        // Make sure balance of underlyer is on DV.
+        assertEq(_underlyer.balanceOf(address(_destVault)), 1000);
+
+        // Check to make sure `internalDebtBalance()` not changed. Used to be queried with `balanceOf(_destVault)`.
+        assertEq(_destVault.internalDebtBalance(), 0);
+    }
+
+    function test_ExternalDebtBalance_CannotBeManipulated() external {
+        // Deal this address some underlyer.
+        deal(address(MAV_WSTETH_WETH_BOOSTED_POS), address(this), 1000);
+
+        IReward rewarder = IReward(MAV_WSTETH_WETH_BOOSTED_POS_REWARDER);
+
+        // Stake on behalf of DV into Mav rewarder.
+        _underlyer.approve(address(rewarder), 1000);
+        rewarder.stake(1000, address(_destVault));
+
+        // Ensure that rewarder has balance for DV.
+        assertEq(rewarder.balanceOf(address(_destVault)), 1000);
+
+        // Make sure that DV not picking up external balances.
+        assertEq(_destVault.externalDebtBalance(), 0);
+    }
+
+    function test_InternalQueriedBalance_CapturesUnderlyerInVault() external {
+        // Deal token to this contract.
+        deal(address(MAV_WSTETH_WETH_BOOSTED_POS), address(this), 1000);
+
+        // Transfer to DV directly.
+        _underlyer.transfer(address(_destVault), 1000);
+
+        assertEq(_destVault.internalQueriedBalance(), 1000);
+    }
+
+    function test_ExternalQueriedBalance_CapturesUnderlyerNotStakedByVault() external {
+        // Deal this address some underlyer.
+        deal(address(MAV_WSTETH_WETH_BOOSTED_POS), address(this), 1000);
+
+        IReward rewarder = IReward(MAV_WSTETH_WETH_BOOSTED_POS_REWARDER);
+
+        // Stake on behalf of DV into Mav rewarder.
+        _underlyer.approve(address(rewarder), 1000);
+        rewarder.stake(1000, address(_destVault));
+
+        // Ensure that rewarder has balance for DV.
+        assertEq(rewarder.balanceOf(address(_destVault)), 1000);
+
+        // Make sure that DV not picking up external balances.  Used to query rewarder.
+        assertEq(_destVault.externalQueriedBalance(), 1000);
     }
 
     function _mockSystemBound(address registry, address addr) internal {

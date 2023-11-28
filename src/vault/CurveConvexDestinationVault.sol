@@ -159,9 +159,21 @@ contract CurveConvexDestinationVault is DestinationVault {
         curveLpToken = lpToken;
     }
 
+    /// @inheritdoc DestinationVault
+    /// @notice In this vault all underlyer should be staked externally, so internal debt should be 0.
+    function internalDebtBalance() public pure override returns (uint256) {
+        return 0;
+    }
+
+    /// @inheritdoc DestinationVault
+    /// @notice In this vault all underlyer should be staked, and mint is 1:1, so external debt is `totalSupply()`.
+    function externalDebtBalance() public view override returns (uint256) {
+        return totalSupply();
+    }
+
     /// @notice Get the balance of underlyer currently staked in Convex
     /// @return Balance of underlyer currently staked in Convex
-    function externalBalance() public view override returns (uint256) {
+    function externalQueriedBalance() public view override returns (uint256) {
         return IBaseRewardPool(convexStaking).balanceOf(address(this));
     }
 
@@ -188,13 +200,7 @@ contract CurveConvexDestinationVault is DestinationVault {
 
     /// @inheritdoc DestinationVault
     function _ensureLocalUnderlyingBalance(uint256 amount) internal virtual override {
-        // We should almost always have our balance of LP tokens in Convex.
-        // The exception being a donation we've made.
-        // Withdraw from Convex back to this vault for use in a withdrawal
-        uint256 curveLpBalance = internalBalance();
-        if (amount > curveLpBalance) {
-            ConvexStaking.withdrawStake(_underlying, convexStaking, amount - curveLpBalance);
-        }
+        ConvexStaking.withdrawStake(_underlying, convexStaking, amount);
     }
 
     /// @inheritdoc DestinationVault

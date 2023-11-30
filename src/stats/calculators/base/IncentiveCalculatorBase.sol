@@ -8,13 +8,20 @@ import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.
 import { IBaseRewardPool } from "src/interfaces/external/convex/IBaseRewardPool.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { Stats } from "src/stats/Stats.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 
-abstract contract IncentiveCalculatorBase is SystemComponent, SecurityBase, Initializable, IDexLSTStats {
+abstract contract IncentiveCalculatorBase is
+    SystemComponent,
+    SecurityBase,
+    Initializable,
+    IDexLSTStats,
+    IStatsCalculator
+{
     IDexLSTStats public underlyerStats;
     IBaseRewardPool public rewarder;
     address public platformToken; // like cvx
@@ -58,12 +65,21 @@ abstract contract IncentiveCalculatorBase is SystemComponent, SecurityBase, Init
     /// @dev Cap on allowable credits in the system.
     uint8 public constant MAX_CREDITS = 48;
 
+    /// @dev The APR Id
+    bytes32 private _aprId;
+
     /// @dev Enum representing the snapshot status for a given rewarder.
     enum SnapshotStatus {
         noSnapshot, // Indicates that no snapshot has been taken yet for the rewarder.
         tooSoon, // Indicates that it's too soon to take another snapshot since the last one.
         shouldFinalize, // Indicates that the conditions are met for finalizing a snapshot.
         shouldRestart // Indicates that the conditions are met for restarting a snapshot.
+    }
+
+    struct InitData {
+        address rewarder;
+        address underlyerStats;
+        address platformToken;
     }
 
     // Custom error for handling unexpected snapshot statuses
@@ -74,21 +90,36 @@ abstract contract IncentiveCalculatorBase is SystemComponent, SecurityBase, Init
         SecurityBase(address(_systemRegistry.accessController()))
     { }
 
-    function initialize(address _rewarder, address _underlyerStats, address _platformToken) external initializer {
-        Errors.verifyNotZero(_rewarder, "_rewarder");
-        Errors.verifyNotZero(_underlyerStats, "_underlyerStats");
-        Errors.verifyNotZero(_platformToken, "_platformToken");
+    /// @inheritdoc IStatsCalculator
+    function initialize(bytes32[] calldata, bytes calldata initData) external override initializer {
+        InitData memory decodedInitData = abi.decode(initData, (InitData));
+
+        Errors.verifyNotZero(decodedInitData.rewarder, "rewarder");
+        Errors.verifyNotZero(decodedInitData.underlyerStats, "underlyerStats");
+        Errors.verifyNotZero(decodedInitData.platformToken, "platformToken");
 
         // slither-disable-start missing-zero-check
-        rewarder = IBaseRewardPool(_rewarder);
-        underlyerStats = IDexLSTStats(_underlyerStats);
-        platformToken = _platformToken;
+        rewarder = IBaseRewardPool(decodedInitData.rewarder);
+        underlyerStats = IDexLSTStats(decodedInitData.underlyerStats);
+        platformToken = decodedInitData.platformToken;
         // slither-disable-end missing-zero-check
 
         lastIncentiveTimestamp = block.timestamp;
         decayInitTimestamp = block.timestamp;
 
         decayState = false;
+
+        _aprId = keccak256(abi.encode("incentive", platformToken));
+    }
+
+    /// @inheritdoc IStatsCalculator
+    function getAddressId() external view returns (address) {
+        return platformToken;
+    }
+
+    /// @inheritdoc IStatsCalculator
+    function getAprId() external view returns (bytes32) {
+        return _aprId;
     }
 
     /// @inheritdoc IDexLSTStats

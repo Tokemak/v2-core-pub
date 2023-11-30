@@ -9,6 +9,7 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { Stats } from "src/stats/Stats.sol";
 import { AuraCalculator } from "src/stats/calculators/AuraCalculator.sol";
+import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { IBaseRewardPool } from "src/interfaces/external/convex/IBaseRewardPool.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -107,7 +108,16 @@ contract AuraCalculatorTest is Test {
         vm.mockCall(underlyerStats, abi.encodeWithSelector(IDexLSTStats.current.selector), abi.encode(data));
 
         calculator = new AuraCalculator(ISystemRegistry(systemRegistry), booster);
-        calculator.initialize(mainRewarder, underlyerStats, platformRewarder);
+
+        bytes32[] memory dependantAprs = new bytes32[](0);
+        IncentiveCalculatorBase.InitData memory initData = IncentiveCalculatorBase.InitData({
+            rewarder: mainRewarder,
+            underlyerStats: underlyerStats,
+            platformToken: platformRewarder
+        });
+        bytes memory encodedInitData = abi.encode(initData);
+
+        calculator.initialize(dependantAprs, encodedInitData);
     }
 
     function mockRewardRate(address _rewarder, uint256 value) public {

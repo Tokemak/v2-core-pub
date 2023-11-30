@@ -15,6 +15,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
+import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 
 contract ConvexCalculatorTest is Test {
     address internal underlyerStats;
@@ -102,7 +103,16 @@ contract ConvexCalculatorTest is Test {
         vm.mockCall(underlyerStats, abi.encodeWithSelector(IDexLSTStats.current.selector), abi.encode(data));
 
         calculator = new ConvexCalculator(ISystemRegistry(systemRegistry));
-        calculator.initialize(mainRewarder, underlyerStats, platformRewarder);
+
+        bytes32[] memory dependantAprs = new bytes32[](0);
+        IncentiveCalculatorBase.InitData memory initData = IncentiveCalculatorBase.InitData({
+            rewarder: mainRewarder,
+            underlyerStats: underlyerStats,
+            platformToken: platformRewarder
+        });
+        bytes memory encodedInitData = abi.encode(initData);
+
+        calculator.initialize(dependantAprs, encodedInitData);
     }
 
     function mockRewardRate(address _rewarder, uint256 value) public {

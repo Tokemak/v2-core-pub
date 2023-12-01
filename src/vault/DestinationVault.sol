@@ -282,10 +282,12 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
             }
 
             // Perform a recursive call to this function. The intention is to reach the "else" block.
+            // solhint-disable avoid-low-level-calls
             // slither-disable-next-line missing-zero-check,low-level-calls
             (bool success, bytes memory returnData) = address(this).call(
                 abi.encodeWithSelector(this.estimateWithdrawBaseAsset.selector, shares, to, msg.sender)
             );
+            // solhint-enable avoid-low-level-calls
 
             // If the recursive call is successful, it means an unintended code path was taken.
             if (success) {
@@ -294,6 +296,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
 
             // Extract the error signature (first 4 bytes) from the revert reason.
             bytes4 errorSignature;
+            // solhint-disable no-inline-assembly
             assembly {
                 errorSignature := mload(add(returnData, 0x20))
             }
@@ -314,6 +317,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
                     revert(add(32, returnData), mload(returnData))
                 }
             }
+            // solhint-enable no-inline-assembly
         }
         // This branch is taken during the recursive call.
         else {

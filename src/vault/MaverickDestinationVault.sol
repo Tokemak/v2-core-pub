@@ -116,24 +116,6 @@ contract MaverickDestinationVault is DestinationVault {
     }
 
     /// @inheritdoc DestinationVault
-    /// @notice In this vault all underlyer should be staked externally, so internal debt should be 0.
-    function internalDebtBalance() public pure override returns (uint256) {
-        return 0;
-    }
-
-    /// @inheritdoc DestinationVault
-    /// @notice In this vault all underlyer should be staked, and mint is 1:1, so external debt is `totalSupply()`.
-    function externalDebtBalance() public view override returns (uint256) {
-        return totalSupply();
-    }
-
-    /// @notice Get the balance of underlyer currently staked in Maverick Rewarder
-    /// @return Balance of underlyer currently staked in Maverick Rewarder
-    function externalQueriedBalance() public view override returns (uint256) {
-        return maverickRewarder.balanceOf(address(this));
-    }
-
-    /// @inheritdoc DestinationVault
     function exchangeName() external pure override returns (string memory) {
         return EXCHANGE_NAME;
     }

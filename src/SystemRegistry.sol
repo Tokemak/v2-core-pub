@@ -3,6 +3,8 @@
 
 pragma solidity 0.8.17;
 
+// solhint-disable max-states-count
+
 import { Errors } from "src/utils/Errors.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { Ownable2Step } from "./access/Ownable2Step.sol";

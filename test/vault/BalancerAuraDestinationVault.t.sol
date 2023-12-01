@@ -541,7 +541,8 @@ contract BalancerAuraDestinationVaultTests is Test {
         _destVault.recoverUnderlying(recoveryAddress);
 
         // Ensure that balanceOf(address(this)) is 0 in Aura.
-        (bool success, bytes memory data) = AURA_STAKING.call(abi.encodeWithSignature("balanceOf(address)", address(this)));
+        (bool success, bytes memory data2) =
+            AURA_STAKING.call(abi.encodeWithSignature("balanceOf(address)", address(this)));
         assertEq(success, true);
         assertEq(abi.decode(data2, (uint256)), 0);
 
@@ -607,8 +608,10 @@ contract BalancerAuraDestinationVaultTests is Test {
         _underlyer.approve(AURA_STAKING, 1000);
 
         // Stake in Aura.
+        // solhint-disable max-line-length
         (, bytes memory data) =
             AURA_STAKING.call(abi.encodeWithSignature("deposit(uint256,address)", externalbalance, address(_destVault)));
+        // solhint-enable max-line-length
 
         // Make sure `deposit()` returning correct amount.
         assertEq(abi.decode(data, (uint256)), externalbalance);
@@ -618,7 +621,8 @@ contract BalancerAuraDestinationVaultTests is Test {
         _destVault.recoverUnderlying(recoveryAddress);
 
         // Ensure that balanceOf(address(this)) is 0 in Aura.
-        (bool success, bytes memory data) = AURA_STAKING.call(abi.encodeWithSignature("balanceOf(address)", address(this)));
+        (bool success, bytes memory data2) =
+            AURA_STAKING.call(abi.encodeWithSignature("balanceOf(address)", address(this)));
         assertEq(success, true);
         assertEq(abi.decode(data2, (uint256)), 0);
 

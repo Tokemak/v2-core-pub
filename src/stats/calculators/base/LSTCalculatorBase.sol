@@ -254,7 +254,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         uint40 previousDiscount = discountHistory[(discountHistoryIndex - 2) % discountHistoryLength];
         uint40 currentDiscount = discountHistory[(discountHistoryIndex - 1) % discountHistoryLength];
 
-        // for each percentile slot ask:
+        // for each percent slot ask:
         // "was this not in violation last round and now in violation this round?"
         // if yes, overwrite that slot in discountTimestampByPercent with the current timestamp
         // if no, do nothing

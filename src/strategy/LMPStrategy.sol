@@ -891,10 +891,10 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // move the destination decreased to the head and the destination increased to the tail of the withdrawal queue
         // don't add Idle ETH to either the head or the tail of the withdrawal queue
         if (params.destinationOut != address(lmpVault)) {
-            ILMPVaultForStrategy(lmpVault).addToWithdrawalQueueHead(params.destinationOut);
+            ILMPVault(lmpVault).addToWithdrawalQueueHead(params.destinationOut);
         }
         if (params.destinationIn != address(lmpVault)) {
-            ILMPVaultForStrategy(lmpVault).addToWithdrawalQueueTail(params.destinationIn);
+            ILMPVault(lmpVault).addToWithdrawalQueueTail(params.destinationIn);
         }
     }
 

@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import { Test } from "forge-std/Test.sol";
-import { LMPStrategy, ISystemRegistry, ILMPVaultForStrategy } from "src/strategy/LMPStrategy.sol";
+import { LMPStrategy, ISystemRegistry } from "src/strategy/LMPStrategy.sol";
 import { LMPStrategyConfig } from "src/strategy/LMPStrategyConfig.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
@@ -395,14 +395,10 @@ contract LMPStrategyTest is Test {
     function test_updateWithdrawalQueueAfterRebalance_betweenDestinations() public {
         vm.prank(mockLMPVault);
         vm.expectCall(
-            address(mockLMPVault),
-            abi.encodeCall(ILMPVaultForStrategy.addToWithdrawalQueueHead, defaultParams.destinationOut),
-            1
+            address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueHead, defaultParams.destinationOut), 1
         );
         vm.expectCall(
-            address(mockLMPVault),
-            abi.encodeCall(ILMPVaultForStrategy.addToWithdrawalQueueTail, defaultParams.destinationIn),
-            1
+            address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueTail, defaultParams.destinationIn), 1
         );
 
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
@@ -414,14 +410,10 @@ contract LMPStrategyTest is Test {
         vm.prank(mockLMPVault);
 
         vm.expectCall(
-            address(mockLMPVault),
-            abi.encodeCall(ILMPVaultForStrategy.addToWithdrawalQueueHead, defaultParams.destinationOut),
-            0
+            address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueHead, defaultParams.destinationOut), 0
         );
         vm.expectCall(
-            address(mockLMPVault),
-            abi.encodeCall(ILMPVaultForStrategy.addToWithdrawalQueueTail, defaultParams.destinationIn),
-            1
+            address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueTail, defaultParams.destinationIn), 1
         );
 
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
@@ -433,14 +425,10 @@ contract LMPStrategyTest is Test {
         vm.prank(mockLMPVault);
 
         vm.expectCall(
-            address(mockLMPVault),
-            abi.encodeCall(ILMPVaultForStrategy.addToWithdrawalQueueHead, defaultParams.destinationOut),
-            1
+            address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueHead, defaultParams.destinationOut), 1
         );
         vm.expectCall(
-            address(mockLMPVault),
-            abi.encodeCall(ILMPVaultForStrategy.addToWithdrawalQueueTail, defaultParams.destinationIn),
-            0
+            address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueTail, defaultParams.destinationIn), 0
         );
 
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);

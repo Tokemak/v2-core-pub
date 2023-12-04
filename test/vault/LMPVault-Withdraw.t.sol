@@ -3607,6 +3607,63 @@ contract LMPVaultMintingTests is Test {
         _lmpVault.withdraw(1000, address(this), address(this));
     }
 
+    function test_destinationVault_registered() public {
+        address dv = address(_createDV());
+
+        address[] memory dvs = new address[](1);
+        dvs[0] = dv;
+
+        assertFalse(_lmpVault.isDestinationRegistered(dv));
+        _lmpVault.addDestinations(dvs);
+        assertTrue(_lmpVault.isDestinationRegistered(dv));
+    }
+
+    function test_destinationVault_queuedForRemoval() public {
+        address dv = address(_createDV());
+        address[] memory dvs = new address[](1);
+        dvs[0] = dv;
+        _lmpVault.addDestinations(dvs);
+
+        // create some vault balance to trigger removal queue addition
+        vm.mockCall(dv, abi.encodeWithSelector(IERC20.balanceOf.selector, address(_lmpVault)), abi.encode(100));
+
+        assertTrue(IDestinationVault(dv).balanceOf(address(_lmpVault)) > 0, "dv balance should be > 0");
+
+        assertFalse(_lmpVault.isDestinationQueuedForRemoval(dv));
+        _lmpVault.removeDestinations(dvs);
+        assertTrue(_lmpVault.isDestinationQueuedForRemoval(dv));
+    }
+
+    function test_destinationVault_addToWithdrawalQueueHead() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotImplemented.selector));
+        _lmpVault.addToWithdrawalQueueHead(address(0));
+    }
+
+    function test_destinationVault_addToWithdrawalQueueTail() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotImplemented.selector));
+        _lmpVault.addToWithdrawalQueueTail(address(0));
+    }
+
+    function _createDV() internal returns (IDestinationVault) {
+        return IDestinationVault(
+            _destinationVaultFactory.create(
+                "template",
+                address(_asset),
+                address(_underlyerOne),
+                new address[](0),
+                keccak256("saltA"),
+                abi.encode("")
+            )
+        );
+    }
+
+    function _addDvToLMPVault(address dv) internal {
+        address[] memory dvs = new address[](1);
+        dvs[0] = dv;
+
+        _lmpVault.addDestinations(dvs);
+    }
+
     function _mockSystemBound(address registry, address addr) internal {
         vm.mockCall(addr, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(registry));
     }

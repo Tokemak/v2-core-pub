@@ -731,6 +731,16 @@ contract LMPVault is
     }
 
     /// @inheritdoc ILMPVault
+    function addToWithdrawalQueueHead(address destinationVault) external {
+        revert Errors.NotImplemented();
+    }
+
+    /// @inheritdoc ILMPVault
+    function addToWithdrawalQueueTail(address destinationVault) external {
+        revert Errors.NotImplemented();
+    }
+
+    /// @inheritdoc ILMPVault
     function getDestinationInfo(address destVault)
         external
         view

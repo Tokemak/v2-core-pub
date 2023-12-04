@@ -101,4 +101,10 @@ interface ILMPVault is IERC4626, IERC20Permit {
 
     /// @notice get if a destinationVault is queued for removal by the LMPVault
     function isDestinationQueuedForRemoval(address destination) external view returns (bool);
+
+    /// @notice add (or move to if it already exists) a destination to the head of the withdrawal queue
+    function addToWithdrawalQueueHead(address destinationVault) external;
+
+    /// @notice add (or move to if it already exists) a destination to the tail of the withdrawal queue
+    function addToWithdrawalQueueTail(address destinationVault) external;
 }

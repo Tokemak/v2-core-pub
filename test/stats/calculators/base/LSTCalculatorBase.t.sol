@@ -582,6 +582,53 @@ contract LSTCalculatorBaseTest is Test {
         );
     }
 
+    function testDiscountTimestampByPercentStartingDiscount() public {
+        mockIsRebasing(false);
+        bytes32[] memory dependantAprs = new bytes32[](0);
+        LSTCalculatorBase.InitData memory initData = LSTCalculatorBase.InitData({ lstTokenAddress: mockToken });
+        setDiscount(50e15);
+        setBlockAndTimestamp(0);
+        testCalculator.initialize(dependantAprs, abi.encode(initData));
+        stats = testCalculator.current();
+        assertEq(stats.discountHistory[0], 5e5); // the discount when the contract was initalized() was 5%
+        verifyDiscountTimestampByPercent(
+            [timestamps[0], timestamps[0], timestamps[0], timestamps[0], timestamps[0]],
+            stats.discountTimestampByPercent
+        );
+    }
+
+    function testDiscountTimestampByPercentWrapAroundDiscountHistory() public {
+        mockCalculateEthPerToken(1);
+        mockIsRebasing(false);
+        initCalculator(1e18);
+        setDiscount(10e15);
+        for (uint256 i = 1; i <= 10; i++) {
+            setBlockAndTimestamp(i);
+            testCalculator.snapshot();
+            stats = testCalculator.current();
+            verifyDiscountTimestampByPercent([timestamps[1], 0, 0, 0, 0], stats.discountTimestampByPercent);
+        }
+        setBlockAndTimestamp(11);
+        setDiscount(20e15);
+        testCalculator.snapshot();
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent([timestamps[1], timestamps[11], 0, 0, 0], stats.discountTimestampByPercent);
+
+        setBlockAndTimestamp(12);
+        setDiscount(0);
+        testCalculator.snapshot();
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent([timestamps[1], timestamps[11], 0, 0, 0], stats.discountTimestampByPercent);
+
+        setBlockAndTimestamp(13);
+        setDiscount(30e15);
+        testCalculator.snapshot();
+        stats = testCalculator.current();
+        verifyDiscountTimestampByPercent(
+            [timestamps[13], timestamps[13], timestamps[13], 0, 0], stats.discountTimestampByPercent
+        );
+    }
+
     // ######################################## Helper Methods ########################################
 
     function verifyDiscountTimestampByPercent(uint40[5] memory expected, uint40[5] memory actual) private {

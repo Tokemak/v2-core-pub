@@ -105,6 +105,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
         // slither-disable-next-line reentrancy-benign
         updateDiscountHistory(currentEthPerToken);
+        _updateDiscountTimestampByPercent();
     }
 
     /// @inheritdoc IStatsCalculator
@@ -251,8 +252,10 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
     function _updateDiscountTimestampByPercent() private {
         uint256 discountHistoryLength = discountHistory.length;
-        uint40 previousDiscount = discountHistory[(discountHistoryIndex - 2) % discountHistoryLength];
-        uint40 currentDiscount = discountHistory[(discountHistoryIndex - 1) % discountHistoryLength];
+        uint40 previousDiscount =
+            discountHistory[(discountHistoryIndex + discountHistoryLength - 2) % discountHistoryLength];
+        uint40 currentDiscount =
+            discountHistory[(discountHistoryIndex + discountHistoryLength - 1) % discountHistoryLength];
 
         // for each percent slot ask:
         // "was this not in violation last round and now in violation this round?"

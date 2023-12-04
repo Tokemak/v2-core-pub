@@ -1027,15 +1027,15 @@ contract LMPVault is
             uint256 gamma = g1 + g2;
 
             uint256 daysDiff = daysSinceLastFeeEarned - 60;
-            // slither-disable-start divide-before-multiply
             for (uint256 i = 0; i < daysDiff / 25; ++i) {
+                // slither-disable-next-line divide-before-multiply
                 workingHigh = workingHigh * (gamma ** 25 / 1e72) / 1000;
             }
             // slither-disable-next-line weak-prng
             for (uint256 i = 0; i < daysDiff % 25; ++i) {
+                // slither-disable-next-line divide-before-multiply
                 workingHigh = workingHigh * gamma / 1000;
             }
-            // slither-disable-end divide-before-multiply
         }
         return workingHigh;
     }

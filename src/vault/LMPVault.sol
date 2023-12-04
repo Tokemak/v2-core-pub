@@ -940,7 +940,6 @@ contract LMPVault is
             totalSupply = _collectAndUpdateManagementFees(totalSupply);
         }
         // slither-disable-end timestamp
-
         uint256 currentNavPerShare = ((idle + debt) * MAX_FEE_BPS) / totalSupply;
         uint256 effectiveNavPerShareHighMark = _calculateEffectiveNavPerShareHighMark(
             block.timestamp,
@@ -1041,7 +1040,7 @@ contract LMPVault is
         return workingHigh;
     }
 
-    /// @notice takes car of both fees and setting management fee when pending is available.
+    /// @notice takes care of both fees and setting management fee when pending is available.
     ///     Has ability to set management fee when no fee is taken.
     function _collectAndUpdateManagementFees(uint256 totalSupply) internal returns (uint256) {
         if (managementFeeBps > 0) {

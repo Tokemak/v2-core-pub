@@ -2326,18 +2326,19 @@ contract LMPVaultMintingTests is Test {
          * Update debt reporting, this will update Nav now that price of U1 has increased.
          *
          * Nav is 1.80 before performance fees are taken, up from 1.
-         * Profit is 888.
+         *
+         * Profit is 1468.
          *
          * We expect the management fee to be pulled first, 10% of total assets accounting for total supply not being
          *      manipulated.  Should be 112 shares minted to the `managementFeeSink` address.
          *
-         * We expect the performance fee to be 10% of the profit, 52 shares. This value should account for the new
-         *      totalSupply taking into  account the shares minted by a management fee claim, so a total supply of
-         *      1112 after the management fee is taken.
+         * We expect the performance fee to be 89 shares. This value should account for the new totalSupply taking
+         *      into account the shares minted by a management fee claim, so a total supply of 1112 after
+         *      the management fee is taken.
          *
-         * Total supply of shares after all operations are complete should be 1164.
+         * Total supply of shares after all operations are complete should be 1201.
          *
-         * Nav per share high mark should be 17_182 scaled up by MAX_FEE_BPS after all operations.
+         * Nav per share high mark should be 16652 after all operations.
          */
         address[] memory destinations = new address[](1);
         destinations[0] = address(_destVaultOne);
@@ -2345,9 +2346,9 @@ contract LMPVaultMintingTests is Test {
 
         // Check what vault did matches calculations.
         assertEq(_lmpVault.balanceOf(managementFeeSink), 112);
-        assertEq(_lmpVault.balanceOf(performanceFeeSink), 52);
-        assertEq(_lmpVault.totalSupply(), 1164);
-        assertEq(_lmpVault.navPerShareHighMark(), 17_182);
+        assertEq(_lmpVault.balanceOf(performanceFeeSink), 89);
+        assertEq(_lmpVault.totalSupply(), 1201);
+        assertEq(_lmpVault.navPerShareHighMark(), 16_652);
     }
 
     function _mockSystemBound(address registry, address addr) internal {

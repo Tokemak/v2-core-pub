@@ -86,6 +86,10 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         uint256 priorEthPerToken, uint256 priorTimestamp, uint256 currentEthPerToken, uint256 currentTimestamp
     );
 
+    event DiscountSnapshotTaken(
+        uint256 priorTimestamp, uint24 discount, uint256 currentTimestamp
+    );
+
     event SlashingEventRecorded(uint256 slashingCost, uint256 slashingTimestamp);
 
     constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
@@ -299,6 +303,9 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
         discountHistory[discountHistoryIndex] = trackedDiscount;
         discountHistoryIndex = (discountHistoryIndex + 1) % uint8(discountHistory.length);
+        emit DiscountSnapshotTaken(
+                lastDiscountSnapshotTimestamp, trackedDiscount, block.timestamp
+        );
         lastDiscountSnapshotTimestamp = block.timestamp;
     }
 

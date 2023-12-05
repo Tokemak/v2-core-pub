@@ -105,7 +105,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
         // slither-disable-next-line reentrancy-benign
         updateDiscountHistory(currentEthPerToken);
-        _updateDiscountTimestampByPercent();
+        updateDiscountTimestampByPercent();
     }
 
     /// @inheritdoc IStatsCalculator
@@ -150,7 +150,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         if (_timeForDiscountSnapshot()) {
             // slither-disable-next-line reentrancy-benign,reentrancy-events
             updateDiscountHistory(currentEthPerToken);
-            _updateDiscountTimestampByPercent();
+            updateDiscountTimestampByPercent();
         }
 
         if (_hasSlashingOccurred(currentEthPerToken)) {
@@ -250,7 +250,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         return 1e18 - int256(priceToBacking);
     }
 
-    function _updateDiscountTimestampByPercent() private {
+    function updateDiscountTimestampByPercent() private {
         uint256 discountHistoryLength = discountHistory.length;
         uint40 previousDiscount =
             discountHistory[(discountHistoryIndex + discountHistoryLength - 2) % discountHistoryLength];
@@ -271,7 +271,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         uint256 discountTimestampByPercentLength = discountTimestampByPercent.length;
 
         // iterate over 1-5% discounts. max discount = discountTimestampByPercent.length percent
-        for (uint40 i; i < discountTimestampByPercentLength; i++) {
+        for (uint40 i; i < uint40(discountTimestampByPercentLength); i++) {
             // 1e5 in discountHistory means a 1% LST discount.
             discountPercent = (i + 1) * 1e5;
 

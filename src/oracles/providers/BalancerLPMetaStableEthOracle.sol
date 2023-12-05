@@ -61,23 +61,10 @@ contract BalancerLPMetaStableEthOracle is BalancerBaseOracle, IPriceOracle {
         px1 = px1 * 1e18 / (address(rateProviders[1]) != address(0) ? rateProviders[1].getRate() : 1e18);
         // slither-disable-end divide-before-multiply
 
-        // Calculate the virtual price of the pool removing accrued admin fees
-        // that haven't been taken yet by Balancer
-        // slither-disable-start divide-before-multiply
-        uint256 virtualPrice = pool.getRate(); // e18
-        uint256 totalSupply = pool.totalSupply(); // e18
-        uint256 unscaledInv = (virtualPrice * totalSupply) / 1e18; // e18
-        uint256 lastInvariant = pool.getLastInvariant(); // e18
-        if (unscaledInv > lastInvariant) {
-            uint256 delta = unscaledInv - lastInvariant; // e18 - e18 -> e18
-            uint256 swapFee = balancerVault.getProtocolFeesCollector().getSwapFeePercentage(); //e18
-            uint256 protocolPortion = ((delta * swapFee) / 1e18); // e18
-            uint256 scaledInv = unscaledInv - protocolPortion; // e18 - e18 -> e18
-            virtualPrice = scaledInv * 1e18 / totalSupply; // e36 / e18 -> e18
-        }
+        // Calculate the virtual price of the pool
+        uint256 virtualPrice = BalancerUtilities._getMetaStableVirtualPrice(balancerVault, token);
 
         price = ((px0 > px1 ? px1 : px0) * virtualPrice) / 1e18;
-        // slither-disable-end divide-before-multiply
     }
     // slither-disable-end low-level-calls
     // slither-disable-end missing-zero-check

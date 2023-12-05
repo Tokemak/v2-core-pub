@@ -7,6 +7,7 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IBalancerPool } from "src/interfaces/external/balancer/IBalancerPool.sol";
+import { IBalancerMetaStablePool } from "src/interfaces/external/balancer/IBalancerMetaStablePool.sol";
 
 library BalancerUtilities {
     error BalancerVaultReentrancy();
@@ -62,9 +63,32 @@ library BalancerUtilities {
     function _getPoolTokens(
         IVault balancerVault,
         address balancerPool
-    ) internal view returns (IERC20[] memory assets) {
+    ) internal view returns (IERC20[] memory assets, uint256[] memory balances) {
         bytes32 poolId = IBalancerPool(balancerPool).getPoolId();
 
-        (assets,,) = balancerVault.getPoolTokens(poolId);
+        (assets, balances,) = balancerVault.getPoolTokens(poolId);
+    }
+
+    /**
+     * @notice Gets the virtual price of a Balancer metastable pool with an invariant adjustment
+     * @dev removes accrued admin fees that haven't been taken yet by Balancer
+     */
+    function _getMetaStableVirtualPrice(
+        IVault balancerVault,
+        address balancerPool
+    ) internal view returns (uint256 virtualPrice) {
+        IBalancerMetaStablePool pool = IBalancerMetaStablePool(balancerPool);
+        virtualPrice = pool.getRate(); // e18
+
+        uint256 totalSupply = pool.totalSupply(); // e18
+        uint256 unscaledInv = (virtualPrice * totalSupply) / 1e18; // e18
+        uint256 lastInvariant = pool.getLastInvariant(); // e18
+        if (unscaledInv > lastInvariant) {
+            uint256 delta = unscaledInv - lastInvariant; // e18 - e18 -> e18
+            uint256 swapFee = balancerVault.getProtocolFeesCollector().getSwapFeePercentage(); //e18
+            uint256 protocolPortion = ((delta * swapFee) / 1e18); // e18
+            uint256 scaledInv = unscaledInv - protocolPortion; // e18 - e18 -> e18
+            virtualPrice = scaledInv * 1e18 / totalSupply; // e36 / e18 -> e18
+        }
     }
 }

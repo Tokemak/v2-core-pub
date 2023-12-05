@@ -44,7 +44,7 @@ contract BalancerUtilitiesTest is Test {
         IVault balancerVault = IVault(BAL_VAULT);
         address balancerPool = WSETH_RETH_SFRXETH_BAL_POOL;
 
-        IERC20[] memory assets = BalancerUtilities._getPoolTokens(balancerVault, balancerPool);
+        (IERC20[] memory assets,) = BalancerUtilities._getPoolTokens(balancerVault, balancerPool);
 
         assertEq(assets.length, 4);
 

@@ -86,9 +86,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
         uint256 priorEthPerToken, uint256 priorTimestamp, uint256 currentEthPerToken, uint256 currentTimestamp
     );
 
-    event DiscountSnapshotTaken(
-        uint256 priorTimestamp, uint24 discount, uint256 currentTimestamp
-    );
+    event DiscountSnapshotTaken(uint256 priorTimestamp, uint24 discount, uint256 currentTimestamp);
 
     event SlashingEventRecorded(uint256 slashingCost, uint256 slashingTimestamp);
 
@@ -269,20 +267,20 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
         uint40 discountPercent;
         bool inViolationLastSnapshot;
-        bool inViolationThisSnaphot;
+        bool inViolationThisSnapshot;
 
         // cached for gas efficiency see slither: cache-array-length
-        uint256 discountTimestampByPercentLength = discountTimestampByPercent.length;
+        uint40 discountTimestampByPercentLength = uint40(discountTimestampByPercent.length);
 
         // iterate over 1-5% discounts. max discount = discountTimestampByPercent.length percent
-        for (uint40 i; i < uint40(discountTimestampByPercentLength); i++) {
+        for (uint40 i; i < discountTimestampByPercentLength; ++i) {
             // 1e5 in discountHistory means a 1% LST discount.
             discountPercent = (i + 1) * 1e5;
 
             inViolationLastSnapshot = discountPercent <= previousDiscount;
-            inViolationThisSnaphot = discountPercent <= currentDiscount;
+            inViolationThisSnapshot = discountPercent <= currentDiscount;
 
-            if (inViolationThisSnaphot && !inViolationLastSnapshot) {
+            if (inViolationThisSnapshot && !inViolationLastSnapshot) {
                 discountTimestampByPercent[i] = uint40(block.timestamp);
             }
         }
@@ -303,9 +301,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
         discountHistory[discountHistoryIndex] = trackedDiscount;
         discountHistoryIndex = (discountHistoryIndex + 1) % uint8(discountHistory.length);
-        emit DiscountSnapshotTaken(
-                lastDiscountSnapshotTimestamp, trackedDiscount, block.timestamp
-        );
+        emit DiscountSnapshotTaken(lastDiscountSnapshotTimestamp, trackedDiscount, block.timestamp);
         lastDiscountSnapshotTimestamp = block.timestamp;
     }
 

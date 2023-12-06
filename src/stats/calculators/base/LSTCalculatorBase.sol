@@ -287,7 +287,6 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
     }
 
     function updateDiscountHistory(uint256 backing) private {
-        // TODO: verify that the precision loss is worth it
         // reduce precision from 18 to 7 to reduce costs
         int256 discount = calculateDiscount(backing) / 1e11;
         uint24 trackedDiscount;
@@ -301,6 +300,8 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
         discountHistory[discountHistoryIndex] = trackedDiscount;
         discountHistoryIndex = (discountHistoryIndex + 1) % uint8(discountHistory.length);
+        // Log event for discount snapshot
+        // slither-disable-next-line reentrancy-events
         emit DiscountSnapshotTaken(lastDiscountSnapshotTimestamp, trackedDiscount, block.timestamp);
         lastDiscountSnapshotTimestamp = block.timestamp;
     }

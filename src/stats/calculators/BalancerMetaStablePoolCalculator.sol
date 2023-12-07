@@ -20,7 +20,6 @@ contract BalancerMetaStablePoolCalculator is BalancerStablePoolCalculatorBase {
     }
 
     function getPoolTokens() internal view override returns (IERC20[] memory tokens, uint256[] memory balances) {
-        (IERC20[] memory allTokens, uint256[] memory allBalances) =
-            BalancerUtilities._getPoolTokens(balancerVault, poolAddress);
+        return BalancerUtilities._getPoolTokens(balancerVault, poolAddress);
     }
 }

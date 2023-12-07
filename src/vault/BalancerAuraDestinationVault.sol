@@ -105,6 +105,7 @@ contract BalancerAuraDestinationVault is DestinationVault {
 
         // Tokens that are used by the proxied pool cannot be removed from the vault
         // via recover(). Make sure we track those tokens here.
+        // slither-disable-next-line unused-return
         (poolTokens,) = BalancerUtilities._getPoolTokens(balancerVault, balancerPool);
         if (poolTokens.length == 0) revert ArrayLengthMismatch();
 
@@ -157,6 +158,7 @@ contract BalancerAuraDestinationVault is DestinationVault {
     /// @inheritdoc DestinationVault
     function _onDeposit(uint256 amount) internal virtual override {
         // We should verify if pool tokens didn't change before staking to make sure we're staking for the same tokens
+        // slither-disable-next-line unused-return
         (IERC20[] memory queriedPoolTokens,) = BalancerUtilities._getPoolTokens(balancerVault, balancerPool);
 
         uint256 nTokens = poolTokens.length;

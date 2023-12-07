@@ -23,17 +23,17 @@ contract BalancerComposableStablePoolCalculator is BalancerStablePoolCalculatorB
         (IERC20[] memory allTokens, uint256[] memory allBalances) =
             BalancerUtilities._getPoolTokens(balancerVault, poolAddress);
 
-        uint256 numTokens = allTokens.length;
-        if (numTokens != allBalances.length) {
+        uint256 nTokens = allTokens.length;
+        if (nTokens != allBalances.length) {
             revert InvalidPool(poolAddress);
         }
 
-        tokens = new IERC20[](numTokens - 1);
-        balances = new uint256[](numTokens - 1);
+        tokens = new IERC20[](nTokens - 1);
+        balances = new uint256[](nTokens - 1);
 
         uint256 lastIndex = 0;
-        for (uint256 i = 0; i < numTokens; i++) {
-            if (lastIndex == numTokens - 1) {
+        for (uint256 i = 0; i < nTokens; i++) {
+            if (lastIndex == nTokens - 1) {
                 // reached the end of the array and no pool token found
                 return (allTokens, allBalances);
             }

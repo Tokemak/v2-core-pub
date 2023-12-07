@@ -30,5 +30,5 @@ contract LMPVaultMainRewarder is MainRewarder {
             _allowExtraReward
         )
     { }
-    // slither-disable-end
+    // slither-disable-end similar-names
 }

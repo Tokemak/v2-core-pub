@@ -495,7 +495,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     }
 
     function verifyCleanUpOperation(IStrategy.RebalanceParams memory params) internal view returns (bool) {
-        IDestinationVaultForStrategy outDest = IDestinationVaultForStrategy(params.destinationOut);
+        IDestinationVault outDest = IDestinationVault(params.destinationOut);
         // TODO: revert if information is too old?
         LMPDebt.DestinationInfo memory destInfo = lmpVault.getDestinationInfo(params.destinationOut);
         // shares of the destination currently held by the LMPVault

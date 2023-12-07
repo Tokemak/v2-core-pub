@@ -283,6 +283,6 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
 
     function getVirtualPrice() internal view virtual returns (uint256 virtualPrice);
 
-    /// @notice for metastable pools the pool token is filtered out
+    /// @notice for composable pools the pool token is filtered out
     function getPoolTokens() internal view virtual returns (IERC20[] memory tokens, uint256[] memory balances);
 }

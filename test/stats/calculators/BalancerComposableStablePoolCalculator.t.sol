@@ -38,17 +38,15 @@ contract BalancerComposableStablePoolCalculatorTest is Test {
         (IERC20[] memory assets, uint256[] memory balances) = calculator.verifyGetPoolTokens();
 
         // Verify assets
-        assertEq(assets.length, 4);
-        assertEq(address(assets[0]), WSETH_RETH_SFRXETH_BAL_POOL); // pool token
-        assertEq(address(assets[1]), WSTETH_MAINNET);
-        assertEq(address(assets[2]), SFRXETH_MAINNET);
-        assertEq(address(assets[3]), RETH_MAINNET);
+        assertEq(assets.length, 3);
+        assertEq(address(assets[0]), WSTETH_MAINNET);
+        assertEq(address(assets[1]), SFRXETH_MAINNET);
+        assertEq(address(assets[2]), RETH_MAINNET);
         // Verify balances
-        assertEq(balances.length, 4);
-        assertEq(balances[0], 2_596_148_429_266_377_841_425_127_555_671_541);
-        assertEq(balances[1], 380_949_500_227_632_620_189);
-        assertEq(balances[2], 634_919_600_886_552_074_720);
-        assertEq(balances[3], 166_972_211_148_502_452_054);
+        assertEq(balances.length, 3);
+        assertEq(balances[0], 380_949_500_227_632_620_189);
+        assertEq(balances[1], 634_919_600_886_552_074_720);
+        assertEq(balances[2], 166_972_211_148_502_452_054);
     }
 
     function testGetVirtualPrice() public {
@@ -87,11 +85,10 @@ contract BalancerComposableStablePoolCalculatorTest is Test {
         // Calculator setup
         calculator = new TestBalancerCalculator(systemRegistry, BAL_VAULT);
 
-        bytes32[] memory depAprIds = new bytes32[](4);
+        bytes32[] memory depAprIds = new bytes32[](3);
         depAprIds[0] = Stats.NOOP_APR_ID;
         depAprIds[1] = Stats.NOOP_APR_ID;
         depAprIds[2] = Stats.NOOP_APR_ID;
-        depAprIds[3] = Stats.NOOP_APR_ID;
 
         calculator.initialize(
             depAprIds,

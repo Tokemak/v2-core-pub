@@ -20,6 +20,29 @@ contract BalancerComposableStablePoolCalculator is BalancerStablePoolCalculatorB
     }
 
     function getPoolTokens() internal view override returns (IERC20[] memory tokens, uint256[] memory balances) {
-        return BalancerUtilities._getPoolTokens(balancerVault, poolAddress);
+        (IERC20[] memory allTokens, uint256[] memory allBalances) =
+            BalancerUtilities._getPoolTokens(balancerVault, poolAddress);
+
+        uint256 numTokens = allTokens.length;
+        if (numTokens != allBalances.length) {
+            revert InvalidPool(poolAddress);
+        }
+
+        tokens = new IERC20[](numTokens - 1);
+        balances = new uint256[](numTokens - 1);
+
+        uint256 lastIndex = 0;
+        for (uint256 i = 0; i < numTokens; i++) {
+            if (lastIndex == numTokens - 1) {
+                // reached the end of the array and no pool token found
+                return (allTokens, allBalances);
+            }
+            // copy tokens and balances skipping the pool token
+            if (address(allTokens[i]) != poolAddress) {
+                tokens[lastIndex] = allTokens[i];
+                balances[lastIndex] = allBalances[i];
+                lastIndex++;
+            }
+        }
     }
 }

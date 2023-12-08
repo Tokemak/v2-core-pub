@@ -24,25 +24,17 @@ contract BalancerComposableStablePoolCalculator is BalancerStablePoolCalculatorB
             BalancerUtilities._getPoolTokens(balancerVault, poolAddress);
 
         uint256 nTokens = allTokens.length;
-        if (nTokens != allBalances.length) {
-            revert InvalidPool(poolAddress);
-        }
-
         tokens = new IERC20[](nTokens - 1);
         balances = new uint256[](nTokens - 1);
 
         uint256 lastIndex = 0;
         for (uint256 i = 0; i < nTokens; i++) {
-            if (lastIndex == nTokens - 1) {
-                // reached the end of the array and no pool token found
-                return (allTokens, allBalances);
-            }
-            // copy tokens and balances skipping the pool token
-            if (address(allTokens[i]) != poolAddress) {
-                tokens[lastIndex] = allTokens[i];
-                balances[lastIndex] = allBalances[i];
-                lastIndex++;
-            }
+            // skip pool token
+            if (i == IBalancerComposableStablePool(poolAddress).getBptIndex()) continue;
+            // copy tokens and balances
+            tokens[lastIndex] = allTokens[i];
+            balances[lastIndex] = allBalances[i];
+            lastIndex++;
         }
     }
 }

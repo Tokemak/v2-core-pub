@@ -7,7 +7,7 @@ pragma solidity >=0.8.17;
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
-import { DestinationVault } from "src/vault/DestinationVault.sol";
+import { DestinationVault, IDestinationVault } from "src/vault/DestinationVault.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -398,6 +398,11 @@ contract MaverickDestinationVaultTests is Test {
 
         // Make sure that DV not picking up external balances.  Used to query rewarder.
         assertEq(_destVault.externalQueriedBalance(), 1000);
+    }
+
+    function test_DestinationVault_getPool() external {
+        assertEq(_destVault.getPool(), MAV_WSTETH_WETH_POOL);
+        assertEq(IDestinationVault(_destVault).getPool(), MAV_WSTETH_WETH_POOL);
     }
 
     function _mockSystemBound(address registry, address addr) internal {

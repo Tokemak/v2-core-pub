@@ -15,7 +15,7 @@ import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.so
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
-import { DestinationVault } from "src/vault/DestinationVault.sol";
+import { DestinationVault, IDestinationVault } from "src/vault/DestinationVault.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -457,6 +457,10 @@ contract CurveConvexDestinationVaultTests is Test {
 
         // Make sure that DV not picking up external balances.
         assertEq(_destVault.externalQueriedBalance(), 1000);
+    }
+
+    function test_DestinationVault_getPool() external {
+        assertEq(IDestinationVault(_destVault).getPool(), STETH_ETH_CURVE_POOL);
     }
 
     function _mockSystemBound(address registry, address addr) internal {

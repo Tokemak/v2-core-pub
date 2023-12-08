@@ -225,4 +225,9 @@ contract CurveConvexDestinationVault is DestinationVault {
             minAmounts, underlyerAmount, curvePool, curveLpToken, IWETH9(_systemRegistry.weth())
         );
     }
+
+    /// @inheritdoc DestinationVault
+    function getPool() external view override returns (address) {
+        return curvePool;
+    }
 }

@@ -1941,6 +1941,7 @@ contract LMPStrategyTest is Test {
         setDestinationStats(mockInDest, mockInStats);
         setLmpDestinationBalanceOf(mockInDest, 100e18);
         setTokenDecimals(mockInDest, 18);
+        setDestinationGetPool(mockInDest, address(0));
     }
 
     function setOutDestDefaultMocks() private {
@@ -1952,6 +1953,7 @@ contract LMPStrategyTest is Test {
         setDestinationStats(mockOutDest, mockOutStats);
         setLmpDestinationBalanceOf(mockOutDest, 100e18);
         setTokenDecimals(mockOutDest, 18);
+        setDestinationGetPool(mockOutDest, address(0));
     }
 
     function setDestinationUnderlying(address dest, address underlying) private {
@@ -1962,6 +1964,10 @@ contract LMPStrategyTest is Test {
         vm.mockCall(
             dest, abi.encodeWithSelector(IDestinationVault.underlyingTokens.selector), abi.encode(underlyingLSTs)
         );
+    }
+
+    function setDestinationGetPool(address dest, address poolAddress) private {
+        vm.mockCall(dest, abi.encodeWithSelector(IDestinationVault.getPool.selector), abi.encode(poolAddress));
     }
 
     function setDestinationIsShutdown(address dest, bool shutdown) private {

@@ -164,4 +164,8 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @return rewardTokens list of reward token addresses
     /// @return rewardRates list of reward rates
     function getMarketplaceRewards() external returns (uint256[] memory rewardTokens, uint256[] memory rewardRates);
+
+    /// @notice Get the address of the underlying pool the vault points to
+    /// @return poolAddress address of the underlying pool
+    function getPool() external view returns (address poolAddress);
 }

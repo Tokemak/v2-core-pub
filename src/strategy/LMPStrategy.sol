@@ -407,9 +407,10 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         IDestinationVault dest = IDestinationVault(params.destinationOut);
         address[] memory lstTokens = dest.underlyingTokens();
         uint256 numLsts = lstTokens.length;
+        address dvPoolAddress = dest.getPool();
         for (uint256 i = 0; i < numLsts; ++i) {
             uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
-            uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], params.tokenOut);
+            uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], dvPoolAddress);
             // For out destination, the pool tokens should not be lower than safe price by tolerance
             if (priceSafe > priceSpot) {
                 if (((priceSafe * 1.0e18 / priceSpot - 1.0e18) * 10_000) / 1.0e18 > tolerance) {
@@ -422,9 +423,10 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         dest = IDestinationVault(params.destinationIn);
         lstTokens = dest.underlyingTokens();
         numLsts = lstTokens.length;
+        dvPoolAddress = dest.getPool();
         for (uint256 i = 0; i < numLsts; ++i) {
             uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
-            uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], params.tokenIn);
+            uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], dvPoolAddress);
             // For in destination, the pool tokens should not be higher than safe price by tolerance
             if (priceSpot > priceSafe) {
                 if (((priceSpot * 1.0e18 / priceSafe - 1.0e18) * 10_000) / 1.0e18 > tolerance) {

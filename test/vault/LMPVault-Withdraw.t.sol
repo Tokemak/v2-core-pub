@@ -2622,4 +2622,8 @@ contract TestDestinationVault is DestinationVault {
     }
 
     function _collectRewards() internal virtual override returns (uint256[] memory amounts, address[] memory tokens) { }
+
+    function getPool() external pure override returns (address) {
+        return address(0);
+    }
 }

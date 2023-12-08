@@ -7,7 +7,7 @@ pragma solidity >=0.8.17;
 
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { Test } from "forge-std/Test.sol";
-import { DestinationVault } from "src/vault/DestinationVault.sol";
+import { DestinationVault, IDestinationVault } from "src/vault/DestinationVault.sol";
 import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -628,6 +628,10 @@ contract BalancerAuraDestinationVaultTests is Test {
 
         // Make sure underlyer made its way to recoveryAddress.
         assertEq(_underlyer.balanceOf(recoveryAddress), externalbalance + internalBalance);
+    }
+
+    function test_DestinationVault_getPool() external {
+        assertEq(IDestinationVault(_destVault).getPool(), WSETH_WETH_BAL_POOL);
     }
 
     function _mockSystemBound(address registry, address addr) internal {

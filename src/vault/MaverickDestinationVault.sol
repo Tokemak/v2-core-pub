@@ -166,4 +166,9 @@ contract MaverickDestinationVault is DestinationVault {
         amounts[1] = sellAmountB;
         //slither-disable-end similar-names
     }
+
+    /// @inheritdoc DestinationVault
+    function getPool() external view override returns (address) {
+        return address(maverickPool);
+    }
 }

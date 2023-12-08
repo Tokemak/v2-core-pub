@@ -64,8 +64,9 @@ contract DestinationVaultBaseTests is Test {
         underlyer = new TestERC20("DEF", "DEF");
         underlyer.setDecimals(6);
 
-        testVault = new TestDestinationVault(systemRegistry,
-        baseAsset, underlyer, mainRewarder, new address[](0), abi.encode(""));
+        testVault = new TestDestinationVault(
+            systemRegistry, baseAsset, underlyer, mainRewarder, new address[](0), abi.encode("")
+        );
 
         _rootPriceOracle = IRootPriceOracle(vm.addr(34_399));
         vm.label(address(_rootPriceOracle), "rootPriceOracle");
@@ -305,6 +306,10 @@ contract DestinationVaultBaseTests is Test {
         assertEq(underlyer.balanceOf(vm.addr(55)), 1000);
     }
 
+    function testGetPools() public {
+        assertEq(testVault.getPool(), address(0));
+    }
+
     function mockSystemBound(address addr, address systemRegistry_) internal {
         vm.mockCall(
             addr, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(systemRegistry_)
@@ -435,5 +440,9 @@ contract TestDestinationVault is DestinationVault {
         returns (uint256[] memory rewardTokens, uint256[] memory rewardRates)
     {
         return (new uint256[](0), new uint256[](0));
+    }
+
+    function getPool() external view override returns (address poolAddress) {
+        return address(0);
     }
 }

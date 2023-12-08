@@ -201,4 +201,9 @@ contract BalancerAuraDestinationVault is DestinationVault {
         amounts =
             BalancerBeethovenAdapter.removeLiquidity(balancerVault, balancerPool, tokens, minAmounts, underlyerAmount);
     }
+
+    /// @inheritdoc DestinationVault
+    function getPool() external view override returns (address) {
+        return balancerPool;
+    }
 }

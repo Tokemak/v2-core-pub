@@ -474,4 +474,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
         // TODO Implement
         return (new uint256[](0), new uint256[](0));
     }
+
+    /// @inheritdoc IDestinationVault
+    function getPool() external view virtual returns (address poolAddress);
 }

@@ -789,16 +789,34 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         for (uint256 i = 0; i < numLsts; ++i) {
             ILSTStats.LSTStatsData memory data = lstStatsData[i];
 
-            int256 scalingFactor = 1e18; // default scalingFactor is 1
+            uint256 scalingFactor = 1e18; // default scalingFactor is 1
 
             int256 discount = data.discount;
             if (discount > maxAllowedDiscount) {
                 discount = maxAllowedDiscount;
             }
 
-            // TODO: insert actual logic
+            // discount value that is negative indicates LST price premium
+            // scalingFactor = 1e18 for premiums and discounts that are small
+            uint40[5] memory discountTimestampByPercent = data.discountTimestampByPercent;
+            // 1e5 in discountHistory means a 1% LST discount.
+            if (discount > 1e5) {
+                // linear approximation for exponential function with half life of 30 days
+                uint256 halfLifeSec = 30 * 24 * 60 * 60;
+                uint256 len = data.discountTimestampByPercent.length;
 
-            priceReturns[i] = discount * scalingFactor / 1e18;
+                for (uint256 j = 1; j < len; ++j) {
+                    if (discount < int256((j + 1) * 1e5)) {
+                        // current timestamp should be strictly >= timestamp in discountTimestampByPercent
+                        uint256 timeSinceDiscountSec =
+                            uint256(uint40(block.timestamp) - discountTimestampByPercent[--j]);
+                        scalingFactor >>= (timeSinceDiscountSec / halfLifeSec);
+                        timeSinceDiscountSec %= halfLifeSec;
+                        scalingFactor -= scalingFactor * timeSinceDiscountSec / halfLifeSec / 2;
+                    }
+                }
+            }
+            priceReturns[i] = discount * int256(scalingFactor) / 1e18;
         }
 
         return priceReturns;

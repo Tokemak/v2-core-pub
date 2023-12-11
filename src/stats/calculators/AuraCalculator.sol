@@ -2,6 +2,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { AuraRewards } from "src/libs/AuraRewards.sol";
 import { IAuraStashToken } from "src/interfaces/external/aura/IAuraStashToken.sol";
@@ -25,7 +27,8 @@ contract AuraCalculator is IncentiveCalculatorBase {
 
     /// @dev For the Aura implementation every `rewardToken()` is a stash token
     function resolveRewardToken(address extraRewarder) public view override returns (address rewardToken) {
-        IAuraStashToken stashToken = IAuraStashToken(address(IBaseRewardPool(extraRewarder).rewardToken()));
+        IERC20 rewardTokenErc = IBaseRewardPool(extraRewarder).rewardToken();
+        IAuraStashToken stashToken = IAuraStashToken(address(rewardTokenErc));
         if (stashToken.isValid()) {
             rewardToken = stashToken.baseToken();
         }

@@ -9,6 +9,7 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { Stats } from "src/stats/Stats.sol";
 import { AuraCalculator } from "src/stats/calculators/AuraCalculator.sol";
+import { IAuraStashToken } from "src/interfaces/external/aura/IAuraStashToken.sol";
 import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { IBaseRewardPool } from "src/interfaces/external/convex/IBaseRewardPool.sol";
@@ -16,7 +17,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
-import { AURA_MAINNET, AURA_BOOSTER } from "test/utils/Addresses.sol";
+import { AURA_MAINNET, AURA_BOOSTER, LDO_MAINNET } from "test/utils/Addresses.sol";
 import { IBooster } from "src/interfaces/external/aura/IBooster.sol";
 
 contract AuraCalculatorTest is Test {
@@ -46,6 +47,8 @@ contract AuraCalculatorTest is Test {
     error InvalidScenario();
 
     function setUp() public {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 18_735_327);
+
         underlyerStats = vm.addr(1);
         pricingStats = vm.addr(2);
         systemRegistry = vm.addr(3);
@@ -477,5 +480,46 @@ contract Current is AuraCalculatorTest {
         _runScenario(rewardRates, totalSupply, rewardPerToken, time);
         res = calculator.current();
         assertTrue(res.stakingIncentiveStats.incentiveCredits == 0);
+    }
+}
+
+contract ResolveRewardToken is AuraCalculatorTest {
+    function test_ResolveValidRewardToken() public {
+        // Get a valid rewarder
+        IBaseRewardPool rewarder = IBaseRewardPool(0xdC38CCAc2008547275878F5D89B642DA27910739);
+        assert(rewarder.extraRewardsLength() > 0);
+
+        // Get the first extra rewarder
+        address extraRewarder = rewarder.extraRewards(0);
+        assertEq(extraRewarder, 0x4A2f954DC68619362F47322516AdE6129539A805);
+
+        // Check the stash token
+        IAuraStashToken stashToken = IAuraStashToken(address(IBaseRewardPool(extraRewarder).rewardToken()));
+        assertEq(address(stashToken), 0x5a5f4d5059a50CE6Ec55a2f67Fbc6c1C29e664bb);
+        assert(stashToken.isValid());
+
+        // Unwrap the reward token
+        address rewardToken = calculator.resolveRewardToken(extraRewarder);
+        assertEq(rewardToken, stashToken.baseToken());
+        assertEq(rewardToken, LDO_MAINNET);
+    }
+
+    function test_ResolveInvalidRewardToken_ReturnsZeroAddress() public {
+        // Get a valid rewarder
+        IBaseRewardPool rewarder = IBaseRewardPool(0xdC38CCAc2008547275878F5D89B642DA27910739);
+        assert(rewarder.extraRewardsLength() > 0);
+
+        // Get the first extra rewarder
+        address extraRewarder = rewarder.extraRewards(0);
+        assertEq(extraRewarder, 0x4A2f954DC68619362F47322516AdE6129539A805);
+
+        // Mock stash token to be invalid
+        IAuraStashToken stashToken = IAuraStashToken(address(IBaseRewardPool(extraRewarder).rewardToken()));
+        assertEq(address(stashToken), 0x5a5f4d5059a50CE6Ec55a2f67Fbc6c1C29e664bb);
+        vm.mockCall(address(stashToken), abi.encodeWithSelector(IAuraStashToken.isValid.selector), abi.encode(false));
+
+        // Reward token returned should be zero
+        address rewardToken = calculator.resolveRewardToken(extraRewarder);
+        assertEq(rewardToken, address(0));
     }
 }

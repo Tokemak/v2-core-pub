@@ -59,6 +59,13 @@ contract LMPVaultFactoryTest is Test {
         _accessController.grantRole(Roles.REGISTRY_UPDATER, address(_lmpVaultFactory));
 
         lmpVaultInitData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: vm.addr(10_001) }));
+
+        // Mock LMPVaultRouter call.
+        vm.mockCall(
+            address(_systemRegistry),
+            abi.encodeWithSelector(SystemRegistry.lmpVaultRouter.selector),
+            abi.encode(makeAddr("LMP_VAULT_ROUTER"))
+        );
     }
 
     function test_constructor_RewardInfoSet() public {

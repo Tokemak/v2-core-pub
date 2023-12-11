@@ -374,7 +374,7 @@ contract LMPVault is
     /// @param _rewarder Address of new rewarder.
     function setRewarder(address _rewarder) external {
         // Factory needs to be able to call for vault creation.
-        if (msg.sender != factory || !_hasRole(Roles.LMP_REWARD_MANAGER_ROLE, msg.sender)) {
+        if (msg.sender != factory && !_hasRole(Roles.LMP_REWARD_MANAGER_ROLE, msg.sender)) {
             revert Errors.AccessDenied();
         }
 

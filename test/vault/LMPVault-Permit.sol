@@ -57,6 +57,13 @@ contract PermitTests is Test {
 
         bytes memory initData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: vm.addr(10_001) }));
 
+        // Mock LMPVaultRouter call for LMPVault creation.
+        vm.mockCall(
+            address(_systemRegistry),
+            abi.encodeWithSelector(SystemRegistry.lmpVaultRouter.selector),
+            abi.encode(makeAddr("LMP_VAULT_ROUTER"))
+        );
+
         uint256 limit = type(uint112).max;
         _lmpVault = LMPVault(_lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256("v1"), initData));
         vm.label(address(_lmpVault), "lmpVault");

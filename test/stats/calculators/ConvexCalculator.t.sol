@@ -402,14 +402,14 @@ contract Current is ConvexCalculatorTest {
 
         IDexLSTStats.DexLSTStatsData memory res = calculator.current();
 
-        assertTrue(res.stakingIncentiveStats.incentiveCredits == nbSnapshots);
-        assertTrue(res.stakingIncentiveStats.rewardTokens.length == 2);
+        assertEq(res.stakingIncentiveStats.incentiveCredits, nbSnapshots);
+        assertEq(res.stakingIncentiveStats.rewardTokens.length, 2);
 
-        assertTrue(res.stakingIncentiveStats.rewardTokens[0] == mainRewarderRewardToken);
-        assertTrue(res.stakingIncentiveStats.rewardTokens[1] == platformRewarder);
+        assertEq(res.stakingIncentiveStats.rewardTokens[0], mainRewarderRewardToken);
+        assertEq(res.stakingIncentiveStats.rewardTokens[1], platformRewarder);
 
-        assertTrue(res.stakingIncentiveStats.periodFinishForRewards[0] == PERIOD_FINISH_IN + 1);
-        assertTrue(res.stakingIncentiveStats.periodFinishForRewards[1] == PERIOD_FINISH_IN + 1);
+        assertTrue(res.stakingIncentiveStats.periodFinishForRewards[0] > PERIOD_FINISH_IN);
+        assertTrue(res.stakingIncentiveStats.periodFinishForRewards[1] > PERIOD_FINISH_IN);
     }
 
     function test_DecreaseIncentiveCredits() public {

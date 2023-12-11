@@ -18,18 +18,15 @@ contract ConvexCalculator is IncentiveCalculatorBase {
         return ConvexRewards.getCVXMintAmount(_platformToken, _annualizedReward);
     }
 
+    /// @notice If the pool id is >= 151, then it is a stash token that should be unwrapped:
+    /// Ref: https://docs.convexfinance.com/convexfinanceintegration/baserewardpool
     function resolveRewardToken(address extraRewarder) public view override returns (address rewardToken) {
-        IBaseRewardPool extraRwrdr = IBaseRewardPool(extraRewarder);
+        rewardToken = address(IBaseRewardPool(extraRewarder).rewardToken());
 
-        // 151+ PID reference: https://docs.convexfinance.com/convexfinanceintegration/baserewardpool
-        // Taking PID from base rewarder contract in IncentiveCalculatorBase:
-        uint256 pid = rewarder.pid();
-        if (pid >= 151) {
-            // If the pool id is >= 151, then it is a stash token. Retrieving the actual token value
-            rewardToken = ITokenWrapper(address(extraRwrdr.rewardToken())).token();
-        } else {
-            // If the pool id is < 151, then taking the reward token
-            rewardToken = address(extraRwrdr.rewardToken());
+        // Taking PID from base rewarder
+        if (rewarder.pid() >= 151) {
+            // Retrieving the actual token value
+            rewardToken = ITokenWrapper(rewardToken).token();
         }
     }
 }

@@ -9,6 +9,7 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { Stats } from "src/stats/Stats.sol";
 import { ConvexCalculator } from "src/stats/calculators/ConvexCalculator.sol";
+import { ITokenWrapper } from "src/interfaces/external/convex/ITokenWrapper.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { IBaseRewardPool } from "src/interfaces/external/convex/IBaseRewardPool.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -16,6 +17,7 @@ import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
+import { LDO_MAINNET, CNC_MAINNET } from "test/utils/Addresses.sol";
 
 contract ConvexCalculatorTest is Test {
     address internal underlyerStats;
@@ -43,6 +45,8 @@ contract ConvexCalculatorTest is Test {
     error InvalidScenario();
 
     function setUp() public {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 18_735_327);
+
         underlyerStats = vm.addr(1);
         pricingStats = vm.addr(2);
         systemRegistry = vm.addr(3);
@@ -461,5 +465,54 @@ contract Current is ConvexCalculatorTest {
         _runScenario(rewardRates, totalSupply, rewardPerToken, time);
         res = calculator.current();
         assertTrue(res.stakingIncentiveStats.incentiveCredits == 0);
+    }
+}
+
+contract ResolveRewardToken is ConvexCalculatorTest {
+    function test_ResolveRewardToken_WithIdLessThan151() public {
+        // Get a valid rewarder
+        IBaseRewardPool rewarder = IBaseRewardPool(0x0A760466E1B4621579a82a39CB56Dda2F4E70f03);
+        assert(rewarder.pid() < 151);
+        assert(rewarder.extraRewardsLength() > 0);
+
+        // Get the first extra rewarder
+        address extraRewarder = rewarder.extraRewards(0);
+        assertEq(extraRewarder, 0x008aEa5036b819B4FEAEd10b2190FBb3954981E8);
+
+        // Check the stash token
+        address expectedRewardToken = address(IBaseRewardPool(extraRewarder).rewardToken());
+        assertEq(expectedRewardToken, LDO_MAINNET);
+
+        // Mock base rewarder
+        vm.mockCall(mainRewarder, abi.encodeWithSelector(IBaseRewardPool.pid.selector), abi.encode(25));
+
+        address rewardToken = calculator.resolveRewardToken(extraRewarder);
+
+        // Verify the reward token
+        assertEq(rewardToken, expectedRewardToken);
+    }
+
+    function test_ResolveRewardToken_WithIdMoreThan151() public {
+        // Get a valid rewarder
+        IBaseRewardPool rewarder = IBaseRewardPool(0x1A3c8B2F89B1C2593fa46C30ADA0b4E3D0133fF8);
+        assert(rewarder.pid() >= 151);
+        assert(rewarder.extraRewardsLength() > 0);
+
+        // Get the first extra rewarder
+        address extraRewarder = rewarder.extraRewards(0);
+        assertEq(extraRewarder, 0xB83607472704FE3bCf6165EB6ff1941722b3C8B6);
+
+        // Check the stash token
+        ITokenWrapper stashToken = ITokenWrapper(address(IBaseRewardPool(extraRewarder).rewardToken()));
+        assertEq(address(stashToken), 0xF132a783d8567c11D3Df3e4Ef890786AFFc16402);
+
+        // Mock base rewarder
+        vm.mockCall(mainRewarder, abi.encodeWithSelector(IBaseRewardPool.pid.selector), abi.encode(152));
+
+        address rewardToken = calculator.resolveRewardToken(extraRewarder);
+
+        // Unwrap the reward token
+        assertEq(rewardToken, stashToken.token());
+        assertEq(rewardToken, CNC_MAINNET);
     }
 }

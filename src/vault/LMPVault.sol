@@ -13,13 +13,12 @@ import { NonReentrant } from "src/utils/NonReentrant.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
-import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { ILMPVault, IMainRewarder } from "src/interfaces/vault/ILMPVault.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { LMPDestinations } from "src/vault/libs/LMPDestinations.sol";
 import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC4626 } from "openzeppelin-contracts/interfaces/IERC4626.sol";
-import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
@@ -156,6 +155,9 @@ contract LMPVault is
 
     /// @notice Pending management fee.  Used as placeholder for new `managementFeeBps` within range of fee take.
     uint16 public pendingManagementFeeBps;
+    
+    /// @notice Holds addresses of replaced rewarders.
+    mapping(address => bool) public pastRewarders;
 
     error TooFewAssets(uint256 requested, uint256 actual);
     error WithdrawShareCalcInvalid(uint256 currentShares, uint256 cachedShares);
@@ -181,6 +183,7 @@ contract LMPVault is
     event PendingManagementFeeSet(uint256 pendingManagementFeeBps);
     event ManagementFeeSinkSet(address newManagementFeeSink);
     event NextManagementFeeTakeSet(uint256 nextManagementFeeTake);
+    event RewarderReplaced(address rewarder);
 
     struct ExtraData {
         address lmpStrategyAddress;
@@ -367,21 +370,23 @@ contract LMPVault is
         managementFeeSink = newManagementFeeSink;
     }
 
-    /// @notice Set the rewarder contract used by the vault
-    /// @dev Must be set immediately on initialization/creation and only once
+    /// @notice Set the rewarder contract used by the vault.
+    /// @param _rewarder Address of new rewarder.
     function setRewarder(address _rewarder) external {
-        if (msg.sender != factory) {
+        // Factory needs to be able to call for vault creation.
+        if (msg.sender != factory || !_hasRole(Roles.LMP_REWARD_MANAGER_ROLE, msg.sender)) {
             revert Errors.AccessDenied();
         }
 
         Errors.verifyNotZero(_rewarder, "rewarder");
 
-        if (address(rewarder) != address(0)) {
-            revert RewarderAlreadySet();
+        address toBeReplaced = address(rewarder);
+        if (toBeReplaced != address(0)) {
+            pastRewarders[toBeReplaced] = true;
+            emit RewarderReplaced(toBeReplaced);
         }
 
         rewarder = IMainRewarder(_rewarder);
-
         emit RewarderSet(_rewarder);
     }
 
@@ -636,10 +641,6 @@ contract LMPVault is
         _baseAsset.safeTransfer(receiver, returnedAssets);
 
         return returnedAssets;
-    }
-
-    function claimRewards() external {
-        rewarder.getReward(msg.sender, true);
     }
 
     /// @notice Transfer out non-tracked tokens
@@ -1084,23 +1085,10 @@ contract LMPVault is
             return;
         }
 
-        // If this isn't a mint of new tokens, then they are being transferred
-        // from someone who is "staked" in the rewarder. Make sure they stop earning
-        // When they transfer those funds
-        if (from != address(0)) {
-            rewarder.withdraw(from, amount, true);
-        }
-
         // Make sure the destination wallet total share balance doesn't go above the
-        // current perWalletLimit, except for the feeSink
-        if (to != feeSink && to != address(0) && balanceOf(to) + amount > perWalletLimit) {
+        // current perWalletLimit, except for the feeSink and rewarder.
+        if (to != feeSink && to != address(rewarder) && to != address(0) && balanceOf(to) + amount > perWalletLimit) {
             revert OverWalletLimit(to);
-        }
-
-        // If this isn't a burn, then the recipient should be earning in the rewarder
-        // "Stake" the tokens there so they start earning
-        if (to != address(0)) {
-            rewarder.stake(to, amount);
         }
     }
 

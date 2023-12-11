@@ -6,22 +6,16 @@ import { IERC20, SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/Safe
 import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard.sol";
 
 import { Address } from "openzeppelin-contracts/utils/Address.sol";
-import { Errors } from "src/utils/Errors.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ILMPVault, ILMPVaultRouter } from "src/interfaces/vault/ILMPVaultRouter.sol";
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
-import { LMPVaultRouterBase } from "src/vault/LMPVaultRouterBase.sol";
-import { SystemComponent } from "src/SystemComponent.sol";
+import { LMPVaultRouterBase, Errors, ISystemRegistry } from "src/vault/LMPVaultRouterBase.sol";
 
 /// @title ERC4626Router contract
-contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard, SystemComponent {
+contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Address for address;
 
-    constructor(
-        ISystemRegistry _systemRegistry,
-        address _weth9
-    ) LMPVaultRouterBase(_weth9) SystemComponent(_systemRegistry) { }
+    constructor(ISystemRegistry _systemRegistry, address _weth9) LMPVaultRouterBase(_weth9, _systemRegistry) { }
 
     // For the below, no approval needed, assumes vault is already max approved
 

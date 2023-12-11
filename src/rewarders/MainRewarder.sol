@@ -106,7 +106,7 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         return _extraRewards.values();
     }
 
-    function withdraw(address account, uint256 amount, bool claim) public onlyStakeTracker {
+    function withdraw(address account, uint256 amount, bool claim) public virtual onlyStakeTracker {
         _updateReward(account);
         _withdraw(account, amount);
 
@@ -126,7 +126,7 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         _balances[account] -= amount;
     }
 
-    function stake(address account, uint256 amount) public onlyStakeTracker {
+    function stake(address account, uint256 amount) public virtual onlyStakeTracker {
         _updateReward(account);
         _stake(account, amount);
 

@@ -7,6 +7,7 @@ import { IERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draf
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
+import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 
 interface ILMPVault is IERC4626, IERC20Permit {
     enum VaultShutdownStatus {
@@ -53,9 +54,6 @@ interface ILMPVault is IERC4626, IERC20Permit {
     // NOTE: will be done going directly to strategy (IStrategy) vault points to.
     //       How it'll delegate is still being decided
     // function setWithdrawalQueue(address[] calldata destinations) external;
-
-    /// @notice Claim Accrued Rewards
-    function claimRewards() external;
 
     /// @notice Set the withdrawal queue to be used when taking out Assets
     /// @param _destinations The ordered list of destination vaults to go for withdrawals
@@ -108,4 +106,6 @@ interface ILMPVault is IERC4626, IERC20Permit {
 
     /// @notice add (or move to if it already exists) a destination to the tail of the withdrawal queue
     function addToWithdrawalQueueTail(address destinationVault) external;
+    /// @notice Returns instance of vault rewarder.
+    function rewarder() external view returns (IMainRewarder);
 }

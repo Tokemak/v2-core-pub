@@ -2,7 +2,9 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { MainRewarder, ISystemRegistry } from "src/rewarders/MainRewarder.sol";
+import { SafeERC20, IERC20 } from "openzeppelin-contracts/token/ERC20/utils/safeERC20.sol";
+
+import { MainRewarder, ISystemRegistry, Errors } from "src/rewarders/MainRewarder.sol";
 import { Roles } from "src/libs/Roles.sol";
 
 /**
@@ -11,6 +13,9 @@ import { Roles } from "src/libs/Roles.sol";
  *      access control for LMP rewarders.
  */
 contract LMPVaultMainRewarder is MainRewarder {
+    /// @notice IERC20 instance of token being staked in rewarder.
+    IERC20 public immutable stakingToken;
+
     // slither-disable-start similar-names
     constructor(
         ISystemRegistry _systemRegistry,
@@ -18,7 +23,8 @@ contract LMPVaultMainRewarder is MainRewarder {
         address _rewardToken,
         uint256 _newRewardRatio,
         uint256 _durationInBlock,
-        bool _allowExtraReward
+        bool _allowExtraReward,
+        address _stakingToken
     )
         MainRewarder(
             _systemRegistry,
@@ -29,6 +35,39 @@ contract LMPVaultMainRewarder is MainRewarder {
             Roles.LMP_REWARD_MANAGER_ROLE,
             _allowExtraReward
         )
-    { }
-    // slither-disable-end similar-names
+    {
+        Errors.verifyNotZero(_stakingToken, "_stakingToken");
+
+        stakingToken = IERC20(_stakingToken);
+    }
+    // slither-disable-end
+
+    /**
+     * @notice User withdraws autopilot vault token from rewarder.  This function can only be called by
+     *      the stake tracker address, which in the case of the autopilot vault is the router.  This functionality
+     *      is inherited from the base contract.
+     * @dev Balance updates, reward calculations taken care of in inherited contract.
+     * @param account Account that is withdrawing assets.
+     * @param amount Amount of assets to be withdrawn.
+     * @param claim Whether or not to claim rewards.
+     */
+    function withdraw(address account, uint256 amount, bool claim) public override {
+        super.withdraw(account, amount, claim);
+
+        SafeERC20.safeTransfer(stakingToken, account, amount);
+    }
+
+    /**
+     * @notice User stakes autopilot vault token to rewarder.  This function can only be called by
+     *      the stake tracker address, which in the case of the autopilot vault is the router.  This functionality
+     *      is inherited from the base contract.
+     * @dev Balance updates, reward calculations taken care of in inherited contract.
+     * @param account Account staking.
+     * @param amount Amount of autopilot vault token to stake.
+     */
+    function stake(address account, uint256 amount) public override {
+        super.stake(account, amount);
+
+        SafeERC20.safeTransferFrom(stakingToken, account, address(this), amount);
+    }
 }

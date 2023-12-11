@@ -99,4 +99,19 @@ interface ILMPVaultRouterBase {
         uint256 minAmountOut,
         bool unwrapWETH
     ) external payable returns (uint256 amountOut);
+
+    /// @notice Stakes vault token to corresponding rewarder.
+    /// @param vaultToken Address of vault token to stake.
+    /// @param amount Amount of vault token to stake.
+    function stakeVaultToken(address vaultToken, uint256 amount) external;
+
+    /// @notice Unstakes vault token from corresponding rewarder.
+    /// @param vaultToken Address of the vault token to unstake.
+    /// @param amount Amount of vault token to unstake.
+    /// @param claim Claiming rewards or not on unstaking.
+    function unstakeVaultToken(address vaultToken, uint256 amount, bool claim) external;
+
+    /// @notice Claims rewards on user stake of vault token.
+    /// @param vaultToken Address of vault token to claim rewards for.
+    function claimRewards(address vaultToken) external;
 }

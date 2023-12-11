@@ -1239,7 +1239,7 @@ contract LMPStrategyTest is Test {
 
         int256[] memory priceReturns = defaultStrat._calculatePriceReturns(dexStats);
         assertEq(priceReturns.length, 1);
-        assertEq(priceReturns[0], 49999990354938271);
+        assertEq(priceReturns[0], 49_999_990_354_938_271);
     }
 
     // Near half-life

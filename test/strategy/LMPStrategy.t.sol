@@ -1242,6 +1242,94 @@ contract LMPStrategyTest is Test {
         assertEq(priceReturns[0], 5e16);
     }
 
+    // Near half-life
+    function test_calculatePriceReturns_shouldDecayDiscountHalf() public {
+        IDexLSTStats.DexLSTStatsData memory dexStats;
+        dexStats.lstStatsData = new ILSTStats.LSTStatsData[](1);
+
+        ILSTStats.LSTStatsData memory lstStat;
+        lstStat.discount = 3e16; // maxAllowed is 5e16
+        vm.warp(35 days);
+        uint40[5] memory discountTimestampByPercent;
+        discountTimestampByPercent[0] = 1 days;
+        discountTimestampByPercent[1] = 1 days;
+        discountTimestampByPercent[2] = 1 days;
+        discountTimestampByPercent[3] = 1 days;
+        discountTimestampByPercent[4] = 1 days;
+        lstStat.discountTimestampByPercent = discountTimestampByPercent;
+        dexStats.lstStatsData[0] = lstStat;
+
+        int256[] memory priceReturns = defaultStrat._calculatePriceReturns(dexStats);
+        assertEq(priceReturns.length, 1);
+        assertEq(priceReturns[0], 14e15);
+    }
+
+    // Near quarter-life
+    function test_calculatePriceReturns_shouldDecayDiscountQuarter() public {
+        IDexLSTStats.DexLSTStatsData memory dexStats;
+        dexStats.lstStatsData = new ILSTStats.LSTStatsData[](1);
+
+        ILSTStats.LSTStatsData memory lstStat;
+        lstStat.discount = 3e16; // maxAllowed is 5e16
+        vm.warp(15 days);
+        uint40[5] memory discountTimestampByPercent;
+        discountTimestampByPercent[0] = 1 days;
+        discountTimestampByPercent[1] = 1 days;
+        discountTimestampByPercent[2] = 1 days;
+        discountTimestampByPercent[3] = 1 days;
+        discountTimestampByPercent[4] = 1 days;
+        lstStat.discountTimestampByPercent = discountTimestampByPercent;
+        dexStats.lstStatsData[0] = lstStat;
+
+        int256[] memory priceReturns = defaultStrat._calculatePriceReturns(dexStats);
+        assertEq(priceReturns.length, 1);
+        assertEq(priceReturns[0], 23e15);
+    }
+
+    // Near quarter-life
+    function test_calculatePriceReturns_shouldDecayDiscountThreeQuarter() public {
+        IDexLSTStats.DexLSTStatsData memory dexStats;
+        dexStats.lstStatsData = new ILSTStats.LSTStatsData[](1);
+
+        ILSTStats.LSTStatsData memory lstStat;
+        lstStat.discount = 3e16; // maxAllowed is 5e16
+        vm.warp(60 days);
+        uint40[5] memory discountTimestampByPercent;
+        discountTimestampByPercent[0] = 1 days;
+        discountTimestampByPercent[1] = 1 days;
+        discountTimestampByPercent[2] = 1 days;
+        discountTimestampByPercent[3] = 1 days;
+        discountTimestampByPercent[4] = 1 days;
+        lstStat.discountTimestampByPercent = discountTimestampByPercent;
+        dexStats.lstStatsData[0] = lstStat;
+
+        int256[] memory priceReturns = defaultStrat._calculatePriceReturns(dexStats);
+        assertEq(priceReturns.length, 1);
+        assertEq(priceReturns[0], 775e13);
+    }
+
+    // No decay as the discount is small
+    function test_calculatePriceReturns_shouldNotDecayDiscount() public {
+        IDexLSTStats.DexLSTStatsData memory dexStats;
+        dexStats.lstStatsData = new ILSTStats.LSTStatsData[](1);
+
+        ILSTStats.LSTStatsData memory lstStat;
+        lstStat.discount = 5e15; // maxAllowed is 5e16
+        vm.warp(35 days);
+        uint40[5] memory discountTimestampByPercent;
+        discountTimestampByPercent[0] = 1 days;
+        discountTimestampByPercent[1] = 1 days;
+        discountTimestampByPercent[2] = 1 days;
+        discountTimestampByPercent[3] = 1 days;
+        discountTimestampByPercent[4] = 1 days;
+        lstStat.discountTimestampByPercent = discountTimestampByPercent;
+        dexStats.lstStatsData[0] = lstStat;
+
+        int256[] memory priceReturns = defaultStrat._calculatePriceReturns(dexStats);
+        assertEq(priceReturns.length, 1);
+        assertEq(priceReturns[0], 5e15);
+    }
+
     /* **************************************** */
     /* calculateIncentiveApr Tests              */
     /* **************************************** */

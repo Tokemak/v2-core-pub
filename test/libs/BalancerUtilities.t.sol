@@ -22,8 +22,7 @@ import {
 
 contract BalancerUtilitiesTest is Test {
     function setUp() public {
-        uint256 mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"));
-        vm.selectFork(mainnetFork);
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 18_735_327);
     }
 
     function test_isComposablePool_ReturnsTrueOnValidComposable() public {
@@ -43,8 +42,6 @@ contract BalancerUtilitiesTest is Test {
     }
 
     function test_getPoolTokens_ReturnsProperValues() public {
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 18_735_327);
-
         (IERC20[] memory assets, uint256[] memory balances) =
             BalancerUtilities._getPoolTokens(IVault(BAL_VAULT), WSETH_RETH_SFRXETH_BAL_POOL);
 
@@ -63,8 +60,6 @@ contract BalancerUtilitiesTest is Test {
     }
 
     function test_getMetaStableVirtualPrice_UnscaledInvariant() public {
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 18_735_327);
-
         // lastInvariant: 35_243_135_001_415_568_139_348
         // unscaledInv = (virtualPrice * totalSupply) / 1e18:
         // (1_028_137_102_910_976_515 * 34_278_666_982_700_538_202_249) / 1e18 = 35_243_169_363_243_876_067_846
@@ -75,8 +70,6 @@ contract BalancerUtilitiesTest is Test {
     }
 
     function test_getMetaStableVirtualPrice_LastInvariant() public {
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 18_735_327);
-
         // unscaledInv = (virtualPrice * totalSupply) / 1e18:
         // (1_028_137_102_910_976_515 * 34_278_666_982_700_538_202_249) / 1e18 = 35_243_169_363_243_876_067_846
 

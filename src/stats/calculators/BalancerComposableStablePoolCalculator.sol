@@ -28,13 +28,22 @@ contract BalancerComposableStablePoolCalculator is BalancerStablePoolCalculatorB
         balances = new uint256[](nTokens - 1);
 
         uint256 lastIndex = 0;
-        for (uint256 i = 0; i < nTokens; i++) {
+        uint256 bptIndex = IBalancerComposableStablePool(poolAddress).getBptIndex();
+        for (uint256 i = 0; i < nTokens;) {
             // skip pool token
-            if (i == IBalancerComposableStablePool(poolAddress).getBptIndex()) continue;
+            if (i == bptIndex) {
+                unchecked {
+                    ++i;
+                }
+                continue;
+            }
             // copy tokens and balances
             tokens[lastIndex] = allTokens[i];
             balances[lastIndex] = allBalances[i];
-            lastIndex++;
+            unchecked {
+                ++i;
+                ++lastIndex;
+            }
         }
     }
 }

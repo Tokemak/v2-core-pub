@@ -811,6 +811,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
                         uint256 timeSinceDiscountSec =
                             uint256(uint40(block.timestamp) - discountTimestampByPercent[j - 1]);
                         scalingFactor >>= (timeSinceDiscountSec / halfLifeSec);
+                        // slither-disable-next-line weak-prng
                         timeSinceDiscountSec %= halfLifeSec;
                         scalingFactor -= scalingFactor * timeSinceDiscountSec / halfLifeSec / 2;
                         break;

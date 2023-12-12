@@ -694,6 +694,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         uint256 reserveValue,
         RebalanceDirection direction
     ) internal view returns (int256) {
+        // slither-disable-next-line timestamp
         if (priceReturn > 0) {
             // LST trading at a discount
             if (direction == RebalanceDirection.Out) {

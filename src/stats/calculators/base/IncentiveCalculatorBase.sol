@@ -394,6 +394,7 @@ abstract contract IncentiveCalculatorBase is
      * @dev Computes staking incentive statistics for a given rewarder.
      *
      * @param _rewarder The rewarder contract for which the stats will be computed.
+     * @param isExtraReward The flag to indicate the type of rewarder.
      * @return safeTotalSupply The total supply for the rewarder.
      * @return rewardToken The address of the reward token used by the rewarder.
      * @return annualizedRewardAmount The annual equivalent of the reward rate.

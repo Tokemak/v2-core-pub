@@ -51,6 +51,7 @@ contract LMPStrategyTest is Test {
 
     LMPStrategyHarness private defaultStrat;
     IStrategy.RebalanceParams private defaultParams;
+    IStrategy.SummaryStats private destOut;
 
     function setUp() public {
         vm.label(mockLMPVault, "lmpVault");
@@ -83,11 +84,7 @@ contract LMPStrategyTest is Test {
     /* **************************************** */
     function test_constructor_RevertIf_lmpVaultZero() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_lmpVault"));
-        new LMPStrategyHarness(
-            ISystemRegistry(address(systemRegistry)),
-            address(0),
-            helpers.getDefaultConfig()
-        );
+        new LMPStrategyHarness(ISystemRegistry(address(systemRegistry)), address(0), helpers.getDefaultConfig());
     }
 
     function test_constructor_RevertIf_systemRegistryMismatch() public {
@@ -138,7 +135,7 @@ contract LMPStrategyTest is Test {
         // the compositeReturns have been configured specifically for a 28 day offset
         assertEq(defaultStrat.swapCostOffsetPeriodInDays(), 28);
 
-        (bool success,) = defaultStrat.verifyRebalance(defaultParams);
+        (bool success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
         assertTrue(success);
     }
 
@@ -148,19 +145,19 @@ contract LMPStrategyTest is Test {
         setTokenSpotPrice(mockOutLSTToken, 99e16); // set spot OutToken price slightly lower than safe
         setTokenSpotPrice(mockInLSTToken, 101e16); // set spot OutToken price slightly higher than safe
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.LSTPriceGapToleranceExceeded.selector));
-        defaultStrat.verifyRebalance(defaultParams);
+        defaultStrat.verifyRebalance(defaultParams, destOut);
 
         setTokenSpotPrice(mockOutLSTToken, 99.89e16); // set spot price slightly lower than safe near tolerance
         setTokenSpotPrice(mockInLSTToken, 100e16); // set spot = safe
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.LSTPriceGapToleranceExceeded.selector));
-        defaultStrat.verifyRebalance(defaultParams);
+        defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
     function test_verifyRebalance_RevertIf_invalidParams() public {
         // this test ensures that `validateRebalanceParams` is called. It is not exhaustive
         defaultParams.amountIn = 0;
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "amountIn"));
-        defaultStrat.verifyRebalance(defaultParams);
+        defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
     function test_verifyRebalance_RevertIf_invalidRebalanceToIdle() public {
@@ -193,7 +190,7 @@ contract LMPStrategyTest is Test {
         defaultParams.tokenIn = mockBaseAsset;
 
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.InvalidRebalanceToIdle.selector));
-        defaultStrat.verifyRebalance(defaultParams);
+        defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
     function test_verifyRebalance_returnTrueOnValidRebalanceToIdleCleanUpDust() public {
@@ -224,7 +221,7 @@ contract LMPStrategyTest is Test {
         defaultParams.destinationIn = mockLMPVault;
         defaultParams.tokenIn = mockBaseAsset;
 
-        (bool success,) = defaultStrat.verifyRebalance(defaultParams);
+        (bool success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
         assertTrue(success);
     }
 
@@ -259,7 +256,7 @@ contract LMPStrategyTest is Test {
         defaultParams.destinationIn = mockLMPVault;
         defaultParams.tokenIn = mockBaseAsset;
 
-        (bool success,) = defaultStrat.verifyRebalance(defaultParams);
+        (bool success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
         assertTrue(success);
     }
 
@@ -269,7 +266,7 @@ contract LMPStrategyTest is Test {
         defaultStrat._setPausedTimestamp(1 days);
 
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.StrategyPaused.selector));
-        defaultStrat.verifyRebalance(defaultParams);
+        defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
     function test_verifyRebalance_RevertIf_maxSlippageExceeded() public {
@@ -279,7 +276,7 @@ contract LMPStrategyTest is Test {
         defaultParams.amountOut = 100e18; // 100
 
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.MaxSlippageExceeded.selector));
-        defaultStrat.verifyRebalance(defaultParams);
+        defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
     function test_verifyRebalance_RevertIf_maxDiscountOrPremiumExceeded() public {
@@ -302,14 +299,14 @@ contract LMPStrategyTest is Test {
         setStatsCurrent(mockOutStats, outStats);
 
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.MaxDiscountExceeded.selector));
-        defaultStrat.verifyRebalance(defaultParams);
+        defaultStrat.verifyRebalance(defaultParams, destOut);
 
         // setup for maxPremium check
         lstStat.discount = -0.011e18; // above 1% max premium
         setStatsCurrent(mockInStats, inStats);
 
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.MaxPremiumExceeded.selector));
-        defaultStrat.verifyRebalance(defaultParams);
+        defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
     function test_verifyRebalance_RevertIf_swapCostTooHigh() public {
@@ -336,15 +333,15 @@ contract LMPStrategyTest is Test {
         setStatsCurrent(mockOutStats, outStats);
 
         assertEq(defaultStrat.swapCostOffsetPeriodInDays(), 28);
-
+        destOut = defaultStrat.getRebalanceOutSummaryStats(defaultParams);
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.SwapCostExceeded.selector));
-        defaultStrat.verifyRebalance(defaultParams);
+        defaultStrat.verifyRebalance(defaultParams, destOut);
 
         // verify that it gets let through just above the required swapCost
         inStats.feeApr = 0.095656855707106964e18; // increment failing apr by 1
         setStatsCurrent(mockInStats, inStats);
 
-        (bool success,) = defaultStrat.verifyRebalance(defaultParams);
+        (bool success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
         assertTrue(success);
     }
 
@@ -377,14 +374,15 @@ contract LMPStrategyTest is Test {
 
         assertEq(defaultStrat.swapCostOffsetPeriodInDays(), 28);
 
+        destOut = defaultStrat.getRebalanceOutSummaryStats(defaultParams);
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.SwapCostExceeded.selector));
-        defaultStrat.verifyRebalance(defaultParams);
+        defaultStrat.verifyRebalance(defaultParams, destOut);
 
         // verify that it gets let through just above the required swapCost
         inStats.feeApr = 0.161162957645369706e18; // increment by 1
         setStatsCurrent(mockInStats, inStats);
 
-        (bool success,) = defaultStrat.verifyRebalance(defaultParams);
+        (bool success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
         assertTrue(success);
     }
 
@@ -987,40 +985,6 @@ contract LMPStrategyTest is Test {
     }
 
     /* **************************************** */
-    /* getRebalanceSummaryStats Tests           */
-    /* **************************************** */
-    function test_getRebalanceSummaryStats() public {
-        // basic test to ensure that in and out dest are properly calculated
-        vm.warp(180 days);
-
-        // set the inDest to have a feeApr = 1%
-        IDexLSTStats.DexLSTStatsData memory inStats;
-        inStats.lastSnapshotTimestamp = 180 days;
-        inStats.feeApr = 0.01e18; // 1% fee apr
-        setStatsCurrent(mockInStats, inStats);
-
-        // set the inOut to have a feeApr = 5%
-        IDexLSTStats.DexLSTStatsData memory outStats;
-        outStats.lastSnapshotTimestamp = 180 days;
-        outStats.feeApr = 0.05e18; // 5% fee apr
-        setStatsCurrent(mockOutStats, outStats);
-
-        // used for lpPrices only
-        LMPStrategy.RebalanceValueStats memory valueStats;
-        valueStats.inPrice = 1.1e18;
-        valueStats.outPrice = 0.9e18;
-
-        (LMPStrategy.SummaryStats memory outSummary, LMPStrategy.SummaryStats memory inSummary) =
-            defaultStrat._getRebalanceSummaryStats(defaultParams, valueStats);
-
-        assertEq(inSummary.pricePerShare, 1.1e18);
-        assertEq(inSummary.feeApr, 0.01e18);
-
-        assertEq(outSummary.pricePerShare, 0.9e18);
-        assertEq(outSummary.feeApr, 0.05e18);
-    }
-
-    /* **************************************** */
     /* getDestinationSummaryStats Tests         */
     /* **************************************** */
     function test_getDestinationSummaryStats_shouldHandleIdle() public {
@@ -1028,7 +992,7 @@ contract LMPStrategyTest is Test {
         uint256 price = 3e17;
         setLmpIdle(idle);
 
-        LMPStrategy.SummaryStats memory stats =
+        IStrategy.SummaryStats memory stats =
             defaultStrat._getDestinationSummaryStats(mockLMPVault, price, LMPStrategy.RebalanceDirection.In, 1);
 
         // only these are populated when destination is idle asset
@@ -1129,7 +1093,7 @@ contract LMPStrategyTest is Test {
         setLmpDestinationBalanceOf(mockOutDest, 78e18);
 
         // test rebalance out
-        LMPStrategy.SummaryStats memory summary = defaultStrat._getDestinationSummaryStats(
+        IStrategy.SummaryStats memory summary = defaultStrat._getDestinationSummaryStats(
             mockOutDest, lpPrice, LMPStrategy.RebalanceDirection.Out, rebalanceAmount
         );
 
@@ -1890,11 +1854,7 @@ contract LMPStrategyTest is Test {
     /* Test Helpers                             */
     /* **************************************** */
     function deployStrategy(LMPStrategyConfig.StrategyConfig memory cfg) internal returns (LMPStrategyHarness strat) {
-        strat = new LMPStrategyHarness(
-            ISystemRegistry(address(systemRegistry)),
-            mockLMPVault,
-            cfg
-        );
+        strat = new LMPStrategyHarness(ISystemRegistry(address(systemRegistry)), mockLMPVault, cfg);
     }
 
     // rebalance params that will pass validation
@@ -2168,7 +2128,7 @@ contract LMPStrategyHarness is LMPStrategy {
         uint256 price,
         RebalanceDirection direction,
         uint256 amount
-    ) public returns (SummaryStats memory) {
+    ) public returns (IStrategy.SummaryStats memory) {
         return getDestinationSummaryStats(destAddress, price, direction, amount);
     }
 
@@ -2178,12 +2138,5 @@ contract LMPStrategyHarness is LMPStrategy {
         RebalanceDirection direction
     ) public view returns (int256) {
         return calculateWeightedPriceReturn(priceReturn, reserveValue, direction);
-    }
-
-    function _getRebalanceSummaryStats(
-        IStrategy.RebalanceParams memory params,
-        RebalanceValueStats memory valueStats
-    ) public returns (SummaryStats memory outSummary, SummaryStats memory inSummary) {
-        return getRebalanceSummaryStats(params, valueStats);
     }
 }

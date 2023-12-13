@@ -757,35 +757,28 @@ contract LMPVault is
     //////////////////////////////////////////////////////////////////////////
 
     /// @inheritdoc IStrategy
-    function rebalance(RebalanceParams memory params) public nonReentrant hasRole(Roles.SOLVER_ROLE) trackNavOps {
-        (uint256 idle, uint256 debt) = LMPDebt.rebalance(
-            destinationInfo[params.destinationOut],
-            destinationInfo[params.destinationIn],
-            params,
-            lmpStrategy,
-            _baseAsset,
-            _shutdown,
-            totalIdle,
-            totalDebt
-        );
-        totalIdle = idle;
-        totalDebt = debt;
-        _collectFees(idle, debt, totalSupply());
-
-        emit Nav(totalIdle, totalDebt, totalSupply());
-    }
-
-    /// @inheritdoc IStrategy
     function flashRebalance(
         IERC3156FlashBorrower receiver,
         RebalanceParams memory rebalanceParams,
         bytes calldata data
     ) public nonReentrant hasRole(Roles.SOLVER_ROLE) trackNavOps {
+        // make sure there's something to do
+        if (rebalanceParams.amountIn == 0 && rebalanceParams.amountOut == 0) {
+            revert Errors.InvalidParams();
+        }
+
+        if (rebalanceParams.destinationIn == rebalanceParams.destinationOut) {
+            revert RebalanceDestinationsMatch(rebalanceParams.destinationOut);
+        }
+
+        // Get out destination summary stats
+        IStrategy.SummaryStats memory outSummary = lmpStrategy.getRebalanceOutSummaryStats(rebalanceParams);
         (uint256 idle, uint256 debt) = LMPDebt.flashRebalance(
             destinationInfo[rebalanceParams.destinationOut],
             destinationInfo[rebalanceParams.destinationIn],
             receiver,
             rebalanceParams,
+            outSummary,
             lmpStrategy,
             LMPDebt.FlashRebalanceParams({
                 totalIdle: totalIdle,
@@ -800,27 +793,6 @@ contract LMPVault is
         _collectFees(idle, debt, totalSupply());
 
         emit Nav(totalIdle, totalDebt, totalSupply());
-    }
-
-    /// @inheritdoc IStrategy
-    function verifyRebalance(
-        address destinationIn,
-        address tokenIn,
-        uint256 amountIn,
-        address destinationOut,
-        address tokenOut,
-        uint256 amountOut
-    ) public virtual returns (bool success, string memory message) {
-        (success, message) = lmpStrategy.verifyRebalance(
-            IStrategy.RebalanceParams({
-                destinationIn: destinationIn,
-                tokenIn: tokenIn,
-                amountIn: amountIn,
-                destinationOut: destinationOut,
-                tokenOut: tokenOut,
-                amountOut: amountOut
-            })
-        );
     }
 
     /// @inheritdoc ILMPVault

@@ -80,7 +80,7 @@ contract LMPVaultBaseTest is BaseTest {
         // create vault (no need to initialize since working with mock)
 
         address underlyer = address(new TestERC20("underlyer", "underlyer"));
-        IDestinationVault vault = new TestDestinationVault(systemRegistry, vm.addr(34343), asset, underlyer);
+        IDestinationVault vault = new TestDestinationVault(systemRegistry, vm.addr(34_343), asset, underlyer);
         // mock "isRegistered" call
         vm.mockCall(
             address(systemRegistry.destinationVaultRegistry()),
@@ -216,21 +216,6 @@ contract LMPVaultBaseTest is BaseTest {
     //			                Rebalancer                      		//
     //                                                                  //
     //////////////////////////////////////////////////////////////////////
-
-    function test_Rebalancer_permissions() public {
-        vm.prank(unauthorizedUser);
-        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        lmpVault.rebalance(
-            IStrategy.RebalanceParams({
-                destinationIn: address(1),
-                tokenIn: address(baseAsset),
-                amountIn: 1,
-                destinationOut: address(1),
-                tokenOut: address(baseAsset),
-                amountOut: 1
-            })
-        );
-    }
 
     // function test_FlashRebalancer() public {
     //     (address lmpAddress, address dAddress1, address dAddress2, address baseAssetAddress) =

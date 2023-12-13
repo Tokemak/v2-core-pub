@@ -176,21 +176,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     error UnregisteredDestination(address dest);
     error LSTPriceGapToleranceExceeded();
 
-    struct SummaryStats {
-        address destination;
-        uint256 baseApr;
-        uint256 feeApr;
-        uint256 incentiveApr;
-        uint256 safeTotalSupply;
-        int256 priceReturn;
-        int256 maxDiscount;
-        int256 maxPremium;
-        uint256 ownedShares;
-        int256 compositeReturn;
-        uint256 pricePerShare;
-        uint256 slashingCost;
-    }
-
     struct InterimStats {
         uint256 baseApr;
         int256 priceReturn;
@@ -266,10 +251,10 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     }
 
     /// @inheritdoc ILMPStrategy
-    function verifyRebalance(IStrategy.RebalanceParams memory params)
-        public
-        returns (bool success, string memory message)
-    {
+    function verifyRebalance(
+        IStrategy.RebalanceParams memory params,
+        IStrategy.SummaryStats memory outSummary
+    ) public returns (bool success, string memory message) {
         validateRebalanceParams(params);
 
         RebalanceValueStats memory valueStats = getRebalanceValueStats(params);
@@ -291,7 +276,8 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // ensure that we're not exceeding top-level max slippage
         if (valueStats.slippage > maxNormalOperationSlippage) revert MaxSlippageExceeded();
 
-        (SummaryStats memory outSummary, SummaryStats memory inSummary) = getRebalanceSummaryStats(params, valueStats);
+        IStrategy.SummaryStats memory inSummary =
+            getDestinationSummaryStats(params.destinationIn, valueStats.inPrice, RebalanceDirection.In, params.amountIn);
 
         // ensure that the destination that is being added to doesn't exceed top-level premium/discount constraints
         if (inSummary.maxDiscount > maxDiscount) revert MaxDiscountExceeded();
@@ -304,7 +290,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         if (params.tokenIn == params.tokenOut) {
             swapOffsetPeriod = swapOffsetPeriod / 2; // TODO: this should be configurable
         }
-
         // slither-disable-start divide-before-multiply
         // equation is `compositeReturn * ethValue` / 1e18, which is multiply before divide
         // compositeReturn and ethValue are both 1e18 precision
@@ -597,16 +582,17 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         }
     }
 
-    function getRebalanceSummaryStats(
-        IStrategy.RebalanceParams memory params,
-        RebalanceValueStats memory valueStats
-    ) internal returns (SummaryStats memory outSummary, SummaryStats memory inSummary) {
-        outSummary = getDestinationSummaryStats(
-            params.destinationOut, valueStats.outPrice, RebalanceDirection.Out, params.amountOut
-        );
-
-        inSummary = (
-            getDestinationSummaryStats(params.destinationIn, valueStats.inPrice, RebalanceDirection.In, params.amountIn)
+    /// @inheritdoc ILMPStrategy
+    function getRebalanceOutSummaryStats(IStrategy.RebalanceParams memory rebalanceParams)
+        external
+        returns (IStrategy.SummaryStats memory outSummary)
+    {
+        IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
+        uint256 outPrice = pricer.getPriceInEth(rebalanceParams.tokenOut);
+        outSummary = (
+            getDestinationSummaryStats(
+                rebalanceParams.destinationOut, outPrice, RebalanceDirection.Out, rebalanceParams.amountOut
+            )
         );
     }
 
@@ -615,11 +601,11 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         uint256 price,
         RebalanceDirection direction,
         uint256 amount
-    ) internal returns (SummaryStats memory) {
+    ) internal returns (IStrategy.SummaryStats memory) {
         // NOTE: creating this as empty to save on variables later
         // has the distinct downside that if you forget to update a value, you get the zero value
         // slither-disable-next-line uninitialized-local
-        SummaryStats memory result;
+        IStrategy.SummaryStats memory result;
 
         if (destAddress == address(lmpVault)) {
             result.destination = destAddress;

@@ -171,7 +171,9 @@ abstract contract LMPVaultRouterBase is
 
     // Helper function for repeat functionalities.
     function _checkVaultAndReturnRewarder(address vault) internal returns (IMainRewarder) {
-        systemRegistry.lmpVaultRegistry().isVault(vault);
+        if (!systemRegistry.lmpVaultRegistry().isVault(vault)) {
+            revert Errors.ItemNotFound();
+        }
 
         return ILMPVault(vault).rewarder();
     }

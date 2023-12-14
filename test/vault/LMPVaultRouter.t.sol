@@ -15,12 +15,15 @@ import { ILMPVaultFactory, LMPVaultFactory } from "src/vault/LMPVaultFactory.sol
 import { ILMPVaultRouterBase, ILMPVaultRouter } from "src/interfaces/vault/ILMPVaultRouter.sol";
 import { LMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
 
+import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
+
 import { Roles } from "src/libs/Roles.sol";
+import { Errors } from "src/utils/Errors.sol";
 import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { IAsyncSwapper, SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 
 import { BaseTest } from "test/BaseTest.t.sol";
-import { WETH_MAINNET, ZERO_EX_MAINNET, CVX_MAINNET } from "test/utils/Addresses.sol";
+import { WETH_MAINNET, ZERO_EX_MAINNET, CVX_MAINNET, TREASURY } from "test/utils/Addresses.sol";
 
 import { ERC2612 } from "test/utils/ERC2612.sol";
 
@@ -29,6 +32,8 @@ contract LMPVaultRouterTest is BaseTest {
     // IDestinationVault public destinationVault;
     LMPVault public lmpVault;
     LMPVault public lmpVault2;
+
+    IMainRewarder public lmpRewarder;
 
     uint256 public constant MIN_DEPOSIT_AMOUNT = 100;
     uint256 public constant MAX_DEPOSIT_AMOUNT = 100 * 1e6 * 1e18; // 100mil toke
@@ -56,6 +61,9 @@ contract LMPVaultRouterTest is BaseTest {
         lmpVaultInitData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: vm.addr(10_001) }));
 
         lmpVault = _setupVault("v1");
+
+        // Set rewarder as rewarder set on LMP by factory.
+        lmpRewarder = lmpVault.rewarder();
     }
 
     function _setupVault(bytes memory salt) internal returns (LMPVault _lmpVault) {
@@ -336,6 +344,145 @@ contract LMPVaultRouterTest is BaseTest {
         assertEq(baseAsset.balanceOf(address(this)), baseAssetBefore, "Base asset amount should not change");
         assertEq(lmpVault.balanceOf(address(this)), 0, "Shares in vault #1 should be 0 after the move");
         assertEq(lmpVault2.balanceOf(address(this)), newSharesReceived, "Shares in vault #2 should be increased");
+    }
+
+    // All three rewarder based functions use same path to check for valid vault, use stake to test all.
+    function test_RevertsOnInvalidVault() public {
+        // No need to approve, deposit to vault, etc, revert will happen before transfer.
+        vm.expectRevert(Errors.ItemNotFound.selector);
+        lmpVaultRouter.stakeVaultToken(makeAddr("NOT_LMP_VAULT"), depositAmount);
+    }
+
+    function test_stakeVaultToken_Router() public {
+        // Get reward and vault balances of `address(this)` before.
+        uint256 shareBalanceBefore = _deposit(lmpVault, depositAmount);
+        uint256 stakedBalanceBefore = lmpRewarder.balanceOf(address(this));
+        uint256 rewarderShareBalanceBefore = lmpVault.balanceOf(address(lmpRewarder));
+
+        // Checks pre stake.
+        assertEq(shareBalanceBefore, depositAmount); // First deposit, no supply yet, mints 1:1.
+        assertEq(stakedBalanceBefore, 0); // User has not staked yet.
+        assertEq(rewarderShareBalanceBefore, 0); // Nothing in rewarder yet.
+
+        // Approve rewarder and stake via router.
+        lmpVault.approve(address(lmpRewarder), shareBalanceBefore);
+        lmpVaultRouter.stakeVaultToken(address(lmpVault), shareBalanceBefore);
+
+        // Reward and balances of `address(this)` after stake.
+        uint256 shareBalanceAfter = lmpVault.balanceOf(address(this));
+        uint256 stakedBalanceAfter = lmpRewarder.balanceOf(address(this));
+        uint256 rewarderShareBalanceAfter = lmpVault.balanceOf(address(lmpRewarder));
+
+        // Post stake checks.
+        assertEq(shareBalanceAfter, 0); // All shares should be staked.
+        assertEq(stakedBalanceAfter, shareBalanceBefore); // Staked balance should be 1:1 shares.
+        assertEq(rewarderShareBalanceAfter, shareBalanceBefore); // Should own all shares.
+    }
+
+    function test_unstakeVaultToken_NoClaim_Router() public {
+        // Stake first.
+        uint256 shareBalanceBefore = _deposit(lmpVault, depositAmount);
+        lmpVault.approve(address(lmpRewarder), shareBalanceBefore);
+        lmpVaultRouter.stakeVaultToken(address(lmpVault), shareBalanceBefore);
+
+        // Make sure balances match expected.
+        assertEq(lmpVault.balanceOf(address(this)), 0); // All shares transferred out.
+        assertEq(lmpVault.balanceOf(address(lmpRewarder)), shareBalanceBefore); // All shares owned by rewarder.
+        assertEq(lmpRewarder.balanceOf(address(this)), shareBalanceBefore); // Should mint 1:1 for shares.
+
+        // Withdraw half of shares.
+        lmpVaultRouter.unstakeVaultToken(address(lmpVault), shareBalanceBefore, false);
+
+        assertEq(lmpVault.balanceOf(address(this)), shareBalanceBefore); // All shares should be returned to user.
+        assertEq(lmpVault.balanceOf(address(lmpRewarder)), 0); // All shares transferred out.
+        assertEq(lmpRewarder.balanceOf(address(this)), 0); // Balance should be properly adjusted.
+    }
+
+    function test_unstakeVaultToken_Claim_Router() public {
+        uint256 localStakeAmount = 1000;
+
+        // Grant liquidator role to treasury to allow queueing of Toke rewards.
+        // Neccessary because rewarder uses Toke as reward token.
+        accessController.grantRole(Roles.LIQUIDATOR_ROLE, TREASURY);
+
+        // Make sure Toke is not going to be sent to GPToke contract.
+        assertEq(lmpRewarder.tokeLockDuration(), 0);
+
+        // Prank treasury to approve rewarder and queue toke rewards.
+        vm.startPrank(TREASURY);
+        toke.approve(address(lmpRewarder), localStakeAmount);
+        lmpRewarder.queueNewRewards(localStakeAmount);
+        vm.stopPrank();
+
+        // Deposit to LMP.
+        uint256 sharesReceived = _deposit(lmpVault, depositAmount);
+
+        // Stake LMP
+        lmpVault.approve(address(lmpRewarder), sharesReceived);
+        lmpVaultRouter.stakeVaultToken(address(lmpVault), sharesReceived);
+
+        // Snapshot values before withdraw.
+        uint256 stakeBalanceBefore = lmpRewarder.balanceOf(address(this));
+        uint256 shareBalanceBefore = lmpVault.balanceOf(address(this));
+        uint256 rewarderBalanceRewardTokenBefore = toke.balanceOf(address(lmpRewarder));
+        uint256 userBalanceRewardTokenBefore = toke.balanceOf(address(this));
+
+        assertEq(stakeBalanceBefore, sharesReceived); // Amount staked should be total shares minted.
+        assertEq(shareBalanceBefore, 0); // User should have transferred all assets out.
+        assertEq(rewarderBalanceRewardTokenBefore, localStakeAmount); // All reward should still be in rewarder.
+        assertEq(userBalanceRewardTokenBefore, 0); // User should have no reward token before withdrawal.
+
+        // Roll for entire reward duration, gives all rewards to user.  100 is reward duration.
+        vm.roll(block.number + 100);
+
+        // Unstake.
+        lmpVaultRouter.unstakeVaultToken(address(lmpVault), depositAmount, true);
+
+        // Snapshot balances after withdrawal.
+        uint256 stakeBalanceAfter = lmpRewarder.balanceOf(address(this));
+        uint256 shareBalanceAfter = lmpVault.balanceOf(address(this));
+        uint256 rewarderBalanceRewardTokenAfter = toke.balanceOf(address(lmpRewarder));
+        uint256 userBalanceRewardTokenAfter = toke.balanceOf(address(this));
+
+        assertEq(stakeBalanceAfter, 0); // All should be unstaked for user.
+        assertEq(shareBalanceAfter, depositAmount); // All shares should be returned to user.
+        assertEq(rewarderBalanceRewardTokenAfter, 0); // All should be transferred to user.
+        assertEq(userBalanceRewardTokenAfter, localStakeAmount); // User should now own all reward tokens.
+    }
+
+    function test_claimRewards_Router() public {
+        uint256 localStakeAmount = 1000;
+
+        // Grant liquidator role to treasury to allow queueing of Toke rewards.
+        // Neccessary because rewarder uses Toke as reward token.
+        accessController.grantRole(Roles.LIQUIDATOR_ROLE, TREASURY);
+
+        // Make sure Toke is not going to be sent to GPToke contract.
+        assertEq(lmpRewarder.tokeLockDuration(), 0);
+
+        // Prank treasury to approve rewarder and queue toke rewards.
+        vm.startPrank(TREASURY);
+        toke.approve(address(lmpRewarder), localStakeAmount);
+        lmpRewarder.queueNewRewards(localStakeAmount);
+        vm.stopPrank();
+
+        // Deposit to LMP.
+        uint256 sharesReceived = _deposit(lmpVault, depositAmount);
+
+        // Stake LMP
+        lmpVault.approve(address(lmpRewarder), sharesReceived);
+        lmpVaultRouter.stakeVaultToken(address(lmpVault), sharesReceived);
+
+        assertEq(toke.balanceOf(address(this)), 0); // Make sure no Toke for user before claim.
+        assertEq(toke.balanceOf(address(lmpRewarder)), localStakeAmount); // Rewarder has proper amount before claim.
+
+        // Roll for entire reward duration, gives all rewards to user.  100 is reward duration.
+        vm.roll(block.number + 100);
+
+        lmpVaultRouter.claimRewards(address(lmpVault));
+
+        assertEq(toke.balanceOf(address(this)), localStakeAmount); // Make sure all toke transferred to user.
+        assertEq(toke.balanceOf(address(lmpRewarder)), 0); // Rewarder should have no toke left.
     }
 
     /* **************************************************************************** */

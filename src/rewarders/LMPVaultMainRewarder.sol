@@ -54,6 +54,7 @@ contract LMPVaultMainRewarder is MainRewarder {
     function withdraw(address account, uint256 amount, bool claim) public override {
         super.withdraw(account, amount, claim);
 
+        // TODO: Can probably do this normal way, not using SafeERC20 in this way.
         SafeERC20.safeTransfer(stakingToken, account, amount);
     }
 

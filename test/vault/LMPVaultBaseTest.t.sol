@@ -40,6 +40,8 @@ contract LMPVaultBaseTest is BaseTest {
     event DestinationVaultAdded(address destination);
     event DestinationVaultRemoved(address destination);
     event WithdrawalQueueSet(address[] destinations);
+    event RewarderSet(address rewarder);
+    event RewarderReplaced(address rewarder);
 
     function setUp() public virtual override(BaseTest) {
         BaseTest.setUp();
@@ -57,6 +59,7 @@ contract LMPVaultBaseTest is BaseTest {
 
         accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));
         accessController.grantRole(Roles.SET_WITHDRAWAL_QUEUE_ROLE, address(this));
+        accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
 
         // create test lmpVault
         ILMPVaultFactory vaultFactory = systemRegistry.getLMPVaultFactoryByType(VaultTypes.LST);
@@ -93,7 +96,7 @@ contract LMPVaultBaseTest is BaseTest {
 
     //////////////////////////////////////////////////////////////////////
     //                                                                  //
-    //				    Destination Vaults lists						//
+    //				    Destination Vaults lists						                  //
     //                                                                  //
     //////////////////////////////////////////////////////////////////////
 
@@ -213,7 +216,82 @@ contract LMPVaultBaseTest is BaseTest {
 
     //////////////////////////////////////////////////////////////////////
     //                                                                  //
-    //			                Rebalancer                      		//
+    //			                Setting rewarder                      		  //
+    //                                                                  //
+    //////////////////////////////////////////////////////////////////////
+
+    function test_RevertIncorrectRole_AndNotFactory() public {
+        address notRoleOrFactory = makeAddr("NOT_REWARD_ROLE_OR_FACTORY");
+        vm.startPrank(notRoleOrFactory);
+
+        assertTrue(notRoleOrFactory != address(lmpVaultFactory));
+        assertTrue(!accessController.hasRole(Roles.LMP_REWARD_MANAGER_ROLE, notRoleOrFactory));
+
+        vm.expectRevert(Errors.AccessDenied.selector);
+        lmpVault.setRewarder(makeAddr("REWARDER"));
+
+        vm.stopPrank();
+    }
+
+    function test_RevertZeroAddress_setRewarder() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "rewarder"));
+        lmpVault.setRewarder(address(0));
+    }
+
+    function test_FactoryCanSetRewarder() public {
+        address rewarder = makeAddr("REWARDER");
+
+        vm.prank(address(lmpVaultFactory));
+        vm.expectEmit(false, false, false, true);
+        emit RewarderSet(rewarder);
+
+        lmpVault.setRewarder(rewarder);
+
+        assertEq(address(lmpVault.rewarder()), rewarder);
+    }
+
+    function test_LMPRewardManagerRole_CanSetRewarder() public {
+        assertTrue(accessController.hasRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this)));
+
+        address rewarder = makeAddr("REWARDER");
+
+        vm.expectEmit(false, false, false, true);
+        emit RewarderSet(rewarder);
+        lmpVault.setRewarder(rewarder);
+
+        assertEq(address(lmpVault.rewarder()), rewarder);
+    }
+
+    function test_RewarderReplacedProperly() public {
+        address firstRewarder = makeAddr("FIRST_REWARDER");
+        address secondRewarder = makeAddr("SECOND_REWARDER");
+
+        // Set first rewarder.
+        lmpVault.setRewarder(firstRewarder);
+        assertEq(address(lmpVault.rewarder()), firstRewarder);
+
+        // Replace with new rewarder.
+        vm.expectEmit(false, false, false, true);
+        emit RewarderReplaced(firstRewarder);
+        vm.expectEmit(false, false, false, true);
+        emit RewarderSet(secondRewarder);
+
+        lmpVault.setRewarder(secondRewarder);
+
+        assertEq(address(lmpVault.rewarder()), secondRewarder);
+        assertTrue(lmpVault.pastRewarders(firstRewarder));
+    }
+
+    function test_PastRewardersState_NotUpdatedFor_ReplacingZeroAddress() public {
+        address rewarder = makeAddr("REWARDER");
+        lmpVault.setRewarder(rewarder);
+
+        assertTrue(!lmpVault.pastRewarders(address(0)));
+    }
+
+    //////////////////////////////////////////////////////////////////////
+    //                                                                  //
+    //			                Rebalancer                      		        //
     //                                                                  //
     //////////////////////////////////////////////////////////////////////
 

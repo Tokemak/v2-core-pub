@@ -31,6 +31,7 @@ contract ConvexCalculatorTest is Test {
     address internal extraRewarder2;
     address internal extraRewarder3;
     address internal platformRewarder;
+    address internal extraRewarderRewardToken;
 
     ConvexCalculator internal calculator;
 
@@ -41,6 +42,7 @@ contract ConvexCalculatorTest is Test {
     uint256 internal constant DURATION = 1 weeks;
     uint256 internal constant TOTAL_SUPPLY = 100_000_000;
     uint256 internal constant EXTRA_REWARD_LENGTH = 0;
+    uint40 internal constant PRICE_STALE_CHECK = 12 hours;
 
     error InvalidScenario();
 
@@ -58,6 +60,7 @@ contract ConvexCalculatorTest is Test {
         extraRewarder2 = vm.addr(102);
         extraRewarder3 = vm.addr(103);
         platformRewarder = vm.addr(104);
+        extraRewarderRewardToken = vm.addr(105);
 
         vm.label(underlyerStats, "underlyerStats");
         vm.label(pricingStats, "pricingStats");
@@ -68,6 +71,7 @@ contract ConvexCalculatorTest is Test {
         vm.label(extraRewarder2, "extraRewarder2");
         vm.label(extraRewarder3, "extraRewarder3");
         vm.label(platformRewarder, "platformRewarder");
+        vm.label(extraRewarderRewardToken, "extraRewarderRewardToken");
 
         // mock system registry
         vm.mockCall(
@@ -155,6 +159,14 @@ contract ConvexCalculatorTest is Test {
         vm.mockCall(_rewarder, abi.encodeWithSelector(IBaseRewardPool.stakingToken.selector), abi.encode(value));
     }
 
+    function mockPid(address _rewarder, uint256 value) public {
+        vm.mockCall(_rewarder, abi.encodeWithSelector(IBaseRewardPool.pid.selector), abi.encode(value));
+    }
+
+    function mockToken(address _rewarder, address value) public {
+        vm.mockCall(_rewarder, abi.encodeWithSelector(ITokenWrapper.token.selector), abi.encode(value));
+    }
+
     function mockSimpleMainRewarder() public {
         mockRewardPerToken(mainRewarder, REWARD_PER_TOKEN);
         mockRewardRate(mainRewarder, REWARD_RATE);
@@ -175,7 +187,7 @@ contract ConvexCalculatorTest is Test {
         mockRewardRate(extraRewarder1, REWARD_RATE);
         mockPeriodFinish(extraRewarder1, block.timestamp + PERIOD_FINISH_IN);
         mockTotalSupply(extraRewarder1, TOTAL_SUPPLY);
-        mockRewardToken(extraRewarder1, vm.addr(1000));
+        mockRewardToken(extraRewarder1, extraRewarderRewardToken);
         mockDuration(extraRewarder1, DURATION);
         mockExtraRewardsLength(extraRewarder1, 0);
         mockAsset(extraRewarder1, vm.addr(1002));
@@ -469,7 +481,71 @@ contract Current is ConvexCalculatorTest {
 }
 
 contract ResolveRewardToken is ConvexCalculatorTest {
-    function test_ResolveRewardToken_WithIdLessThan151() public {
+    function test_ResolvesCorrectRewardToken_AndUnwrapsStashToken_WithPidLessThan151() public {
+        mockSimpleMainRewarder();
+        mockPid(mainRewarder, 25);
+
+        vm.expectCall(
+            address(pricingStats),
+            abi.encodeCall(IIncentivesPricingStats.getPrice, (mainRewarderRewardToken, PRICE_STALE_CHECK))
+        );
+        calculator.snapshot();
+
+        addMockExtraRewarder();
+
+        vm.expectCall(
+            address(pricingStats),
+            abi.encodeCall(IIncentivesPricingStats.getPrice, (mainRewarderRewardToken, PRICE_STALE_CHECK))
+        );
+        calculator.snapshot();
+
+        vm.expectCall(
+            address(pricingStats),
+            abi.encodeCall(IIncentivesPricingStats.getPrice, (mainRewarderRewardToken, PRICE_STALE_CHECK))
+        );
+        vm.expectCall(
+            address(pricingStats),
+            abi.encodeCall(IIncentivesPricingStats.getPrice, (extraRewarderRewardToken, PRICE_STALE_CHECK))
+        );
+        calculator.current();
+    }
+
+    function test_ResolvesCorrectRewardToken_AndUnwrapsStashToken_WithPidMoreThan151() public {
+        mockSimpleMainRewarder();
+        mockPid(mainRewarder, 152);
+
+        address rewardToken = vm.addr(152);
+        vm.label(rewardToken, "rewardToken");
+        mockToken(extraRewarderRewardToken, rewardToken);
+
+        vm.expectCall(
+            address(pricingStats),
+            abi.encodeCall(IIncentivesPricingStats.getPrice, (mainRewarderRewardToken, PRICE_STALE_CHECK))
+        );
+        calculator.snapshot();
+
+        addMockExtraRewarder();
+
+        vm.expectCall(
+            address(pricingStats),
+            abi.encodeCall(IIncentivesPricingStats.getPrice, (mainRewarderRewardToken, PRICE_STALE_CHECK))
+        );
+        vm.expectCall(
+            address(pricingStats), abi.encodeCall(IIncentivesPricingStats.getPrice, (rewardToken, PRICE_STALE_CHECK))
+        );
+        calculator.snapshot();
+
+        vm.expectCall(
+            address(pricingStats),
+            abi.encodeCall(IIncentivesPricingStats.getPrice, (mainRewarderRewardToken, PRICE_STALE_CHECK))
+        );
+        vm.expectCall(
+            address(pricingStats), abi.encodeCall(IIncentivesPricingStats.getPrice, (rewardToken, PRICE_STALE_CHECK))
+        );
+        calculator.current();
+    }
+
+    function test_ResolveRewardToken_WithPidLessThan151() public {
         // Get a valid rewarder
         IBaseRewardPool rewarder = IBaseRewardPool(0x0A760466E1B4621579a82a39CB56Dda2F4E70f03);
         assert(rewarder.pid() < 151);
@@ -492,7 +568,7 @@ contract ResolveRewardToken is ConvexCalculatorTest {
         assertEq(rewardToken, expectedRewardToken);
     }
 
-    function test_ResolveRewardToken_WithIdMoreThan151() public {
+    function test_ResolveRewardToken_WithPidMoreThan151() public {
         // Get a valid rewarder
         IBaseRewardPool rewarder = IBaseRewardPool(0x1A3c8B2F89B1C2593fa46C30ADA0b4E3D0133fF8);
         assert(rewarder.pid() >= 151);

@@ -33,6 +33,8 @@ contract AuraCalculatorTest is Test {
     address internal extraRewarder3;
     address internal platformRewarder;
     address internal booster;
+    address internal stashToken;
+    address internal baseToken;
 
     AuraCalculator internal calculator;
 
@@ -43,6 +45,7 @@ contract AuraCalculatorTest is Test {
     uint256 internal constant DURATION = 1 weeks;
     uint256 internal constant TOTAL_SUPPLY = 10e25; // 100m
     uint256 internal constant EXTRA_REWARD_LENGTH = 0;
+    uint40 internal constant PRICE_STALE_CHECK = 12 hours;
 
     error InvalidScenario();
 
@@ -61,6 +64,8 @@ contract AuraCalculatorTest is Test {
         extraRewarder3 = vm.addr(103);
         platformRewarder = vm.addr(104);
         booster = vm.addr(105);
+        stashToken = vm.addr(106);
+        baseToken = vm.addr(107);
 
         vm.label(underlyerStats, "underlyerStats");
         vm.label(pricingStats, "pricingStats");
@@ -72,6 +77,8 @@ contract AuraCalculatorTest is Test {
         vm.label(extraRewarder3, "extraRewarder3");
         vm.label(platformRewarder, "platformRewarder");
         vm.label(booster, "booster");
+        vm.label(stashToken, "stashToken");
+        vm.label(baseToken, "baseToken");
 
         // mock system registry
         vm.mockCall(
@@ -171,6 +178,14 @@ contract AuraCalculatorTest is Test {
         );
     }
 
+    function mockIsValid(address _rewarder, bool value) public {
+        vm.mockCall(_rewarder, abi.encodeWithSelector(IAuraStashToken.isValid.selector), abi.encode(value));
+    }
+
+    function mockBaseToken(address _stashToken, address value) public {
+        vm.mockCall(_stashToken, abi.encodeWithSelector(IAuraStashToken.baseToken.selector), abi.encode(value));
+    }
+
     function mockSimpleMainRewarder() public {
         mockRewardPerToken(mainRewarder, REWARD_PER_TOKEN);
         mockRewardRate(mainRewarder, REWARD_RATE);
@@ -193,10 +208,12 @@ contract AuraCalculatorTest is Test {
         mockRewardRate(extraRewarder1, REWARD_RATE);
         mockPeriodFinish(extraRewarder1, block.timestamp + PERIOD_FINISH_IN);
         mockTotalSupply(extraRewarder1, TOTAL_SUPPLY);
-        mockRewardToken(extraRewarder1, vm.addr(1000));
+        mockRewardToken(extraRewarder1, stashToken);
         mockDuration(extraRewarder1, DURATION);
         mockExtraRewardsLength(extraRewarder1, 0);
         mockAsset(extraRewarder1, vm.addr(1002));
+        mockIsValid(stashToken, true);
+        mockBaseToken(stashToken, baseToken);
     }
 
     function create2StepsSnapshot() internal {
@@ -484,6 +501,33 @@ contract Current is AuraCalculatorTest {
 }
 
 contract ResolveRewardToken is AuraCalculatorTest {
+    function test_ResolvesCorrectRewardToken_AndUnwrapsStashToken() public {
+        mockSimpleMainRewarder();
+
+        vm.expectCall(
+            address(pricingStats),
+            abi.encodeCall(IIncentivesPricingStats.getPrice, (mainRewarderRewardToken, PRICE_STALE_CHECK))
+        );
+        calculator.snapshot();
+
+        addMockExtraRewarder();
+
+        vm.expectCall(
+            address(pricingStats),
+            abi.encodeCall(IIncentivesPricingStats.getPrice, (mainRewarderRewardToken, PRICE_STALE_CHECK))
+        );
+        calculator.snapshot();
+
+        vm.expectCall(
+            address(pricingStats),
+            abi.encodeCall(IIncentivesPricingStats.getPrice, (mainRewarderRewardToken, PRICE_STALE_CHECK))
+        );
+        vm.expectCall(
+            address(pricingStats), abi.encodeCall(IIncentivesPricingStats.getPrice, (baseToken, PRICE_STALE_CHECK))
+        );
+        calculator.current();
+    }
+
     function test_ResolveValidRewardToken() public {
         // Get a valid rewarder
         IBaseRewardPool rewarder = IBaseRewardPool(0xdC38CCAc2008547275878F5D89B642DA27910739);

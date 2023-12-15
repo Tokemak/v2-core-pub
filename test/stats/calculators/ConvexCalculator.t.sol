@@ -163,6 +163,10 @@ contract ConvexCalculatorTest is Test {
         vm.mockCall(_rewarder, abi.encodeWithSelector(IBaseRewardPool.pid.selector), abi.encode(value));
     }
 
+    function mockIsInvalid(address _rewarder, bool value) public {
+        vm.mockCall(_rewarder, abi.encodeWithSelector(ITokenWrapper.isInvalid.selector), abi.encode(value));
+    }
+
     function mockToken(address _rewarder, address value) public {
         vm.mockCall(_rewarder, abi.encodeWithSelector(ITokenWrapper.token.selector), abi.encode(value));
     }
@@ -516,6 +520,7 @@ contract ResolveRewardToken is ConvexCalculatorTest {
 
         address rewardToken = vm.addr(152);
         vm.label(rewardToken, "rewardToken");
+        mockIsInvalid(extraRewarderRewardToken, false);
         mockToken(extraRewarderRewardToken, rewardToken);
 
         vm.expectCall(
@@ -590,5 +595,31 @@ contract ResolveRewardToken is ConvexCalculatorTest {
         // Unwrap the reward token
         assertEq(rewardToken, stashToken.token());
         assertEq(rewardToken, CNC_MAINNET);
+    }
+
+    function test_ResolveInvalidRewardToken_ReturnsZeroAddress() public {
+        // Get a valid rewarder
+        IBaseRewardPool rewarder = IBaseRewardPool(0x1A3c8B2F89B1C2593fa46C30ADA0b4E3D0133fF8);
+        assert(rewarder.pid() >= 151);
+        assert(rewarder.extraRewardsLength() > 0);
+
+        // Get the first extra rewarder
+        address extraRewarder = rewarder.extraRewards(0);
+        assertEq(extraRewarder, 0xB83607472704FE3bCf6165EB6ff1941722b3C8B6);
+
+        // Check the stash token
+        ITokenWrapper stashToken = ITokenWrapper(address(IBaseRewardPool(extraRewarder).rewardToken()));
+        assertEq(address(stashToken), 0xF132a783d8567c11D3Df3e4Ef890786AFFc16402);
+
+        // Mock token to be invalid
+        mockIsInvalid(address(stashToken), true);
+
+        // Mock base rewarder
+        vm.mockCall(mainRewarder, abi.encodeWithSelector(IBaseRewardPool.pid.selector), abi.encode(152));
+
+        address rewardToken = calculator.resolveRewardToken(extraRewarder);
+
+        // Unwrap the reward token
+        assertEq(rewardToken, address(0));
     }
 }

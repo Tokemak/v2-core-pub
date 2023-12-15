@@ -25,8 +25,9 @@ contract ConvexCalculator is IncentiveCalculatorBase {
 
         // Taking PID from base rewarder
         if (rewarder.pid() >= 151) {
-            // Retrieving the actual token value
-            rewardToken = ITokenWrapper(rewardToken).token();
+            ITokenWrapper reward = ITokenWrapper(rewardToken);
+            // Retrieving the actual token value if token is valid
+            rewardToken = reward.isInvalid() ? address(0) : reward.token();
         }
     }
 }

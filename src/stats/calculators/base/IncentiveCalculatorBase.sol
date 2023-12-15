@@ -507,9 +507,11 @@ abstract contract IncentiveCalculatorBase is
             lpToken = address(IBaseRewardPool(extraRewarder).rewardToken());
             rewardToken = resolveRewardToken(extraRewarder);
 
-            // Accumulate APR data from each extra rewarder if the period is still active
-            // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
-            apr += _computeAPR(extraRewarder, lpToken, rewardToken, rewardRate, periodFinish);
+            if (rewardToken != address(0)) {
+                // Accumulate APR data from each extra rewarder if the period is still active
+                // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
+                apr += _computeAPR(extraRewarder, lpToken, rewardToken, rewardRate, periodFinish);
+            }
         }
         return apr;
     }

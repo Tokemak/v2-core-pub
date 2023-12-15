@@ -121,6 +121,7 @@ abstract contract LMPVaultRouterBase is
     ) public payable virtual override returns (uint256 amountOut) {
         address destination = unwrapWETH ? address(this) : to;
 
+        // TODO msg.sender is user for the multicall
         if ((amountOut = vault.redeem(shares, destination, msg.sender)) < minAmountOut) {
             revert MinAmountError();
         }
@@ -170,7 +171,7 @@ abstract contract LMPVaultRouterBase is
     }
 
     // Helper function for repeat functionalities.
-    function _checkVaultAndReturnRewarder(address vault) internal returns (IMainRewarder) {
+    function _checkVaultAndReturnRewarder(address vault) internal view returns (IMainRewarder) {
         if (!systemRegistry.lmpVaultRegistry().isVault(vault)) {
             revert Errors.ItemNotFound();
         }

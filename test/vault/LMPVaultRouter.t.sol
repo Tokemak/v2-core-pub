@@ -485,6 +485,88 @@ contract LMPVaultRouterTest is BaseTest {
         assertEq(toke.balanceOf(address(lmpRewarder)), 0); // Rewarder should have no toke left.
     }
 
+    function test_DepositAndStakeMulticall() public {
+        // Need data array with two members, deposit to lmp and stake to rewarder.  Approvals done beforehand.
+        bytes[] memory data = new bytes[](2);
+
+        // Approve router, rewarder. Max approvals to make it easier.
+        baseAsset.approve(address(lmpVaultRouter), type(uint256).max);
+        lmpVault.approve(address(lmpRewarder), type(uint256).max);
+
+        // Get preview of shares for staking.
+        uint256 expectedShares = lmpVault.previewDeposit(depositAmount);
+
+        // Generate data.
+        data[0] = abi.encodeWithSelector(lmpVaultRouter.deposit.selector, lmpVault, address(this), depositAmount, 1); // Deposit
+        data[1] = abi.encodeWithSelector(lmpVaultRouter.stakeVaultToken.selector, address(lmpVault), expectedShares);
+
+        // Snapshot balances for user (address(this)) before multicall.
+        uint256 baseAssetBalanceBefore = baseAsset.balanceOf(address(this));
+        uint256 shareBalanceBefore = lmpVault.balanceOf(address(this));
+        uint256 rewardBalanceBefore = lmpRewarder.balanceOf(address(this));
+
+        // Check snapshots.
+        assertGe(baseAssetBalanceBefore, depositAmount); // Make sure there is at least enough to deposit.
+        assertEq(shareBalanceBefore, 0); // No deposit, should be zero.
+        assertEq(rewardBalanceBefore, 0); // No rewards yet, should be zero.
+
+        // Execute multicall.
+        lmpVaultRouter.multicall(data);
+
+        // Snapshot balances after.
+        uint256 baseAssetBalanceAfter = baseAsset.balanceOf(address(this));
+        uint256 shareBalanceAfter = lmpVault.balanceOf(address(this));
+        uint256 rewardBalanceAfter = lmpRewarder.balanceOf(address(this));
+
+        assertEq(baseAssetBalanceBefore - depositAmount, baseAssetBalanceAfter); // Only `depositAmount` taken out.
+        assertEq(shareBalanceAfter, 0); // Still zero, all shares should have been moved.
+        assertEq(rewardBalanceAfter, expectedShares); // Should transfer 1:1.
+    }
+
+    function test_UnstakeAndWithdrawMulticall() public {
+        // Deposit and stake normally.
+        baseAsset.approve(address(lmpVaultRouter), depositAmount);
+        uint256 shares = lmpVaultRouter.deposit(lmpVault, address(this), depositAmount, 1);
+        lmpVault.approve(address(lmpRewarder), shares);
+        lmpVaultRouter.stakeVaultToken(address(lmpVault), shares);
+
+        // Need array of bytes with two members, one for unstaking from rewarder, other for withdrawing from LMP.
+        bytes[] memory data = new bytes[](2);
+
+        // Approve router to burn share tokens.
+        lmpVault.approve(address(lmpVaultRouter), shares);
+
+        // Generate data.
+        uint256 rewardBalanceBefore = lmpRewarder.balanceOf(address(this));
+        data[0] = abi.encodeWithSelector(
+            lmpVaultRouter.unstakeVaultToken.selector, address(lmpVault), rewardBalanceBefore, false
+        );
+        data[1] = abi.encodeWithSelector(
+            lmpVaultRouter.redeem.selector, lmpVault, address(this), rewardBalanceBefore, 1, false
+        );
+
+        // Snapshot balances for `address(this)` before call.
+        uint256 baseAssetBalanceBefore = baseAsset.balanceOf(address(this));
+        uint256 sharesBalanceBefore = lmpVault.balanceOf(address(this));
+
+        // Check snapshots.  Don't check baseAsset balance here, check after multicall to make sure correct amount
+        // comes back.
+        assertEq(rewardBalanceBefore, shares); // All shares minted should be in rewarder.
+        assertEq(sharesBalanceBefore, 0); // User should own no shares.
+
+        // Execute multicall.
+        lmpVaultRouter.multicall(data);
+
+        // Post multicall snapshot.
+        uint256 rewardBalanceAfter = lmpRewarder.balanceOf(address(this));
+        uint256 baseAssetBalanceAfter = baseAsset.balanceOf(address(this));
+        uint256 sharesBalanceAfter = lmpVault.balanceOf(address(this));
+
+        assertEq(rewardBalanceAfter, 0); // All rewards removed.
+        assertEq(baseAssetBalanceAfter, baseAssetBalanceBefore + depositAmount); // Should have all base asset back.
+        assertEq(sharesBalanceAfter, 0); // All shares burned.
+    }
+
     /* **************************************************************************** */
     /* 				    	    	Helper methods									*/
 

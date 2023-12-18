@@ -705,37 +705,42 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         uint256 numRewards = stats.annualizedRewardAmounts.length;
         for (uint256 i = 0; i < numRewards; ++i) {
             address rewardToken = stats.rewardTokens[i];
-            uint256 tokenPrice = getIncentivePrice(pricing, rewardToken);
+            // Move ahead only if the rewardToken is not 0
+            if (rewardToken != address(0)) {
+                uint256 tokenPrice = getIncentivePrice(pricing, rewardToken);
 
-            // skip processing if the token is worthless or unregistered
-            if (tokenPrice == 0) continue;
+                // skip processing if the token is worthless or unregistered
+                if (tokenPrice == 0) continue;
 
-            uint256 periodFinish = stats.periodFinishForRewards[i];
-            uint256 rewardRate = stats.annualizedRewardAmounts[i];
-            uint256 rewardDivisor = 10 ** IERC20Metadata(rewardToken).decimals();
+                uint256 periodFinish = stats.periodFinishForRewards[i];
+                uint256 rewardRate = stats.annualizedRewardAmounts[i];
+                uint256 rewardDivisor = 10 ** IERC20Metadata(rewardToken).decimals();
 
-            if (direction == RebalanceDirection.Out) {
-                // if the destination has credits then extend the periodFinish by the expiredTolerance
-                // this allows destinations that consistently had rewards some leniency
-                if (hasCredits) {
-                    periodFinish += EXPIRED_REWARD_TOLERANCE;
-                }
+                if (direction == RebalanceDirection.Out) {
+                    // if the destination has credits then extend the periodFinish by the expiredTolerance
+                    // this allows destinations that consistently had rewards some leniency
+                    if (hasCredits) {
+                        periodFinish += EXPIRED_REWARD_TOLERANCE;
+                    }
 
-                // slither-disable-next-line timestamp
-                if (periodFinish > block.timestamp) {
-                    // tokenPrice is 1e18 and we want 1e18 out, so divide by the token decimals
-                    totalRewards += rewardRate * tokenPrice / rewardDivisor;
-                }
-            } else {
-                // when adding to a destination, count incentives only when either of the following conditions are met:
-                // 1) the incentive lasts at least 7 days
-                // 2) the incentive lasts >3 days and the destination has a positive incentive credit balance
-                if (
                     // slither-disable-next-line timestamp
-                    periodFinish >= block.timestamp + 7 days || (hasCredits && periodFinish > block.timestamp + 3 days)
-                ) {
-                    // tokenPrice is 1e18 and we want 1e18 out, so divide by the token decimals
-                    totalRewards += rewardRate * tokenPrice / rewardDivisor;
+                    if (periodFinish > block.timestamp) {
+                        // tokenPrice is 1e18 and we want 1e18 out, so divide by the token decimals
+                        totalRewards += rewardRate * tokenPrice / rewardDivisor;
+                    }
+                } else {
+                    // when adding to a destination, count incentives only when either of the following conditions are
+                    // met:
+                    // 1) the incentive lasts at least 7 days
+                    // 2) the incentive lasts >3 days and the destination has a positive incentive credit balance
+                    if (
+                        // slither-disable-next-line timestamp
+                        periodFinish >= block.timestamp + 7 days
+                            || (hasCredits && periodFinish > block.timestamp + 3 days)
+                    ) {
+                        // tokenPrice is 1e18 and we want 1e18 out, so divide by the token decimals
+                        totalRewards += rewardRate * tokenPrice / rewardDivisor;
+                    }
                 }
             }
         }

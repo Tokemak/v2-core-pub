@@ -22,9 +22,6 @@ import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 
-// TODO: how do we ensure that we don't have dust positions -- require min positions on rebalance
-// TODO: confirm the order that verification occurs vs the actual creation/burning of LP tokens from rebalances
-
 contract LMPStrategy is ILMPStrategy, SecurityBase {
     using ViolationTracking for ViolationTracking.State;
     using NavTracking for NavTracking.State;
@@ -304,11 +301,9 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // slither-disable-next-line timestamp
         if (predictedGainAtOffsetEnd <= convertUintToInt(valueStats.swapCost)) revert SwapCostExceeded();
 
-        // TODO: make it return nothing b/c the absence of a revert is what we're looking for
         return (true, "");
     }
 
-    // TODO: must validate that we have valid destinations for the LMP
     function validateRebalanceParams(IStrategy.RebalanceParams memory params) internal view {
         Errors.verifyNotZero(params.destinationIn, "destinationIn");
         Errors.verifyNotZero(params.destinationOut, "destinationOut");
@@ -372,6 +367,9 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         returns (RebalanceValueStats memory)
     {
         IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
+        // TODO: Use destination level pricing
+        // uint256 outPrice = pricer.getSpotPriceInEth(params.tokenOut, params.destinationOut);
+        // uint256 inPrice = pricer.getSpotPriceInEth(params.tokenIn, params.destinationIn);
         uint256 outPrice = pricer.getPriceInEth(params.tokenOut);
         uint256 inPrice = pricer.getPriceInEth(params.tokenIn);
 
@@ -438,8 +436,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         return true;
     }
 
-    // TODO: perhaps we should just have a set order to the checks to push expensive operations out
-    // or have the solver tell us why we're moving back to idle
     function verifyRebalanceToIdle(IStrategy.RebalanceParams memory params, uint256 slippage) internal {
         IDestinationVault outDest = IDestinationVault(params.destinationOut);
 
@@ -483,13 +479,14 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
     function verifyCleanUpOperation(IStrategy.RebalanceParams memory params) internal view returns (bool) {
         IDestinationVault outDest = IDestinationVault(params.destinationOut);
-        // TODO: revert if information is too old?
+
         LMPDebt.DestinationInfo memory destInfo = lmpVault.getDestinationInfo(params.destinationOut);
+        // revert if information is too old
+        ensureNotStaleData("DestInfo", destInfo.lastReport);
         // shares of the destination currently held by the LMPVault
         uint256 currentShares = outDest.balanceOf(address(lmpVault));
         // withdrawals reduce totalAssets, but do not update the destinationInfo
         // adjust the current debt based on the currently owned shares
-        // TODO: triple check that currentShares <= destInfo.ownedShares (always)
         uint256 currentDebt = destInfo.currentDebt * currentShares / destInfo.ownedShares;
 
         // If the current position is < 2% of total assets, trim to idle is allowed
@@ -508,22 +505,20 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
         IDestinationVault outDest = IDestinationVault(params.destinationOut);
 
-        // TODO: revert if information is too old?
         LMPDebt.DestinationInfo memory destInfo = lmpVault.getDestinationInfo(params.destinationOut);
+        // revert if information is too old
+        ensureNotStaleData("DestInfo", destInfo.lastReport);
 
         // shares of the destination currently held by the LMPVault
         uint256 currentShares = outDest.balanceOf(address(lmpVault));
 
         // withdrawals reduce totalAssets, but do not update the destinationInfo
         // adjust the current debt based on the currently owned shares
-        // TODO: triple check that currentShares <= destInfo.ownedShares (always)
         uint256 currentDebt = destInfo.currentDebt * currentShares / destInfo.ownedShares;
 
         // prior validation ensures that currentShares >= amountOut
         uint256 sharesAfterRebalance = currentShares - params.amountOut;
 
-        // TODO: does the removal of the assets from the destination have a known price impact?
-        // TODO: consider a check after the rebalance is complete that checks the portfolio value is as expected
         // current value of the destination shares, not cached from debt reporting
         uint256 destValueAfterRebalance = outDest.debtValue(sharesAfterRebalance);
 
@@ -537,7 +532,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         return destValueAfterRebalance * 1e18 / lmpAssetsAfterRebalance >= trimAmount;
     }
 
-    // TODO: it is confusing that it returns 100% for no trim
     function getDestinationTrimAmount(IDestinationVault dest) internal returns (uint256) {
         uint256 discountThreshold = 3e5; // 3% 1e7 precision, discount required to consider trimming
         uint256 discountDaysThreshold = 7; // number of last 10 days that it was >= discountThreshold
@@ -630,7 +624,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // temporary holder to reduce variables
         InterimStats memory interimStats;
 
-        // TODO: estimate reserves for this calculation; or change the underlying stats
         uint256 reservesTotal = 0;
         for (uint256 i = 0; i < numLstStats; ++i) {
             ensureNotStaleData("lstData", stats.lstStatsData[i].lastSnapshotTimestamp);
@@ -759,8 +752,12 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             totalSupplyInEth = (stats.safeTotalSupply + lpAmountToAddOrRemove) * lpPrice / lpTokenDivisor;
         }
 
-        // TODO: what if the denominator is zero?
-        return (totalRewards * 1e18) / totalSupplyInEth;
+        // Adjust for totalSupplyInEth is 0
+        if (totalSupplyInEth != 0) {
+            return (totalRewards * 1e18) / totalSupplyInEth;
+        } else {
+            return (totalRewards * 1e18);
+        }
     }
 
     function getIncentivePrice(IIncentivesPricingStats pricing, address token) internal view returns (uint256) {
@@ -771,7 +768,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     function calculatePriceReturns(IDexLSTStats.DexLSTStatsData memory stats) internal view returns (int256[] memory) {
         ILSTStats.LSTStatsData[] memory lstStatsData = stats.lstStatsData;
 
-        // TODO: pretty sure we need to look at the actual destination-level prices, not use the oracle variant
         uint256 numLsts = lstStatsData.length;
         int256[] memory priceReturns = new int256[](numLsts);
 
@@ -840,15 +836,13 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // clearExpirePause sets _swapCostOffsetPeriod, so skip when possible to avoid double write
         if (!clearExpiredPause()) _swapCostOffsetPeriod = swapCostOffsetPeriodInDays();
 
-        // TODO: is it ok to set this on any rebalance, including in/out from idle
-        // probably want to exclude rebalances to idle since those skip swapCostOffset logic
-        lastRebalanceTimestamp = uint40(block.timestamp);
-
         address lmpAddress = address(lmpVault);
 
         // update the destination that had assets added
         // moves into idle are not tracked for violations
         if (params.destinationIn != lmpAddress) {
+            // Update to lastRebalanceTimestamp excludes rebalances to idle as those skip swapCostOffset logic
+            lastRebalanceTimestamp = uint40(block.timestamp);
             lastAddTimestampByDestination[params.destinationIn] = lastRebalanceTimestamp;
         }
 

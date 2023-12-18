@@ -240,7 +240,7 @@ contract LMPStrategyTest is Test {
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
             currentDebt: 330e18, // implied price of 1.1
-            lastReport: 0, // unused
+            lastReport: 91 days,
             ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
             debtBasis: 0 // unused
          });

@@ -23,7 +23,7 @@ contract ConvexRewardTest is Test {
     }
 
     function testCVXRewardIfTotalSupplyIsZero() public {
-        checkCVXMintAmount(0, 987, 987);
+        checkCVXMintAmount(0, 987, 0);
     }
 
     function testCVXRewardIfInCliffs() public {

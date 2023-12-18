@@ -27,10 +27,9 @@ library AuraRewards {
         uint256 auraSupply = IERC20(auraToken).totalSupply();
         uint256 rewardMultiplier = IBooster(booster).getRewardMultipliers(rewarder);
         balEarned = balEarned * rewardMultiplier / IBooster(booster).REWARD_MULTIPLIER_DENOMINATOR();
+
         // if no AURA has been minted, pre-mine the same amount as the provided BAL
-        if (auraSupply == 0) {
-            return balEarned;
-        }
+        if (auraSupply == 0 || balEarned == 0) return 0;
 
         // After AuraMinter.inflationProtectionTime (June 5, 2025) has passed,
         // minterMinted may not be 0. Excluded from emissionsMinted at this time.

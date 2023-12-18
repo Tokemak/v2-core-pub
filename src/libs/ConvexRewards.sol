@@ -20,9 +20,7 @@ library ConvexRewards {
         uint256 cvxSupply = IERC20(cvxToken).totalSupply();
 
         // if no cvx has been minted, pre-mine the same amount as the provided crv
-        if (cvxSupply == 0) {
-            return crvEarned;
-        }
+        if (cvxSupply == 0 || crvEarned == 0) return 0;
 
         // determine the current cliff
         uint256 currentCliff = cvxSupply / CLIFF_SIZE;

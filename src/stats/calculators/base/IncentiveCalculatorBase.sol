@@ -415,14 +415,16 @@ abstract contract IncentiveCalculatorBase is
     {
         rewardToken = isExtraReward ? resolveRewardToken(address(_rewarder)) : address(_rewarder.rewardToken());
 
-        periodFinishForReward = _rewarder.periodFinish();
+        if (rewardToken != address(0)) {
+            periodFinishForReward = _rewarder.periodFinish();
 
-        uint256 rewardRate = _rewarder.rewardRate();
+            uint256 rewardRate = _rewarder.rewardRate();
 
-        annualizedRewardAmount = rewardRate * Stats.SECONDS_IN_YEAR;
-        safeTotalSupply = safeTotalSupplies[address(_rewarder)];
+            annualizedRewardAmount = rewardRate * Stats.SECONDS_IN_YEAR;
+            safeTotalSupply = safeTotalSupplies[address(_rewarder)];
 
-        return (safeTotalSupply, address(rewardToken), annualizedRewardAmount, uint40(periodFinishForReward));
+            return (safeTotalSupply, rewardToken, annualizedRewardAmount, uint40(periodFinishForReward));
+        }
     }
 
     /**
@@ -524,7 +526,7 @@ abstract contract IncentiveCalculatorBase is
         uint256 periodFinish
     ) internal returns (uint256 apr) {
         // slither-disable-next-line timestamp
-        if (block.timestamp > periodFinish) return 0;
+        if (block.timestamp > periodFinish || rewardRate == 0) return 0;
 
         uint256 lpPrice = _getPriceInEth(lpToken);
         uint256 price = _getIncentivePrice(rewardToken);

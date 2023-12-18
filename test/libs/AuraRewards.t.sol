@@ -30,7 +30,7 @@ contract AuraRewardTest is Test {
     }
 
     function testAURARewardIfTotalSupplyIsZero() public {
-        checkAURAMintAmount(0, 990, 396);
+        checkAURAMintAmount(0, 990, 0);
     }
 
     function testAURARewardIfInCliffs() public {

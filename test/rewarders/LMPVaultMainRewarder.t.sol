@@ -31,7 +31,7 @@ contract LMPVaultMainRewarderTest is Test {
         stakingToken = new MockERC20();
         staker = makeAddr("STAKER");
 
-        stakingToken.mint(staker, stakeAmount);
+        stakingToken.mint(stakeTracker, stakeAmount);
 
         // Mock access controller call.
         vm.mockCall(systemRegistry, abi.encodeWithSignature("accessController()"), abi.encode(accessController));
@@ -60,7 +60,7 @@ contract WithdrawLMPRewarder is LMPVaultMainRewarderTest {
         vm.mockCall(systemRegistry, abi.encodeWithSignature("gpToke()"), abi.encode(makeAddr("GP_TOKE")));
         vm.mockCall(systemRegistry, abi.encodeWithSignature("toke()"), abi.encode(makeAddr("TOKE")));
 
-        vm.prank(staker);
+        vm.prank(stakeTracker);
         stakingToken.approve(address(rewarder), stakeAmount);
         rewarder.stake(staker, stakeAmount);
     }
@@ -110,7 +110,7 @@ contract StakeLMPRewarder is LMPVaultMainRewarderTest {
 
     function setUp() public override {
         super.setUp();
-        vm.prank(staker);
+        vm.prank(stakeTracker);
 
         // Max approve for overage tests.
         stakingToken.approve(address(rewarder), type(uint256).max);
@@ -126,7 +126,7 @@ contract StakeLMPRewarder is LMPVaultMainRewarderTest {
         uint256 userStakingTokenBalancBefore = stakingToken.balanceOf(staker);
 
         assertEq(userRewarderBalanceBefore, 0);
-        assertEq(userStakingTokenBalancBefore, stakeAmount);
+        assertEq(userStakingTokenBalancBefore, 0);
 
         rewarder.stake(staker, localStakeAmount);
 
@@ -134,6 +134,6 @@ contract StakeLMPRewarder is LMPVaultMainRewarderTest {
         uint256 userStakingTokenBalanceAfter = stakingToken.balanceOf(staker);
 
         assertEq(userRewardBalanceAfter, userRewarderBalanceBefore + localStakeAmount);
-        assertEq(userStakingTokenBalanceAfter, userStakingTokenBalancBefore - localStakeAmount);
+        assertEq(userStakingTokenBalanceAfter, 0);
     }
 }

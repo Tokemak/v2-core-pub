@@ -121,7 +121,6 @@ abstract contract LMPVaultRouterBase is
     ) public payable virtual override returns (uint256 amountOut) {
         address destination = unwrapWETH ? address(this) : to;
 
-        // TODO msg.sender is user for the multicall
         if ((amountOut = vault.redeem(shares, destination, msg.sender)) < minAmountOut) {
             revert MinAmountError();
         }
@@ -132,17 +131,33 @@ abstract contract LMPVaultRouterBase is
     }
 
     /// @inheritdoc ILMPVaultRouterBase
-    function stakeVaultToken(address vaultToken, uint256 amount) external {
-        IMainRewarder lmpRewarder = _checkVaultAndReturnRewarder(vaultToken);
+    function stakeVaultToken(IERC20 vault, uint256 maxAmount) external returns (uint256) {
+        IMainRewarder lmpRewarder = _checkVaultAndReturnRewarder(address(vault));
 
-        lmpRewarder.stake(msg.sender, amount);
+        uint256 userBalance = vault.balanceOf(msg.sender);
+        if (userBalance < maxAmount) {
+            maxAmount = userBalance;
+        }
+        pullToken(vault, maxAmount, address(this));
+        approve(vault, address(lmpRewarder), maxAmount);
+
+        lmpRewarder.stake(msg.sender, maxAmount);
+
+        return maxAmount;
     }
 
     /// @inheritdoc ILMPVaultRouterBase
-    function unstakeVaultToken(address vaultToken, uint256 amount, bool claim) external {
-        IMainRewarder lmpRewarder = _checkVaultAndReturnRewarder(vaultToken);
+    function withdrawVaultToken(address vault, uint256 maxAmount, bool claim) external returns (uint256) {
+        IMainRewarder lmpRewarder = _checkVaultAndReturnRewarder(vault);
 
-        lmpRewarder.withdraw(msg.sender, amount, claim);
+        uint256 userRewardBalance = lmpRewarder.balanceOf(msg.sender);
+        if (maxAmount > userRewardBalance) {
+            maxAmount = userRewardBalance;
+        }
+
+        lmpRewarder.withdraw(msg.sender, maxAmount, claim);
+
+        return maxAmount;
     }
 
     /// @inheritdoc ILMPVaultRouterBase

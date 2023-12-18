@@ -3,6 +3,7 @@
 pragma solidity >=0.8.7;
 
 import { ILMPVault } from "./ILMPVault.sol";
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title LMPVault Router Base Interface
@@ -101,15 +102,21 @@ interface ILMPVaultRouterBase {
     ) external payable returns (uint256 amountOut);
 
     /// @notice Stakes vault token to corresponding rewarder.
-    /// @param vaultToken Address of vault token to stake.
-    /// @param amount Amount of vault token to stake.
-    function stakeVaultToken(address vaultToken, uint256 amount) external;
+    /// @param vault IERC20 instance of an LMP vault to stake to.
+    /// @param maxAmount Maximum amount for user to stake.  Amount > balanceOf(user) will stake all present tokens.
+    /// @return staked Returns total amount staked.
+    function stakeVaultToken(IERC20 vault, uint256 maxAmount) external returns (uint256 staked);
 
     /// @notice Unstakes vault token from corresponding rewarder.
-    /// @param vaultToken Address of the vault token to unstake.
-    /// @param amount Amount of vault token to unstake.
+    /// @param vaultToken Address of the vault token to withdraw.
+    /// @param maxAmount Amount of vault token to withdraw Amount > balanceOf(user) will withdraw all owned tokens.
     /// @param claim Claiming rewards or not on unstaking.
-    function unstakeVaultToken(address vaultToken, uint256 amount, bool claim) external;
+    /// @return withdrawn Amount of vault token withdrawn.
+    function withdrawVaultToken(
+        address vaultToken,
+        uint256 maxAmount,
+        bool claim
+    ) external returns (uint256 withdrawn);
 
     /// @notice Claims rewards on user stake of vault token.
     /// @param vaultToken Address of vault token to claim rewards for.

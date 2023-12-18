@@ -13,6 +13,8 @@ import { Roles } from "src/libs/Roles.sol";
  *      access control for LMP rewarders.
  */
 contract LMPVaultMainRewarder is MainRewarder {
+    using SafeERC20 for IERC20;
+
     /// @notice IERC20 instance of token being staked in rewarder.
     IERC20 public immutable stakingToken;
 
@@ -43,9 +45,9 @@ contract LMPVaultMainRewarder is MainRewarder {
     // slither-disable-end
 
     /**
-     * @notice User withdraws autopilot vault token from rewarder.  This function can only be called by
-     *      the stake tracker address, which in the case of the autopilot vault is the router.  This functionality
-     *      is inherited from the base contract.
+     * @notice Withdraws autopilot vault token from rewarder.
+     * @dev This function can only be called by the stake tracker address, which in the case of the
+     *        autopilot vault is the router.
      * @dev Balance updates, reward calculations taken care of in inherited contract.
      * @param account Account that is withdrawing assets.
      * @param amount Amount of assets to be withdrawn.
@@ -54,14 +56,13 @@ contract LMPVaultMainRewarder is MainRewarder {
     function withdraw(address account, uint256 amount, bool claim) public override {
         super.withdraw(account, amount, claim);
 
-        // TODO: Can probably do this normal way, not using SafeERC20 in this way.
-        SafeERC20.safeTransfer(stakingToken, account, amount);
+        stakingToken.safeTransfer(account, amount);
     }
 
     /**
-     * @notice User stakes autopilot vault token to rewarder.  This function can only be called by
-     *      the stake tracker address, which in the case of the autopilot vault is the router.  This functionality
-     *      is inherited from the base contract.
+     * @notice Stakes autopilot vault token to rewarder.
+     * @dev This function can only be called by the stake tracker address, which in the case of the
+     *      autopilot vault is the router.
      * @dev Balance updates, reward calculations taken care of in inherited contract.
      * @param account Account staking.
      * @param amount Amount of autopilot vault token to stake.
@@ -69,6 +70,7 @@ contract LMPVaultMainRewarder is MainRewarder {
     function stake(address account, uint256 amount) public override {
         super.stake(account, amount);
 
-        SafeERC20.safeTransferFrom(stakingToken, account, address(this), amount);
+        // Staktracker (router) takes control of tokens when staking.
+        stakingToken.safeTransferFrom(stakeTracker, address(this), amount);
     }
 }

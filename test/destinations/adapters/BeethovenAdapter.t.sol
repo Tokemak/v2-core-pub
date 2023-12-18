@@ -7,15 +7,15 @@ import { stdStorage, StdStorage } from "forge-std/StdStorage.sol";
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "../../../src/interfaces/external/balancer/IVault.sol";
-import { BalancerBeethovenAdapter } from "../../../src/destinations/adapters/BalancerBeethovenAdapter.sol";
-import { IDestinationRegistry } from "../../../src/interfaces/destinations/IDestinationRegistry.sol";
-import { IDestinationAdapter } from "../../../src/interfaces/destinations/IDestinationAdapter.sol";
-import { WSTETH_OPTIMISM, WETH9_OPTIMISM, RETH_OPTIMISM } from "../../utils/Addresses.sol";
+import { IVault } from "src/interfaces/external/balancer/IVault.sol";
+import { BalancerBeethovenAdapter } from "src/destinations/adapters/BalancerBeethovenAdapter.sol";
+import { IDestinationRegistry } from "src/interfaces/destinations/IDestinationRegistry.sol";
+import { IDestinationAdapter } from "src/interfaces/destinations/IDestinationAdapter.sol";
+import { WSTETH_OPTIMISM, WETH9_OPTIMISM, RETH_OPTIMISM } from "test/utils/Addresses.sol";
 
-import { TestableVM } from "../../../src/solver/test/TestableVM.sol";
-import { SolverCaller } from "../../../src/solver/test/SolverCaller.sol";
-import { ReadPlan } from "../../../test/utils/ReadPlan.sol";
+import { TestableVM } from "src/solver/test/TestableVM.sol";
+import { SolverCaller } from "src/solver/test/SolverCaller.sol";
+import { ReadPlan } from "test/utils/ReadPlan.sol";
 
 contract BeethovenAdapterTest is Test {
     IVault private vault;

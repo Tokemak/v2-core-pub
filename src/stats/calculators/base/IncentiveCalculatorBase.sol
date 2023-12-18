@@ -525,8 +525,10 @@ abstract contract IncentiveCalculatorBase is
         uint256 rewardRate,
         uint256 periodFinish
     ) internal returns (uint256 apr) {
+        // slither-disable-start incorrect-equality
         // slither-disable-next-line timestamp
         if (block.timestamp > periodFinish || rewardRate == 0) return 0;
+        // slither-disable-end incorrect-equality
 
         uint256 lpPrice = _getPriceInEth(lpToken);
         uint256 price = _getIncentivePrice(rewardToken);

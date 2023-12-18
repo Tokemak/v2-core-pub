@@ -776,7 +776,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         if (totalSupplyInEth != 0) {
             return (totalRewards * 1e18) / totalSupplyInEth;
         } else {
-            return (totalRewards * 1e18);
+            return (totalRewards);
         }
     }
 

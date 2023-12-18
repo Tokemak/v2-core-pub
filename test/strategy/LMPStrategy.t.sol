@@ -600,8 +600,8 @@ contract LMPStrategyTest is Test {
     /* getRebalanceValueStats Tests             */
     /* **************************************** */
     function test_getRebalanceValueStats_basic() public {
-        setTokenPrice(mockOutToken, 100e16);
-        setTokenPrice(mockInToken, 99e16); // set inToken price slightly lower than out token
+        setDestinationSpotPrice(mockOutDest, 100e16);
+        setDestinationSpotPrice(mockInDest, 99e16); // set in price slightly lower than out
 
         defaultParams.amountOut = 78e18;
         defaultParams.amountIn = 77e18; // also set slightly lower than out token
@@ -1998,10 +1998,12 @@ contract LMPStrategyTest is Test {
     /* **************************************** */
     function setTokenDefaultMocks() private {
         setTokenPrice(mockInToken, 1e18);
+        setDestinationSpotPrice(mockInDest, 1e18);
         setTokenPrice(mockInLSTToken, 1e18);
         setTokenSpotPrice(mockInLSTToken, 1e18);
         setTokenDecimals(mockInToken, 18);
         setTokenPrice(mockOutToken, 1e18);
+        setDestinationSpotPrice(mockOutDest, 1e18);
         setTokenPrice(mockOutLSTToken, 1e18);
         setTokenSpotPrice(mockOutLSTToken, 1e18);
         setTokenDecimals(mockOutToken, 18);
@@ -2013,6 +2015,14 @@ contract LMPStrategyTest is Test {
     /* **************************************** */
     /* Helper Mocks                        */
     /* **************************************** */
+    function setDestinationSpotPrice(address destination, uint256 price) private {
+        vm.mockCall(
+            address(destination),
+            abi.encodeWithSelector(IDestinationVault.getValidatedSpotPrice.selector),
+            abi.encode(price)
+        );
+    }
+
     function setTokenPrice(address token, uint256 price) private {
         vm.mockCall(
             address(rootPriceOracle),

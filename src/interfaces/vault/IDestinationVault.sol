@@ -168,4 +168,9 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @notice Get the address of the underlying pool the vault points to
     /// @return poolAddress address of the underlying pool
     function getPool() external view returns (address poolAddress);
+
+    /// @notice Gets the spot price of the underlying LP token
+    /// @dev Price validated to be inside our tolerance against safe price. Will revert if outside.
+    /// @return price Value of 1 unit of the underlying LP token in terms of the base asset
+    function getValidatedSpotPrice() external returns (uint256 price);
 }

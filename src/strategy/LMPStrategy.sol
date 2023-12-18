@@ -365,21 +365,28 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         internal
         returns (RebalanceValueStats memory)
     {
-        IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
-        // TODO: Use destination level pricing
-        // uint256 outPrice = pricer.getSpotPriceInEth(params.tokenOut, params.destinationOut);
-        // uint256 inPrice = pricer.getSpotPriceInEth(params.tokenIn, params.destinationIn);
-        uint256 outPrice = pricer.getPriceInEth(params.tokenOut);
-        uint256 inPrice = pricer.getPriceInEth(params.tokenIn);
-
         uint8 tokenOutDecimals = IERC20Metadata(params.tokenOut).decimals();
         uint8 tokenInDecimals = IERC20Metadata(params.tokenIn).decimals();
+        address lmpVaultAddress = address(lmpVault);
+
+        // Get the price of one unit of the underlying lp token, the params.tokenOut/tokenIn
+        // Prices are calculated using the spot of price of the constituent tokens
+        // validated to be within a tolerance of the safe price of those tokens
+        uint256 outPrice = IDestinationVault(params.destinationOut).getValidatedSpotPrice();
+
+        // Prices are all in terms of the base asset, so when its a rebalance back to the vault
+        // We can just take things as 1:1
+        uint256 inPrice = params.destinationIn != lmpVaultAddress
+            ? IDestinationVault(params.destinationIn).getValidatedSpotPrice()
+            : 10 ** tokenInDecimals;
 
         // prices are 1e18 and we want values in 1e18, so divide by token decimals
         uint256 outEthValue = outPrice * params.amountOut / 10 ** tokenOutDecimals;
 
         // amountIn is a minimum to receive, but it is OK if we receive more
-        uint256 inEthValue = inPrice * params.amountIn / 10 ** tokenInDecimals;
+        uint256 inEthValue = params.destinationIn != lmpVaultAddress
+            ? inPrice * params.amountIn / 10 ** tokenInDecimals
+            : params.amountIn;
 
         uint256 swapCost = outEthValue.subSaturate(inEthValue);
         uint256 slippage = swapCost * 1e18 / outEthValue;

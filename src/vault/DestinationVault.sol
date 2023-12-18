@@ -365,6 +365,15 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     }
 
     /// @inheritdoc IDestinationVault
+    function getValidatedSpotPrice() external pure returns (uint256 price) {
+        // TODO: Implement
+        // Use getPool() and underlyer() and rootPriceOracle.getRangePriceLP()
+        // Revert if !isSpotSafe
+        // See: https://github.com/Tokemak/v2-core/issues/371
+        price = 1e18;
+    }
+
+    /// @inheritdoc IDestinationVault
     function recoverUnderlying(address destination) external override hasRole(Roles.TOKEN_RECOVERY_ROLE) {
         Errors.verifyNotZero(destination, "destination");
 

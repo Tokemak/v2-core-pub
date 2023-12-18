@@ -506,7 +506,6 @@ abstract contract IncentiveCalculatorBase is
             if (_shouldSnapshot(extraRewarder, rewardRate, periodFinish, totalSupply)) {
                 _snapshot(extraRewarder, totalSupply, rewardRate);
             }
-            lpToken = address(IBaseRewardPool(extraRewarder).rewardToken());
             rewardToken = resolveRewardToken(extraRewarder);
 
             if (rewardToken != address(0)) {

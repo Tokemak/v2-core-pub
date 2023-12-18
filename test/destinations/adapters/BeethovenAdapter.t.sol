@@ -23,7 +23,7 @@ contract BeethovenAdapterTest is Test {
 
     function setUp() public {
         string memory endpoint = vm.envString("OPTIMISM_MAINNET_RPC_URL");
-        uint256 forkId = vm.createFork(endpoint);
+        uint256 forkId = vm.createFork(endpoint, 113_565_455);
         vm.selectFork(forkId);
         assertEq(vm.activeFork(), forkId);
 

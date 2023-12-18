@@ -273,8 +273,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // ensure that we're not exceeding top-level max slippage
         if (valueStats.slippage > maxNormalOperationSlippage) revert MaxSlippageExceeded();
 
-        IStrategy.SummaryStats memory inSummary =
-            getDestinationSummaryStats(params.destinationIn, valueStats.inPrice, RebalanceDirection.In, params.amountIn);
+        IStrategy.SummaryStats memory inSummary = getRebalanceInSummaryStats(params);
 
         // ensure that the destination that is being added to doesn't exceed top-level premium/discount constraints
         if (inSummary.maxDiscount > maxDiscount) revert MaxDiscountExceeded();
@@ -583,11 +582,27 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         external
         returns (IStrategy.SummaryStats memory outSummary)
     {
+        // Use safe price
         IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
         uint256 outPrice = pricer.getPriceInEth(rebalanceParams.tokenOut);
         outSummary = (
             getDestinationSummaryStats(
                 rebalanceParams.destinationOut, outPrice, RebalanceDirection.Out, rebalanceParams.amountOut
+            )
+        );
+    }
+
+    // Summary stats for destination In
+    function getRebalanceInSummaryStats(IStrategy.RebalanceParams memory rebalanceParams)
+        internal
+        returns (IStrategy.SummaryStats memory inSummary)
+    {
+        // Use safe price
+        IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
+        uint256 inPrice = pricer.getPriceInEth(rebalanceParams.tokenIn);
+        inSummary = (
+            getDestinationSummaryStats(
+                rebalanceParams.destinationIn, inPrice, RebalanceDirection.In, rebalanceParams.amountIn
             )
         );
     }

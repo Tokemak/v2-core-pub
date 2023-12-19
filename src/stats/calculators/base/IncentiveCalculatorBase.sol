@@ -484,17 +484,18 @@ abstract contract IncentiveCalculatorBase is
         if (_shouldSnapshot(address(rewarder), rewardRate, periodFinish, totalSupply)) {
             _snapshot(address(rewarder), totalSupply, rewardRate);
         }
-        address lpToken = rewarder.stakingToken();
+
+        // slither-disable-next-line reentrancy-no-eth
+        uint256 lpPrice = _getPriceInEth(rewarder.stakingToken());
         address rewardToken = address(rewarder.rewardToken());
 
         // Compute APR factors for the main rewarder if the period is still active
-        // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
-        apr += _computeAPR(address(rewarder), lpToken, rewardToken, rewardRate, periodFinish);
+
+        apr += _computeAPR(address(rewarder), lpPrice, rewardToken, rewardRate, periodFinish);
 
         // Compute APR factors for the platform rewarder if the period is still active
-        // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
         rewardRate = getPlatformTokenMintAmount(platformToken, rewardRate);
-        apr += _computeAPR(address(rewarder), lpToken, rewardToken, rewardRate, periodFinish);
+        apr += _computeAPR(address(rewarder), lpPrice, rewardToken, rewardRate, periodFinish);
 
         // Determine the number of extra rewarders and process each one
         uint256 extraRewardsLength = rewarder.extraRewardsLength();
@@ -510,8 +511,7 @@ abstract contract IncentiveCalculatorBase is
 
             if (rewardToken != address(0)) {
                 // Accumulate APR data from each extra rewarder if the period is still active
-                // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
-                apr += _computeAPR(extraRewarder, lpToken, rewardToken, rewardRate, periodFinish);
+                apr += _computeAPR(extraRewarder, lpPrice, rewardToken, rewardRate, periodFinish);
             }
         }
         return apr;
@@ -519,17 +519,16 @@ abstract contract IncentiveCalculatorBase is
 
     function _computeAPR(
         address _rewarder,
-        address lpToken,
+        uint256 lpPrice,
         address rewardToken,
         uint256 rewardRate,
         uint256 periodFinish
-    ) internal returns (uint256 apr) {
+    ) internal view returns (uint256 apr) {
         // slither-disable-start incorrect-equality
         // slither-disable-next-line timestamp
         if (block.timestamp > periodFinish || rewardRate == 0) return 0;
         // slither-disable-end incorrect-equality
 
-        uint256 lpPrice = _getPriceInEth(lpToken);
         uint256 price = _getIncentivePrice(rewardToken);
 
         uint256 numerator = rewardRate * Stats.SECONDS_IN_YEAR * price * 1e18;

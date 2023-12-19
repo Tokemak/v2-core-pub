@@ -794,11 +794,13 @@ contract LMPVault is
     }
 
     /// @inheritdoc ILMPVault
+    // solhint-disable-next-line no-unused-vars
     function addToWithdrawalQueueHead(address destinationVault) external {
         revert Errors.NotImplemented();
     }
 
     /// @inheritdoc ILMPVault
+    // solhint-disable-next-line no-unused-vars
     function addToWithdrawalQueueTail(address destinationVault) external {
         revert Errors.NotImplemented();
     }
@@ -1086,8 +1088,12 @@ contract LMPVault is
         }
 
         // Make sure the destination wallet total share balance doesn't go above the
-        // current perWalletLimit, except for the feeSink and rewarder.
-        if (to != feeSink && to != address(rewarder) && to != address(0) && balanceOf(to) + amount > perWalletLimit) {
+        // current perWalletLimit, except for the feeSink, rewarder and router.
+        if (
+            to != feeSink && to != address(rewarder) && to != address(0)
+                && to != address(systemRegistry.lmpVaultRouter())
+                && balanceOf(to) + rewarder.balanceOf(to) + amount > perWalletLimit
+        ) {
             revert OverWalletLimit(to);
         }
     }

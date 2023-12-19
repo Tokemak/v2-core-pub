@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { SafeERC20, IERC20 } from "openzeppelin-contracts/token/ERC20/utils/safeERC20.sol";
+import { SafeERC20, IERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { MainRewarder, ISystemRegistry, Errors } from "src/rewarders/MainRewarder.sol";
 import { Roles } from "src/libs/Roles.sol";
@@ -47,7 +47,7 @@ contract LMPVaultMainRewarder is MainRewarder {
     /**
      * @notice Withdraws autopilot vault token from rewarder.
      * @dev This function can only be called by the stake tracker address, which in the case of the
-     *        autopilot vault is the router.
+     *      autopilot vault is the router.
      * @dev Balance updates, reward calculations taken care of in inherited contract.
      * @param account Account that is withdrawing assets.
      * @param amount Amount of assets to be withdrawn.
@@ -71,6 +71,7 @@ contract LMPVaultMainRewarder is MainRewarder {
         super.stake(account, amount);
 
         // Staktracker (router) takes control of tokens when staking.
+        // slither-disable-next-line arbitrary-send-erc20
         stakingToken.safeTransferFrom(stakeTracker, address(this), amount);
     }
 }

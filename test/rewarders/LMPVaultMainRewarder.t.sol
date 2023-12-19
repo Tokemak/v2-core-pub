@@ -9,6 +9,8 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
 import { Test } from "forge-std/Test.sol";
 
+// solhint-disable func-name-mixedcase
+
 contract LMPVaultMainRewarderTest is Test {
     address public systemRegistry;
     address public stakeTracker;
@@ -39,19 +41,19 @@ contract LMPVaultMainRewarderTest is Test {
         vm.mockCall(systemRegistry, abi.encodeWithSignature("isRewardToken(address)"), abi.encode(true));
 
         rewarder = new LMPVaultMainRewarder(
-      ISystemRegistry(systemRegistry),
-      stakeTracker,
-      address(rewardToken),
-      newRewardRatio,
-      durationInBlock,
-      false,
-      address(stakingToken)
-    );
+            ISystemRegistry(systemRegistry),
+            stakeTracker,
+            address(rewardToken),
+            newRewardRatio,
+            durationInBlock,
+            false,
+            address(stakingToken)
+        );
     }
 }
 
 contract WithdrawLMPRewarder is LMPVaultMainRewarderTest {
-    uint256 withdrawAmount = 450;
+    uint256 public withdrawAmount = 450;
 
     function setUp() public override {
         super.setUp();
@@ -60,7 +62,6 @@ contract WithdrawLMPRewarder is LMPVaultMainRewarderTest {
         vm.mockCall(systemRegistry, abi.encodeWithSignature("gpToke()"), abi.encode(makeAddr("GP_TOKE")));
         vm.mockCall(systemRegistry, abi.encodeWithSignature("toke()"), abi.encode(makeAddr("TOKE")));
 
-        vm.prank(stakeTracker);
         stakingToken.approve(address(rewarder), stakeAmount);
         rewarder.stake(staker, stakeAmount);
     }
@@ -73,17 +74,25 @@ contract WithdrawLMPRewarder is LMPVaultMainRewarderTest {
     function test_ProperBalanceUpdates_AndTransfers() public {
         uint256 userRewarderBalanceBefore = rewarder.balanceOf(staker);
         uint256 userStakingTokenBalanceBefore = stakingToken.balanceOf(staker);
+        uint256 stakeTrackerRewardBalanceBefore = rewarder.balanceOf(stakeTracker);
+        uint256 stakeTrackerStakingTokenBalanceBefore = stakingToken.balanceOf(stakeTracker);
 
         assertEq(userRewarderBalanceBefore, stakeAmount);
         assertEq(userStakingTokenBalanceBefore, 0);
+        assertEq(stakeTrackerRewardBalanceBefore, 0);
+        assertEq(stakeTrackerStakingTokenBalanceBefore, 0);
 
         rewarder.withdraw(staker, withdrawAmount, false);
 
         uint256 userRewarderBalanceAfter = rewarder.balanceOf(staker);
         uint256 userStakingTokenBalanceAfter = stakingToken.balanceOf(staker);
+        uint256 stakeTrackerRewardBalanceAfter = rewarder.balanceOf(stakeTracker);
+        uint256 stakeTrackerStakingBalanceAfter = stakingToken.balanceOf(stakeTracker);
 
         assertEq(userRewarderBalanceAfter, userRewarderBalanceBefore - withdrawAmount);
         assertEq(userStakingTokenBalanceAfter, withdrawAmount);
+        assertEq(stakeTrackerRewardBalanceAfter, 0);
+        assertEq(stakeTrackerStakingBalanceAfter, 0);
     }
 
     function test_ProperlyClaimsRewards() public {
@@ -110,7 +119,6 @@ contract StakeLMPRewarder is LMPVaultMainRewarderTest {
 
     function setUp() public override {
         super.setUp();
-        vm.prank(stakeTracker);
 
         // Max approve for overage tests.
         stakingToken.approve(address(rewarder), type(uint256).max);
@@ -124,16 +132,24 @@ contract StakeLMPRewarder is LMPVaultMainRewarderTest {
     function test_ProperlyUpdatesBalances_AndTransfers() external {
         uint256 userRewarderBalanceBefore = rewarder.balanceOf(staker);
         uint256 userStakingTokenBalancBefore = stakingToken.balanceOf(staker);
+        uint256 stakeTrackerRewarderBalanceBefore = rewardToken.balanceOf(stakeTracker);
+        uint256 stakeTrackerStakingTokenBalanceBefore = stakingToken.balanceOf(stakeTracker);
 
         assertEq(userRewarderBalanceBefore, 0);
         assertEq(userStakingTokenBalancBefore, 0);
+        assertEq(stakeTrackerRewarderBalanceBefore, 0);
+        assertEq(stakeTrackerStakingTokenBalanceBefore, stakeAmount);
 
         rewarder.stake(staker, localStakeAmount);
 
         uint256 userRewardBalanceAfter = rewarder.balanceOf(staker);
         uint256 userStakingTokenBalanceAfter = stakingToken.balanceOf(staker);
+        uint256 stakeTrackerRewarderBalanceAfter = rewardToken.balanceOf(stakeTracker);
+        uint256 stakeTrackerStakingTokenBalanceAfter = stakingToken.balanceOf(stakeTracker);
 
         assertEq(userRewardBalanceAfter, userRewarderBalanceBefore + localStakeAmount);
         assertEq(userStakingTokenBalanceAfter, 0);
+        assertEq(stakeTrackerRewarderBalanceAfter, 0);
+        assertEq(stakeTrackerStakingTokenBalanceAfter, stakeAmount - localStakeAmount);
     }
 }

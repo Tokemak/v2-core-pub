@@ -810,6 +810,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
             // discount value that is negative indicates LST price premium
             // scalingFactor = 1e18 for premiums and discounts that are small
+            // discountTimestampByPercent array holds the timestamp in position i for discount = (i+1)%
             uint40[5] memory discountTimestampByPercent = data.discountTimestampByPercent;
 
             // 1e16 means a 1% LST discount where fullscale is 1e18.
@@ -818,6 +819,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
                 uint256 halfLifeSec = 30 * 24 * 60 * 60;
                 uint256 len = data.discountTimestampByPercent.length;
                 for (uint256 j = 1; j < len; ++j) {
+                    // slither-disable-next-line timestamp
                     if (discount <= convertUintToInt((j + 1) * 1e16)) {
                         // current timestamp should be strictly >= timestamp in discountTimestampByPercent
                         uint256 timeSinceDiscountSec =

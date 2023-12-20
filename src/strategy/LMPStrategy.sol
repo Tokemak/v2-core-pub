@@ -818,7 +818,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
                 uint256 halfLifeSec = 30 * 24 * 60 * 60;
                 uint256 len = data.discountTimestampByPercent.length;
                 for (uint256 j = 1; j < len; ++j) {
-                    if (discount <= int256((j + 1) * 1e16)) {
+                    if (discount <= convertUintToInt((j + 1) * 1e16)) {
                         // current timestamp should be strictly >= timestamp in discountTimestampByPercent
                         uint256 timeSinceDiscountSec =
                             uint256(uint40(block.timestamp) - discountTimestampByPercent[j - 1]);
@@ -830,7 +830,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
                     }
                 }
             }
-            priceReturns[i] = discount * int256(scalingFactor) / 1e18;
+            priceReturns[i] = discount * convertUintToInt(scalingFactor) / 1e18;
         }
 
         return priceReturns;

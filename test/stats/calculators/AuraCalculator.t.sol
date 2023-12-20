@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
-/* solhint-disable func-name-mixedcase,contract-name-camelcase */
+/* solhint-disable func-name-mixedcase,contract-name-camelcase,one-contract-per-file */
 pragma solidity >=0.8.7;
 
 import { Test } from "forge-std/Test.sol";
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
-import { Stats } from "src/stats/Stats.sol";
 import { AuraCalculator } from "src/stats/calculators/AuraCalculator.sol";
 import { IAuraStashToken } from "src/interfaces/external/aura/IAuraStashToken.sol";
 import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
@@ -17,7 +16,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
-import { AURA_MAINNET, AURA_BOOSTER, LDO_MAINNET } from "test/utils/Addresses.sol";
+import { LDO_MAINNET } from "test/utils/Addresses.sol";
 import { IBooster } from "src/interfaces/external/aura/IBooster.sol";
 
 contract AuraCalculatorTest is Test {
@@ -98,8 +97,10 @@ contract AuraCalculatorTest is Test {
         vm.mockCall(rootPriceOracle, abi.encodeWithSelector(IRootPriceOracle.getPriceInEth.selector), abi.encode(1));
         vm.mockCall(pricingStats, abi.encodeWithSelector(IIncentivesPricingStats.getPrice.selector), abi.encode(1, 1));
 
-        // set plateforme reward token (CVX) total supply
+        // set platform reward token (CVX) total supply
         vm.mockCall(platformRewarder, abi.encodeWithSelector(IERC20.totalSupply.selector), abi.encode(TOTAL_SUPPLY));
+
+        mockAsset(mainRewarder, vm.addr(1001));
 
         IDexLSTStats.DexLSTStatsData memory data = IDexLSTStats.DexLSTStatsData({
             lastSnapshotTimestamp: 0,
@@ -163,7 +164,18 @@ contract AuraCalculatorTest is Test {
     }
 
     function mockAsset(address _rewarder, address value) public {
-        vm.mockCall(_rewarder, abi.encodeWithSelector(IBaseRewardPool.stakingToken.selector), abi.encode(value));
+        vm.mockCall(_rewarder, abi.encodeWithSelector(IBaseRewardPool.pid.selector), abi.encode(234_789));
+
+        IBooster.PoolInfo memory poolInfo = IBooster.PoolInfo({
+            lptoken: value,
+            token: address(0),
+            gauge: address(0),
+            crvRewards: address(0),
+            stash: address(0),
+            shutdown: false
+        });
+
+        vm.mockCall(booster, abi.encodeWithSelector(IBooster.poolInfo.selector, 234_789), abi.encode(poolInfo));
     }
 
     function mockBoosterRewardMultiplierDen(address _booster, uint256 value) public {
@@ -211,7 +223,6 @@ contract AuraCalculatorTest is Test {
         mockRewardToken(extraRewarder1, stashToken);
         mockDuration(extraRewarder1, DURATION);
         mockExtraRewardsLength(extraRewarder1, 0);
-        mockAsset(extraRewarder1, vm.addr(1002));
         mockIsValid(stashToken, true);
         mockBaseToken(stashToken, baseToken);
     }

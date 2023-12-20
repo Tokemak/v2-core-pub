@@ -85,13 +85,21 @@ abstract contract IncentiveCalculatorBase is
     // Custom error for handling unexpected snapshot statuses
     error InvalidSnapshotStatus();
 
+    event IncentiveSnapshot(
+        uint256 totalApr,
+        uint256 incentiveCredits,
+        uint256 lastIncentiveTimestamp,
+        bool decayState,
+        uint256 decayInitTimestamp
+    );
+
     constructor(ISystemRegistry _systemRegistry)
         SystemComponent(_systemRegistry)
         SecurityBase(address(_systemRegistry.accessController()))
     { }
 
     /// @inheritdoc IStatsCalculator
-    function initialize(bytes32[] calldata, bytes calldata initData) external override initializer {
+    function initialize(bytes32[] calldata, bytes calldata initData) public virtual override initializer {
         InitData memory decodedInitData = abi.decode(initData, (InitData));
 
         Errors.verifyNotZero(decodedInitData.rewarder, "rewarder");
@@ -109,7 +117,7 @@ abstract contract IncentiveCalculatorBase is
 
         decayState = false;
 
-        _aprId = keccak256(abi.encode("incentive", platformToken));
+        _aprId = keccak256(abi.encode("incentive", platformToken, decodedInitData.rewarder));
     }
 
     /// @inheritdoc IStatsCalculator
@@ -260,6 +268,11 @@ abstract contract IncentiveCalculatorBase is
             // Update the last incentive timestamp to the current block's timestamp
             lastIncentiveTimestamp = block.timestamp;
         }
+
+        // slither-disable-next-line reentrancy-events
+        emit IncentiveSnapshot(
+            lastSnapshotTotalAPR, incentiveCredits, lastIncentiveTimestamp, decayState, decayInitTimestamp
+        );
     }
 
     /**
@@ -486,7 +499,7 @@ abstract contract IncentiveCalculatorBase is
         }
 
         // slither-disable-next-line reentrancy-no-eth
-        uint256 lpPrice = _getPriceInEth(rewarder.stakingToken());
+        uint256 lpPrice = _getPriceInEth(resolveLpToken());
         address rewardToken = address(rewarder.rewardToken());
 
         // Compute APR factors for the main rewarder if the period is still active
@@ -545,4 +558,7 @@ abstract contract IncentiveCalculatorBase is
 
     /// @notice returns the address of the stash token for Convex & Aura
     function resolveRewardToken(address extraRewarder) public view virtual returns (address rewardToken);
+
+    // @notice returns the address of the lp token that is staked into the rewards platform
+    function resolveLpToken() public view virtual returns (address lpToken);
 }

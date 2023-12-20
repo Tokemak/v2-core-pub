@@ -8,6 +8,7 @@ import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { Stats } from "src/stats/Stats.sol";
+import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.sol";
 import { ConvexCalculator } from "src/stats/calculators/ConvexCalculator.sol";
 import { ITokenWrapper } from "src/interfaces/external/convex/ITokenWrapper.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
@@ -32,6 +33,7 @@ contract ConvexCalculatorTest is Test {
     address internal extraRewarder3;
     address internal platformRewarder;
     address internal extraRewarderRewardToken;
+    address internal booster;
 
     ConvexCalculator internal calculator;
 
@@ -61,6 +63,7 @@ contract ConvexCalculatorTest is Test {
         extraRewarder3 = vm.addr(103);
         platformRewarder = vm.addr(104);
         extraRewarderRewardToken = vm.addr(105);
+        booster = vm.addr(106);
 
         vm.label(underlyerStats, "underlyerStats");
         vm.label(pricingStats, "pricingStats");
@@ -72,6 +75,7 @@ contract ConvexCalculatorTest is Test {
         vm.label(extraRewarder3, "extraRewarder3");
         vm.label(platformRewarder, "platformRewarder");
         vm.label(extraRewarderRewardToken, "extraRewarderRewardToken");
+        vm.label(booster, "booster");
 
         // mock system registry
         vm.mockCall(
@@ -91,7 +95,7 @@ contract ConvexCalculatorTest is Test {
         vm.mockCall(rootPriceOracle, abi.encodeWithSelector(IRootPriceOracle.getPriceInEth.selector), abi.encode(1));
         vm.mockCall(pricingStats, abi.encodeWithSelector(IIncentivesPricingStats.getPrice.selector), abi.encode(1, 1));
 
-        // set plateforme reward token (CVX) total supply
+        // set platform reward token (CVX) total supply
         vm.mockCall(platformRewarder, abi.encodeWithSelector(IERC20.totalSupply.selector), abi.encode(TOTAL_SUPPLY));
 
         IDexLSTStats.DexLSTStatsData memory data = IDexLSTStats.DexLSTStatsData({
@@ -110,7 +114,9 @@ contract ConvexCalculatorTest is Test {
 
         vm.mockCall(underlyerStats, abi.encodeWithSelector(IDexLSTStats.current.selector), abi.encode(data));
 
-        calculator = new ConvexCalculator(ISystemRegistry(systemRegistry));
+        mockAsset(mainRewarder, vm.addr(5847), 363);
+
+        calculator = new ConvexCalculator(ISystemRegistry(systemRegistry), booster);
 
         bytes32[] memory dependantAprs = new bytes32[](0);
         IncentiveCalculatorBase.InitData memory initData = IncentiveCalculatorBase.InitData({
@@ -155,8 +161,14 @@ contract ConvexCalculatorTest is Test {
         vm.mockCall(_rewarder, abi.encodeWithSelector(IBaseRewardPool.totalSupply.selector), abi.encode(value));
     }
 
-    function mockAsset(address _rewarder, address value) public {
-        vm.mockCall(_rewarder, abi.encodeWithSelector(IBaseRewardPool.stakingToken.selector), abi.encode(value));
+    function mockAsset(address _rewarder, address value, uint256 pid) public {
+        mockPid(_rewarder, pid);
+
+        vm.mockCall(
+            booster,
+            abi.encodeWithSelector(IConvexBooster.poolInfo.selector, pid),
+            abi.encode(value, address(0), address(0), address(0), address(0), false)
+        );
     }
 
     function mockPid(address _rewarder, uint256 value) public {
@@ -172,6 +184,10 @@ contract ConvexCalculatorTest is Test {
     }
 
     function mockSimpleMainRewarder() public {
+        mockSimpleMainRewarder(645);
+    }
+
+    function mockSimpleMainRewarder(uint256 pid) public {
         mockRewardPerToken(mainRewarder, REWARD_PER_TOKEN);
         mockRewardRate(mainRewarder, REWARD_RATE);
         mockPeriodFinish(mainRewarder, block.timestamp + PERIOD_FINISH_IN);
@@ -179,7 +195,7 @@ contract ConvexCalculatorTest is Test {
         mockRewardToken(mainRewarder, mainRewarderRewardToken);
         mockDuration(mainRewarder, DURATION);
         mockExtraRewardsLength(mainRewarder, EXTRA_REWARD_LENGTH);
-        mockAsset(mainRewarder, vm.addr(1001));
+        mockAsset(mainRewarder, vm.addr(1001), pid);
     }
 
     // mockMainRewarderWithExtraRewarder function
@@ -194,7 +210,6 @@ contract ConvexCalculatorTest is Test {
         mockRewardToken(extraRewarder1, extraRewarderRewardToken);
         mockDuration(extraRewarder1, DURATION);
         mockExtraRewardsLength(extraRewarder1, 0);
-        mockAsset(extraRewarder1, vm.addr(1002));
     }
 
     function create2StepsSnapshot() internal {
@@ -486,8 +501,7 @@ contract Current is ConvexCalculatorTest {
 
 contract ResolveRewardToken is ConvexCalculatorTest {
     function test_ResolvesCorrectRewardToken_AndUnwrapsStashToken_WithPidLessThan151() public {
-        mockSimpleMainRewarder();
-        mockPid(mainRewarder, 25);
+        mockSimpleMainRewarder(25);
 
         vm.expectCall(
             address(pricingStats),
@@ -515,8 +529,7 @@ contract ResolveRewardToken is ConvexCalculatorTest {
     }
 
     function test_ResolvesCorrectRewardToken_AndUnwrapsStashToken_WithPidMoreThan151() public {
-        mockSimpleMainRewarder();
-        mockPid(mainRewarder, 152);
+        mockSimpleMainRewarder(152);
 
         address rewardToken = vm.addr(152);
         vm.label(rewardToken, "rewardToken");

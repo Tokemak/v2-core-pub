@@ -16,7 +16,7 @@ jobs:
     runs-on: "ubuntu-latest-m"
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
           persist-credentials: false
@@ -28,9 +28,9 @@ jobs:
           version: nightly-cc5637a979050c39b3d06bc4cc6134f0591ee8d0
 
       - name: Install NodeJS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: "npm"
 
       - name: Install dependencies
@@ -59,7 +59,6 @@ jobs:
           OPTIMISM_MAINNET_RPC_URL: ${{ secrets.OPTIMISM_MAINNET_RPC_URL }}
           ARBITRUM_MAINNET_RPC_URL: ${{ secrets.ARBITRUM_MAINNET_RPC_URL }}
         run: npm run test
-
       - name: Scan for secrets
         uses: gitleaks/gitleaks-action@v2
         env:
@@ -71,17 +70,16 @@ jobs:
       #     forge --version
       #     forge build --sizes
 
+      # - name: Build package
+      #   run: npm run build
+
       - name: Run Slither
         uses: crytic/slither-action@v0.3.0
         with:
           fail-on: all
           solc-version: 0.8.17
           slither-version: 0.10.0
-          node-version: 18
-
-      - name: Build package
-        run: npm run clean && npm run build
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          node-version: 20
 
       - name: Publish Release
         run: npx semantic-release

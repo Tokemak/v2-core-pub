@@ -19,7 +19,7 @@
 	},
 	"scripts": {
 		"build": "forge build",
-		"clean": "forge clean",
+		"clean": "forge clean && rm -rf cache bin",
 		"test": "forge test -vvv",
 		"coverage": "forge coverage",
 		"gitleaks": "gitleaks detect --no-git --config ./.gitleaks.toml --verbose",

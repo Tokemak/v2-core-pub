@@ -1044,19 +1044,23 @@ contract LMPVault is
     ///     Has ability to set management fee when no fee is taken.
     function _collectAndUpdateManagementFees(uint256 totalSupply) internal returns (uint256) {
         if (managementFeeBps > 0) {
-            uint256 managementFee = managementFeeBps;
-            address managementSink = managementFeeSink;
             uint256 assets = totalAssets();
+            // Management fee * assets used multiple places below, gas savings when calc here.
+            uint256 managementFeeMultAssets = managementFeeBps * assets;
+            address managementSink = managementFeeSink;
 
             // We calculate the shares using the same formula as performance fees, without scaling down
             uint256 shares = Math.mulDiv(
-                managementFee * assets, totalSupply, (assets * MAX_FEE_BPS) - (managementFee * assets), Math.Rounding.Up
+                managementFeeMultAssets,
+                totalSupply,
+                (assets * MAX_FEE_BPS) - (managementFeeMultAssets),
+                Math.Rounding.Up
             );
             _mint(managementSink, shares);
             totalSupply += shares;
 
             // Fee in assets that we are taking.
-            uint256 fees = managementFee * assets / MAX_FEE_BPS;
+            uint256 fees = managementFeeMultAssets / MAX_FEE_BPS;
             emit Deposit(address(this), managementSink, fees, shares);
             emit ManagementFeeCollected(fees, managementSink, shares);
         }

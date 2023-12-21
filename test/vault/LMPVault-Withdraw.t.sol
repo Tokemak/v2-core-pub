@@ -2001,9 +2001,8 @@ contract LMPVaultMintingTests is Test {
         dvs[0] = dv;
 
         _lmpVault.addDestinations(dvs);
-
     }
-    
+
     // Testing that `managementFee` gets set outside of 45 day window before fee take.
     function test_setManagementFeeBps_SetsFee_OutsideOfFeeTakeBuffer() public {
         _accessController.setupRole(Roles.LMP_MANAGEMENT_FEE_SETTER_ROLE, address(this));

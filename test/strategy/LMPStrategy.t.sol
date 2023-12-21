@@ -897,13 +897,13 @@ contract LMPStrategyTest is Test {
         ILSTStats.LSTStatsData memory lstStat;
 
         uint24[10] memory discountHistory;
-        discountHistory[0] = 3e5;
-        discountHistory[1] = 3e5;
-        discountHistory[2] = 3e5;
-        discountHistory[3] = 3e5;
-        discountHistory[4] = 3e5;
-        discountHistory[5] = 3e5;
-        discountHistory[6] = 3e5;
+        discountHistory[0] = 5e5;
+        discountHistory[1] = 5e5;
+        discountHistory[2] = 5e5;
+        discountHistory[3] = 5e5;
+        discountHistory[4] = 5e5;
+        discountHistory[5] = 5e5;
+        discountHistory[6] = 5e5;
 
         lstStat.discountHistory = discountHistory;
         lstStat.discount = 5e16; // exit threshold

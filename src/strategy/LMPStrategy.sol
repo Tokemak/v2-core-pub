@@ -539,9 +539,9 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     }
 
     function getDestinationTrimAmount(IDestinationVault dest) internal returns (uint256) {
-        uint256 discountThreshold = 3e5; // 3% 1e7 precision, discount required to consider trimming
+        uint256 discountThreshold1 = 3e5; // 3% 1e7 precision, discount required to consider trimming
         uint256 discountDaysThreshold = 7; // number of last 10 days that it was >= discountThreshold
-        int256 exitDiscountThreshold = 5e16; // 5% 1e18 precision, discount required to completely exit
+        uint256 discountThreshold2 = 5e5; // 5% 1e7 precision, discount required to completely exit
 
         // this is always the out destination and guaranteed not to be the LMPVault idle asset
         IDexLSTStats.DexLSTStatsData memory stats = dest.getStats().current();
@@ -552,17 +552,21 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         uint256 minTrim = 1e18; // 100% -- no trim required
         for (uint256 i = 0; i < numLsts; ++i) {
             ILSTStats.LSTStatsData memory targetLst = lstStats[i];
-            uint256 numDiscountOverThreshold = getDiscountAboveThreshold(targetLst.discountHistory, discountThreshold);
+            uint256 numDiscountOverThreshold1 = getDiscountAboveThreshold(targetLst.discountHistory, discountThreshold1);
+            uint256 numDiscountOverThreshold2 = getDiscountAboveThreshold(targetLst.discountHistory, discountThreshold2);
 
-            if (targetLst.discount >= exitDiscountThreshold && numDiscountOverThreshold >= discountDaysThreshold) {
+            if (
+                targetLst.discount >= int256(discountThreshold2 * 1e11)
+                    && numDiscountOverThreshold2 >= discountDaysThreshold
+            ) {
                 // this is the worst possible trim, so we can exit without checking other LSTs
                 return 0;
             }
 
             // discountThreshold is 1e7 precision for the discount history, but here it is compared to a 1e18, so pad it
             if (
-                targetLst.discount >= int256(discountThreshold * 1e11)
-                    && numDiscountOverThreshold >= discountDaysThreshold
+                targetLst.discount >= int256(discountThreshold1 * 1e11)
+                    && numDiscountOverThreshold1 >= discountDaysThreshold
             ) {
                 minTrim = minTrim.min(1e17); // 10%
             }

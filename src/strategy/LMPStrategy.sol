@@ -555,19 +555,15 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             (uint256 numViolationsOne, uint256 numViolationsTwo) =
                 getDiscountAboveThreshold(targetLst.discountHistory, discountThresholdOne, discountThresholdTwo);
 
-            if (
-                targetLst.discount >= int256(discountThresholdTwo * 1e11)
-                    && numViolationsTwo >= discountDaysThreshold
-            ) {
+            if (targetLst.discount >= int256(discountThresholdTwo * 1e11) && numViolationsTwo >= discountDaysThreshold)
+            {
                 // this is the worst possible trim, so we can exit without checking other LSTs
                 return 0;
             }
 
             // discountThreshold is 1e7 precision for the discount history, but here it is compared to a 1e18, so pad it
-            if (
-                targetLst.discount >= int256(discountThresholdOne * 1e11)
-                    && numViolationsOne >= discountDaysThreshold
-            ) {
+            if (targetLst.discount >= int256(discountThresholdOne * 1e11) && numViolationsOne >= discountDaysThreshold)
+            {
                 minTrim = minTrim.min(1e17); // 10%
             }
         }

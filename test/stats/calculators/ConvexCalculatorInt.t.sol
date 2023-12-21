@@ -6,6 +6,7 @@ pragma solidity >=0.8.7;
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ConvexCalculator } from "src/stats/calculators/ConvexCalculator.sol";
+import { IBaseRewardPool } from "src/interfaces/external/convex/IBaseRewardPool.sol";
 import { BaseOracleDenominations } from "src/oracles/providers/base/BaseOracleDenominations.sol";
 import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
@@ -26,6 +27,8 @@ import {
 contract ConvexCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
     ConvexCalculator internal _calculator;
     IDexLSTStats internal _curveStats;
+    address convexRewarder;
+    address curveLpToken;
 
     event IncentiveSnapshot(
         uint256 totalApr,
@@ -75,9 +78,9 @@ contract ConvexCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
 
         // Convex + Curve stETH/ETH Original
         // Reward tokens are LDO and wstETH atm
-        address convexRewarder = 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03;
+        convexRewarder = 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03;
         address curvePool = 0xDC24316b9AE028F1497c275EB9192a3Ea0f67022;
-        address curveLpToken = 0x06325440D014e39736583c165C2963BA99fAf14E;
+        curveLpToken = 0x06325440D014e39736583c165C2963BA99fAf14E;
 
         _curveV1Oracle.registerPool(curvePool, curveLpToken, true);
         _rootPriceOracle.registerMapping(curveLpToken, _curveV1Oracle);
@@ -144,5 +147,12 @@ contract ConvexCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
         vm.expectEmit(true, true, true, false);
         emit IncentiveSnapshot(0, 0, 0, false, 0);
         _calculator.snapshot();
+    }
+
+    function test_ResolveLpTokenIsActualPoolToken() public {
+        address resolvedToken = _calculator.resolveLpToken();
+
+        assertEq(resolvedToken, curveLpToken, "curveLpToken");
+        assertFalse(resolvedToken == IBaseRewardPool(convexRewarder).stakingToken(), "stakingToken");
     }
 }

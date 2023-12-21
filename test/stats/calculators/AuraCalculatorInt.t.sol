@@ -6,10 +6,11 @@ pragma solidity >=0.8.7;
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { AuraCalculator } from "src/stats/calculators/AuraCalculator.sol";
+import { IBaseRewardPool } from "src/interfaces/external/convex/IBaseRewardPool.sol";
+import { IOffchainAggregator } from "src/interfaces/external/chainlink/IOffchainAggregator.sol";
 import { BaseOracleDenominations } from "src/oracles/providers/base/BaseOracleDenominations.sol";
 import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
-import { IOffchainAggregator } from "src/interfaces/external/chainlink/IOffchainAggregator.sol";
 import { StatsSystemIntegrationTestBase } from "test/stats/calculators/base/StatsSystemIntegrationTestBase.t.sol";
 import {
     AURA_MAINNET,
@@ -24,6 +25,8 @@ contract AuraCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
     AuraCalculator internal _calculator;
     IDexLSTStats internal _balancerStats;
     address internal _auraFeed;
+    address auraRewarder;
+    address balancerPool;
 
     event IncentiveSnapshot(
         uint256 totalApr,
@@ -76,8 +79,8 @@ contract AuraCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
 
         // Aura + Balancer rETH/WETH
         // Reward tokens are LDO and wstETH atm
-        address auraRewarder = 0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D;
-        address balancerPool = 0x1E19CF2D73a72Ef1332C882F20534B6519Be0276;
+        auraRewarder = 0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D;
+        balancerPool = 0x1E19CF2D73a72Ef1332C882F20534B6519Be0276;
 
         _rootPriceOracle.registerMapping(balancerPool, _balancerMetaOracle);
 
@@ -149,5 +152,12 @@ contract AuraCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
         vm.expectEmit(true, true, true, false);
         emit IncentiveSnapshot(0, 0, 0, false, 0);
         _calculator.snapshot();
+    }
+
+    function test_ResolveLpTokenIsActualPoolToken() public {
+        address resolvedToken = _calculator.resolveLpToken();
+
+        assertEq(resolvedToken, balancerPool, "balancerPool");
+        assertFalse(resolvedToken == IBaseRewardPool(auraRewarder).stakingToken(), "stakingToken");
     }
 }

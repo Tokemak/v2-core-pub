@@ -552,8 +552,8 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         uint256 minTrim = 1e18; // 100% -- no trim required
         for (uint256 i = 0; i < numLsts; ++i) {
             ILSTStats.LSTStatsData memory targetLst = lstStats[i];
-            uint256 numDiscountOverThreshold1 = getDiscountAboveThreshold(targetLst.discountHistory, discountThreshold1);
-            uint256 numDiscountOverThreshold2 = getDiscountAboveThreshold(targetLst.discountHistory, discountThreshold2);
+            (uint256 numDiscountOverThreshold1, uint256 numDiscountOverThreshold2) =
+                getDiscountAboveThreshold(targetLst.discountHistory, discountThreshold1, discountThreshold2);
 
             if (
                 targetLst.discount >= int256(discountThreshold2 * 1e11)
@@ -577,13 +577,18 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
     function getDiscountAboveThreshold(
         uint24[10] memory discountHistory,
-        uint256 threshold
-    ) internal pure returns (uint256 count) {
-        count = 0;
+        uint256 threshold1,
+        uint256 threshold2
+    ) internal pure returns (uint256 count1, uint256 count2) {
+        count1 = 0;
+        count2 = 0;
         uint256 len = discountHistory.length;
         for (uint256 i = 0; i < len; ++i) {
-            if (discountHistory[i] >= threshold) {
-                count += 1;
+            if (discountHistory[i] >= threshold1) {
+                count1 += 1;
+            }
+            if (discountHistory[i] >= threshold2) {
+                count2 += 1;
             }
         }
     }

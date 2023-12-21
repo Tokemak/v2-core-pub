@@ -977,11 +977,23 @@ contract LMPStrategyTest is Test {
         history[8] = 2e6; // 20%
         history[9] = 333e4; // 33.3%
 
-        assertEq(defaultStrat._getDiscountAboveThreshold(history, 1e7), 1);
-        assertEq(defaultStrat._getDiscountAboveThreshold(history, 0), 10);
-        assertEq(defaultStrat._getDiscountAboveThreshold(history, 1e6), 4);
-        assertEq(defaultStrat._getDiscountAboveThreshold(history, 1e5), 10);
-        assertEq(defaultStrat._getDiscountAboveThreshold(history, 123_456), 8);
+        uint256 cnt1;
+        uint256 cnt2;
+        (cnt1, cnt2) = defaultStrat._getDiscountAboveThreshold(history, 1e7, 0);
+        assertEq(cnt1, 1);
+        assertEq(cnt2, 10);
+        (cnt1, cnt2) = defaultStrat._getDiscountAboveThreshold(history, 0, 1e7);
+        assertEq(cnt1, 10);
+        assertEq(cnt2, 1);
+        (cnt1, cnt2) = defaultStrat._getDiscountAboveThreshold(history, 0, 0);
+        assertEq(cnt1, 10);
+        assertEq(cnt2, 10);
+        (cnt1, cnt2) = defaultStrat._getDiscountAboveThreshold(history, 1e6, 1e5);
+        assertEq(cnt1, 4);
+        assertEq(cnt2, 10);
+        (cnt1, cnt2) = defaultStrat._getDiscountAboveThreshold(history, 1e7, 123_456);
+        assertEq(cnt1, 1);
+        assertEq(cnt2, 8);
     }
 
     /* **************************************** */
@@ -2088,9 +2100,10 @@ contract LMPStrategyHarness is LMPStrategy {
 
     function _getDiscountAboveThreshold(
         uint24[10] memory discountHistory,
-        uint256 threshold
-    ) public pure returns (uint256 count) {
-        return getDiscountAboveThreshold(discountHistory, threshold);
+        uint256 threshold1,
+        uint256 threshold2
+    ) public pure returns (uint256 count1, uint256 count2) {
+        return getDiscountAboveThreshold(discountHistory, threshold1, threshold2);
     }
 
     function _verifyTrimOperation(IStrategy.RebalanceParams memory params, uint256 trimAmount) public returns (bool) {

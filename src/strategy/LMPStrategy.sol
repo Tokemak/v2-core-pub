@@ -552,12 +552,12 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         uint256 minTrim = 1e18; // 100% -- no trim required
         for (uint256 i = 0; i < numLsts; ++i) {
             ILSTStats.LSTStatsData memory targetLst = lstStats[i];
-            (uint256 numDiscountOverThresholdOne, uint256 numDiscountOverThresholdTwo) =
+            (uint256 numViolationsOne, uint256 numViolationsTwo) =
                 getDiscountAboveThreshold(targetLst.discountHistory, discountThresholdOne, discountThresholdTwo);
 
             if (
                 targetLst.discount >= int256(discountThresholdTwo * 1e11)
-                    && numDiscountOverThresholdTwo >= discountDaysThreshold
+                    && numViolationsTwo >= discountDaysThreshold
             ) {
                 // this is the worst possible trim, so we can exit without checking other LSTs
                 return 0;
@@ -566,7 +566,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             // discountThreshold is 1e7 precision for the discount history, but here it is compared to a 1e18, so pad it
             if (
                 targetLst.discount >= int256(discountThresholdOne * 1e11)
-                    && numDiscountOverThresholdOne >= discountDaysThreshold
+                    && numViolationsOne >= discountDaysThreshold
             ) {
                 minTrim = minTrim.min(1e17); // 10%
             }

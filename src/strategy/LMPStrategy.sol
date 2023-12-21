@@ -777,8 +777,10 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
         uint256 lpTokenDivisor = 10 ** IDestinationVault(destAddress).decimals();
         uint256 totalSupplyInEth = 0;
+        // When comparing in & out destinations, we want to consider the supply with our allocation
+        // included to estimate the resulting incentive rate
         if (direction == RebalanceDirection.Out) {
-            totalSupplyInEth = stats.safeTotalSupply.subSaturate(lpAmountToAddOrRemove) * lpPrice / lpTokenDivisor;
+            totalSupplyInEth = stats.safeTotalSupply * lpPrice / lpTokenDivisor;
         } else {
             totalSupplyInEth = (stats.safeTotalSupply + lpAmountToAddOrRemove) * lpPrice / lpTokenDivisor;
         }

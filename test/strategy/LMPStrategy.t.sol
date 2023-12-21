@@ -1107,14 +1107,14 @@ contract LMPStrategyTest is Test {
 
         // totalSupplyInEth = (110 (starting safe supply) - 62 (amount being removed)) * 1.2 (price) = 57.6
         // expected apr = 5 (eth per year) / 57.6 = 8.68%
-        assertEq(summary.incentiveApr, 86_805_555_555_555_555);
+        assertEq(summary.incentiveApr, 37_878_787_878_787_878);
 
         // ((1% * 12 * 0.75) + (-1.2% * 18 * 1.0)) / (12 + 18) = -0.42%
         assertEq(summary.priceReturn, -0.0042e18);
         assertEq(summary.maxDiscount, 0.01e18);
         assertEq(summary.maxPremium, -0.012e18);
         // (4.6% * 1.0) + (1% * 1.0) + (8.68% * 0.9) + -0.42% = 12.992%
-        assertApproxEqAbs(summary.compositeReturn, 0.12992e18, 1e13 - 1);
+        assertApproxEqAbs(summary.compositeReturn, 85_890_909_090_909_090, 1e13 - 1);
         assertEq(summary.slashingCost, 0);
 
         // test rebalance in
@@ -1325,9 +1325,9 @@ contract LMPStrategyTest is Test {
 
         uint256 lpPrice = 12e17;
         uint256 amount = 62e18;
-        // totalSupplyInEth = (110 (starting safe supply) - 62 (amount being removed)) * 1.2 (price) = 57.6
-        // expected apr = 5 (eth per year) / 57.6 = 8.68%
-        uint256 expected = 86_805_555_555_555_555;
+        // totalSupplyInEth = (110 (starting safe supply) - 0 * 62 (amount being removed)) * 1.2 (price) = 132
+        // expected apr = 5 (eth per year) / 132 = 3.78%
+        uint256 expected = 37_878_787_878_787_878;
         uint256 actual =
             defaultStrat._calculateIncentiveApr(stat, LMPStrategy.RebalanceDirection.Out, lpToken, amount, lpPrice);
         assertEq(actual, expected);

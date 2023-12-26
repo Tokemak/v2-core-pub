@@ -41,14 +41,20 @@ contract MavEthOracleTest is Test {
         registry.setAccessController(address(accessControl));
         rootOracle = new RootPriceOracle(registry);
         registry.setRootPriceOracle(address(rootOracle));
-        mavOracle = new MavEthOracle(registry);
+        mavOracle = new MavEthOracle(registry, MAV_POOL_INFORMATION);
     }
 
     // Constructor tests
     function test_RevertSystemRegistryZeroAddress() external {
         // Reverts with generic evm revert.
         vm.expectRevert();
-        new MavEthOracle(ISystemRegistry(address(0)));
+        new MavEthOracle(ISystemRegistry(address(0)), MAV_POOL_INFORMATION);
+    }
+
+    function test_RevertPoolInformationZeroAddress() external {
+        // Reverts with generic evm revert.
+        vm.expectRevert();
+        new MavEthOracle(registry, address(0));
     }
 
     function test_RevertRootPriceOracleZeroAddress() external {
@@ -58,7 +64,7 @@ contract MavEthOracleTest is Test {
         localSystemRegistry.setAccessController(address(localAccessControl));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "priceOracle"));
-        new MavEthOracle(ISystemRegistry(address(localSystemRegistry)));
+        new MavEthOracle(ISystemRegistry(address(localSystemRegistry)), MAV_POOL_INFORMATION);
     }
 
     function test_ProperlySetsState() external {
@@ -116,6 +122,11 @@ contract MavEthOracleTest is Test {
     }
 
     // Test getSpotPrice error case
+    function test_GetSpotPrice_RevertIf_PoolZeroAddress() external {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "poolAddress"));
+        mavOracle.getSpotPrice(WSTETH_MAINNET, address(0), WETH_MAINNET);
+    }
+
     function test_GetSpotPrice_RevertIf_InvalidToken() external {
         vm.expectRevert(abi.encodeWithSelector(MavEthOracle.InvalidToken.selector));
         mavOracle.getSpotPrice(address(0), MAV_WSTETH_WETH_POOL, WETH_MAINNET);

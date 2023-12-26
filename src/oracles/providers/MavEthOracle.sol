@@ -35,11 +35,14 @@ contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPrice
     /// @notice The PoolInformation Maverick contract.
     IPoolInformation public poolInformation;
 
-    constructor(ISystemRegistry _systemRegistry)
-        SystemComponent(_systemRegistry)
-        SecurityBase(address(_systemRegistry.accessController()))
-    {
+    constructor(
+        ISystemRegistry _systemRegistry,
+        address _poolInformation
+    ) SystemComponent(_systemRegistry) SecurityBase(address(_systemRegistry.accessController())) {
         Errors.verifyNotZero(address(_systemRegistry.rootPriceOracle()), "priceOracle");
+
+        Errors.verifyNotZero(_poolInformation, "_poolInformation");
+        poolInformation = IPoolInformation(_poolInformation);
     }
 
     /**
@@ -104,6 +107,7 @@ contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPrice
         address poolAddress,
         address
     ) public returns (uint256 price, address actualQuoteToken) {
+        Errors.verifyNotZero(poolAddress, "poolAddress");
         IPool pool = IPool(poolAddress);
 
         address tokenA = address(pool.tokenA());
@@ -127,6 +131,7 @@ contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPrice
         );
 
         // Maverick Fee is in 1e18.
+        // https://docs.mav.xyz/guides/technical-reference/pool#fn-fee
         price = (price * 1e18) / (1e18 - pool.fee());
     }
 }

@@ -70,7 +70,8 @@ import {
     CRV_CL_FEED_MAINNET,
     LDO_CL_FEED_MAINNET,
     CRV_MAINNET,
-    LDO_MAINNET
+    LDO_MAINNET,
+    MAV_POOL_INFORMATION
 } from "../utils/Addresses.sol";
 
 import { SystemRegistry } from "src/SystemRegistry.sol";
@@ -144,7 +145,7 @@ contract RootOracleIntegrationTest is Test {
         ethPegOracle = new EthPeggedOracle(systemRegistry);
         uniV2EthOracle = new UniswapV2EthOracle(systemRegistry);
         wstEthOracle = new WstETHEthOracle(systemRegistry, WSTETH_MAINNET);
-        mavEthOracle = new MavEthOracle(systemRegistry);
+        mavEthOracle = new MavEthOracle(systemRegistry, MAV_POOL_INFORMATION);
         curveCryptoOracle = new CurveV2CryptoEthOracle(systemRegistry, ICurveResolver(curveResolver));
         crvUsdOracle = new CrvUsdOracle(
           systemRegistry,

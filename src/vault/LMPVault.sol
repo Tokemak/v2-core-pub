@@ -156,8 +156,8 @@ contract LMPVault is
     /// @notice Pending management fee.  Used as placeholder for new `managementFeeBps` within range of fee take.
     uint16 public pendingManagementFeeBps;
     
-    /// @notice Holds addresses of replaced rewarders.
-    mapping(address => bool) public pastRewarders;
+    /// @notice Rewarders that have been replaced.
+    EnumerableSet.AddressSet internal pastRewarders;
 
     error TooFewAssets(uint256 requested, uint256 actual);
     error WithdrawShareCalcInvalid(uint256 currentShares, uint256 cachedShares);
@@ -381,13 +381,29 @@ contract LMPVault is
         Errors.verifyNotZero(_rewarder, "rewarder");
 
         address toBeReplaced = address(rewarder);
+        // Check that the new rewarder has not been a rewarder before, and that the current rewarder and
+        //      new rewarder addresses are not the same.
+        if (pastRewarders.contains(_rewarder) || toBeReplaced == _rewarder) {
+            revert Errors.ItemExists();
+        }
+
         if (toBeReplaced != address(0)) {
-            pastRewarders[toBeReplaced] = true;
+            pastRewarders.add(toBeReplaced);
             emit RewarderReplaced(toBeReplaced);
         }
 
         rewarder = IMainRewarder(_rewarder);
         emit RewarderSet(_rewarder);
+    }
+
+    /// @inheritdoc ILMPVault
+    function getPastRewarders() external view returns (address[] memory) {
+        return pastRewarders.values();
+    }
+
+    /// @inheritdoc ILMPVault
+    function isPastRewarder(address _pastRewarder) external view returns (bool) {
+        return pastRewarders.contains(_pastRewarder);
     }
 
     /// @dev See {IERC4626-asset}.

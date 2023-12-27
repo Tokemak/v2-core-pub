@@ -279,14 +279,66 @@ contract LMPVaultBaseTest is BaseTest {
         lmpVault.setRewarder(secondRewarder);
 
         assertEq(address(lmpVault.rewarder()), secondRewarder);
-        assertTrue(lmpVault.pastRewarders(firstRewarder));
+        assertTrue(lmpVault.isPastRewarder(firstRewarder));
     }
 
     function test_PastRewardersState_NotUpdatedFor_ReplacingZeroAddress() public {
         address rewarder = makeAddr("REWARDER");
         lmpVault.setRewarder(rewarder);
 
-        assertTrue(!lmpVault.pastRewarders(address(0)));
+        assertTrue(!lmpVault.isPastRewarder(address(0)));
+    }
+
+    function test_RevertsWhenRewarderIsDuplicate() public {
+        address factoryRewarder = address(lmpVault.rewarder());
+
+        vm.expectRevert(Errors.ItemExists.selector);
+        lmpVault.setRewarder(factoryRewarder);
+    }
+
+    function test_RevertsWhenPastRewarderIsDuplicate() public {
+        address factoryRewarder = address(lmpVault.rewarder());
+        address nonFactoryRewarder = makeAddr("NOT_FACTORY_REWARDER");
+
+        lmpVault.setRewarder(nonFactoryRewarder);
+
+        // Will revert for factory rewarder being in past rewarders EnumberableSet.
+        vm.expectRevert(Errors.ItemExists.selector);
+
+        lmpVault.setRewarder(factoryRewarder);
+    }
+
+    //////////////////////////////////////////////////////////////////////
+    //                                                                  //
+    //			                Rewarder view functions                     //
+    //                                                                  //
+    //////////////////////////////////////////////////////////////////////
+
+    function test_GetsAllPastRewarders() public {
+        address rewarderOne = address(lmpVault.rewarder()); // First rewarder set by factory creation.
+        address rewarderTwo = makeAddr("REWARDER_TWO");
+        address rewarderThree = makeAddr("REWARDER_THREE");
+
+        // Set new rewarder twice, first two should be set to past rewarders.
+        lmpVault.setRewarder(rewarderTwo);
+        lmpVault.setRewarder(rewarderThree);
+
+        address[] memory pastRewarders = lmpVault.getPastRewarders();
+
+        assertEq(pastRewarders.length, 2);
+        // OZ says that there is no guarentee on ordering
+        assertTrue(pastRewarders[0] == rewarderOne || pastRewarders[0] == rewarderTwo);
+        assertTrue(pastRewarders[1] == rewarderOne || pastRewarders[1] == rewarderTwo);
+    }
+
+    function test_CorrectlyReturnsPastRewarder() public {
+        address factoryRewarder = address(lmpVault.rewarder());
+        address nonFactoryRewarder = makeAddr("NOT_FACTORY_REWARDER");
+
+        // Push factory rewarder to past rewarders.
+        lmpVault.setRewarder(nonFactoryRewarder);
+
+        assertTrue(lmpVault.isPastRewarder(factoryRewarder));
     }
 
     //////////////////////////////////////////////////////////////////////

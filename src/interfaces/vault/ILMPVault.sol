@@ -106,6 +106,13 @@ interface ILMPVault is IERC4626, IERC20Permit {
 
     /// @notice add (or move to if it already exists) a destination to the tail of the withdrawal queue
     function addToWithdrawalQueueTail(address destinationVault) external;
+
     /// @notice Returns instance of vault rewarder.
     function rewarder() external view returns (IMainRewarder);
+
+    /// @notice Returns all past rewarders.
+    function getPastRewarders() external view returns (address[] memory _pastRewarders);
+
+    /// @notice Returns boolean telling whether address passed in is past rewarder.
+    function isPastRewarder(address _pastRewarder) external view returns (bool);
 }

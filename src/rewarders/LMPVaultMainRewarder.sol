@@ -42,7 +42,7 @@ contract LMPVaultMainRewarder is MainRewarder {
 
         stakingToken = IERC20(_stakingToken);
     }
-    // slither-disable-end
+    // slither-disable-end similar-names
 
     /**
      * @notice Withdraws autopilot vault token from rewarder.

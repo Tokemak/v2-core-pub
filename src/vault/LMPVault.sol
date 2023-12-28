@@ -32,7 +32,7 @@ import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 // Cross functional reentrancy was identified between updateDebtReporting and the
 // destinationInfo. Have nonReentrant and read-only nonReentrant modifier on them both
 // but slither was still complaining. Also disabling reliance on block timestamp as we're basing on it
-//slither-disable-start reentrancy-no-eth,reentrancy-benign,timestamp
+//slither-disable-start reentrancy-no-eth,reentrancy-benign,timestamp,similar-names
 
 contract LMPVault is
     SystemComponent,
@@ -388,6 +388,7 @@ contract LMPVault is
         }
 
         if (toBeReplaced != address(0)) {
+            // slither-disable-next-line unused-return
             pastRewarders.add(toBeReplaced);
             emit RewarderReplaced(toBeReplaced);
         }
@@ -1264,4 +1265,4 @@ contract LMPVault is
     }
 }
 
-//slither-disable-end reentrancy-no-eth,reentrancy-benign,timestamp
+//slither-disable-end reentrancy-no-eth,reentrancy-benign,timestamp,similar-names

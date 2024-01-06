@@ -160,6 +160,7 @@ contract BaseTest is Test {
         return createMainRewarder(asset, address(new StakeTrackingMock()), allowExtras);
     }
 
+    // solhint-disable-next-line no-unused-vars
     function createMainRewarder(address asset, address lmpVault, bool allowExtras) public returns (MainRewarder) {
         // We use mock since this function is called not from owner and
         // SystemRegistry.addRewardToken is not accessible from the ownership perspective
@@ -168,12 +169,21 @@ contract BaseTest is Test {
         );
         MainRewarder mainRewarder = MainRewarder(
             new LMPVaultMainRewarder(
+<<<<<<< HEAD
                 systemRegistry, // registry
                 lmpVault, // stakeTracker
                 asset, // address(mockAsset("MAIN_REWARD", "MAIN_REWARD", 0)), // rewardToken
                 800, // newRewardRatio
                 100, // durationInBlock
                 allowExtras
+=======
+            systemRegistry, // registry
+            asset, // address(mockAsset("MAIN_REWARD", "MAIN_REWARD", 0)), // rewardToken
+            800, // newRewardRatio
+            100, // durationInBlock
+            allowExtras,
+            makeAddr("STAKING_TOKEN")
+>>>>>>> c4344129 (feat(rewards): stakeTracker refactoring and tests for LMP rewarder)
             )
         );
         vm.label(address(mainRewarder), "Main Rewarder");

@@ -2,16 +2,18 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { MainRewarder, ISystemRegistry } from "src/rewarders/MainRewarder.sol";
+import { MainRewarder, ISystemRegistry, Errors } from "src/rewarders/MainRewarder.sol";
 import { Roles } from "src/libs/Roles.sol";
 
 /**
  * @title DestinationVaultMainRewarder
  * @notice Main rewarder for Destination Vault contracts.  This is used to enforce role based
- *      access control for Destination Vault rewarders.
+ *      access control and stake tracker functionality for Destination Vault rewarders.
  */
 contract DestinationVaultMainRewarder is MainRewarder {
     // slither-disable-start similar-names
+    address public stakeTracker;
+
     constructor(
         ISystemRegistry _systemRegistry,
         address _stakeTracker,
@@ -22,13 +24,53 @@ contract DestinationVaultMainRewarder is MainRewarder {
     )
         MainRewarder(
             _systemRegistry,
-            _stakeTracker,
             _rewardToken,
             _newRewardRatio,
             _durationInBlock,
             Roles.DV_REWARD_MANAGER_ROLE,
             _allowExtraReward
         )
-    { }
+    {
+        Errors.verifyNotZero(_stakeTracker, "_stakeTracker");
+        stakeTracker = _stakeTracker;
+    }
     // slither-disable-end similar-names
+
+    /// @notice Restricts access to the stake tracker only.
+    modifier onlyStakeTracker() {
+        if (msg.sender != stakeTracker) {
+            revert Errors.AccessDenied();
+        }
+        _;
+    }
+
+    /**
+     * @notice Used to stake via DV contracts.
+     * @param account Account to stake for.
+     * @param amount Amount to stake.
+     */
+    function stake(address account, uint256 amount) public override onlyStakeTracker {
+        super.stake(account, amount);
+    }
+
+    /**
+     * @notice Used to withdraw via DV contracts.
+     * @param account Account to withdraw for.
+     * @param amount Amount to withdraw.
+     * @param claim Whether or not to claim.
+     */
+    function withdraw(address account, uint256 amount, bool claim) public override onlyStakeTracker {
+        super.withdraw(account, amount, claim);
+    }
+
+    /**
+     * @notice Used to claim rewards via stakeTracker.
+     * @dev This function is not actually used by the DV contracts, this function is implemented to lock reward
+     *      claiming.
+     * @param account Account to claim rewards for.
+     * @param claimExtras Whether or not to claim extra rewards.
+     */
+    function getReward(address account, bool claimExtras) public override onlyStakeTracker {
+        super.getReward(account, claimExtras);
+    }
 }

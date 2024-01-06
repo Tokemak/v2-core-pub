@@ -21,7 +21,6 @@ contract LMPVaultMainRewarder is MainRewarder {
     // slither-disable-start similar-names
     constructor(
         ISystemRegistry _systemRegistry,
-        address _stakeTracker,
         address _rewardToken,
         uint256 _newRewardRatio,
         uint256 _durationInBlock,
@@ -30,7 +29,6 @@ contract LMPVaultMainRewarder is MainRewarder {
     )
         MainRewarder(
             _systemRegistry,
-            _stakeTracker,
             _rewardToken,
             _newRewardRatio,
             _durationInBlock,
@@ -46,14 +44,16 @@ contract LMPVaultMainRewarder is MainRewarder {
 
     /**
      * @notice Withdraws autopilot vault token from rewarder.
-     * @dev This function can only be called by the stake tracker address, which in the case of the
-     *      autopilot vault is the router.
      * @dev Balance updates, reward calculations taken care of in inherited contract.
      * @param account Account that is withdrawing assets.
      * @param amount Amount of assets to be withdrawn.
      * @param claim Whether or not to claim rewards.
      */
     function withdraw(address account, uint256 amount, bool claim) public override {
+        if (msg.sender != account && msg.sender != address(systemRegistry.lmpVaultRouter())) {
+            revert Errors.AccessDenied();
+        }
+
         super.withdraw(account, amount, claim);
 
         stakingToken.safeTransfer(account, amount);
@@ -61,8 +61,6 @@ contract LMPVaultMainRewarder is MainRewarder {
 
     /**
      * @notice Stakes autopilot vault token to rewarder.
-     * @dev This function can only be called by the stake tracker address, which in the case of the
-     *      autopilot vault is the router.
      * @dev Balance updates, reward calculations taken care of in inherited contract.
      * @param account Account staking.
      * @param amount Amount of autopilot vault token to stake.
@@ -70,8 +68,20 @@ contract LMPVaultMainRewarder is MainRewarder {
     function stake(address account, uint256 amount) public override {
         super.stake(account, amount);
 
-        // Staktracker (router) takes control of tokens when staking.
         // slither-disable-next-line arbitrary-send-erc20
-        stakingToken.safeTransferFrom(stakeTracker, address(this), amount);
+        stakingToken.safeTransferFrom(msg.sender, address(this), amount);
+    }
+
+    /**
+     * @notice Gets reward for msg.sender.
+     * @dev Used to enforce msg.sender check.
+     * @param account Account to claim rewards for
+     */
+    function getReward(address account, bool claimExtras) public override {
+        if (msg.sender != account && msg.sender != address(systemRegistry.lmpVaultRouter())) {
+            revert Errors.AccessDenied();
+        }
+
+        super.getReward(account, claimExtras);
     }
 }

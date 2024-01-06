@@ -29,9 +29,6 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
     /// @dev Destination Vaults should not allow extras. LMP should.
     bool public immutable allowExtraRewards;
 
-    /// @notice An instance of the stake tracking contract
-    address public immutable stakeTracker;
-
     EnumerableSet.AddressSet private _extraRewards;
 
     uint256 private _totalSupply;
@@ -39,26 +36,14 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
 
     constructor(
         ISystemRegistry _systemRegistry,
-        address _stakeTracker,
         address _rewardToken,
         uint256 _newRewardRatio,
         uint256 _durationInBlock,
         bytes32 _rewardRole,
         bool _allowExtraRewards
     ) AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock, _rewardRole) {
-        Errors.verifyNotZero(_stakeTracker, "_stakeTracker");
-
         // slither-disable-next-line missing-zero-check
-        stakeTracker = _stakeTracker;
         allowExtraRewards = _allowExtraRewards;
-    }
-
-    /// @notice Restricts access to the stake tracker only.
-    modifier onlyStakeTracker() {
-        if (msg.sender != stakeTracker) {
-            revert Errors.AccessDenied();
-        }
-        _;
     }
 
     function extraRewardsLength() external view returns (uint256) {
@@ -106,7 +91,7 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         return _extraRewards.values();
     }
 
-    function withdraw(address account, uint256 amount, bool claim) public virtual onlyStakeTracker {
+    function withdraw(address account, uint256 amount, bool claim) public virtual {
         _updateReward(account);
         _withdraw(account, amount);
 
@@ -126,7 +111,7 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         _balances[account] -= amount;
     }
 
-    function stake(address account, uint256 amount) public virtual onlyStakeTracker {
+    function stake(address account, uint256 amount) public virtual {
         _updateReward(account);
         _stake(account, amount);
 
@@ -147,10 +132,7 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         _processRewards(msg.sender, true);
     }
 
-    function getReward(address account, bool claimExtras) external nonReentrant {
-        if (msg.sender != stakeTracker && msg.sender != account) {
-            revert Errors.AccessDenied();
-        }
+    function getReward(address account, bool claimExtras) public virtual nonReentrant {
         _updateReward(account);
         _processRewards(account, claimExtras);
     }

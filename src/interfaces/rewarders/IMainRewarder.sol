@@ -51,10 +51,4 @@ interface IMainRewarder is IBaseRewarder {
      * @notice Get the rewarder at the specified index
      */
     function getExtraRewarder(uint256 index) external view returns (IExtraRewarder);
-
-    /**
-     * @notice Token that is tracked as the deposit token
-     * @dev Rewards don't actually take possession of token
-     */
-    function stakeTracker() external view returns (address);
 }

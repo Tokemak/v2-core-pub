@@ -177,11 +177,6 @@ contract DestinationVaultFactoryBaseTests is Test {
         address nextAddress = Clones.predictDeterministicAddress(address(tv), salt, address(_factory));
         vm.expectCall(_vaultRegistry, abi.encodeCall(IDestinationVaultRegistry.register, nextAddress));
         address newVault = _factory.create("y", address(8), _fakeUnderlyer, _fakeTracked, salt, data);
-
-        IMainRewarder rewarder = IMainRewarder(IDestinationVault(newVault).rewarder());
-        address stakeToken = rewarder.stakeTracker();
-
-        assertEq(newVault, stakeToken);
     }
 
     function _registerTemplate(address templateReg, bytes32 key, address template) internal {

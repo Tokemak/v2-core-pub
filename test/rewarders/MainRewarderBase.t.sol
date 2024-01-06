@@ -23,30 +23,18 @@ import { MainRewarder } from "src/rewarders/MainRewarder.sol";
 contract MainRewarderNotAbstract is MainRewarder {
     constructor(
         ISystemRegistry _systemRegistry,
-        address _stakeTracker,
         address _rewardToken,
         uint256 _newRewardRatio,
         uint256 _durationInBlock,
         bytes32 _rewardRole,
         bool _allowExtraRewards
-    )
-        MainRewarder(
-            _systemRegistry,
-            _stakeTracker,
-            _rewardToken,
-            _newRewardRatio,
-            _durationInBlock,
-            _rewardRole,
-            _allowExtraRewards
-        )
-    { }
+    ) MainRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock, _rewardRole, _allowExtraRewards) { }
 }
 
 contract MainRewarderTest is Test {
     MainRewarderNotAbstract public rewarder;
     ERC20Mock public rewardToken;
 
-    address public stakeTracker;
     SystemRegistry public systemRegistry;
     AccessController public accessController;
 
@@ -70,8 +58,8 @@ contract MainRewarderTest is Test {
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
         rewardToken = new ERC20Mock("MAIN_REWARD", "MAIN_REWARD", address(this), 0);
-        stakeTracker = makeAddr("STAKE_TRACKER");
         rewarder = new MainRewarderNotAbstract(
+<<<<<<< HEAD
             systemRegistry,
             stakeTracker,
             address(rewardToken),
@@ -79,6 +67,14 @@ contract MainRewarderTest is Test {
             durationInBlock,
             Roles.LMP_REWARD_MANAGER_ROLE,
             true
+=======
+          systemRegistry,
+          address(rewardToken),
+          newRewardRatio,
+          durationInBlock,
+          Roles.LMP_REWARD_MANAGER_ROLE,
+          true
+>>>>>>> c4344129 (feat(rewards): stakeTracker refactoring and tests for LMP rewarder)
         );
 
         accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
@@ -89,6 +85,7 @@ contract MainRewarderTest is Test {
 contract AddExtraReward is MainRewarderTest {
     function test_RevertIf_ExtraRewardNotAllowed() public {
         MainRewarderNotAbstract mainReward = new MainRewarderNotAbstract(
+<<<<<<< HEAD
             systemRegistry,
             stakeTracker,
             address(rewardToken),
@@ -97,6 +94,15 @@ contract AddExtraReward is MainRewarderTest {
             Roles.LMP_REWARD_MANAGER_ROLE,
             false
         );
+=======
+        systemRegistry,
+        address(rewardToken),
+        newRewardRatio,
+        durationInBlock,
+        Roles.LMP_REWARD_MANAGER_ROLE,
+        false
+      );
+>>>>>>> c4344129 (feat(rewards): stakeTracker refactoring and tests for LMP rewarder)
 
         vm.expectRevert(abi.encodeWithSignature("ExtraRewardsNotAllowed()"));
         mainReward.addExtraReward(makeAddr("EXTRA_REWARD"));
@@ -212,11 +218,6 @@ contract ClearExtraRewards is MainRewarderTest {
 }
 
 contract Stake is MainRewarderTest {
-    function test_RevertIf_CallerIsNotStakeTracker_stake() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        rewarder.stake(RANDOM, 1000);
-    }
-
     function test_IncreasesUsersBalancesAndTotalSupply() public {
         uint256 deposit = 1000;
 
@@ -224,11 +225,9 @@ contract Stake is MainRewarderTest {
         address user2 = makeAddr("USER2");
         address user3 = makeAddr("USER3");
 
-        vm.startPrank(stakeTracker);
         rewarder.stake(user1, deposit);
         rewarder.stake(user2, deposit);
         rewarder.stake(user3, deposit);
-        vm.stopPrank();
 
         assertEq(rewarder.balanceOf(user1), deposit);
         assertEq(rewarder.balanceOf(user2), deposit);
@@ -239,19 +238,12 @@ contract Stake is MainRewarderTest {
 }
 
 contract Withdraw is MainRewarderTest {
-    function test_RevertIf_CallerIsNotStakeTracker_withdraw() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        rewarder.withdraw(RANDOM, 1000, false);
-    }
-
     function test_DecreasesUsersBalancesAndTotalSupply() public {
         uint256 deposit = 1000;
 
         address user1 = makeAddr("USER1");
         address user2 = makeAddr("USER2");
         address user3 = makeAddr("USER3");
-
-        vm.startPrank(stakeTracker);
 
         // stake for 3 users
         rewarder.stake(user1, deposit);
@@ -263,8 +255,6 @@ contract Withdraw is MainRewarderTest {
 
         assertEq(rewarder.balanceOf(user3), 0);
         assertEq(rewarder.totalSupply(), deposit * 2);
-
-        vm.stopPrank();
     }
 
     // Testing for edge cases.
@@ -310,14 +300,12 @@ contract Withdraw is MainRewarderTest {
 
         // Wait to 1/10 of the period (block.number + interval) with 0 totalSupply and let user1 and user2 stake
         vm.roll(block.number + interval);
-        vm.startPrank(stakeTracker);
         rewarder.stake(user1, deposit);
         rewarder.stake(user2, deposit);
 
         // Move to 3/10 of the period (block.number + 3 * interval) and let user3 stake
         vm.roll(block.number + 3 * interval);
         rewarder.stake(user3, deposit);
-        vm.stopPrank();
 
         // Capture the balance of users before the rewards are distributed
         uint256 balanceBeforeUser1 = rewardToken.balanceOf(user1);
@@ -354,7 +342,6 @@ contract Withdraw is MainRewarderTest {
 
         // Advance the blockNumber by durationInBlock / 2 to simulate that the period is almost finished.
         vm.roll(block.number + durationInBlock / 2);
-        vm.prank(stakeTracker);
         rewarder.stake(RANDOM, 1000);
 
         vm.roll(block.number + durationInBlock + 1);

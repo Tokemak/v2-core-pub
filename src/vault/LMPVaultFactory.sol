@@ -75,7 +75,6 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
 
         LMPVaultMainRewarder mainRewarder = new LMPVaultMainRewarder{ salt: salt }(
             systemRegistry,
-            stakeTracker,
             address(systemRegistry.toke()),
             defaultRewardRatio,
             defaultRewardBlockDuration,

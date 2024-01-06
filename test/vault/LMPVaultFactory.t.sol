@@ -68,12 +68,6 @@ contract LMPVaultFactoryTest is Test {
         );
     }
 
-    function test_RevertWhen_VaultRouterDNE() public {
-        vm.clearMockedCalls(); // Clear mock for vault router.
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "lmpVaultRouter"));
-        _lmpVaultFactory.createVault(1_000_000, 1_000_000, "x", "y", keccak256("v1"), lmpVaultInitData);
-    }
-
     function test_constructor_RewardInfoSet() public {
         assertEq(_lmpVaultFactory.defaultRewardRatio(), 800);
         assertEq(_lmpVaultFactory.defaultRewardBlockDuration(), 100);

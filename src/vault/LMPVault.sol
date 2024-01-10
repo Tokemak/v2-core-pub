@@ -180,6 +180,7 @@ contract LMPVault is
     event ManagementFeeSet(uint256 newFee);
     event PendingManagementFeeSet(uint256 pendingManagementFeeBps);
     event ManagementFeeSinkSet(address newManagementFeeSink);
+    event NextManagementFeeTakeSet(uint256 nextManagementFeeTake);
 
     struct ExtraData {
         address lmpStrategyAddress;
@@ -254,7 +255,8 @@ contract LMPVault is
 
         _symbol = string(abi.encodePacked("lmp", symbolSuffix));
         _desc = string(abi.encodePacked(descPrefix, " Pool Token"));
-        nextManagementFeeTake = uint32(block.timestamp + MANAGEMENT_FEE_TAKE_TIMEFRAME);
+        nextManagementFeeTake = uint48(block.timestamp + MANAGEMENT_FEE_TAKE_TIMEFRAME);
+        emit NextManagementFeeTakeSet(nextManagementFeeTake);
 
         ExtraData memory decodedInitData = abi.decode(extraData, (ExtraData));
         Errors.verifyNotZero(decodedInitData.lmpStrategyAddress, "lmpStrategyAddress");
@@ -933,12 +935,27 @@ contract LMPVault is
         }
 
         // slither-disable-start timestamp
-        if (
-            (managementFeeBps > 0 || pendingManagementFeeBps > 0) && managementFeeSink != address(0)
-                && timestamp > nextManagementFeeTake
-        ) {
-            totalSupply = _collectAndUpdateManagementFees(totalSupply);
+        // If current timestamp is greater than nextManagementFeeTake, operations need to happen for management fee.
+        if (timestamp > nextManagementFeeTake) {
+            // If there is a management fee and fee sink set, take the fee.
+            if (managementFeeBps > 0 && managementFeeSink != address(0)) {
+                totalSupply = _collectManagementFees(totalSupply, assets);
+            }
+
+            // If there is a pending management fee set, replace management fee with pending after fees already taken.
+            if (pendingManagementFeeBps > 0) {
+                emit ManagementFeeSet(pendingManagementFeeBps);
+                emit PendingManagementFeeSet(0);
+
+                managementFeeBps = pendingManagementFeeBps;
+                pendingManagementFeeBps = 0;
+            }
+
+            // Needs to be updated any time timestamp > `nextTakeManagementFee` to keep up to date.
+            nextManagementFeeTake += uint48(MANAGEMENT_FEE_TAKE_TIMEFRAME);
+            emit NextManagementFeeTakeSet(nextManagementFeeTake);
         }
+
         // slither-disable-end timestamp
         uint256 currentNavPerShare = ((idle + debt) * MAX_FEE_BPS) / totalSupply;
         uint256 effectiveNavPerShareHighMark = _calculateEffectiveNavPerShareHighMark(
@@ -969,7 +986,7 @@ contract LMPVault is
                 _mint(sink, shares);
                 totalSupply += shares;
                 currentNavPerShare = ((idle + debt) * MAX_FEE_BPS) / totalSupply;
-                emit Deposit(address(this), sink, fees, shares);
+                emit Deposit(address(this), sink, 0, shares);
             }
 
             // Set our new high water mark, the last nav/share height we took fees
@@ -1040,41 +1057,23 @@ contract LMPVault is
         return workingHigh;
     }
 
-    /// @notice takes care of both fees and setting management fee when pending is available.
-    ///     Has ability to set management fee when no fee is taken.
-    function _collectAndUpdateManagementFees(uint256 totalSupply) internal returns (uint256) {
-        if (managementFeeBps > 0) {
-            uint256 assets = totalAssets();
-            // Management fee * assets used multiple places below, gas savings when calc here.
-            uint256 managementFeeMultAssets = managementFeeBps * assets;
-            address managementSink = managementFeeSink;
+    /// @dev Collects management fees.
+    function _collectManagementFees(uint256 totalSupply, uint256 assets) internal returns (uint256) {
+        // Management fee * assets used multiple places below, gas savings when calc here.
+        uint256 managementFeeMultAssets = managementFeeBps * assets;
+        address managementSink = managementFeeSink;
 
-            // We calculate the shares using the same formula as performance fees, without scaling down
-            uint256 shares = Math.mulDiv(
-                managementFeeMultAssets,
-                totalSupply,
-                (assets * MAX_FEE_BPS) - (managementFeeMultAssets),
-                Math.Rounding.Up
-            );
-            _mint(managementSink, shares);
-            totalSupply += shares;
+        // We calculate the shares using the same formula as performance fees, without scaling down
+        uint256 shares = Math.mulDiv(
+            managementFeeMultAssets, totalSupply, (assets * MAX_FEE_BPS) - (managementFeeMultAssets), Math.Rounding.Up
+        );
+        _mint(managementSink, shares);
+        totalSupply += shares;
 
-            // Fee in assets that we are taking.
-            uint256 fees = managementFeeMultAssets / MAX_FEE_BPS;
-            emit Deposit(address(this), managementSink, fees, shares);
-            emit ManagementFeeCollected(fees, managementSink, shares);
-        }
-
-        if (pendingManagementFeeBps > 0) {
-            emit ManagementFeeSet(pendingManagementFeeBps);
-            emit PendingManagementFeeSet(0);
-
-            managementFeeBps = pendingManagementFeeBps;
-            pendingManagementFeeBps = 0;
-        }
-        // Want this updated even if no management fee is collected and we are just updating.
-        // Prevents us from turning around and immediately claiming another management fee.
-        nextManagementFeeTake = uint48(block.timestamp + MANAGEMENT_FEE_TAKE_TIMEFRAME);
+        // Fee in assets that we are taking.
+        uint256 fees = managementFeeMultAssets.ceilDiv(MAX_FEE_BPS);
+        emit Deposit(address(this), managementSink, 0, shares);
+        emit ManagementFeeCollected(fees, managementSink, shares);
 
         return totalSupply;
     }

@@ -4,7 +4,7 @@
 pragma solidity 0.8.17;
 
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
-import { IGPToke } from "src/interfaces/staking/IGPToke.sol";
+import { IAccToke } from "src/interfaces/staking/IAccToke.sol";
 import { ILMPVaultRegistry } from "./vault/ILMPVaultRegistry.sol";
 import { IAccessController } from "./security/IAccessController.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
@@ -34,9 +34,9 @@ interface ISystemRegistry {
     /// @return weth contract pointer
     function weth() external view returns (IWETH9);
 
-    /// @notice Get the GPToke staking contract
-    /// @return gpToke instance of the gpToke contract for the system
-    function gpToke() external view returns (IGPToke);
+    /// @notice Get the AccToke staking contract
+    /// @return accToke instance of the accToke contract for the system
+    function accToke() external view returns (IAccToke);
 
     /// @notice Get the LMP Vault registry for this system
     /// @return registry instance of the registry for this system

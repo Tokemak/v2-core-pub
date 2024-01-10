@@ -8,7 +8,7 @@ pragma solidity 0.8.17;
 import { Errors } from "src/utils/Errors.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { Ownable2Step } from "./access/Ownable2Step.sol";
-import { IGPToke } from "src/interfaces/staking/IGPToke.sol";
+import { IAccToke } from "src/interfaces/staking/IAccToke.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
@@ -38,7 +38,7 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
 
     IERC20Metadata public immutable toke;
     IWETH9 public immutable weth;
-    IGPToke private _gpToke;
+    IAccToke private _accToke;
     ILMPVaultRegistry private _lmpVaultRegistry;
     IDestinationVaultRegistry private _destinationVaultRegistry;
     IAccessController private _accessController;
@@ -60,7 +60,7 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     /* Events                           */
     /* ******************************** */
 
-    event GPTokeSet(address newAddress);
+    event AccTokeSet(address newAddress);
     event LMPVaultRegistrySet(address newAddress);
     event DestinationVaultRegistrySet(address newAddress);
     event AccessControllerSet(address newAddress);
@@ -102,8 +102,8 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     /* ******************************** */
 
     /// @inheritdoc ISystemRegistry
-    function gpToke() external view returns (IGPToke) {
-        return _gpToke;
+    function accToke() external view returns (IAccToke) {
+        return _accToke;
     }
 
     /// @inheritdoc ISystemRegistry
@@ -179,21 +179,21 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     /* Function                         */
     /* ******************************** */
 
-    /// @notice Set the GPToke for this instance of the system
+    /// @notice Set the AccToke for this instance of the system
     /// @dev Should only be able to set this value one time
-    /// @param newGPToke Address of the gpToke contract
-    function setGPToke(address newGPToke) external onlyOwner {
-        Errors.verifyNotZero(newGPToke, "newGPToke");
+    /// @param newAccToke Address of the accToke contract
+    function setAccToke(address newAccToke) external onlyOwner {
+        Errors.verifyNotZero(newAccToke, "newAccToke");
 
-        if (address(_gpToke) != address(0)) {
-            revert Errors.AlreadySet("gpToke");
+        if (address(_accToke) != address(0)) {
+            revert Errors.AlreadySet("accToke");
         }
 
-        _gpToke = IGPToke(newGPToke);
+        _accToke = IAccToke(newAccToke);
 
-        emit GPTokeSet(newGPToke);
+        emit AccTokeSet(newAccToke);
 
-        _verifySystemsAgree(address(newGPToke));
+        _verifySystemsAgree(address(newAccToke));
     }
 
     /// @notice Set the LMP Vault Registry for this instance of the system

@@ -10,7 +10,7 @@ import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 
 import { ERC20Mock } from "openzeppelin-contracts/mocks/ERC20Mock.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import { IGPToke, GPToke } from "src/staking/GPToke.sol";
+import { IAccToke, AccToke } from "src/staking/AccToke.sol";
 
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
@@ -193,21 +193,21 @@ contract AbstractRewarderTest is Test {
     }
 
     /**
-     * @dev Sets up a GPToke contract in the system registry.
+     * @dev Sets up a AccToke contract in the system registry.
      *  Mostly used for testing purposes.
-     * @return The address of the GPToke contract.
+     * @return The address of the AccToke contract.
      */
-    function _setupGpTokeAndTokeRewarder() internal returns (GPToke) {
+    function _setupAccTokeAndTokeRewarder() internal returns (AccToke) {
         uint256 minStakingDuration = 30 days;
 
-        GPToke gpToke = new GPToke(
+        AccToke accToke = new AccToke(
             systemRegistry,
             //solhint-disable-next-line not-rely-on-time
             block.timestamp, // start epoch
             minStakingDuration
         );
 
-        systemRegistry.setGPToke(address(gpToke));
+        systemRegistry.setAccToke(address(accToke));
 
         // replace the rewarder by a new one with TOKE
         rewarder = new Rewarder(
@@ -224,7 +224,7 @@ contract AbstractRewarderTest is Test {
         vm.prank(liquidator);
         IERC20(TOKE_MAINNET).approve(address(rewarder), 100_000_000_000);
 
-        return gpToke;
+        return accToke;
     }
 }
 
@@ -539,20 +539,20 @@ contract SetTokeLockDuration is AbstractRewarderTest {
         rewarder.setTokeLockDuration(tokeLockDuration);
     }
 
-    function test_RevertWhen_GptokeIsNotSet() public {
+    function test_RevertWhen_AccTokeIsNotSet() public {
         vm.startPrank(operator);
 
         uint256 tokeLockDuration = 1;
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "gpToke"));
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "accToke"));
         rewarder.setTokeLockDuration(tokeLockDuration);
     }
 
     function test_RevertWhen_StakingDurationIsTooShort() public {
-        _setupGpTokeAndTokeRewarder();
+        _setupAccTokeAndTokeRewarder();
 
         vm.startPrank(operator);
         uint256 tokeLockDuration = 1;
-        vm.expectRevert(abi.encodeWithSelector(IGPToke.StakingDurationTooShort.selector));
+        vm.expectRevert(abi.encodeWithSelector(IAccToke.StakingDurationTooShort.selector));
         rewarder.setTokeLockDuration(tokeLockDuration);
     }
 
@@ -637,8 +637,8 @@ contract _getReward is AbstractRewarderTest {
         rewarder.exposed_getRewardWrapper(RANDOM);
     }
 
-    // @dev see above for doc: for gpToke amounts had to be bumped up due to new mins
-    function _runDefaultScenarioGpToke() internal returns (uint256) {
+    // @dev see above for doc: for accToke amounts had to be bumped up due to new mins
+    function _runDefaultScenarioAccToke() internal returns (uint256) {
         uint256 newReward = 50_000;
 
         deal(TOKE_MAINNET, address(rewarder), 100_000_000_000);
@@ -656,8 +656,8 @@ contract _getReward is AbstractRewarderTest {
     }
 
     function test_StakeRewardsToGptTokeWhenRewardTokenIsTokeAndFeatureIsEnabled() public {
-        GPToke gPToke = _setupGpTokeAndTokeRewarder();
-        _runDefaultScenarioGpToke();
+        AccToke accToke = _setupAccTokeAndTokeRewarder();
+        _runDefaultScenarioAccToke();
 
         vm.startPrank(operator);
         rewarder.setTokeLockDuration(30 days);
@@ -666,34 +666,34 @@ contract _getReward is AbstractRewarderTest {
         // mock rewarder balanceOf function
         rewarder.setBalanceOf(1000);
 
-        uint256 balanceBefore = gPToke.balanceOf(RANDOM);
+        uint256 balanceBefore = accToke.balanceOf(RANDOM);
         rewarder.exposed_getRewardWrapper(RANDOM);
-        uint256 balanceAfter = gPToke.balanceOf(RANDOM);
+        uint256 balanceAfter = accToke.balanceOf(RANDOM);
 
         assertTrue(balanceAfter > balanceBefore);
     }
 
-    function test_GPToke_Staking_Should_Not_Happen_If_No_Lock_Duration() public {
-        GPToke gPToke = _setupGpTokeAndTokeRewarder();
-        _runDefaultScenarioGpToke();
+    function test_AccToke_Staking_Should_Not_Happen_If_No_Lock_Duration() public {
+        AccToke accToke = _setupAccTokeAndTokeRewarder();
+        _runDefaultScenarioAccToke();
 
         assertEq(0, rewarder.tokeLockDuration());
 
         // mock rewarder balanceOf function
         rewarder.setBalanceOf(1000);
 
-        uint256 balanceBefore = gPToke.balanceOf(RANDOM);
+        uint256 balanceBefore = accToke.balanceOf(RANDOM);
         rewarder.exposed_getRewardWrapper(RANDOM);
-        uint256 balanceAfter = gPToke.balanceOf(RANDOM);
+        uint256 balanceAfter = accToke.balanceOf(RANDOM);
 
         assertTrue(balanceAfter == balanceBefore);
     }
 
     // This one covers Sherlock 217-M:
     // https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/217-M/565-best.md
-    function test_GPToke_Staking_Should_Not_Happen_If_Amount_Is_Low() public {
-        GPToke gPToke = _setupGpTokeAndTokeRewarder();
-        _runDefaultScenarioGpToke();
+    function test_AccToke_Staking_Should_Not_Happen_If_Amount_Is_Low() public {
+        AccToke accToke = _setupAccTokeAndTokeRewarder();
+        _runDefaultScenarioAccToke();
 
         vm.startPrank(operator);
         rewarder.setTokeLockDuration(30 days);
@@ -704,9 +704,9 @@ contract _getReward is AbstractRewarderTest {
         // and assert that earned is less than tokeMinStakeAmount
         assertTrue(rewarder.earned(RANDOM) < tokeMinStakeAmount);
 
-        uint256 balanceBefore = gPToke.balanceOf(RANDOM);
+        uint256 balanceBefore = accToke.balanceOf(RANDOM);
         rewarder.exposed_getRewardWrapper(RANDOM);
-        uint256 balanceAfter = gPToke.balanceOf(RANDOM);
+        uint256 balanceAfter = accToke.balanceOf(RANDOM);
 
         assertTrue(balanceAfter == balanceBefore);
     }

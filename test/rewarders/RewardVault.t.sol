@@ -59,7 +59,7 @@ contract MainRewarderTest is BaseTest {
         accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, operator);
         accessController.grantRole(Roles.LIQUIDATOR_ROLE, liquidator);
 
-        deployGpToke();
+        deployAccToke();
 
         stakeTracker = new StakeTrackingMock();
 
@@ -242,7 +242,7 @@ contract MainRewarderTest is BaseTest {
 
         // record balances before
         uint256 tokeBalanceBefore = toke.balanceOf(RANDOM);
-        uint256 gpTokeBalanceBefore = gpToke.balanceOf(RANDOM);
+        uint256 accTokeBalanceBefore = accToke.balanceOf(RANDOM);
         uint256 extraReward1BalanceBefore = extraReward1.balanceOf(RANDOM);
         uint256 extraReward2BalanceBefore = extraReward2.balanceOf(RANDOM);
 
@@ -252,7 +252,7 @@ contract MainRewarderTest is BaseTest {
 
         // validate balances after – toke should be the same as before
         assertEq(toke.balanceOf(RANDOM), tokeBalanceBefore);
-        assertEq(gpToke.balanceOf(RANDOM), gpTokeBalanceBefore);
+        assertEq(accToke.balanceOf(RANDOM), accTokeBalanceBefore);
         // extra rewards should be claimed successfully
         assertTrue(extraReward1.balanceOf(RANDOM) > extraReward1BalanceBefore);
         assertTrue(extraReward2.balanceOf(RANDOM) > extraReward2BalanceBefore);
@@ -261,7 +261,7 @@ contract MainRewarderTest is BaseTest {
     function _runTokeStakingTest(
         uint256 stakeDuration,
         uint256 expectedTokeBalanceDiff,
-        bool gpTokeIncreaseExpected
+        bool accTokeIncreaseExpected
     ) private {
         MainRewarder tokeRewarder = MainRewarder(
             new DestinationVaultMainRewarder(systemRegistry,
@@ -294,7 +294,7 @@ contract MainRewarderTest is BaseTest {
         assertEq(earned, amount);
 
         uint256 tokeBalanceBefore = toke.balanceOf(RANDOM);
-        uint256 gpTokeBalanceBefore = gpToke.balanceOf(RANDOM);
+        uint256 accTokeBalanceBefore = accToke.balanceOf(RANDOM);
 
         // claim rewards
 
@@ -302,6 +302,6 @@ contract MainRewarderTest is BaseTest {
         tokeRewarder.getReward();
 
         assertEq(toke.balanceOf(RANDOM) - tokeBalanceBefore, expectedTokeBalanceDiff);
-        assertEq(gpToke.balanceOf(RANDOM) > gpTokeBalanceBefore, gpTokeIncreaseExpected);
+        assertEq(accToke.balanceOf(RANDOM) > accTokeBalanceBefore, accTokeIncreaseExpected);
     }
 }

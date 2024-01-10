@@ -22,7 +22,7 @@ import { SwapRouter } from "src/swapper/SwapRouter.sol";
 import { AsyncSwapperRegistry } from "src/liquidation/AsyncSwapperRegistry.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { StatsCalculatorRegistry } from "src/stats/StatsCalculatorRegistry.sol";
-import { GPToke } from "src/staking/GPToke.sol";
+import { AccToke } from "src/staking/AccToke.sol";
 import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
 import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { Lens } from "src/lens/Lens.sol";
@@ -85,7 +85,7 @@ contract DeploySystem is BaseScript {
     AsyncSwapperRegistry public asyncSwapperRegistry;
     RootPriceOracle public priceOracle;
     StatsCalculatorRegistry public statsRegistry;
-    GPToke public gpToke;
+    AccToke public accToke;
 
     CurveResolverMainnet public curveResolver;
 
@@ -180,10 +180,10 @@ contract DeploySystem is BaseScript {
         systemRegistry.setStatsCalculatorRegistry(address(statsRegistry));
         console.log("Stats Calculator Registry address: ", address(statsRegistry));
 
-        // gpToke setup.
-        gpToke = new GPToke(systemRegistry, startEpoch, minStakeDuration);
-        systemRegistry.setGPToke(address(gpToke));
-        console.log("GPToke address: ", address(gpToke));
+        // accToke setup.
+        accToke = new AccToke(systemRegistry, startEpoch, minStakeDuration);
+        systemRegistry.setAccToke(address(accToke));
+        console.log("AccToke address: ", address(accToke));
 
         // Curve resolver setup.
         if (curveMetaRegistryAddress != address(0)) {

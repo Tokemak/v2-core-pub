@@ -20,7 +20,7 @@ import { StakeTrackingMock } from "test/mocks/StakeTrackingMock.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { LMPVaultMainRewarder, MainRewarder } from "src/rewarders/LMPVaultMainRewarder.sol";
 import { LMPVault } from "src/vault/LMPVault.sol";
-import { IGPToke, GPToke } from "src/staking/GPToke.sol";
+import { IAccToke, AccToke } from "src/staking/AccToke.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
 import { Roles } from "src/libs/Roles.sol";
@@ -52,7 +52,7 @@ contract BaseTest is Test {
     address public lmpVaultTemplate;
 
     // -- Staking -- //
-    GPToke public gpToke;
+    AccToke public accToke;
     uint256 public constant MIN_STAKING_DURATION = 30 days;
 
     // -- tokens -- //
@@ -181,19 +181,19 @@ contract BaseTest is Test {
         return mainRewarder;
     }
 
-    function deployGpToke() public {
-        if (address(gpToke) != address(0)) return;
+    function deployAccToke() public {
+        if (address(accToke) != address(0)) return;
 
-        gpToke = new GPToke(
+        accToke = new AccToke(
             systemRegistry,
             //solhint-disable-next-line not-rely-on-time
             block.timestamp, // start epoch
             MIN_STAKING_DURATION
         );
 
-        vm.label(address(gpToke), "GPToke");
+        vm.label(address(accToke), "AccToke");
 
-        systemRegistry.setGPToke(address(gpToke));
+        systemRegistry.setAccToke(address(accToke));
     }
 
     function deployLMPVaultRegistry() public {

@@ -80,10 +80,10 @@ contract GetReward is ExtraRewarderTest {
 // Testing inherited AbstractRewarder RBAC functionalities with rewarder specific to extra rewards.
 contract RoleBasedAccessControlTests is ExtraRewarderTest {
     function test_RBAC_setTokeLockDuration() external {
-        // Mock registry / gptoke calls.
-        address fakeGPToke = makeAddr("FAKE_GPTOKE");
-        vm.mockCall(address(systemRegistry), abi.encodeWithSignature("gpToke()"), abi.encode(fakeGPToke));
-        vm.mockCall(fakeGPToke, abi.encodeWithSignature("minStakeDuration()"), abi.encode(0));
+        // Mock registry / accToke calls.
+        address fakeAccToke = makeAddr("FAKE_ACCTOKE");
+        vm.mockCall(address(systemRegistry), abi.encodeWithSignature("accToke()"), abi.encode(fakeAccToke));
+        vm.mockCall(fakeAccToke, abi.encodeWithSignature("minStakeDuration()"), abi.encode(0));
 
         // `address(this)` does not have `EXTRA_REWARD_MANAGER_ROLE`.
         vm.expectRevert(Errors.AccessDenied.selector);

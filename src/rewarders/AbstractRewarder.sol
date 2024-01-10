@@ -10,7 +10,7 @@ import { SecurityBase } from "src/security/SecurityBase.sol";
 
 import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 
-import { IGPToke } from "src/interfaces/staking/IGPToke.sol";
+import { IAccToke } from "src/interfaces/staking/IAccToke.sol";
 
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { Roles } from "src/libs/Roles.sol";
@@ -268,15 +268,15 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
      * @notice Sets the lock duration for staked Toke tokens.
      * @dev If the lock duration is set to 0, it turns off the staking functionality for Toke tokens.
      * @dev If the lock duration is greater than 0, it should be long enough to satisfy the minimum staking duration
-     * requirement of the gpToke contract.
+     * requirement of the accToke contract.
      * @param _tokeLockDuration The lock duration for staked Toke tokens.
      */
     function setTokeLockDuration(uint256 _tokeLockDuration) external hasRole(rewardRole) {
         // if duration is not set to 0 (that would turn off functionality), make sure it's long enough for gpToke
         if (_tokeLockDuration > 0) {
-            Errors.verifyNotZero(address(systemRegistry.gpToke()), "gpToke");
-            if (_tokeLockDuration < systemRegistry.gpToke().minStakeDuration()) {
-                revert IGPToke.StakingDurationTooShort();
+            Errors.verifyNotZero(address(systemRegistry.accToke()), "accToke");
+            if (_tokeLockDuration < systemRegistry.accToke().minStakeDuration()) {
+                revert IAccToke.StakingDurationTooShort();
             }
         }
 
@@ -329,7 +329,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
         Errors.verifyNotZero(account, "account");
 
         uint256 reward = earned(account);
-        (IGPToke gpToke, address tokeAddress) = (systemRegistry.gpToke(), address(systemRegistry.toke()));
+        (IAccToke accToke, address tokeAddress) = (systemRegistry.accToke(), address(systemRegistry.toke()));
 
         // slither-disable-next-line incorrect-equality
         if (reward == 0) return;
@@ -340,14 +340,14 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
             emit RewardPaid(account, reward);
 
             IERC20(rewardToken).safeTransfer(account, reward);
-        } else if (gpToke.isStakeableAmount(reward)) {
+        } else if (accToke.isStakeableAmount(reward)) {
             rewards[account] = 0;
             emit RewardPaid(account, reward);
-            // authorize gpToke to get our reward Toke
-            LibAdapter._approve(IERC20(tokeAddress), address(gpToke), reward);
+            // authorize accToke to get our reward Toke
+            LibAdapter._approve(IERC20(tokeAddress), address(accToke), reward);
 
             // stake Toke
-            gpToke.stake(reward, tokeLockDuration, account);
+            accToke.stake(reward, tokeLockDuration, account);
         }
     }
 

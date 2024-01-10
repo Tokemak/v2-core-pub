@@ -15,13 +15,13 @@ import { SafeCast } from "openzeppelin-contracts/utils/math/SafeCast.sol";
 import { PRBMathUD60x18 } from "prb-math/contracts/PRBMathUD60x18.sol";
 
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
-import { IGPToke } from "src/interfaces/staking/IGPToke.sol";
+import { IAccToke } from "src/interfaces/staking/IAccToke.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 
-contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase {
+contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBase {
     using SafeERC20 for IERC20Metadata;
     using SafeERC20 for IWETH9;
 
@@ -52,11 +52,11 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
     // total current accumulated reward per share
     uint256 public accRewardPerShare;
 
-    // See {IGPToke-totalRewardsEarned}
+    // See {IAccToke-totalRewardsEarned}
     uint256 public totalRewardsEarned;
-    // See {IGPToke-totalRewardsClaimed}
+    // See {IAccToke-totalRewardsClaimed}
     uint256 public totalRewardsClaimed;
-    // See {IGPToke-rewardsClaimed}
+    // See {IAccToke-rewardsClaimed}
     mapping(address => uint256) public rewardsClaimed;
 
     constructor(
@@ -86,17 +86,17 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
         revert TransfersDisabled();
     }
 
-    /// @inheritdoc IGPToke
+    /// @inheritdoc IAccToke
     function stake(uint256 amount, uint256 duration, address to) external {
         _stake(amount, duration, to);
     }
 
-    /// @inheritdoc IGPToke
+    /// @inheritdoc IAccToke
     function stake(uint256 amount, uint256 duration) external {
         _stake(amount, duration, msg.sender);
     }
 
-    /// @inheritdoc IGPToke
+    /// @inheritdoc IAccToke
     function isStakeableAmount(uint256 amount) public pure returns (bool) {
         return amount >= MIN_STAKE_AMOUNT && amount <= MAX_STAKE_AMOUNT;
     }
@@ -130,7 +130,7 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
         toke.safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    /// @inheritdoc IGPToke
+    /// @inheritdoc IAccToke
     function unstake(uint256 lockupId) external whenNotPaused {
         if (lockupId >= lockups[msg.sender].length) revert LockupDoesNotExist();
 
@@ -159,7 +159,7 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
         toke.safeTransfer(msg.sender, amount);
     }
 
-    /// @inheritdoc IGPToke
+    /// @inheritdoc IAccToke
     function extend(uint256 lockupId, uint256 duration) external whenNotPaused {
         if (lockupId >= lockups[msg.sender].length) revert LockupDoesNotExist();
 
@@ -184,7 +184,7 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
         emit Extend(msg.sender, lockupId, oldAmount, oldEnd, newEnd, oldPoints, newPoints);
     }
 
-    /// @inheritdoc IGPToke
+    /// @inheritdoc IAccToke
     function previewPoints(uint256 amount, uint256 duration) public view returns (uint256 points, uint256 end) {
         if (duration < minStakeDuration) revert StakingDurationTooShort();
         if (duration > maxStakeDuration) revert StakingDurationTooLong();
@@ -200,7 +200,7 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
         points = (amount * multiplier) / 1e18;
     }
 
-    /// @inheritdoc IGPToke
+    /// @inheritdoc IAccToke
     function getLockups(address user) external view returns (Lockup[] memory) {
         return lockups[user];
     }
@@ -238,7 +238,7 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
     }
 
     /// @dev Internal function used by both `addWETHRewards` external and the `receive()` function
-    /// @param amount See {IGPToke-addWETHRewards}.
+    /// @param amount See {IAccToke-addWETHRewards}.
     function _addWETHRewards(uint256 amount) internal whenNotPaused {
         Errors.verifyNotZero(amount, "amount");
 
@@ -255,12 +255,12 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
         emit RewardsAdded(amount, accRewardPerShare);
     }
 
-    /// @inheritdoc IGPToke
+    /// @inheritdoc IAccToke
     function previewRewards() external view returns (uint256 amount) {
         return previewRewards(msg.sender);
     }
 
-    /// @inheritdoc IGPToke
+    /// @inheritdoc IAccToke
     function previewRewards(address user) public view returns (uint256 amount) {
         uint256 supply = totalSupply();
         if (supply == 0) {
@@ -274,12 +274,12 @@ contract GPToke is IGPToke, ERC20Votes, Pausable, SystemComponent, SecurityBase 
         return ((balanceOf(user) * _netRewardsPerShare) / REWARD_FACTOR) + unclaimedRewards[user];
     }
 
-    /// @inheritdoc IGPToke
+    /// @inheritdoc IAccToke
     function collectRewards() external returns (uint256) {
         return _collectRewards(msg.sender, true);
     }
 
-    /// @dev See {IGPToke-collectRewards}.
+    /// @dev See {IAccToke-collectRewards}.
     function _collectRewards(address user, bool distribute) internal returns (uint256) {
         // calculate user's new rewards per share (current minus claimed)
         uint256 netRewardsPerShare = accRewardPerShare - rewardDebtPerShare[user];

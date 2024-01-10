@@ -11,8 +11,8 @@ import { Roles } from "src/libs/Roles.sol";
  *      access control and stake tracker functionality for Destination Vault rewarders.
  */
 contract DestinationVaultMainRewarder is MainRewarder {
-    // slither-disable-start similar-names
-    address public stakeTracker;
+    // slither-disable-start similar-names,missing-zero-check
+    address public immutable stakeTracker;
 
     constructor(
         ISystemRegistry _systemRegistry,
@@ -34,7 +34,7 @@ contract DestinationVaultMainRewarder is MainRewarder {
         Errors.verifyNotZero(_stakeTracker, "_stakeTracker");
         stakeTracker = _stakeTracker;
     }
-    // slither-disable-end similar-names
+    // slither-disable-end similar-names,missing-zero-check
 
     /// @notice Restricts access to the stake tracker only.
     modifier onlyStakeTracker() {

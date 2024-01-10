@@ -1109,9 +1109,8 @@ contract LMPVault is
         if (
             to != feeSink && to != address(rewarder) && to != address(0)
                 && to != address(systemRegistry.lmpVaultRouter())
-                && balanceOf(to) + rewarder.balanceOf(to) + amount > perWalletLimit
         ) {
-            revert OverWalletLimit(to);
+            if (balanceOf(to) + rewarder.balanceOf(to) + amount > perWalletLimit) revert OverWalletLimit(to);
         }
     }
 

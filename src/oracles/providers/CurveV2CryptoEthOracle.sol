@@ -16,8 +16,10 @@ import { ICryptoSwapPool } from "src/interfaces/external/curve/ICryptoSwapPool.s
 import { ICurveV2Swap } from "src/interfaces/external/curve/ICurveV2Swap.sol";
 
 contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, ISpotPriceOracle {
-    ICurveResolver public immutable curveResolver;
     uint256 public constant FEE_PRECISION = 1e10;
+    address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
+    ICurveResolver public immutable curveResolver;
 
     /**
      * @notice Struct for neccessary information for single Curve pool.
@@ -159,8 +161,8 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         if (poolInfo.pool == address(0)) revert NotRegistered(token);
 
         ICryptoSwapPool cryptoPool = ICryptoSwapPool(poolInfo.pool);
-        address base = poolInfo.base;
-        address quote = poolInfo.quote;
+        address base = poolInfo.tokenToPrice;
+        address quote = poolInfo.tokenFromPrice;
 
         // Checking for read only reentrancy scenario.
         if (poolInfo.checkReentrancy == 1) {

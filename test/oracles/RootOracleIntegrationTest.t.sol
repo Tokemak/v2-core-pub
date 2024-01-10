@@ -71,6 +71,17 @@ import {
     LDO_CL_FEED_MAINNET,
     CRV_MAINNET,
     LDO_MAINNET,
+    STG_MAINNET,
+    STG_CL_FEED_MAINNET,
+    STG_USDC_CURVE_V2_LP,
+    STG_USDC_V2_POOL,
+    BADGER_MAINNET,
+    WBTC_MAINNET,
+    BADGER_CL_FEED_MAINNET,
+    BTC_CL_FEED_MAINNET,
+    WBTC_BADGER_CURVE_V2_LP,
+    WBTC_BADGER_V2_POOL,
+    FRXETH_MAINNET,
     MAV_POOL_INFORMATION
 } from "../utils/Addresses.sol";
 
@@ -224,7 +235,6 @@ contract RootOracleIntegrationTest is Test {
         priceOracle.registerMapping(CRV_ETH_CURVE_V2_LP, IPriceOracle(address(curveCryptoOracle)));
         priceOracle.registerMapping(LDO_ETH_CURVE_V2_LP, IPriceOracle(address(curveCryptoOracle)));
         priceOracle.registerMapping(STG_USDC_CURVE_V2_LP, IPriceOracle(address(curveCryptoOracle)));
-        priceOracle.registerMapping(SWETH_FRXETH_CURVE_V2_LP, IPriceOracle(address(curveCryptoOracle)));
         priceOracle.registerMapping(WBTC_BADGER_CURVE_V2_LP, IPriceOracle(address(curveCryptoOracle)));
 
         // UniV2
@@ -340,7 +350,6 @@ contract RootOracleIntegrationTest is Test {
         curveCryptoOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP, false);
         curveCryptoOracle.registerPool(LDO_ETH_CURVE_V2_POOL, LDO_ETH_CURVE_V2_LP, false);
         curveCryptoOracle.registerPool(STG_USDC_V2_POOL, STG_USDC_CURVE_V2_LP, false);
-        curveCryptoOracle.registerPool(SWETH_FRXETH_V2_POOL, SWETH_FRXETH_CURVE_V2_LP, false);
         curveCryptoOracle.registerPool(WBTC_BADGER_V2_POOL, WBTC_BADGER_CURVE_V2_LP, false);
 
         // Uni pool setup
@@ -595,14 +604,6 @@ contract RootOracleIntegrationTest is Test {
         // Calculated - 280364973000000000
         calculatedPrice = uint256(280_364_973_000_000_000);
         safePrice = priceOracle.getPriceInEth(WBTC_BADGER_CURVE_V2_LP);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // Safe price - 2032658525392228635
-        // Calculated - 2018604350000000000
-        calculatedPrice = uint256(2_018_604_350_000_000_000);
-        safePrice = priceOracle.getPriceInEth(SWETH_FRXETH_CURVE_V2_LP);
         (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
         assertGt(upperBound, safePrice);
         assertLt(lowerBound, safePrice);

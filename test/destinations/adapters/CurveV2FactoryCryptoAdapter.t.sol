@@ -44,7 +44,7 @@ contract CurveV2FactoryCryptoAdapterTest is Test {
     }
 
     function setUp() public {
-        mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"));
+        mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), 17_000_000);
         vm.selectFork(mainnetFork);
         assertEq(vm.activeFork(), mainnetFork);
 
@@ -208,6 +208,8 @@ contract CurveV2FactoryCryptoAdapterTest is Test {
         assert(afterLpBalance > preLpBalance);
     }
 
+    // TODO: Something here.
+    // Lessening withdraw amounts works, however think it may be with max burn
     function testRemoveLiquidityEthFrxEth() public {
         address poolAddress = 0xa1F8A6807c402E4A15ef4EBa36528A3FED24E577;
         IERC20 lpToken = IERC20(0xf43211935C781D5ca1a41d2041F397B8A7366C7A);

@@ -43,6 +43,7 @@ contract WstETHEthOracle is SystemComponent, IPriceOracle {
     function getPriceInEth(address token) external returns (uint256 price) {
         // This oracle is only setup to handle a single token but could possibly be
         // configured incorrectly at the root level and receive others to price.
+
         if (token != address(wstETH)) {
             revert Errors.InvalidToken(token);
         }
@@ -50,6 +51,6 @@ contract WstETHEthOracle is SystemComponent, IPriceOracle {
         uint256 stETHPrice = systemRegistry.rootPriceOracle().getPriceInEth(address(stETH));
 
         // Our prices are always in 1e18 so just use steths precision to get back to 1e18;
-        price = (wstETH.stEthPerToken() * stETHPrice) / stETHPrecision;
+        price = (stETH.getPooledEthByShares(1 ether) * stETHPrice) / stETHPrecision;
     }
 }

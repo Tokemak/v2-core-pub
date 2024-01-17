@@ -155,7 +155,7 @@ contract LMPVault is
 
     /// @notice Pending management fee.  Used as placeholder for new `managementFeeBps` within range of fee take.
     uint16 public pendingManagementFeeBps;
-    
+
     /// @notice Rewarders that have been replaced.
     EnumerableSet.AddressSet internal pastRewarders;
 

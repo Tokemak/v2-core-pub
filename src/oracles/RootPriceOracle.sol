@@ -202,23 +202,100 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
 
         address weth = address(systemRegistry.weth());
 
-        // Retrieve the spot price with weth as the requested quote token
-        (uint256 rawPrice, address actualQuoteToken) = oracle.getSpotPrice(token, pool, weth);
+        return _getSpotPriceInQuote(oracle, token, pool, weth);
+    }
 
+    function _getSpotPriceInQuote(
+        ISpotPriceOracle oracle,
+        address token,
+        address pool,
+        address quoteToken
+    ) internal returns (uint256 price) {
+        // Retrieve the spot price with weth as the requested quote token
+        (uint256 rawPrice, address actualQuoteToken) = oracle.getSpotPrice(token, pool, quoteToken);
+
+        return _enforceQuoteToken(quoteToken, actualQuoteToken, rawPrice);
+    }
+
+    /// @dev if quote token returned is not the requested one, do price conversion
+    function _enforceQuoteToken(
+        address quoteToken,
+        address actualQuoteToken,
+        uint256 rawPrice
+    ) internal returns (uint256) {
         // If the returned quote token is weth, return the price directly
-        if (actualQuoteToken == weth) return rawPrice;
+        if (actualQuoteToken == quoteToken) return rawPrice;
 
         // If not, get the conversion rate from the actualQuoteToken to quoteToken and then derive the spot price
         IPriceOracle tokenOracle = tokenMappings[actualQuoteToken];
         if (address(tokenOracle) == address(0)) revert MissingTokenOracle(actualQuoteToken);
 
-        uint256 conversionRate = tokenOracle.getPriceInEth(actualQuoteToken);
+        return
+            rawPrice * tokenOracle.getPriceInEth(actualQuoteToken) / (10 ** IERC20Metadata(actualQuoteToken).decimals());
+    }
 
-        uint256 decimals = IERC20Metadata(actualQuoteToken).decimals();
+    /// @inheritdoc IRootPriceOracle
+    function getRangePricesLP(
+        address lpToken,
+        address pool,
+        address quoteToken
+    ) external returns (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) {
+        Errors.verifyNotZero(lpToken, "lpToken");
+        Errors.verifyNotZero(pool, "pool");
+        Errors.verifyNotZero(quoteToken, "quoteToken");
 
-        price = rawPrice * conversionRate / (10 ** decimals);
+        isSpotSafe = true;
 
-        return price;
+        IPriceOracle tokenOracle = tokenMappings[quoteToken];
+        if (address(tokenOracle) == address(0)) revert MissingTokenOracle(quoteToken);
+
+        ISpotPriceOracle spotPriceOracle = poolMappings[pool];
+        if (address(spotPriceOracle) == address(0)) revert MissingSpotPriceOracle(pool);
+
+        // Retrieve the reserves info for calculations
+        (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
+            spotPriceOracle.getSafeSpotPriceInfo(pool, lpToken, quoteToken);
+
+        // if lp supply is 0 (while we hold it) means compromised pool, so return 0 for worth (and false for safety)
+        if (totalLPSupply == 0) {
+            return (0, 0, false);
+        }
+
+        //
+        // loop through reserves, and sum up aggregates
+        uint256 nTokens = reserves.length;
+        for (uint256 i = 0; i < nTokens; ++i) {
+            ISpotPriceOracle.ReserveItemInfo memory reserve = reserves[i];
+
+            uint256 threshold = safeSpotPriceThresholds[reserve.token];
+            if (threshold == 0) revert NoThresholdFound(reserve.token);
+
+            uint256 safePrice = getPriceInQuote(reserve.token, quoteToken);
+            uint256 spotPrice = _enforceQuoteToken(quoteToken, reserve.actualQuoteToken, reserve.rawSpotPrice);
+
+            //
+            // check thresholds to see if spot is safe
+            //
+            (uint256 largerPrice, uint256 smallerPrice) =
+                (safePrice > spotPrice) ? (safePrice, spotPrice) : (spotPrice, safePrice);
+            uint256 priceDiff = largerPrice - smallerPrice;
+
+            if (largerPrice == 0 || (priceDiff * THRESHOLD_PRECISION / largerPrice) > threshold) {
+                isSpotSafe = false;
+            }
+
+            //
+            // add to totals (with padding to quoteToken decimals)
+            uint256 reserveTokenBaseDecimals = 10 ** IERC20Metadata(reserve.token).decimals();
+            safePriceInQuote += reserve.reserveAmount * safePrice / reserveTokenBaseDecimals;
+            spotPriceInQuote += reserve.reserveAmount * spotPrice / reserveTokenBaseDecimals;
+        }
+
+        //
+        // divide by total lp supply to get price per lp token
+        uint256 lpTokenBaseDecimals = 10 ** IERC20Metadata(lpToken).decimals();
+        safePriceInQuote = safePriceInQuote * lpTokenBaseDecimals / totalLPSupply;
+        spotPriceInQuote = spotPriceInQuote * lpTokenBaseDecimals / totalLPSupply;
     }
 
     /// @notice Consolidate actualQuoteToken to terms of requested quoteToken

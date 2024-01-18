@@ -16,6 +16,7 @@ import { SecurityBase } from "src/security/SecurityBase.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { IPoolInformation } from "src/interfaces/external/maverick/IPoolInformation.sol";
 
+//slither-disable-start similar-names
 contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPriceOracle {
     /// @notice Emitted when new maximum bin width is set.
     event MaxTotalBinWidthSet(uint256 newMaxBinWidth);
@@ -157,3 +158,4 @@ contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPrice
         }
     }
 }
+//slither-disable-end similar-names

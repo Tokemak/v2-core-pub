@@ -622,7 +622,6 @@ contract GetRangePricesLP is RootPriceOracleTests {
         // token 1
         setRootPrice(_token1, 0.998 * 1e18);
         setSpotPrice(_token1, reserves[0].rawSpotPrice);
-
         // token 2
         setRootPrice(_token2, 1.001 * 1e18);
         setSpotPrice(_token2, reserves[1].rawSpotPrice);

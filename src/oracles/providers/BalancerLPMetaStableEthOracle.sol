@@ -17,7 +17,6 @@ import { BalancerBaseOracle } from "src/oracles/providers/base/BalancerBaseOracl
 /// @dev getPriceEth is not a view fn to support reentrancy checks. Dont actually change state.
 contract BalancerLPMetaStableEthOracle is BalancerBaseOracle, IPriceOracle {
     error InvalidTokenCount(address token, uint256 length);
-    error InvalidPool(address token);
 
     constructor(
         ISystemRegistry _systemRegistry,

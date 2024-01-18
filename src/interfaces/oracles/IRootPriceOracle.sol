@@ -22,4 +22,14 @@ interface IRootPriceOracle {
     /// @param quote Address of quote token.
     /// @return price Price of the base token in quote token.
     function getPriceInQuote(address base, address quote) external returns (uint256 price);
+
+    /// @notice Retrieve the price of LP token based on the reserves
+    /// @param lpToken LP token to get the price of
+    /// @param pool liquidity pool to be used for price determination
+    /// @param quoteToken token to quote the price in
+    function getRangePricesLP(
+        address lpToken,
+        address pool,
+        address quoteToken
+    ) external returns (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe);
 }

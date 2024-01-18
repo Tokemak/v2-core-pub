@@ -210,6 +210,15 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         Errors.verifyNotZero(pool, "pool");
 
         address lpToken = curveResolver.getLpToken(pool);
+
+        (price, actualQuoteToken) = _getSpotPrice(token, pool, lpToken);
+    }
+
+    function _getSpotPrice(
+        address token,
+        address pool,
+        address lpToken
+    ) public view returns (uint256 price, address actualQuoteToken) {
         uint256 tokenIndex = 0;
         uint256 quoteTokenIndex = 0;
 
@@ -232,5 +241,34 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         price = (dy * FEE_PRECISION) / (FEE_PRECISION - fee);
 
         actualQuoteToken = quoteTokenIndex == 0 ? poolInfo.tokenFromPrice : poolInfo.tokenToPrice;
+    }
+
+    /// @inheritdoc ISpotPriceOracle
+    function getSafeSpotPriceInfo(
+        address pool,
+        address lpToken,
+        address
+    ) external view returns (uint256 totalLPSupply, ReserveItemInfo[] memory reserves) {
+        Errors.verifyNotZero(pool, "pool");
+        Errors.verifyNotZero(lpToken, "lpToken");
+
+        totalLPSupply = IERC20Metadata(lpToken).totalSupply();
+
+        (uint256 nTokens, address[8] memory tokens, uint256[8] memory balances) = curveResolver.getReservesInfo(pool);
+
+        reserves = new ReserveItemInfo[](nTokens);
+
+        for (uint256 i = 0; i < nTokens; ++i) {
+            address token = tokens[i];
+
+            (uint256 rawSpotPrice, address actualQuoteToken) = _getSpotPrice(token, pool, lpToken);
+
+            reserves[i] = ReserveItemInfo({
+                token: token,
+                reserveAmount: balances[i],
+                rawSpotPrice: rawSpotPrice,
+                actualQuoteToken: actualQuoteToken
+            });
+        }
     }
 }

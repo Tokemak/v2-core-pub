@@ -9,6 +9,7 @@ import {
     WETH9_ADDRESS,
     TOKE_MAINNET,
     WSTETH_MAINNET,
+    MAV_WSTETH_WETH_BOOSTED_POS,
     MAV_WSTETH_WETH_POOL,
     MAV_POOL_INFORMATION,
     WETH_MAINNET
@@ -16,9 +17,10 @@ import {
 
 import { MavEthOracle } from "src/oracles/providers/MavEthOracle.sol";
 import { SystemRegistry, ISystemRegistry } from "src/SystemRegistry.sol";
-import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { AccessController, IAccessController } from "src/security/AccessController.sol";
+import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
+import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { Errors } from "src/utils/Errors.sol";
 
 // solhint-disable func-name-mixedcase
@@ -157,5 +159,31 @@ contract MavEthOracleTest is Test {
 
         // Asking for Weth -> address(0), so should return wsEth.
         assertEq(actualQuoteToken, WSTETH_MAINNET);
+    }
+}
+
+contract GetSafeSpotPriceInfo is MavEthOracleTest {
+    function test_getSafeSpotPrice_RevertIfZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "pool"));
+        mavOracle.getSafeSpotPriceInfo(address(0), MAV_WSTETH_WETH_BOOSTED_POS, WETH_MAINNET);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_boostedPosition"));
+        mavOracle.getSafeSpotPriceInfo(MAV_WSTETH_WETH_POOL, address(0), WETH_MAINNET);
+    }
+
+    function test_getSafeSpotPriceInfo() public {
+        (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
+            mavOracle.getSafeSpotPriceInfo(MAV_WSTETH_WETH_POOL, MAV_WSTETH_WETH_BOOSTED_POS, WETH_MAINNET);
+
+        assertEq(reserves.length, 2);
+        assertEq(totalLPSupply, 1_583_228_439_277_980_125_577);
+        assertEq(reserves[0].token, WSTETH_MAINNET);
+        assertEq(reserves[0].reserveAmount, 1_219_492_263_128_448_752_227);
+        assertEq(reserves[0].rawSpotPrice, 1_146_037_501_992_223_339);
+        assertEq(reserves[0].actualQuoteToken, WETH_MAINNET);
+        assertEq(reserves[1].token, WETH_MAINNET);
+        assertEq(reserves[1].reserveAmount, 649_912_488_471_763_583_072);
+        assertEq(reserves[1].rawSpotPrice, 872_571_401_184_986_273);
+        assertEq(reserves[1].actualQuoteToken, WSTETH_MAINNET);
     }
 }

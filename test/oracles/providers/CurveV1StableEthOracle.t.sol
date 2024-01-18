@@ -13,6 +13,7 @@ import { AccessController } from "src/security/AccessController.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
+import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { ICurveV1StableSwap } from "src/interfaces/external/curve/ICurveV1StableSwap.sol";
 import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
@@ -39,14 +40,14 @@ import {
 } from "test/utils/Addresses.sol";
 
 contract CurveV1StableEthOracleTests is Test {
-    address private constant STETH_ETH_LP_TOKEN = ST_ETH_CURVE_LP_TOKEN_MAINNET;
-    IstEth private constant STETH_CONTRACT = IstEth(STETH_MAINNET);
+    address internal constant STETH_ETH_LP_TOKEN = ST_ETH_CURVE_LP_TOKEN_MAINNET;
+    IstEth internal constant STETH_CONTRACT = IstEth(STETH_MAINNET);
 
-    IRootPriceOracle private rootPriceOracle;
-    ISystemRegistry private systemRegistry;
-    AccessController private accessController;
-    CurveResolverMainnet private curveResolver;
-    CurveV1StableEthOracle private oracle;
+    IRootPriceOracle internal rootPriceOracle;
+    ISystemRegistry internal systemRegistry;
+    AccessController internal accessController;
+    CurveResolverMainnet internal curveResolver;
+    CurveV1StableEthOracle internal oracle;
 
     event ReceivedPrice();
 
@@ -309,6 +310,33 @@ contract CurveV1StableEthOracleTests is Test {
         // price: 1000713478636784229
 
         assertEq(price, 1_000_713_478_636_784_229);
+    }
+
+    function testGetSafeSpotPriceRevertIfZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "pool"));
+        oracle.getSafeSpotPriceInfo(address(0), CRV_FRAX, WETH9_ADDRESS);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "lpToken"));
+        oracle.getSafeSpotPriceInfo(FRAX_USDC, address(0), WETH9_ADDRESS);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "quoteToken"));
+        oracle.getSafeSpotPriceInfo(FRAX_USDC, CRV_FRAX, address(0));
+    }
+
+    function testGetSafeSpotPriceInfo() public {
+        oracle.registerPool(FRAX_USDC, CRV_FRAX, true);
+
+        (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
+            oracle.getSafeSpotPriceInfo(FRAX_USDC, CRV_FRAX, WETH9_ADDRESS);
+
+        assertEq(reserves.length, 2);
+        assertEq(totalLPSupply, 497_913_419_719_209_769_318_641_923);
+        assertEq(reserves[0].token, FRAX_MAINNET, "wrong token1");
+        assertEq(reserves[0].reserveAmount, 345_763_079_333_760_512_920_948_527, "token1: invalid reserve amount");
+        assertEq(reserves[0].rawSpotPrice, 999_286, "token1: invalid spot price");
+        assertEq(reserves[1].token, USDC_MAINNET, "wrong token2");
+        assertEq(reserves[1].reserveAmount, 152_789_951_049_354, "token2: invalid reserve amount");
+        assertEq(reserves[1].rawSpotPrice, 1_000_713_478_636_784_229, "token2: invalid spot price");
     }
 
     function mockRootPrice(address token, uint256 price) internal {

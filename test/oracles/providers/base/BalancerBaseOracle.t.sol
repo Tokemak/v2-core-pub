@@ -7,9 +7,11 @@ pragma solidity 0.8.17;
 import { Test } from "forge-std/Test.sol";
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
+import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
+import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { BalancerBaseOracle } from "src/oracles/providers/base/BalancerBaseOracle.sol";
+import { Errors } from "src/utils/Errors.sol";
 
 import {
     BAL_VAULT,
@@ -72,5 +74,38 @@ contract GetSpotPrice is BalancerBaseOracleWrapperTests {
 
         assertEq(quoteToken, WSTETH_MAINNET);
         assertEq(price, 952_518_727_388_269_243);
+    }
+}
+
+contract GetSafeSpotPriceInfo is BalancerBaseOracleWrapperTests {
+    function test_getSafeSpotPrice_RevertIfZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "pool"));
+        oracle.getSafeSpotPriceInfo(address(0), WSETH_RETH_SFRXETH_BAL_POOL, WETH_MAINNET);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "lpToken"));
+        oracle.getSafeSpotPriceInfo(WSETH_RETH_SFRXETH_BAL_POOL, address(0), WETH_MAINNET);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "quoteToken"));
+        oracle.getSafeSpotPriceInfo(WSETH_RETH_SFRXETH_BAL_POOL, WSETH_RETH_SFRXETH_BAL_POOL, address(0));
+    }
+
+    function test_getSafeSpotPriceInfo() public {
+        (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
+            oracle.getSafeSpotPriceInfo(WSETH_RETH_SFRXETH_BAL_POOL, WSETH_RETH_SFRXETH_BAL_POOL, WETH_MAINNET);
+
+        assertEq(reserves.length, 3);
+        assertEq(totalLPSupply, 2_596_148_429_289_122_371_999_838_017_585_447);
+        assertEq(reserves[0].token, WSTETH_MAINNET);
+        assertEq(reserves[0].reserveAmount, 7_066_792_475_374_351_999_170);
+        assertEq(reserves[0].rawSpotPrice, 1_049_846_558_967_442_743);
+        assertEq(reserves[0].actualQuoteToken, RETH_MAINNET);
+        assertEq(reserves[1].token, SFRXETH_MAINNET);
+        assertEq(reserves[1].reserveAmount, 7_687_228_718_047_274_083_418);
+        assertEq(reserves[1].rawSpotPrice, 971_344_086_447_801_818);
+        assertEq(reserves[1].actualQuoteToken, RETH_MAINNET);
+        assertEq(reserves[2].token, RETH_MAINNET);
+        assertEq(reserves[2].reserveAmount, 6_722_248_966_013_056_226_285);
+        assertEq(reserves[2].rawSpotPrice, 1_029_499_830_936_747_431);
+        assertEq(reserves[2].actualQuoteToken, SFRXETH_MAINNET);
     }
 }

@@ -52,4 +52,17 @@ contract CurveResolverMainnet is ICurveResolver {
     function getLpToken(address poolAddress) external view returns (address) {
         return curveMetaRegistry.get_lp_token(poolAddress);
     }
+
+    /// @inheritdoc ICurveResolver
+    function getReservesInfo(address poolAddress)
+        external
+        view
+        returns (uint256 nTokens, address[8] memory tokens, uint256[8] memory balances)
+    {
+        Errors.verifyNotZero(poolAddress, "poolAddress");
+
+        nTokens = curveMetaRegistry.get_n_coins(poolAddress);
+        tokens = curveMetaRegistry.get_coins(poolAddress);
+        balances = curveMetaRegistry.get_balances(poolAddress);
+    }
 }

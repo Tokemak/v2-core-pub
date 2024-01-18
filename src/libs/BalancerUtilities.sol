@@ -8,6 +8,7 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IBalancerPool } from "src/interfaces/external/balancer/IBalancerPool.sol";
 import { IBalancerMetaStablePool } from "src/interfaces/external/balancer/IBalancerMetaStablePool.sol";
+import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 
 library BalancerUtilities {
     error BalancerVaultReentrancy();
@@ -67,6 +68,45 @@ library BalancerUtilities {
         bytes32 poolId = IBalancerPool(balancerPool).getPoolId();
 
         (assets, balances,) = balancerVault.getPoolTokens(poolId);
+    }
+
+    /**
+     * @dev This function retrieves Balancer pool tokens. Supports composable pools
+     */
+    function _getPoolTokensSkippingPoolToken(
+        IVault balancerVault,
+        address balancerPool
+    ) internal view returns (IERC20[] memory tokens, uint256[] memory balances) {
+        (IERC20[] memory allTokens, uint256[] memory allBalances) =
+            BalancerUtilities._getPoolTokens(balancerVault, balancerPool);
+
+        if (isComposablePool(balancerPool)) {
+            uint256 nTokens = allTokens.length;
+            tokens = new IERC20[](nTokens - 1);
+            balances = new uint256[](nTokens - 1);
+
+            uint256 lastIndex = 0;
+            uint256 bptIndex = IBalancerComposableStablePool(balancerPool).getBptIndex();
+            for (uint256 i = 0; i < nTokens;) {
+                // skip pool token
+                if (i == bptIndex) {
+                    unchecked {
+                        ++i;
+                    }
+                    continue;
+                }
+                // copy tokens and balances
+                tokens[lastIndex] = allTokens[i];
+                balances[lastIndex] = allBalances[i];
+                unchecked {
+                    ++i;
+                    ++lastIndex;
+                }
+            }
+        } else {
+            tokens = allTokens;
+            balances = allBalances;
+        }
     }
 
     /**

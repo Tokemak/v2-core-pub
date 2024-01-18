@@ -13,6 +13,7 @@ import { IBasePool } from "src/interfaces/external/balancer/IBasePool.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IAsset } from "src/interfaces/external/balancer/IAsset.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
+import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 
 abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
     /// @notice The Balancer Vault that all tokens we're resolving here should reference
@@ -20,6 +21,7 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
     IVault public immutable balancerVault;
 
     error InvalidToken(address token);
+    error InvalidPool(address pool);
 
     constructor(ISystemRegistry _systemRegistry, IVault _balancerVault) SystemComponent(_systemRegistry) {
         // System registry must be properly initialized first
@@ -29,18 +31,17 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
         balancerVault = _balancerVault;
     }
 
+    /// @inheritdoc ISpotPriceOracle
     function getSpotPrice(
         address token,
         address pool,
         address requestedQuoteToken
     ) public returns (uint256 price, address actualQuoteToken) {
-        // 1 unit going in so price is in accurate decimals already
-        uint256 amountIn = 10 ** IERC20Metadata(token).decimals();
+        Errors.verifyNotZero(token, "token");
+        Errors.verifyNotZero(pool, "pool");
+        Errors.verifyNotZero(requestedQuoteToken, "requestedQuoteToken");
 
         bytes32 poolId = IBasePool(pool).getPoolId();
-
-        IVault.BatchSwapStep[] memory steps = new IVault.BatchSwapStep[](1);
-        steps[0] = IVault.BatchSwapStep(poolId, 0, 1, amountIn, "");
 
         // Will revert with BAL#500 on invalid pool id
         // Partial return values are intentionally ignored. This call provides the most efficient way to get the data.
@@ -48,12 +49,58 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
         (IERC20[] memory tokens,,) = balancerVault.getPoolTokens(poolId);
 
         uint256 nTokens = tokens.length;
+        if (nTokens == 0) {
+            revert InvalidPool(pool);
+        }
+
+        (price, actualQuoteToken) = _getSpotPrice(token, pool, tokens, requestedQuoteToken);
+    }
+
+    ///@notice Returns the total supply of the pool and the reserves (without pool token for composable pools)
+    function getSafeSpotPriceInfo(
+        address pool,
+        address lpToken,
+        address quoteToken
+    ) external returns (uint256 totalLPSupply, ReserveItemInfo[] memory reserves) {
+        Errors.verifyNotZero(pool, "pool");
+        Errors.verifyNotZero(lpToken, "lpToken");
+        Errors.verifyNotZero(quoteToken, "quoteToken");
+
+        totalLPSupply = IERC20(lpToken).totalSupply();
+
+        // Get the pool tokens/reserves
+        (IERC20[] memory tokens, uint256[] memory balances) =
+            BalancerUtilities._getPoolTokensSkippingPoolToken(balancerVault, pool);
+
+        uint256 nTokens = tokens.length;
+        reserves = new ReserveItemInfo[](nTokens);
+
+        for (uint256 i = 0; i < nTokens; ++i) {
+            address token = address(tokens[i]);
+            (uint256 spotPrice, address actualQuoteToken) = _getSpotPrice(token, pool, tokens, quoteToken);
+            reserves[i] = ReserveItemInfo(token, balances[i], spotPrice, actualQuoteToken);
+        }
+    }
+
+    function _getSpotPrice(
+        address token,
+        address pool,
+        IERC20[] memory tokens,
+        address requestedQuoteToken
+    ) private returns (uint256 price, address actualQuoteToken) {
+        bytes32 poolId = IBasePool(pool).getPoolId();
+
+        IVault.BatchSwapStep[] memory steps = new IVault.BatchSwapStep[](1);
+        // 1 unit going in so price is in accurate decimals already
+        uint256 amountIn = 10 ** IERC20Metadata(token).decimals();
+        steps[0] = IVault.BatchSwapStep(poolId, 0, 1, amountIn, "");
+
         int256 tokenIndex = -1;
         int256 quoteTokenIndex = -1;
         int256 alternativeQuoteTokenIndex = -1;
 
         // Find the token and quote token indices
-        for (uint256 i = 0; i < nTokens; ++i) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             address t = address(tokens[i]);
 
             if (t == token) {

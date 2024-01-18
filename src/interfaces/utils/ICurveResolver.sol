@@ -32,4 +32,9 @@ interface ICurveResolver {
     /// @notice Get the lp token of a Curve pool
     /// @param poolAddress pool address to lookup
     function getLpToken(address poolAddress) external view returns (address);
+
+    function getReservesInfo(address poolAddress)
+        external
+        view
+        returns (uint256 ntokens, address[8] memory tokens, uint256[8] memory balances);
 }

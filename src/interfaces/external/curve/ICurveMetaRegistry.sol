@@ -40,5 +40,11 @@ interface ICurveMetaRegistry {
     /// @param _handler_id id of registry handler
     /// @return Address of the LP token
     function get_lp_token(address _pool, uint256 _handler_id) external view returns (address);
+
+    /// @notice Get the balances of the tokens in the pool
+    /// @dev For metapools, these are the wrapped coin addresses
+    /// @param _pool Pool address
+    /// @return List of balances
+    function get_balances(address _pool) external view returns (uint256[8] memory);
 }
 // slither-disable-end naming-convention

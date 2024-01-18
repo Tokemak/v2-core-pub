@@ -15,6 +15,7 @@ import { ICurveOwner } from "src/interfaces/external/curve/ICurveOwner.sol";
 import { ICurveV1StableSwap } from "src/interfaces/external/curve/ICurveV1StableSwap.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
+import { Arrays } from "src/utils/Arrays.sol";
 
 /// @title Price oracle for Curve StableSwap pools
 /// @dev getPriceEth is not a view fn to support reentrancy checks. Don't actually change state.
@@ -190,10 +191,20 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
             revert NotRegistered(lpToken);
         }
 
+        (price, actualQuoteToken) = _getSpotPrice(token, pool, tokens, requestedQuoteToken);
+    }
+
+    function _getSpotPrice(
+        address token,
+        address pool,
+        address[] memory tokens,
+        address requestedQuoteToken
+    ) public view returns (uint256 price, address actualQuoteToken) {
         int256 tokenIndex = -1;
         int256 quoteTokenIndex = -1;
 
         // Find the token and quote token indices
+        uint256 nTokens = tokens.length;
         for (uint256 i = 0; i < nTokens; ++i) {
             address t = tokens[i];
 
@@ -232,6 +243,38 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         // If the quote token is ETH, we convert it to WETH.
         if (actualQuoteToken == ETH) {
             actualQuoteToken = WETH;
+        }
+    }
+
+    /// @inheritdoc ISpotPriceOracle
+    function getSafeSpotPriceInfo(
+        address pool,
+        address lpToken,
+        address quoteToken
+    ) external view returns (uint256 totalLPSupply, ReserveItemInfo[] memory reserves) {
+        Errors.verifyNotZero(pool, "pool");
+        Errors.verifyNotZero(lpToken, "lpToken");
+        Errors.verifyNotZero(quoteToken, "quoteToken");
+
+        totalLPSupply = IERC20Metadata(lpToken).totalSupply();
+
+        (uint256 nTokens, address[8] memory tokens, uint256[8] memory balances) = curveResolver.getReservesInfo(pool);
+
+        reserves = new ReserveItemInfo[](nTokens);
+
+        address[] memory dynTokens = Arrays.convertFixedCurveTokenArrayToDynamic(tokens, nTokens);
+
+        for (uint256 i = 0; i < nTokens; ++i) {
+            address token = tokens[i];
+
+            (uint256 rawSpotPrice, address actualQuoteToken) = _getSpotPrice(token, pool, dynTokens, quoteToken);
+
+            reserves[i] = ReserveItemInfo({
+                token: token,
+                reserveAmount: balances[i],
+                rawSpotPrice: rawSpotPrice,
+                actualQuoteToken: actualQuoteToken
+            });
         }
     }
 }

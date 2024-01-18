@@ -231,6 +231,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     }
 
     /// @inheritdoc IRootPriceOracle
+    /// @dev Getting major "Stack too deep" errors, so if you see locals not abstracted that's why
     function getRangePricesLP(
         address lpToken,
         address pool,
@@ -271,30 +272,33 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
 
             //
             // check thresholds to see if spot is safe
+            // NOTE: narrowing scope to avoid "stack too deep" errors
             //
-            (uint256 largerPrice, uint256 smallerPrice) =
-                (safePrice > spotPrice) ? (safePrice, spotPrice) : (spotPrice, safePrice);
-            uint256 priceDiff = largerPrice - smallerPrice;
+            {
+                (uint256 largerPrice, uint256 smallerPrice) =
+                    (safePrice > spotPrice) ? (safePrice, spotPrice) : (spotPrice, safePrice);
+                uint256 priceDiff = largerPrice - smallerPrice;
 
-            if (largerPrice == 0 || (priceDiff * THRESHOLD_PRECISION / largerPrice) > threshold) {
-                isSpotSafe = false;
+                if (largerPrice == 0 || (priceDiff * THRESHOLD_PRECISION / largerPrice) > threshold) {
+                    isSpotSafe = false;
+                }
             }
 
             //
             // add to totals (with padding to quoteToken decimals)
-            uint256 reserveTokenBaseDecimals = 10 ** IERC20Metadata(reserve.token).decimals();
-            safePriceInQuote += reserve.reserveAmount * safePrice / reserveTokenBaseDecimals;
-            spotPriceInQuote += reserve.reserveAmount * spotPrice / reserveTokenBaseDecimals;
+            uint256 quoteTokenDecimalsPad = 10 ** IERC20Metadata(quoteToken).decimals();
+            safePriceInQuote += reserve.reserveAmount * safePrice / quoteTokenDecimalsPad;
+            spotPriceInQuote += reserve.reserveAmount * spotPrice / quoteTokenDecimalsPad;
         }
 
         //
         // divide by total lp supply to get price per lp token
-        uint256 lpTokenBaseDecimals = 10 ** IERC20Metadata(lpToken).decimals();
-        safePriceInQuote = safePriceInQuote * lpTokenBaseDecimals / totalLPSupply;
-        spotPriceInQuote = spotPriceInQuote * lpTokenBaseDecimals / totalLPSupply;
+        uint256 lpTokenDecimalsPad = 10 ** IERC20Metadata(lpToken).decimals();
+        safePriceInQuote = safePriceInQuote * lpTokenDecimalsPad / totalLPSupply;
+        spotPriceInQuote = spotPriceInQuote * lpTokenDecimalsPad / totalLPSupply;
     }
 
-    function getPriceInQuote(address base, address quote) external returns (uint256) {
+    function getPriceInQuote(address base, address quote) public returns (uint256) {
         IPriceOracle baseOracle = tokenMappings[base];
         IPriceOracle quoteOracle = tokenMappings[quote];
 
@@ -303,9 +307,6 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
             revert MissingTokenOracle(base);
         }
 
-        uint256 basePriceInEth = baseOracle.getPriceInEth(base);
-        uint256 quotePriceInEth = quoteOracle.getPriceInEth(quote);
-
-        return (basePriceInEth * (10 ** 18)) / quotePriceInEth;
+        return (baseOracle.getPriceInEth(base) * (10 ** 18)) / quoteOracle.getPriceInEth(quote);
     }
 }

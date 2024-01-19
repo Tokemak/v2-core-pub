@@ -655,7 +655,7 @@ contract _getReward is AbstractRewarderTest {
         return 5;
     }
 
-    function test_StakeRewardsToGptTokeWhenRewardTokenIsTokeAndFeatureIsEnabled() public {
+    function test_StakeRewardsToAccTokeWhenRewardTokenIsTokeAndFeatureIsEnabled() public {
         AccToke accToke = _setupAccTokeAndTokeRewarder();
         _runDefaultScenarioAccToke();
 

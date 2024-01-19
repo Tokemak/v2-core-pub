@@ -367,9 +367,40 @@ contract RootOracleIntegrationTest is Test {
         customSetOracle.registerTokens(tokens, maxAges);
     }
 
-    //
-    // Test Lp token pricing
-    //
+    function _getTwoPercentTolerance(uint256 price) internal pure returns (uint256 upperBound, uint256 lowerBound) {
+        uint256 twoPercentToleranceValue = (price * 2) / 100;
+
+        upperBound = price + twoPercentToleranceValue;
+        lowerBound = price - twoPercentToleranceValue;
+    }
+}
+
+contract GetPriceInQuote is RootOracleIntegrationTest {
+    function test_GetPriceInQuote() external {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 18_021_563);
+
+        // stEth in usdc
+        // calculated - 1724550123000000000000
+        // safe price - 1736857822983362723964
+        uint256 calculatedPrice = uint256(1_724_550_123_000_000_000_000);
+        uint256 safePrice = priceOracle.getPriceInQuote(STETH_MAINNET, USDC_MAINNET);
+        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
+
+        // usdt in crv
+        // calculated - 2032995638000000000
+        // safe price - 2017150178107977497
+        calculatedPrice = uint256(2_032_995_638_000_000_000);
+        safePrice = priceOracle.getPriceInQuote(USDT_MAINNET, CRV_MAINNET);
+        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
+    }
+}
+
+///@dev Test LP token pricing
+contract GetPriceInEth is RootOracleIntegrationTest {
     function test_BalComposableStablePoolOracle() external {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_475_350);
 
@@ -630,35 +661,5 @@ contract RootOracleIntegrationTest is Test {
         (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
         assertGt(upperBound, safePrice);
         assertLt(lowerBound, safePrice);
-    }
-
-    // Test `getPriceInQuote()` individually.
-    function test_GetPriceInQuote() external {
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 18_021_563);
-
-        // stEth in usdc
-        // calculated - 1724550123000000000000
-        // safe price - 1736857822983362723964
-        uint256 calculatedPrice = uint256(1_724_550_123_000_000_000_000);
-        uint256 safePrice = priceOracle.getPriceInQuote(STETH_MAINNET, USDC_MAINNET);
-        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // usdt in crv
-        // calculated - 2032995638000000000
-        // safe price - 2017150178107977497
-        calculatedPrice = uint256(2_032_995_638_000_000_000);
-        safePrice = priceOracle.getPriceInQuote(USDT_MAINNET, CRV_MAINNET);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-    }
-
-    function _getTwoPercentTolerance(uint256 price) internal pure returns (uint256 upperBound, uint256 lowerBound) {
-        uint256 twoPercentToleranceValue = (price * 2) / 100;
-
-        upperBound = price + twoPercentToleranceValue;
-        lowerBound = price - twoPercentToleranceValue;
     }
 }

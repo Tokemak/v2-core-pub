@@ -272,7 +272,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
      * @param _tokeLockDuration The lock duration for staked Toke tokens.
      */
     function setTokeLockDuration(uint256 _tokeLockDuration) external hasRole(rewardRole) {
-        // if duration is not set to 0 (that would turn off functionality), make sure it's long enough for gpToke
+        // if duration is not set to 0 (that would turn off functionality), make sure it's long enough for accToke
         if (_tokeLockDuration > 0) {
             Errors.verifyNotZero(address(systemRegistry.accToke()), "accToke");
             if (_tokeLockDuration < systemRegistry.accToke().minStakeDuration()) {

@@ -286,9 +286,9 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
 
             //
             // add to totals (with padding to quoteToken decimals)
-            uint256 quoteTokenDecimalsPad = 10 ** IERC20Metadata(quoteToken).decimals();
-            safePriceInQuote += reserve.reserveAmount * safePrice / quoteTokenDecimalsPad;
-            spotPriceInQuote += reserve.reserveAmount * spotPrice / quoteTokenDecimalsPad;
+            uint256 reserveTokenBaseDecimals = 10 ** IERC20Metadata(reserve.token).decimals();
+            safePriceInQuote += reserve.reserveAmount * safePrice / reserveTokenBaseDecimals;
+            spotPriceInQuote += reserve.reserveAmount * spotPrice / reserveTokenBaseDecimals;
         }
 
         //

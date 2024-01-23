@@ -14,6 +14,7 @@ import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IAsset } from "src/interfaces/external/balancer/IAsset.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
+import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 
 abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
     /// @notice The Balancer Vault that all tokens we're resolving here should reference
@@ -66,7 +67,9 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
         Errors.verifyNotZero(lpToken, "lpToken");
         Errors.verifyNotZero(quoteToken, "quoteToken");
 
-        totalLPSupply = IERC20(lpToken).totalSupply();
+        totalLPSupply = BalancerUtilities.isComposablePool(pool)
+            ? IBalancerComposableStablePool(pool).getActualSupply()
+            : IERC20(lpToken).totalSupply();
 
         // Get the pool tokens/reserves
         (IERC20[] memory tokens, uint256[] memory balances) =

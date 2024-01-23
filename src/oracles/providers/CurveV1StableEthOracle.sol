@@ -267,6 +267,10 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         for (uint256 i = 0; i < nTokens; ++i) {
             address token = tokens[i];
 
+            if (token == ETH) {
+                token = WETH;
+            }
+
             (uint256 rawSpotPrice, address actualQuoteToken) = _getSpotPrice(token, pool, dynTokens, quoteToken);
 
             reserves[i] = ReserveItemInfo({

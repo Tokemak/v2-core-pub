@@ -228,6 +228,9 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
 
         return
             rawPrice * tokenOracle.getPriceInEth(actualQuoteToken) / (10 ** IERC20Metadata(actualQuoteToken).decimals());
+
+        return rawPrice * getPriceInQuote(actualQuoteToken, quoteToken)
+            / (10 ** IERC20Metadata(actualQuoteToken).decimals());
     }
 
     /// @inheritdoc IRootPriceOracle

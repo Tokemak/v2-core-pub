@@ -482,15 +482,23 @@ contract GetRangePricesLP is RootPriceOracleTests {
         _token1 = makeAddr("TOKEN1");
         _token2 = makeAddr("TOKEN2");
 
+        vm.label(_token1, "_token1");
+        vm.label(_token2, "_token2");
+
         mockSystemComponent(_poolOracle, address(_systemRegistry));
         mockSystemComponent(_tokenOracle, address(_systemRegistry));
         _rootPriceOracle.registerPoolMapping(_pool, ISpotPriceOracle(_poolOracle));
+
         _rootPriceOracle.registerMapping(_actualToken, IPriceOracle(_tokenOracle));
+        _rootPriceOracle.registerMapping(_token1, IPriceOracle(_tokenOracle));
+        _rootPriceOracle.registerMapping(_token2, IPriceOracle(_tokenOracle));
 
         vm.mockCall(
             _actualToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(actualTokenDecimals)
         );
         vm.mockCall(_token, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(actualTokenDecimals));
+        vm.mockCall(_token1, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(actualTokenDecimals));
+        vm.mockCall(_token2, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(actualTokenDecimals));
     }
 
     function test_RevertIfParamsAreZero() public {
@@ -520,8 +528,8 @@ contract GetRangePricesLP is RootPriceOracleTests {
         (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) =
             _rootPriceOracle.getRangePricesLP(_token, _pool, _actualToken);
 
-        assertEq(safePriceInQuote, 1.004877142857142857 * 1e18);
-        assertEq(spotPriceInQuote, 946_242_857_142_857_142_857_142);
+        assertEq(safePriceInQuote, 1.003873269587555301 * 1e18);
+        assertEq(spotPriceInQuote, 946_242_857_142_857_142);
         assertEq(isSpotSafe, true);
     }
 
@@ -536,12 +544,10 @@ contract GetRangePricesLP is RootPriceOracleTests {
         (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) =
             _rootPriceOracle.getRangePricesLP(_token, _pool, _actualToken);
 
-        assertEq(safePriceInQuote, 1.004877142857142857 * 1e18);
-        assertEq(spotPriceInQuote, 946_242_857_142_857_142_857_142);
+        assertEq(safePriceInQuote, 1.003873269587555301 * 1e18);
+        assertEq(spotPriceInQuote, 946_242_857_142_857_142);
         assertEq(isSpotSafe, false);
     }
-
-    // TODO: ADS: add test for when quote token is not WETH (or _actualToken)
 
     function _setupBasicSafePricingScenario() internal {
         //
@@ -574,6 +580,10 @@ contract GetRangePricesLP is RootPriceOracleTests {
         // token 2
         setRootPrice(_token2, 1.001 * 1e18);
         setSpotPrice(_token2, reserves[1].rawSpotPrice);
+
+        // actual token
+        setRootPrice(_actualToken, 1.001 * 1e18);
+        setSpotPrice(_actualToken, 1.001 * 1e18);
     }
 
     function setRootPrice(address token, uint256 price) internal {

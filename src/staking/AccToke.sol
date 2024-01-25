@@ -131,57 +131,81 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
     }
 
     /// @inheritdoc IAccToke
-    function unstake(uint256 lockupId) external whenNotPaused {
-        if (lockupId >= lockups[msg.sender].length) revert LockupDoesNotExist();
+    function unstake(uint256[] memory lockupIds) external whenNotPaused {
 
-        // get staking information
-        Lockup memory lockup = lockups[msg.sender][lockupId];
-        uint256 amount = lockup.amount;
-        uint256 end = lockup.end;
-        uint256 points = lockup.points;
+        uint iter;
+        uint length = lockupIds.length;
+        if (length == 0) revert InvalidLockupIds();
+        do {
+            uint lockupId = lockupIds[iter];
+            if (lockupId >= lockups[msg.sender].length) revert LockupDoesNotExist();
 
-        // slither-disable-next-line timestamp
-        if (block.timestamp < end) revert NotUnlockableYet();
-        if (end == 0) revert AlreadyUnlocked();
+            // get staking information
+            Lockup memory lockup = lockups[msg.sender][lockupId];
+            uint256 amount = lockup.amount;
+            uint256 end = lockup.end;
+            uint256 points = lockup.points;
 
-        // checkpoint rewards
-        _collectRewards(msg.sender, false);
+            // slither-disable-next-line timestamp
+            if (block.timestamp < end) revert NotUnlockableYet();
+            if (end == 0) revert AlreadyUnlocked();
 
-        // remove stake
-        delete lockups[msg.sender][lockupId];
+            if (iter == 0) {
+                // checkpoint rewards
+                _collectRewards(msg.sender, false);
+            }
 
-        // wipe points
-        _burn(msg.sender, points);
+            // remove stake
+            delete lockups[msg.sender][lockupId];
 
-        emit Unstake(msg.sender, lockupId, amount, end, points);
+            // wipe points
+            _burn(msg.sender, points);
 
-        // send staked toke back to user
-        toke.safeTransfer(msg.sender, amount);
+            emit Unstake(msg.sender, lockupId, amount, end, points);
+
+            // send staked toke back to user
+            toke.safeTransfer(msg.sender, amount);
+
+            unchecked {
+                ++iter;
+            }
+        } while (iter < length);
     }
 
     /// @inheritdoc IAccToke
-    function extend(uint256 lockupId, uint256 duration) external whenNotPaused {
-        if (lockupId >= lockups[msg.sender].length) revert LockupDoesNotExist();
+    function extend(uint256[] memory lockupIds, uint256[] memory durations) external whenNotPaused {
 
-        // before doing anything, make sure the rewards checkpoints are updated!
-        _collectRewards(msg.sender, false);
+        uint256 iter;
+        uint256 length = lockupIds.length;
+        if (length == 0) revert InvalidLockupIds();
+        if (length != durations.length) revert InvalidDurationLength();
+        do {
+            uint256 lockupId = lockupIds[iter];
+            uint256 duration = durations[iter];
+            if (lockupId >= lockups[msg.sender].length) revert LockupDoesNotExist();
 
-        // duration checked inside previewPoints
-        Lockup storage lockup = lockups[msg.sender][lockupId];
-        uint256 oldAmount = lockup.amount;
-        uint256 oldEnd = lockup.end;
-        uint256 oldPoints = lockup.points;
+            if (iter == 0) {
+                // before doing anything, make sure the rewards checkpoints are updated!
+                _collectRewards(msg.sender, false);
+            }
 
-        (uint256 newPoints, uint256 newEnd) = previewPoints(oldAmount, duration);
+            // duration checked inside previewPoints
+            Lockup storage lockup = lockups[msg.sender][lockupId];
+            uint256 oldAmount = lockup.amount;
+            uint256 oldEnd = lockup.end;
+            uint256 oldPoints = lockup.points;
 
-        if (newEnd <= oldEnd) revert ExtendDurationTooShort();
-        lockup.end = SafeCast.toUint128(newEnd);
-        lockup.points = newPoints;
-        lockups[msg.sender][lockupId] = lockup;
-        // issue extra points for extension
-        _mint(msg.sender, newPoints - oldPoints);
+            (uint256 newPoints, uint256 newEnd) = previewPoints(oldAmount, duration);
 
-        emit Extend(msg.sender, lockupId, oldAmount, oldEnd, newEnd, oldPoints, newPoints);
+            if (newEnd <= oldEnd) revert ExtendDurationTooShort();
+            lockup.end = SafeCast.toUint128(newEnd);
+            lockup.points = newPoints;
+            lockups[msg.sender][lockupId] = lockup;
+            // issue extra points for extension
+            _mint(msg.sender, newPoints - oldPoints);
+
+            emit Extend(msg.sender, lockupId, oldAmount, oldEnd, newEnd, oldPoints, newPoints);
+        } while (iter < length);
     }
 
     /// @inheritdoc IAccToke

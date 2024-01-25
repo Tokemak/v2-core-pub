@@ -39,6 +39,8 @@ interface IAccToke {
     error TransferFailed();
     error NoRewardsToClaim();
     error InsufficientAmount();
+    error InvalidLockupIds();
+    error InvalidDurationLength();
 
     ///////////////////////////////////////////////////////////////////
     //                        Events
@@ -92,9 +94,9 @@ interface IAccToke {
 
     /**
      * @notice Collect staked OGV for a lockup and any earned rewards.
-     * @param lockupId the id of the lockup to unstake
+     * @param lockupIds the id of the lockup to unstake
      */
-    function unstake(uint256 lockupId) external;
+    function unstake(uint256[] memory lockupIds) external;
 
     /**
      * @notice Extend a stake lockup for additional points.
@@ -105,10 +107,10 @@ interface IAccToke {
      * If an extend is made before the start of staking, the start time for the new stake is shifted forwards to the
      * start of staking, which also shifts forward the end date.
      *
-     * @param lockupId the id of the old lockup to extend
-     * @param duration number of seconds from now to stake for
+     * @param lockupIds the id of the old lockup to extend
+     * @param durations number of seconds from now to stake for
      */
-    function extend(uint256 lockupId, uint256 duration) external;
+    function extend(uint256[] memory lockupIds, uint256[] memory durations) external;
 
     ///////////////////////////////////////////////////////////////////
     //

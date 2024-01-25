@@ -83,11 +83,17 @@ import {
     WBTC_BADGER_CURVE_V2_LP,
     WBTC_BADGER_V2_POOL,
     FRXETH_MAINNET,
-    MAV_POOL_INFORMATION
+    MAV_POOL_INFORMATION,
+    FRAX_USDC,
+    FRAX_USDC_LP,
+    SFRXETH_MAINNET,
+    WSETH_RETH_SFRXETH_BAL_POOL,
+    STETH_WETH_CURVE_POOL_CONCENTRATED,
+    STETH_WETH_CURVE_POOL_CONCENTRATED_LP
 } from "../utils/Addresses.sol";
 
 import { SystemRegistry } from "src/SystemRegistry.sol";
-import { RootPriceOracle, IPriceOracle } from "src/oracles/RootPriceOracle.sol";
+import { RootPriceOracle, IPriceOracle, ISpotPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { AccessController, Roles } from "src/security/AccessController.sol";
 import { BalancerLPComposableStableEthOracle } from "src/oracles/providers/BalancerLPComposableStableEthOracle.sol";
 import { BalancerLPMetaStableEthOracle } from "src/oracles/providers/BalancerLPMetaStableEthOracle.sol";
@@ -102,11 +108,16 @@ import { BaseOracleDenominations } from "src/oracles/providers/base/BaseOracleDe
 import { CustomSetOracle } from "src/oracles/providers/CustomSetOracle.sol";
 import { CrvUsdOracle } from "test/mocks/CrvUsdOracle.sol";
 
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+
 import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
 import { CurveResolverMainnet, ICurveResolver, ICurveMetaRegistry } from "src/utils/CurveResolverMainnet.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
 
+// TODO: Delete below, used for calcs
 import { console } from "forge-std/console.sol";
+import { ICurveV1StableSwap } from "src/interfaces/external/curve/ICurveV1StableSwap.sol";
+import { ICurveV2Swap } from "src/interfaces/external/curve/ICurveV2Swap.sol";
 
 /**
  * This series of tests compares expected values with contract calculated values for lp token pricing.  Below is a guide
@@ -360,14 +371,20 @@ contract RootOracleIntegrationTest is Test {
         uniV2EthOracle.register(ETH_USDT_UNIV2);
 
         // Custom oracle setup
-        address[] memory tokens = new address[](1);
-        uint256[] memory maxAges = new uint256[](1);
+        address[] memory tokens = new address[](2);
+        uint256[] memory maxAges = new uint256[](2);
         tokens[0] = FRXETH_MAINNET;
+        tokens[1] = SFRXETH_MAINNET;
         maxAges[0] = 50 weeks;
+        maxAges[1] = 50 weeks;
 
         accessControl.setupRole(Roles.ORACLE_MANAGER_ROLE, address(this));
 
         customSetOracle.registerTokens(tokens, maxAges);
+
+        // Set up for spot pricing used across multiple test contracts.  Rest can be found in individual contracts.
+        priceOracle.registerPoolMapping(THREE_CURVE_MAINNET, curveStableOracle);
+        priceOracle.registerPoolMapping(STETH_ETH_CURVE_POOL, curveStableOracle);
     }
 
     function _getTwoPercentTolerance(uint256 price) internal pure returns (uint256 upperBound, uint256 lowerBound) {
@@ -725,9 +742,7 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
         priceOracle.registerPoolMapping(RETH_WETH_BAL_POOL, balancerMetaOracle);
         priceOracle.registerPoolMapping(WSETH_WETH_BAL_POOL, balancerMetaOracle);
 
-        priceOracle.registerPoolMapping(STETH_ETH_CURVE_POOL, curveStableOracle);
         priceOracle.registerPoolMapping(ST_ETH_CURVE_LP_TOKEN_MAINNET, curveStableOracle);
-        priceOracle.registerPoolMapping(THREE_CURVE_MAINNET, curveStableOracle);
         priceOracle.registerPoolMapping(THREE_CURVE_POOL_MAINNET_LP, curveStableOracle);
         priceOracle.registerPoolMapping(RETH_WSTETH_CURVE_POOL_LP, curveStableOracle);
         priceOracle.registerPoolMapping(STETH_STABLESWAP_NG_POOL, curveStableOracle);
@@ -1153,4 +1168,551 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
 
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
     }
+}
+
+// TODO: Need some kind of comment detailing how to do the calculations.
+contract GetFloorCeilingPrice is RootOracleIntegrationTest {
+    function setUp() public override {
+        super.setUp();
+
+        curveStableOracle.registerPool(FRAX_USDC, FRAX_USDC_LP, false);
+        curveStableOracle.registerPool(STETH_WETH_CURVE_POOL_CONCENTRATED, STETH_WETH_CURVE_POOL_CONCENTRATED_LP, false);
+
+        priceOracle.registerMapping(SFRXETH_MAINNET, IPriceOracle(address(customSetOracle)));
+        priceOracle.registerPoolMapping(FRAX_USDC, ISpotPriceOracle(curveStableOracle));
+        priceOracle.registerPoolMapping(WSETH_RETH_SFRXETH_BAL_POOL, ISpotPriceOracle(balancerComposableOracle));
+        priceOracle.registerPoolMapping(RETH_WETH_CURVE_POOL, ISpotPriceOracle(curveCryptoOracle));
+        priceOracle.registerPoolMapping(RETH_WSTETH_CURVE_POOL, ISpotPriceOracle(curveStableOracle));
+        priceOracle.registerPoolMapping(STETH_WETH_CURVE_POOL_CONCENTRATED, ISpotPriceOracle(curveStableOracle));
+        priceOracle.registerPoolMapping(CBETH_WSTETH_BAL_POOL, ISpotPriceOracle(balancerMetaOracle));
+        priceOracle.registerPoolMapping(WSETH_WETH_BAL_POOL, ISpotPriceOracle(balancerMetaOracle));
+    }
+
+    //
+    // Testing quote decimal adjustments.
+    //
+
+    /**
+     * Testing that a single token in a pool adjusts to a quote correctly with no decimal conversion. This
+     *    is accomplished by using a pool containing tokens that have 18 decimals and using one of the
+     *    tokens in the pool as quote.  Only looking at the price that touches the path that converts to 
+     *    the desired quote.  This method eliminates any lp or reserve decimal adjustments.
+     * 
+     *  Getting ceiling price as that is the path that touches `_enforceQuoteToken`, which is what is 
+     *    needed to asjust the quote.
+     * 
+     * Ceiling price returned -   1088774876286734804
+     * Ceiling price calculated - 1087794810604558466.
+     */
+    function test_QuoteTokenAdjustsCorrectly_SameDecimals() public {
+      vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19215238);
+      
+      uint256 calculatedPrice = 1087794810604558466;
+      
+      // uint256 floorPrice = priceOracle.getFloorCeilingPrice(STETH_ETH_CURVE_POOL, ST_ETH_CURVE_LP_TOKEN_MAINNET, WETH_MAINNET, false);
+      uint256 ceilingPrice = priceOracle.getFloorCeilingPrice(STETH_ETH_CURVE_POOL, ST_ETH_CURVE_LP_TOKEN_MAINNET, WETH_MAINNET, true);
+
+      ICurveV1StableSwap pool = ICurveV1StableSwap(STETH_ETH_CURVE_POOL);
+      // In this case, raw spot price is weth in stEth
+      (uint256 rawSpot,) = curveStableOracle.getSpotPrice(WETH_MAINNET, STETH_ETH_CURVE_POOL, STETH_MAINNET);
+
+      /**
+       * Spot - 999133104747570264
+       * Total reserves - 91571146177171884182453
+       * LP supply - 84107556584539513541921
+       */
+
+      emit log_named_uint("raw spot", rawSpot);
+
+      console.log("\n");
+
+
+      // emit log_uint(floorPrice);
+      emit log_named_uint("Ceiling price", ceilingPrice);
+
+      
+      (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
+      assertGt(upperBound, ceilingPrice);
+      assertLt(lowerBound, ceilingPrice);
+    }
+
+    /**
+     * This test follows a similar pattern to the one above, except that this one requires a conversion to a
+     *    token with differing decimals.  This will also use a token already in the pool.  This test path
+     *    will also require a reserves adjustment.
+     * 
+     * Using path where USDC is priced in FRAX.  This will be the floor price.
+     * 
+     * Floor price returned -   985390
+     * Floor price calculated - 1000014
+     */
+    function test_QuoteTokenAdjustsProperly_DifferingDecimals() public {
+      vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19219670);
+      uint256 floorPrice = priceOracle.getFloorCeilingPrice(FRAX_USDC, FRAX_USDC_LP, USDC_MAINNET, false);
+
+      uint256 calculatedPrice = 1000014;
+
+      (uint256 rawSpot,) = curveStableOracle.getSpotPrice(USDC_MAINNET, FRAX_USDC, FRAX_MAINNET);
+
+      /**
+       * Spot - 998515
+       * Total reserves - 58617473824519
+       * LP supply -      58529562118087
+       */
+
+      emit log_named_uint("raw spot", rawSpot);
+
+      console.log("\n");
+
+      emit log_uint(floorPrice);
+
+      (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
+      assertGt(upperBound, floorPrice);
+      assertLt(lowerBound, floorPrice);
+    }
+
+    /**
+     * This test checks the path where the actual quote token is equal to the requested quote token.  
+     * 
+     * Values came out the same because quote did not have to be adjusted for in this case.
+     * 
+     * calculated - 1059662978932490257
+     * Returned -   1059662978932490257
+     */
+    function test_CorrectPriceReturned_NoQuoteAdjustment() public {
+      vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19219797);
+      // uint256 floorPrice = priceOracle.getFloorCeilingPrice(RETH_WSTETH_CURVE_POOL, RETH_WSTETH_CURVE_POOL_LP, RETH_MAINNET, false);
+      uint256 ceilingPrice = priceOracle.getFloorCeilingPrice(RETH_WSTETH_CURVE_POOL, RETH_WSTETH_CURVE_POOL_LP, RETH_MAINNET, true);
+
+      uint256 calculatedPrice = 1059662978932490257;
+
+      // In this case, raw spot price is wstEth in rEth
+      (uint256 rawSpot,) = curveStableOracle.getSpotPrice(WSTETH_MAINNET, RETH_WSTETH_CURVE_POOL, RETH_MAINNET);
+
+      /**
+       * Spot - 1050233335603251327
+       * Total reserves - 318846976881873641269
+       * LP supply -      316009647156878401449
+       */
+
+      emit log_named_uint("raw spot", rawSpot);
+
+      console.log("\n");
+
+      // emit log_uint(floorPrice);
+      emit log_uint(ceilingPrice);
+
+      (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
+      assertGt(upperBound, ceilingPrice);
+      assertLt(lowerBound, ceilingPrice);
+    }
+
+    //
+    // Testing reserve decimal adjustments.
+    //
+
+    // TODO: These below may need updated with better descriptions.
+
+    /**
+     * This test checks the path where the token priced has a greater number of decimals than the quote token,
+     *    meaning that the reserves need to be scaled down.  This path will test the case where frax is the 
+     *    token being priced, being swapped to usdc in the spot price calculation.  This means that the spot
+     *    price will not have to be adjusted, but the reserves will.
+     * 
+     * Value are the same because quote token did not need to be adjusted.
+     * 
+     * Calculated - 999980
+     * Returned -   999980
+     */
+    function test_ReservesAdjustCorrectly_PricedTokenDecimals_GreaterThan_RequestedQuoteToken() public {
+      vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19220106);
+      
+      // uint256 floorPrice = priceOracle.getFloorCeilingPrice(FRAX_USDC, FRAX_USDC_LP, USDC_MAINNET, false);
+      uint256 ceilingPrice = priceOracle.getFloorCeilingPrice(FRAX_USDC, FRAX_USDC_LP, USDC_MAINNET, true);
+
+
+      uint256 calculatedPrice = 999980;
+
+      // In this case, raw spot price is wstEth in rEth
+      (uint256 rawSpot,) = curveStableOracle.getSpotPrice(FRAX_MAINNET, FRAX_USDC, USDC_MAINNET);
+
+      /**
+       * Spot - 998054
+       * Total reserves - 58302980116102
+       * LP supply -      58190634388907
+       */
+
+      emit log_named_uint("raw spot", rawSpot);
+
+      console.log("\n");
+
+      // emit log_uint(floorPrice);
+      emit log_uint(ceilingPrice);
+
+      (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
+      assertGt(upperBound, ceilingPrice);
+      assertLt(lowerBound, ceilingPrice);
+    }
+
+    /**
+     * This test checks the situation where the token priced has a lesser number of decimals than the quote 
+     *      token and needs to be scaled up.  This test is run in a very similar way to the one above.
+     *      USDC swapped to FRAX here to get desired effect.
+     * 
+     * Calculated - 1003891960978409778
+     * Returned -   1003882610998542675
+     */
+    function test_ReservesAdjustCorrectly_PricedTokenDecimals_LessThan_RequestedQuoteToken() public {
+      vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19220106);
+      uint256 floorPrice = priceOracle.getFloorCeilingPrice(FRAX_USDC, FRAX_USDC_LP, FRAX_MAINNET, false);
+      // uint256 ceilingPrice = priceOracle.getFloorCeilingPrice(FRAX_USDC, FRAX_USDC_LP, FRAX_MAINNET, true);
+
+      uint256 calculatedPrice = 1003891960978409778;
+
+      // In this case, raw spot price is wstEth in rEth
+      (uint256 rawSpot,) = curveStableOracle.getSpotPrice(USDC_MAINNET, FRAX_USDC, FRAX_MAINNET);
+
+      /**
+       * Spot - 1001948200069179802
+       * Total reserves - 58303523139443938637182078
+       * LP supply -      58190634388907092934487695
+       */
+
+      emit log_named_uint("raw spot", rawSpot);
+
+      console.log("\n");
+
+      emit log_uint(floorPrice);
+      // emit log_uint(ceilingPrice);
+
+      (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
+      assertGt(upperBound, floorPrice);
+      assertLt(lowerBound, floorPrice);
+    }
+
+    /**
+     * This test checks to make sure that everything runs correctly when decimals do not need to be scaled
+     *    for the reserves of the token being priced.  Use tokens of the same decimals, and use a quote token
+     *    that does not need to be adjusted to avoid extraneous calculations.
+     * 
+     * Calculated - 2230943235103642383
+     * Returned -   2230943235103642383
+     */
+    function test_ReservesWorkCorrectly_EqualDecimals_PricedAndQuote () public {
+      vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19220272);
+      // uint256 floorPrice = priceOracle.getFloorCeilingPrice(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP, WETH_MAINNET, false);
+      uint256 ceilingPrice = priceOracle.getFloorCeilingPrice(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP, WETH_MAINNET, true);
+
+      uint256 calculatedPrice = 2230943235103642383;
+
+      // In this case, raw spot price is wstEth in rEth
+      (uint256 rawSpot,) = curveCryptoOracle.getSpotPrice(RETH_MAINNET, RETH_WETH_CURVE_POOL, WETH_MAINNET);
+
+      /**
+       * Spot - 1098633922598498502
+       * Total reserves - 1320240629519625607246
+       * LP supply -      650156005209013566695
+       */
+
+      emit log_named_uint("raw spot", rawSpot);
+
+      console.log("\n");
+
+      // emit log_uint(floorPrice);
+      emit log_uint(ceilingPrice);
+
+      (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
+      assertGt(upperBound, ceilingPrice);
+      assertLt(lowerBound, ceilingPrice);
+    } 
+
+    //
+    // Testing lp token decimal adjustments.
+    //
+
+    /**
+     * Testing for when an lp token has a greater amount of decimals than the requested quote token.  Using 
+     *    a specific path in three pool (swapping usdc -> usdt or vice versa) with a quote in either of those
+     *    tokens allows most decimal adjustments aside from the lp adjustment to be skipped.
+     */
+
+    // TODO Three pool failing for some reason, either index for spot pricing too long or saying contract isn't registered. 
+    //    Need to finish this
+    function test_LPTokenAdjustsProperly_DecimalsGreaterThanQuote() public {
+      vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19220272);
+
+      // uint256 floorPrice = priceOracle.getFloorCeilingPrice(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, USDC_MAINNET, false);
+      uint256 ceilingPrice = priceOracle.getFloorCeilingPrice(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, USDC_MAINNET, true);
+
+
+      uint256 calculatedPrice = 2230943235103642383;
+
+      // In this case, raw spot price is wstEth in rEth
+      (uint256 rawSpot,) = curveCryptoOracle.getSpotPrice(USDT_MAINNET, THREE_CURVE_MAINNET, USDC_MAINNET);
+
+      /**
+       * Spot - 1098633922598498502
+       * Total reserves - 1320240629519625607246
+       * LP supply -      650156005209013566695
+       */
+
+      emit log_named_uint("raw spot", rawSpot);
+
+      console.log("\n");
+
+      // emit log_uint(floorPrice);
+      emit log_uint(ceilingPrice);
+    }
+
+    //
+    // Testing pricing returns for pools > 2 tokens.
+    //
+
+    /**
+     * Floor calc -       1010811324660508142
+     * Floor returned -   1007607314560983751
+     * 
+     * Ceiling calc -     1088375142327765147
+     * Ceiling returned - 1084925275015227212
+     */
+    function test_PoolWithGreaterThanTwoTokens_All18Decimals() public {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19221345);
+
+        address[] memory tokens = new address[](1);
+        uint256[] memory prices = new uint256[](1);
+        uint256[] memory timestamps = new uint256[](1);
+
+        tokens[0] = SFRXETH_MAINNET;
+        prices[0] = 1_075_200_000_000_000_000;
+        timestamps[0] = block.timestamp;
+        customSetOracle.setPrices(tokens, prices, timestamps);
+
+        uint256 floorPrice = priceOracle.getFloorCeilingPrice(
+            WSETH_RETH_SFRXETH_BAL_POOL, WSETH_RETH_SFRXETH_BAL_POOL, WETH_MAINNET, false
+        );
+        uint256 ceilingPrice = priceOracle.getFloorCeilingPrice(
+            WSETH_RETH_SFRXETH_BAL_POOL, WSETH_RETH_SFRXETH_BAL_POOL, WETH_MAINNET, true
+        );
+
+
+
+      uint256 calculatedFloorPrice = 1010811324660508142;
+      uint256 calculatedCeilingPrice = 1088375142327765147;
+
+      // In this case, raw spot price is wstEth in rEth
+      (uint256 rawSpot, address actualQuote) = balancerComposableOracle.getSpotPrice(SFRXETH_MAINNET, WSETH_RETH_SFRXETH_BAL_POOL, WETH_MAINNET);
+      (uint256 rawSpot2, address actualQuote2) = balancerComposableOracle.getSpotPrice(WSTETH_MAINNET, WSETH_RETH_SFRXETH_BAL_POOL, WETH_MAINNET);
+
+      /**
+       * ceiling spot - 1156292242098907084
+       * floor spot -    1073888264694198707
+       * Total reserves - 1184934811373379122799
+       * LP supply -      1258877455482490188703
+       */
+
+      emit log_named_uint("raw spot", rawSpot);
+      emit log_named_address("Actual quote", actualQuote);
+
+      emit log_named_uint("Second raw spot", rawSpot2);
+      emit log_named_address("Second actual quote", actualQuote2);
+
+      console.log("\n");
+
+        emit log_uint(floorPrice);
+        emit log_uint(ceilingPrice);
+
+      (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedFloorPrice);
+      assertGt(upperBound, floorPrice);
+      assertLt(lowerBound, floorPrice);
+
+      (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedCeilingPrice);
+      assertGt(upperBound, ceilingPrice);
+      assertLt(lowerBound, ceilingPrice);
+    }
+
+    // TODO: Does it make sense to do this with multiple tokens in the pool as quote? Same w above.
+
+    // TODO: Three pool failing, need to look into this.
+    function test_PoolWithGreaterThanTwoTokens_LessThan18Decimals() public {
+      uint256 floorPrice = priceOracle.getFloorCeilingPrice(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, DAI_MAINNET, false);
+      uint256 ceilingPrice = priceOracle.getFloorCeilingPrice(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, DAI_MAINNET, true);
+
+
+
+      uint256 calculatedFloorPrice = 1010811324660508142;
+      uint256 calculatedCeilingPrice = 1088375142327765147;
+
+      // In this case, raw spot price is wstEth in rEth
+      (uint256 rawSpot, address actualQuote) = curveStableOracle.getSpotPrice(DAI_MAINNET, THREE_CURVE_MAINNET, USDC_MAINNET);
+      (uint256 rawSpot2, address actualQuote2) = balancerComposableOracle.getSpotPrice(USDT_MAINNET, THREE_CURVE_MAINNET, USDC_MAINNET);
+
+      /**
+       * ceiling spot - 1156292242098907084
+       * floor spot -    1073888264694198707
+       * Total reserves - 1184934811373379122799
+       * LP supply -      1258877455482490188703
+       */
+
+      emit log_named_uint("raw spot", rawSpot);
+      emit log_named_address("Actual quote", actualQuote);
+
+      emit log_named_uint("Second raw spot", rawSpot2);
+      emit log_named_address("Second actual quote", actualQuote2);
+
+      console.log("\n");
+
+      emit log_uint(floorPrice);
+      emit log_uint(ceilingPrice);
+    }
+
+    //
+    // Test floor and ceiling for each `ISpotPriceOracle` contract.
+    //
+
+    /**
+     * Ceiling calculated - 1069285457353509362
+     * Ceiling returned -   1068726638138250848
+     * 
+     * Floor calculated -  1068726638138250848
+     * Floor returned -    1068101963650201584
+     */
+    function test_CurveV1WithFloorCeilingPrice() public {
+      vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19221928);
+
+      uint256 floorPrice = priceOracle.getFloorCeilingPrice(STETH_WETH_CURVE_POOL_CONCENTRATED, STETH_WETH_CURVE_POOL_CONCENTRATED_LP, WETH_MAINNET, false);
+      uint256 ceilingPrice = priceOracle.getFloorCeilingPrice(STETH_WETH_CURVE_POOL_CONCENTRATED, STETH_WETH_CURVE_POOL_CONCENTRATED_LP, WETH_MAINNET, true);
+
+      uint256 calculatedFloorPrice =   1068726638138250848;
+      uint256 calculatedCeilingPrice = 1069285457353509362;
+
+      // In this case, raw spot price is wstEth in rEth
+      (uint256 rawSpot, address actualQuote) = curveStableOracle.getSpotPrice(STETH_MAINNET, STETH_WETH_CURVE_POOL_CONCENTRATED, WETH_MAINNET);
+      (uint256 rawSpot2, address actualQuote2) = curveStableOracle.getSpotPrice(WETH_MAINNET, STETH_WETH_CURVE_POOL_CONCENTRATED, STETH_MAINNET);
+
+      /**
+       * ceiling spot - 1000360449378947294
+       * floor spot -   999837651058392950
+       * Total reserves - 2120173138427315514146
+       * LP supply -      1983509023649924534679
+       */
+
+      (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedFloorPrice);
+      assertGt(upperBound, floorPrice);
+      assertLt(lowerBound, floorPrice);
+
+      (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedCeilingPrice);
+      assertGt(upperBound, ceilingPrice);
+      assertLt(lowerBound, ceilingPrice);
+
+      emit log_named_uint("raw spot", rawSpot);
+      emit log_named_address("Actual quote", actualQuote);
+
+      emit log_named_uint("Second raw spot", rawSpot2);
+      emit log_named_address("Second actual quote", actualQuote2);
+
+      console.log("\n");
+
+
+      emit log_uint(floorPrice);
+      emit log_uint(ceilingPrice);
+    }
+
+    /**
+     * Ceiling calculated - 2230745562574419327
+     * Ceiling returned -   2230745562574419327
+     * 
+     * Floor calculated - 2030687038850489149
+     * Floor returned -   2029600647904936906
+     */
+    function test_CurveV2WithFloorCeilingPrice() public {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19221993);
+        uint256 floorPrice =
+            priceOracle.getFloorCeilingPrice(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP, WETH_MAINNET, false);
+        uint256 ceilingPrice =
+            priceOracle.getFloorCeilingPrice(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP, WETH_MAINNET, true);
+
+      uint256 calculatedFloorPrice =   2030687038850489149;
+      uint256 calculatedCeilingPrice = 2230745562574419327;
+
+              // In this case, raw spot price is wstEth in rEth
+      (uint256 rawSpot, address actualQuote) = curveCryptoOracle.getSpotPrice(RETH_MAINNET, RETH_WETH_CURVE_POOL, WETH_MAINNET);
+      (uint256 rawSpot2, address actualQuote2) = curveCryptoOracle.getSpotPrice(WETH_MAINNET, RETH_WETH_CURVE_POOL, RETH_MAINNET);
+
+      /**
+       * ceiling spot - 1098554142677964651
+       * floor spot -   1000033215996695277
+       * Total reserves - 1320219520601521617960
+       * LP supply -      650156005209013566695
+       */
+
+      (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedFloorPrice);
+      assertGt(upperBound, floorPrice);
+      assertLt(lowerBound, floorPrice);
+
+      (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedCeilingPrice);
+      assertGt(upperBound, ceilingPrice);
+      assertLt(lowerBound, ceilingPrice);
+
+      emit log_named_uint("raw spot", rawSpot);
+      emit log_named_address("Actual quote", actualQuote);
+
+      emit log_named_uint("Second raw spot", rawSpot2);
+      emit log_named_address("Second actual quote", actualQuote2);
+
+      console.log("\n");
+
+        emit log_uint(floorPrice);
+        emit log_uint(ceilingPrice);
+    }
+
+    // Both balancer oracles use the same spot price logic
+    /**
+     * Ceiling calculated - 131979816103475891
+     * Ceiling returned -   128642000370391020
+     * 
+     * Floor calculated - 128392302540179900
+     * Floor returned -   131742317093905852
+     */
+    function test_BalancerWithFloorCeilingPrice() public {
+      vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19222223);
+
+      uint256 floorPrice = priceOracle.getFloorCeilingPrice(CBETH_WSTETH_BAL_POOL, CBETH_WSTETH_BAL_POOL, WETH_MAINNET, false);
+      uint256 ceilingPrice = priceOracle.getFloorCeilingPrice(CBETH_WSTETH_BAL_POOL, CBETH_WSTETH_BAL_POOL, WETH_MAINNET, true);
+
+      uint256 calculatedFloorPrice =   128392302540179900;
+      uint256 calculatedCeilingPrice = 131979816103475891;
+
+              // In this case, raw spot price is wstEth in rEth
+      (uint256 rawSpot, address actualQuote) = balancerMetaOracle.getSpotPrice(CBETH_MAINNET, CBETH_WSTETH_BAL_POOL, WETH_MAINNET);
+      (uint256 rawSpot2, address actualQuote2) = balancerMetaOracle.getSpotPrice(WSTETH_MAINNET, CBETH_WSTETH_BAL_POOL, WETH_MAINNET);
+
+      /**
+       * ceiling spot - 142132744932313314
+       * floor spot -   138269251518794802
+       * Total reserves - 253740198952000572
+       * LP supply -      273259897168240633
+       */
+
+      (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedFloorPrice);
+      assertGt(upperBound, floorPrice);
+      assertLt(lowerBound, floorPrice);
+
+      (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedCeilingPrice);
+      assertGt(upperBound, ceilingPrice);
+      assertLt(lowerBound, ceilingPrice);
+
+      emit log_named_uint("raw spot", rawSpot);
+      emit log_named_address("Actual quote", actualQuote);
+
+      emit log_named_uint("Second raw spot", rawSpot2);
+      emit log_named_address("Second actual quote", actualQuote2);
+
+      console.log("\n");
+      
+      emit log_uint(floorPrice);
+      emit log_uint(ceilingPrice);
+    }
+
+    // TODO: Implement when mav issue is fixed.
+    function test_MavWithFloorCeilingPrice() public { }
 }

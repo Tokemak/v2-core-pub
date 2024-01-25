@@ -31,6 +31,10 @@ interface ICurveV1StableSwap {
         uint256 minBuyAmount
     ) external payable returns (uint256);
 
+    function balances(uint256 i) external view returns (uint256);
+
+    function lp_token() external view returns (address);
+
     function get_virtual_price() external view returns (uint256);
 
     function withdraw_admin_fees() external;

@@ -55,7 +55,7 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
 
         (price, actualQuoteToken) = _getSpotPrice(token, pool, tokens, requestedQuoteToken);
     }
-
+    
     function getTotalSupply_(address lpToken) internal virtual returns (uint256 totalSupply);
     function getPoolTokens_(address pool)
         internal

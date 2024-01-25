@@ -45,4 +45,8 @@ contract MockRootOracle is Numbers, IRootPriceOracle {
     ) external returns (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) {
         revert NotImplemented();
     }
+
+    function getFloorCeilingPrice(address pool, address lptoken, address inQuote, bool ceiling) external returns (uint256) {
+      revert NotImplemented();
+    }
 }

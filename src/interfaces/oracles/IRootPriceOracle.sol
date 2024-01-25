@@ -32,4 +32,17 @@ interface IRootPriceOracle {
         address pool,
         address quoteToken
     ) external returns (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe);
+
+    /// @notice Returns floor price of the supplied lp token in terms of requested quote.
+    /// @param pool Address of pool to get spot pricing from.
+    /// @param lpToken Address of the lp token to price.
+    /// @param inQuote Address of quote token.
+    /// @param ceiling Bool indicating whether to get floor or ceiling price.
+    /// @return floorOrCeilingPerLpToken Floor or ceiling price of the lp token.
+    function getFloorCeilingPrice(
+        address pool,
+        address lpToken,
+        address inQuote,
+        bool ceiling
+    ) external returns (uint256 floorOrCeilingPerLpToken);
 }

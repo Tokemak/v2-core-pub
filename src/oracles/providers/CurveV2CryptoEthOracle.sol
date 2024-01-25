@@ -18,7 +18,6 @@ import { ICurveV2Swap } from "src/interfaces/external/curve/ICurveV2Swap.sol";
 contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, ISpotPriceOracle {
     uint256 public constant FEE_PRECISION = 1e10;
     address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-
     ICurveResolver public immutable curveResolver;
 
     /**

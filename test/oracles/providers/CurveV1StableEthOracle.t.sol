@@ -34,7 +34,7 @@ import {
     THREE_CURVE_MAINNET,
     STETH_STABLESWAP_NG_POOL,
     FRAX_USDC,
-    CRV_FRAX,
+    FRAX_USDC_LP,
     FRAX_MAINNET,
     WETH9_ADDRESS
 } from "test/utils/Addresses.sol";
@@ -280,7 +280,7 @@ contract CurveV1StableEthOracleTests is Test {
     }
 
     function testGetSpotPriceFraxUsdc() public {
-        oracle.registerPool(FRAX_USDC, CRV_FRAX, true);
+        oracle.registerPool(FRAX_USDC, FRAX_USDC_LP, true);
 
         (uint256 price, address quote) = oracle.getSpotPrice(FRAX_MAINNET, FRAX_USDC, WETH9_ADDRESS);
 
@@ -297,7 +297,7 @@ contract CurveV1StableEthOracleTests is Test {
     }
 
     function testGetSpotPriceUsdcFrax() public {
-        oracle.registerPool(FRAX_USDC, CRV_FRAX, true);
+        oracle.registerPool(FRAX_USDC, FRAX_USDC_LP, true);
 
         (uint256 price, address quote) = oracle.getSpotPrice(USDC_MAINNET, FRAX_USDC, FRAX_MAINNET);
 
@@ -314,20 +314,20 @@ contract CurveV1StableEthOracleTests is Test {
 
     function testGetSafeSpotPriceRevertIfZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "pool"));
-        oracle.getSafeSpotPriceInfo(address(0), CRV_FRAX, WETH9_ADDRESS);
+        oracle.getSafeSpotPriceInfo(address(0), FRAX_USDC_LP, WETH9_ADDRESS);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "lpToken"));
         oracle.getSafeSpotPriceInfo(FRAX_USDC, address(0), WETH9_ADDRESS);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "quoteToken"));
-        oracle.getSafeSpotPriceInfo(FRAX_USDC, CRV_FRAX, address(0));
+        oracle.getSafeSpotPriceInfo(FRAX_USDC, FRAX_USDC_LP, address(0));
     }
 
     function testGetSafeSpotPriceInfo() public {
-        oracle.registerPool(FRAX_USDC, CRV_FRAX, true);
+        oracle.registerPool(FRAX_USDC, FRAX_USDC_LP, true);
 
         (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
-            oracle.getSafeSpotPriceInfo(FRAX_USDC, CRV_FRAX, WETH9_ADDRESS);
+            oracle.getSafeSpotPriceInfo(FRAX_USDC, FRAX_USDC_LP, WETH9_ADDRESS);
 
         assertEq(reserves.length, 2);
         assertEq(totalLPSupply, 497_913_419_719_209_769_318_641_923);

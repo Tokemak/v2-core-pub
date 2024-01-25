@@ -12,6 +12,9 @@ import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 
+// TODO: Remove
+import { console } from "forge-std/console.sol";
+
 contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     address private immutable _weth;
 
@@ -186,10 +189,135 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     function getPriceInEth(address token) external returns (uint256 price) {
         // Skip the token address(0) check and just rely on the oracle lookup
         // Emit token so we can figure out what was actually 0 later
-        IPriceOracle oracle = tokenMappings[token];
-        if (address(oracle) == address(0)) revert MissingTokenOracle(token);
+        IPriceOracle oracle = IPriceOracle(_checkTokenOracleRegistration(token));
 
         price = oracle.getPriceInEth(token);
+    }
+
+    // TODO: Also may be able to redo some local variable due to decimal refactor.
+    /// @inheritdoc IRootPriceOracle
+    function getFloorCeilingPrice(
+        address pool,
+        address lpToken,
+        address inQuote,
+        bool ceiling
+    ) external returns (uint256 floorOrCeilingPerLpToken) {
+        // Scoping for stack too deep.
+        uint256 totalLpSupply;
+        ISpotPriceOracle.ReserveItemInfo[] memory reserveInfoArray;
+        {
+            ISpotPriceOracle oracle = ISpotPriceOracle(_checkSpotOracleRegistration(pool));
+            (totalLpSupply, reserveInfoArray) = oracle.getSafeSpotPriceInfo(pool, lpToken, inQuote);
+        }
+
+        uint256 inQuoteDecimals = IERC20Metadata(inQuote).decimals();
+
+        // Scale lp supply to decimals of inQuote if neccessary
+        uint256 lpTokenDecimals = IERC20Metadata(lpToken).decimals();
+        if (lpTokenDecimals > inQuoteDecimals) {
+            totalLpSupply = totalLpSupply / 10 ** (lpTokenDecimals - inQuoteDecimals);
+        } else if (lpTokenDecimals < inQuoteDecimals) {
+            totalLpSupply = totalLpSupply * 10 ** (inQuoteDecimals - lpTokenDecimals);
+        }
+
+        console.log("Requested quote", inQuote);
+        console.log("\n");
+
+        // Track highest or lowest price, total number of reserves in pool.
+        uint256 floorOrCeilingPrice;
+        uint256 totalReserves;
+        uint256 nTokens = reserveInfoArray.length;
+        for (uint256 i = 0; i < nTokens; ++i) {
+            ISpotPriceOracle.ReserveItemInfo memory reserveInfo = reserveInfoArray[i];
+            address actualQuote = reserveInfo.actualQuoteToken;
+            uint256 spotPrice = reserveInfo.rawSpotPrice;
+
+            // Converting and scaling to correct quote token.
+            spotPrice = _enforceQuoteToken(inQuote, actualQuote, spotPrice);
+
+            // Scaling reserves.
+            uint256 tokenPricedDecimals = IERC20Metadata(reserveInfo.token).decimals();
+            if (tokenPricedDecimals > inQuoteDecimals) {
+                totalReserves += reserveInfo.reserveAmount / 10 ** (tokenPricedDecimals - inQuoteDecimals);
+            } else if (tokenPricedDecimals < inQuoteDecimals) {
+                totalReserves += reserveInfo.reserveAmount * 10 ** (inQuoteDecimals - tokenPricedDecimals);
+            } else {
+                totalReserves += reserveInfo.reserveAmount;
+            }
+
+            console.log("Token Priced", reserveInfo.token);
+            console.log("Actual quote", actualQuote);
+            console.log("Spot price", spotPrice);
+            console.log("\n");
+            
+
+            // If this is the first iteration, set floorOrCeilingPrice with price calculated
+            if (i == 0) {
+                floorOrCeilingPrice = spotPrice;
+            } else {
+                // If not first iteration, check price and replace if it makes sense to do so.
+                if (ceiling) {
+                    if (spotPrice > floorOrCeilingPrice) {
+                        floorOrCeilingPrice = spotPrice;
+                    }
+                } else {
+                    if (spotPrice < floorOrCeilingPrice) {
+                        floorOrCeilingPrice = spotPrice;
+                    }
+                }
+            }
+        }
+
+        floorOrCeilingPerLpToken = totalReserves * floorOrCeilingPrice / totalLpSupply;
+    }
+
+    /// @dev if quote token returned is not the requested one, do price conversion
+    // TODO: Return to original spot.
+    // TODO: Remember that this is returning wrong decimals until further notice.  Will impact decimal handling if used.
+    function _enforceQuoteToken(
+        address quoteToken,
+        address actualQuoteToken,
+        uint256 rawPrice
+    ) internal returns (uint256) {
+        // Pad price to 18 decimals
+        if (actualQuoteToken == quoteToken) {
+            return rawPrice;
+        }
+
+        console.log(1);
+
+        // If not, get the conversion rate from the actualQuoteToken to weth and then derive the spot price
+        IPriceOracle tokenOracle = IPriceOracle(_checkTokenOracleRegistration(actualQuoteToken));
+
+        return rawPrice * getPriceInQuote(actualQuoteToken, quoteToken)
+            / (10 ** IERC20Metadata(actualQuoteToken).decimals());
+    }
+
+    ///@inheritdoc IRootPriceOracle
+    // TODO: Use new helper functions here.
+    // TODO: Return to original spot
+    function getPriceInQuote(address base, address quote) public returns (uint256) {
+        IPriceOracle baseOracle = tokenMappings[base];
+
+        if (address(baseOracle) == address(0)) {
+            // Revert token being priced.
+            revert MissingTokenOracle(base);
+        }
+
+        // No need to go through the extra math if we're asking for it in terms we already have
+        uint256 baseInEth = baseOracle.getPriceInEth(base);
+        if (quote == _weth) {
+            return baseInEth;
+        }
+
+        IPriceOracle quoteOracle = tokenMappings[quote];
+        if (address(quoteOracle) == address(0)) {
+            // Revert token being priced.
+            revert MissingTokenOracle(quote);
+        }
+
+        // TODO: Returning in quote token decimals.
+        return (baseInEth * (10 ** IERC20Metadata(quote).decimals())) / quoteOracle.getPriceInEth(quote);
     }
 
     /// @inheritdoc IRootPriceOracle
@@ -197,8 +325,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         Errors.verifyNotZero(token, "token");
         Errors.verifyNotZero(pool, "pool");
 
-        ISpotPriceOracle oracle = poolMappings[pool];
-        if (address(oracle) == address(0)) revert MissingTokenOracle(pool);
+        ISpotPriceOracle oracle = ISpotPriceOracle(_checkSpotOracleRegistration(pool));
 
         address weth = address(systemRegistry.weth());
 
@@ -215,23 +342,6 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         (uint256 rawPrice, address actualQuoteToken) = oracle.getSpotPrice(token, pool, quoteToken);
 
         return _enforceQuoteToken(quoteToken, actualQuoteToken, rawPrice);
-    }
-
-    /// @dev if quote token returned is not the requested one, do price conversion
-    function _enforceQuoteToken(
-        address quoteToken,
-        address actualQuoteToken,
-        uint256 rawPrice
-    ) internal returns (uint256) {
-        // If the returned quote token is weth, return the price directly
-        if (actualQuoteToken == quoteToken) return rawPrice;
-
-        // If not, get the conversion rate from the actualQuoteToken to quoteToken and then derive the spot price
-        IPriceOracle tokenOracle = tokenMappings[actualQuoteToken];
-        if (address(tokenOracle) == address(0)) revert MissingTokenOracle(actualQuoteToken);
-
-        return
-            rawPrice * tokenOracle.getPriceInEth(actualQuoteToken) / (10 ** IERC20Metadata(actualQuoteToken).decimals());
     }
 
     /// @inheritdoc IRootPriceOracle
@@ -378,26 +488,17 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         spotPriceInQuote = spotPriceInQuote * lpTokenDecimalsPad / totalLPSupply;
     }
 
-    function getPriceInQuote(address base, address quote) public returns (uint256) {
-        IPriceOracle baseOracle = tokenMappings[base];
-
-        if (address(baseOracle) == address(0)) {
-            // Revert token being priced.
-            revert MissingTokenOracle(base);
+    function _checkTokenOracleRegistration(address token) private view returns (address oracle) {
+        oracle = address(tokenMappings[token]);
+        if (oracle == address(0)) {
+            revert MissingTokenOracle(token);
         }
+    }
 
-        // No need to go through the extra math if we're asking for it in terms we already have
-        uint256 baseInEth = baseOracle.getPriceInEth(base);
-        if (quote == _weth) {
-            return baseInEth;
+    function _checkSpotOracleRegistration(address pool) private view returns (address spotOracle) {
+        spotOracle = address(poolMappings[pool]);
+        if (spotOracle == address(0)) {
+            revert MissingSpotPriceOracle(pool);
         }
-
-        IPriceOracle quoteOracle = tokenMappings[quote];
-        if (address(quoteOracle) == address(0)) {
-            // Revert token being priced.
-            revert MissingTokenOracle(quote);
-        }
-
-        return (baseInEth * (10 ** IERC20Metadata(quote).decimals())) / quoteOracle.getPriceInEth(quote);
     }
 }

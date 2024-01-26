@@ -11,17 +11,10 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-<<<<<<< HEAD
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { BalancerBaseOracle } from "src/oracles/providers/base/BalancerBaseOracle.sol";
 import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
-=======
-import { IVault } from "src/interfaces/external/balancer/IVault.sol";
-import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
-import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
-import { BalancerBaseOracle } from "src/oracles/providers/base/BalancerBaseOracle.sol";
->>>>>>> b611f21a (feat: safe spot pricing)
 import { Errors } from "src/utils/Errors.sol";
 
 import {

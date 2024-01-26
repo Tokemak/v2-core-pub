@@ -205,6 +205,10 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
             _mint(msg.sender, newPoints - oldPoints);
 
             emit Extend(msg.sender, lockupId, oldAmount, oldEnd, newEnd, oldPoints, newPoints);
+
+            unchecked {
+                ++iter;
+            }
         } while (iter < length);
     }
 

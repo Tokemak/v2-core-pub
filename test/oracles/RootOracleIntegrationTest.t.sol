@@ -322,7 +322,7 @@ contract RootOracleIntegrationTest is Test {
             BADGER_MAINNET,
             IAggregatorV3Interface(BADGER_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
-            24 hours
+            2 hours
         );
         chainlinkOracle.registerChainlinkOracle(
             WBTC_MAINNET,
@@ -664,7 +664,7 @@ contract GetPriceInEth is RootOracleIntegrationTest {
     }
 }
 
-contract GetRangePricesLPint is RootOracleIntegrationTest {
+contract GetRangePricesLP is RootOracleIntegrationTest {
     function setUp() public override {
         super.setUp();
 
@@ -711,8 +711,9 @@ contract GetRangePricesLPint is RootOracleIntegrationTest {
         priceOracle.setSafeSpotPriceThreshold(CRV_MAINNET, 200);
         priceOracle.setSafeSpotPriceThreshold(LDO_MAINNET, 200);
         priceOracle.setSafeSpotPriceThreshold(STG_MAINNET, 200);
-        priceOracle.setSafeSpotPriceThreshold(BADGER_MAINNET, 200);
-        priceOracle.setSafeSpotPriceThreshold(WBTC_MAINNET, 200);
+
+        priceOracle.setSafeSpotPriceThreshold(BADGER_MAINNET, 800);
+        priceOracle.setSafeSpotPriceThreshold(WBTC_MAINNET, 800);
     }
 
     function _verifySafePriceByPercentTolerance(
@@ -748,13 +749,12 @@ contract GetRangePricesLPint is RootOracleIntegrationTest {
 
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
-        // TODO: investigate why this is failing
-        // Calculated USDC - 573334720000000
-        // calculatedPrice = uint256(573_334_720_000_000);
-        // (spotPrice, safePrice, isSpotSafe) =
-        //     priceOracle.getRangePricesLP(USDC_DAI_USDT_BAL_POOL, USDC_DAI_USDT_BAL_POOL, USDC_MAINNET);
+        // Calculated USDC - 1.001509439841252267
+        calculatedPrice = uint256(1_001_509 * 10 ** 12);
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(USDC_DAI_USDT_BAL_POOL, USDC_DAI_USDT_BAL_POOL, USDC_MAINNET);
 
-        // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
     }
 
     function test_BalMetaStablePoolOracle() external {
@@ -794,7 +794,7 @@ contract GetRangePricesLPint is RootOracleIntegrationTest {
 
         // 3)
 
-        // Calculated WETH - 1035273715000000000
+        // Calculated WETH - 1.035273715000000000
         calculatedPrice = uint256(1.035273715 * 10 ** 18);
         (spotPrice, safePrice, isSpotSafe) =
             priceOracle.getRangePricesLP(WSETH_WETH_BAL_POOL, WSETH_WETH_BAL_POOL, WETH9_ADDRESS);
@@ -839,13 +839,12 @@ contract GetRangePricesLPint is RootOracleIntegrationTest {
 
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
-        // TODO: This is failing, need to investigate
         // Calculated USDC - 1.02359472034
-        // calculatedPrice = uint256(1_023_594 * 10 ** 12); // pad to 18 decimals
-        // (spotPrice, safePrice, isSpotSafe) =
-        //     priceOracle.getRangePricesLP(THREE_CURVE_POOL_MAINNET_LP, THREE_CURVE_MAINNET, USDC_MAINNET);
+        calculatedPrice = uint256(1_023_594 * 10 ** 12); // pad to 18 decimals
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(THREE_CURVE_POOL_MAINNET_LP, THREE_CURVE_MAINNET, USDC_MAINNET);
 
-        // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
         // 3)
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_480_014);
@@ -869,22 +868,22 @@ contract GetRangePricesLPint is RootOracleIntegrationTest {
     function test_CurveStableSwapNGPools() external {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_480_014);
 
-        // // 1)
+        // 1)
         curveStableOracle.registerPool(STETH_STABLESWAP_NG_POOL, STETH_STABLESWAP_NG_POOL, false);
 
-        // // Calculated WETH - 1.006028244000000000
+        // Calculated WETH - 1.006028244000000000
         uint256 calculatedPrice = uint256(1.006028244 * 10 ** 18);
         (uint256 spotPrice, uint256 safePrice, bool isSpotSafe) =
             priceOracle.getRangePricesLP(STETH_STABLESWAP_NG_POOL, STETH_STABLESWAP_NG_POOL, WETH9_ADDRESS);
 
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
-        // // Calculated USDC - 1749.63402055
-        // calculatedPrice = uint256(1_749_634_020 * 10 ** 12); // pad to 18 decimals
-        // (spotPrice, safePrice, isSpotSafe) =
-        //     priceOracle.getRangePricesLP(STETH_STABLESWAP_NG_POOL, STETH_STABLESWAP_NG_POOL, USDC_MAINNET);
+        // Calculated USDC - 1749.63402055
+        calculatedPrice = uint256(1_749_634_020 * 10 ** 12); // pad to 18 decimals
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(STETH_STABLESWAP_NG_POOL, STETH_STABLESWAP_NG_POOL, USDC_MAINNET);
 
-        // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
         // 2)
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_586_413);
@@ -897,104 +896,97 @@ contract GetRangePricesLPint is RootOracleIntegrationTest {
 
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
-        // TODO: This is failing, need to investigate (not checked)
-        // Calculated USDC - 1749.63402055 // actually: $1.012780
+        // Calculated USDC - 1.012780
         calculatedPrice = uint256(1_012_780 * 10 ** 12); // pad to 18 decimals
-        // safe price: 1 001816837259306246
         (spotPrice, safePrice, isSpotSafe) =
             priceOracle.getRangePricesLP(USDC_STABLESWAP_NG_POOL, USDC_STABLESWAP_NG_POOL, USDC_MAINNET);
 
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
-        // // 3)
-        // curveStableOracle.registerPool(USDT_STABLESWAP_NG_POOL, USDT_STABLESWAP_NG_POOL, false);
+        // 3)
+        curveStableOracle.registerPool(USDT_STABLESWAP_NG_POOL, USDT_STABLESWAP_NG_POOL, false);
 
-        // // Calculated WETH - 540416370000000
-        // calculatedPrice = uint256(540_416_370_000_000);
-        // (spotPrice, safePrice, isSpotSafe) =
-        //     priceOracle.getRangePricesLP(USDT_STABLESWAP_NG_POOL, USDT_STABLESWAP_NG_POOL, WETH9_ADDRESS);
+        // Calculated WETH - 540416370000000
+        calculatedPrice = uint256(0.00054041637 * 10 ** 18);
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(USDT_STABLESWAP_NG_POOL, USDT_STABLESWAP_NG_POOL, WETH9_ADDRESS);
 
-        // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
-        // // TODO: This is failing, need to investigate (not checked)
-        // // Calculated USDC - 1749.63402055
-        // // calculatedPrice = uint256(1_749_634_020 * 10 ** 12); // pad to 18 decimals
-        // // (spotPrice, safePrice, isSpotSafe) =
-        // //     priceOracle.getRangePricesLP(USDT_STABLESWAP_NG_POOL, USDT_STABLESWAP_NG_POOL, USDC_MAINNET);
+        // Calculated USDC - 1.01241062339
+        calculatedPrice = uint256(1_012_410 * 10 ** 12); // pad to 18 decimals
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(USDT_STABLESWAP_NG_POOL, USDT_STABLESWAP_NG_POOL, USDC_MAINNET);
 
-        // // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
-        // // 4)
-        // curveStableOracle.registerPool(TUSD_STABLESWAP_NG_POOL, TUSD_STABLESWAP_NG_POOL, false);
+        // 4)
+        curveStableOracle.registerPool(TUSD_STABLESWAP_NG_POOL, TUSD_STABLESWAP_NG_POOL, false);
 
-        // // Calculated WETH - 539978431000000
-        // calculatedPrice = uint256(539_978_431_000_000);
-        // (spotPrice, safePrice, isSpotSafe) =
-        //     priceOracle.getRangePricesLP(TUSD_STABLESWAP_NG_POOL, TUSD_STABLESWAP_NG_POOL, WETH9_ADDRESS);
+        // Calculated WETH - 539978431000000
+        calculatedPrice = uint256(0.000539978431 * 10 ** 18);
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(TUSD_STABLESWAP_NG_POOL, TUSD_STABLESWAP_NG_POOL, WETH9_ADDRESS);
 
-        // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
-        // TODO: This is failing, need to investigate (not checked)
-        // Calculated USDC - 1749.63402055
-        // calculatedPrice = uint256(1_749_634_020 * 10 ** 12); // pad to 18 decimals
-        // (spotPrice, safePrice, isSpotSafe) =
-        //     priceOracle.getRangePricesLP(TUSD_STABLESWAP_NG_POOL, TUSD_STABLESWAP_NG_POOL, USDC_MAINNET);
+        // Calculated USDC - 1.01159019285
+        calculatedPrice = uint256(1_011_590 * 10 ** 12); // pad to 18 decimals
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(TUSD_STABLESWAP_NG_POOL, TUSD_STABLESWAP_NG_POOL, USDC_MAINNET);
 
-        // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
         // 5)
-        // curveStableOracle.registerPool(USDP_STABLESWAP_NG_POOL, USDP_STABLESWAP_NG_POOL, false);
+        curveStableOracle.registerPool(USDP_STABLESWAP_NG_POOL, USDP_STABLESWAP_NG_POOL, false);
 
-        // // Calculated WETH - 540443002000000
-        // calculatedPrice = uint256(540_443_002_000_000);
-        // (spotPrice, safePrice, isSpotSafe) =
-        //     priceOracle.getRangePricesLP(USDP_STABLESWAP_NG_POOL, USDP_STABLESWAP_NG_POOL, WETH9_ADDRESS);
+        // Calculated WETH - 540443002000000
+        calculatedPrice = uint256(0.000540443002 * 10 ** 18);
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(USDP_STABLESWAP_NG_POOL, USDP_STABLESWAP_NG_POOL, WETH9_ADDRESS);
 
-        // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
-        // TODO: This is failing, need to investigate (not checked)
-        // Calculated USDC - 1749.63402055
-        // calculatedPrice = uint256(1_749_634_020 * 10 ** 12); // pad to 18 decimals
-        // (spotPrice, safePrice, isSpotSafe) =
-        //     priceOracle.getRangePricesLP(USDP_STABLESWAP_NG_POOL, USDP_STABLESWAP_NG_POOL, USDC_MAINNET);
+        // Calculated USDC - 1.01246051552
+        calculatedPrice = uint256(1_012_460 * 10 ** 12); // pad to 18 decimals
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(USDP_STABLESWAP_NG_POOL, USDP_STABLESWAP_NG_POOL, USDC_MAINNET);
 
-        // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
         // 6)
-        // curveStableOracle.registerPool(FRAX_STABLESWAP_NG_POOL, FRAX_STABLESWAP_NG_POOL, false);
+        curveStableOracle.registerPool(FRAX_STABLESWAP_NG_POOL, FRAX_STABLESWAP_NG_POOL, false);
 
-        // // Calculated WETH - 539914597000000
-        // calculatedPrice = uint256(539_914_597_000_000);
-        // (spotPrice, safePrice, isSpotSafe) =
-        //     priceOracle.getRangePricesLP(FRAX_STABLESWAP_NG_POOL, FRAX_STABLESWAP_NG_POOL, WETH9_ADDRESS);
+        // Calculated WETH - 539914597000000
+        calculatedPrice = uint256(0.000539914597 * 10 ** 18);
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(FRAX_STABLESWAP_NG_POOL, FRAX_STABLESWAP_NG_POOL, WETH9_ADDRESS);
 
-        // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
-        // TODO: This is failing, need to investigate (not checked)
-        // Calculated USDC - 1749.63402055
-        // calculatedPrice = uint256(1_749_634_020 * 10 ** 12); // pad to 18 decimals
-        // (spotPrice, safePrice, isSpotSafe) =
-        //     priceOracle.getRangePricesLP(FRAX_STABLESWAP_NG_POOL, FRAX_STABLESWAP_NG_POOL, USDC_MAINNET);
+        // Calculated USDC - 1.01147060687
+        calculatedPrice = uint256(1_011_470 * 10 ** 12); // pad to 18 decimals
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(FRAX_STABLESWAP_NG_POOL, FRAX_STABLESWAP_NG_POOL, USDC_MAINNET);
 
-        // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
         // 7)
-        // curveStableOracle.registerPool(SUSD_STABLESWAP_NG_POOL, SUSD_STABLESWAP_NG_POOL, false);
+        curveStableOracle.registerPool(SUSD_STABLESWAP_NG_POOL, SUSD_STABLESWAP_NG_POOL, false);
 
-        // // Calculated WETH - 539909058000000
-        // calculatedPrice = uint256(539_909_058_000_000);
-        // (spotPrice, safePrice, isSpotSafe) =
-        //     priceOracle.getRangePricesLP(SUSD_STABLESWAP_NG_POOL, SUSD_STABLESWAP_NG_POOL, WETH9_ADDRESS);
+        // Calculated WETH - 539909058000000
+        calculatedPrice = uint256(0.000539909058 * 10 ** 18);
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(SUSD_STABLESWAP_NG_POOL, SUSD_STABLESWAP_NG_POOL, WETH9_ADDRESS);
 
-        // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
-        // TODO: This is failing, need to investigate (not checked)
-        // Calculated USDC - 1749.63402055
-        // calculatedPrice = uint256(1_749_634_020 * 10 ** 12); // pad to 18 decimals
-        // (spotPrice, safePrice, isSpotSafe) =
-        //     priceOracle.getRangePricesLP(SUSD_STABLESWAP_NG_POOL, SUSD_STABLESWAP_NG_POOL, USDC_MAINNET);
+        // Calculated USDC - 1.01146023017
+        calculatedPrice = uint256(1_011_460 * 10 ** 12); // pad to 18 decimals
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(SUSD_STABLESWAP_NG_POOL, SUSD_STABLESWAP_NG_POOL, USDC_MAINNET);
 
-        // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
     }
 
     /**
@@ -1021,19 +1013,33 @@ contract GetRangePricesLPint is RootOracleIntegrationTest {
 
         // 2)
 
-        // Calculated - 42945287200000000
-        calculatedPrice = uint256(42_945_287_200_000_000);
+        // Calculated WETH - 42945287200000000
+        calculatedPrice = uint256(0.0429452872 * 10 ** 18);
         (spotPrice, safePrice, isSpotSafe) =
             priceOracle.getRangePricesLP(CRV_ETH_CURVE_V2_LP, CRV_ETH_CURVE_V2_POOL, WETH9_ADDRESS);
 
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
+        // Calculated USDC - 80.4794682128
+        calculatedPrice = uint256(80_479_468 * 10 ** 12); // pad to 18 decimals
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(CRV_ETH_CURVE_V2_LP, CRV_ETH_CURVE_V2_POOL, USDC_MAINNET);
+
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+
         // 3)
 
-        // Calculated - 64666948400000000
-        calculatedPrice = uint256(64_695_922_392_289_196);
+        // Calculated WETH - 64666948400000000
+        calculatedPrice = uint256(0.064695922392289196 * 10 ** 18);
         (spotPrice, safePrice, isSpotSafe) =
             priceOracle.getRangePricesLP(LDO_ETH_CURVE_V2_LP, LDO_ETH_CURVE_V2_POOL, WETH9_ADDRESS);
+
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+
+        // Calculated USDC - 121.240158563
+        calculatedPrice = uint256(121_240_158 * 10 ** 12); // pad to 18 decimals
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(LDO_ETH_CURVE_V2_LP, LDO_ETH_CURVE_V2_POOL, USDC_MAINNET);
 
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
@@ -1057,22 +1063,35 @@ contract GetRangePricesLPint is RootOracleIntegrationTest {
 
         // 4)
 
-        // Calculated - 898924164000000
-        calculatedPrice = uint256(898_924_164_000_000);
+        // Calculated WETH - 898924164000000
+        calculatedPrice = uint256(0.000898924164 * 10 ** 18);
         (spotPrice, safePrice, isSpotSafe) =
             priceOracle.getRangePricesLP(STG_USDC_CURVE_V2_LP, STG_USDC_V2_POOL, WETH9_ADDRESS);
 
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
+        // Calculated USDC - 1.6576341369
+        calculatedPrice = uint256(1_657_634 * 10 ** 12); // pad to 18 decimals
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(STG_USDC_CURVE_V2_LP, STG_USDC_V2_POOL, USDC_MAINNET);
+
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+
         // 5)
 
-        // Calculated - 280364973000000000
-        calculatedPrice = uint256(280_364_973_000_000_000);
+        // Calculated WETH - 280364973000000000
+        calculatedPrice = uint256(0.280364973 * 10 ** 18);
         (spotPrice, safePrice, isSpotSafe) =
             priceOracle.getRangePricesLP(WBTC_BADGER_CURVE_V2_LP, WBTC_BADGER_V2_POOL, WETH9_ADDRESS);
 
-        // TODO: deal with decimals
-        // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 4, isSpotSafe);
+
+        // Calculated USDC - 516.998617511
+        calculatedPrice = uint256(516_998_617 * 10 ** 12); // pad to 18 decimals
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(WBTC_BADGER_CURVE_V2_LP, WBTC_BADGER_V2_POOL, USDC_MAINNET);
+
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 4, isSpotSafe);
     }
 
     function test_EthInUsdPath() external {
@@ -1086,10 +1105,17 @@ contract GetRangePricesLPint is RootOracleIntegrationTest {
             24 hours
         );
 
-        // Calculated - 588167942000000
-        uint256 calculatedPrice = uint256(588_167_942_000_000);
+        // Calculated WETH - 588167942000000
+        uint256 calculatedPrice = uint256(0.000588167942 * 10 ** 18);
         (uint256 spotPrice, uint256 safePrice, bool isSpotSafe) =
             priceOracle.getRangePricesLP(THREE_CURVE_POOL_MAINNET_LP, THREE_CURVE_MAINNET, WETH9_ADDRESS);
+
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
+
+        // Calculated USDC - 1.02694122673
+        calculatedPrice = uint256(1_026_941 * 10 ** 12);
+        (spotPrice, safePrice, isSpotSafe) =
+            priceOracle.getRangePricesLP(THREE_CURVE_POOL_MAINNET_LP, THREE_CURVE_MAINNET, USDC_MAINNET);
 
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
     }

@@ -12,8 +12,6 @@ import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 
-import { console } from "forge-std/console.sol";
-
 contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     mapping(address => IPriceOracle) public tokenMappings;
     mapping(address => ISpotPriceOracle) public poolMappings;
@@ -221,28 +219,24 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         address actualQuoteToken,
         uint256 rawPrice
     ) internal returns (uint256 priceInQuote) {
-        // If the returned quote token is weth, return the price directly
-        if (actualQuoteToken == quoteToken) return rawPrice;
+        uint256 actualQuoteTokenDecimals = IERC20Metadata(actualQuoteToken).decimals();
+
+        // If the returned quote token is weth, return the price directly padded to 18 decimals
+        if (actualQuoteToken == quoteToken) {
+            if (actualQuoteTokenDecimals < 18) {
+                rawPrice *= (10 ** (18 - actualQuoteTokenDecimals));
+            } else if (actualQuoteTokenDecimals > 18) {
+                rawPrice /= (10 ** (actualQuoteTokenDecimals - 18));
+            }
+            return rawPrice;
+        }
 
         // If not, get the conversion rate from the actualQuoteToken to weth and then derive the spot price
         IPriceOracle tokenOracle = tokenMappings[actualQuoteToken];
         if (address(tokenOracle) == address(0)) revert MissingTokenOracle(actualQuoteToken);
 
-        uint256 actualQuoteTokenDecimals = IERC20Metadata(actualQuoteToken).decimals();
-        uint256 quoteTokenDecimals = IERC20Metadata(quoteToken).decimals();
-
-        console.log("quoteToken", quoteToken);
-        console.log("actualQuoteToken", actualQuoteToken);
-        console.log("rawPrice", rawPrice);
-
         return rawPrice * getPriceInQuote(actualQuoteToken, quoteToken)
             / (10 ** IERC20Metadata(actualQuoteToken).decimals());
-
-        // if (quoteTokenDecimals < actualQuoteTokenDecimals) {
-        //     priceInQuote /= 10 ** (actualQuoteTokenDecimals - quoteTokenDecimals);
-        // } else if (quoteTokenDecimals > actualQuoteTokenDecimals) {
-        //     priceInQuote *= 10 ** (quoteTokenDecimals - actualQuoteTokenDecimals);
-        // }
     }
 
     /// @inheritdoc IRootPriceOracle

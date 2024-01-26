@@ -473,8 +473,8 @@ contract SafePricingThresholds is RootPriceOracleTests {
 }
 
 contract GetRangePricesLP is RootPriceOracleTests {
-    address _token1;
-    address _token2;
+    address private _token1;
+    address private _token2;
 
     function setUp() public override {
         super.setUp();

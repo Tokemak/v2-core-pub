@@ -132,7 +132,7 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
 
     /// @inheritdoc IAccToke
     function unstake(uint256[] memory lockupIds) external whenNotPaused {
-        uint256 iter;
+        uint256 iter = 0;
         uint256 length = lockupIds.length;
         if (length == 0) revert InvalidLockupIds();
         do {
@@ -173,7 +173,7 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
 
     /// @inheritdoc IAccToke
     function extend(uint256[] memory lockupIds, uint256[] memory durations) external whenNotPaused {
-        uint256 iter;
+        uint256 iter = 0;
         uint256 length = lockupIds.length;
         if (length == 0) revert InvalidLockupIds();
         if (length != durations.length) revert InvalidDurationLength();

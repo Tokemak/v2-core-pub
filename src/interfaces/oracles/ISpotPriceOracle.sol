@@ -22,7 +22,14 @@ interface ISpotPriceOracle {
         address requestedQuoteToken
     ) external returns (uint256 price, address actualQuoteToken);
 
-    /// @dev In memory struct for gathering all the info required for reserves for a safe spot price calculation
+    /**
+     * @notice In memory struct for gathering all the info required for reserves for a safe spot price calculation
+     *
+     * @param token Pool token
+     * @param reserveAmount amount of the token in the pool
+     * @param rawSpotPrice Price of the token in the pool
+     * @param actualQuoteToken Actual quote token used for the rawSpotPrice
+     */
     struct ReserveItemInfo {
         address token;
         uint256 reserveAmount;
@@ -34,7 +41,10 @@ interface ISpotPriceOracle {
      * @notice Retrieve the total supply of the LP token for the specified pool
      *
      * @param pool The liquidity pool to use for the check
+     * @param lpToken LP token of the specified pool
      * @param quoteToken The desired quote token (e.g. WETH) for the returned price
+     * @return totalLPSupply Total supply of the LP token
+     * @return reserves `ReserveItemInfo` struct containing the reserves info
      */
     function getSafeSpotPriceInfo(
         address pool,

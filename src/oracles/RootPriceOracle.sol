@@ -254,10 +254,6 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         address pool,
         address quoteToken
     ) external returns (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) {
-        Errors.verifyNotZero(lpToken, "lpToken");
-        Errors.verifyNotZero(pool, "pool");
-        Errors.verifyNotZero(quoteToken, "quoteToken");
-
         isSpotSafe = true;
 
         IPriceOracle tokenOracle = tokenMappings[quoteToken];

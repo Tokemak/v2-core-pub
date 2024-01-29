@@ -501,15 +501,6 @@ contract GetRangePricesLP is RootPriceOracleTests {
         vm.mockCall(_token2, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(actualTokenDecimals));
     }
 
-    function test_RevertIfParamsAreZero() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "lpToken"));
-        _rootPriceOracle.getRangePricesLP(address(0), _pool, _actualToken);
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "pool"));
-        _rootPriceOracle.getRangePricesLP(_token, address(0), _actualToken);
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "quoteToken"));
-        _rootPriceOracle.getRangePricesLP(_token, _pool, address(0));
-    }
-
     function test_RevertIfNoThreshold() public {
         _setupBasicSafePricingScenario();
 

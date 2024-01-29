@@ -132,10 +132,13 @@ contract StakingTest is BaseTest {
         // make sure can't unstake too early
         vm.warp(block.timestamp + ONE_YEAR - 1);
         vm.expectRevert(IAccToke.NotUnlockableYet.selector);
-        accToke.unstake(lockupId);
+
+        uint256[] memory lockupIds = new uint[](1);
+        lockupIds[0] = lockupId;
+        accToke.unstake(lockupIds);
         // get to proper timestamp and unlock
         vm.warp(block.timestamp + 1);
-        accToke.unstake(lockupId);
+        accToke.unstake(lockupIds);
         assertEq(accToke.balanceOf(address(this)), 0);
     }
 
@@ -154,7 +157,9 @@ contract StakingTest is BaseTest {
 
         // unstake first lock (try without warp first)
         vm.expectRevert(IAccToke.NotUnlockableYet.selector);
-        accToke.unstake(0);
+        uint256[] memory lockupIds = new uint256[](1);
+        lockupIds[0] = 0;
+        accToke.unstake(lockupIds);
 
         warpAndUnstake(ONE_YEAR, 0);
 
@@ -162,8 +167,9 @@ contract StakingTest is BaseTest {
         assertEq(lockup0.amount, 0);
         assertEq(lockup0.points, 0);
 
+        lockupIds[0] = 1;
         // unstake second lock
-        accToke.unstake(1);
+        accToke.unstake(lockupIds);
         IAccToke.Lockup memory lockup1 = accToke.getLockups(address(this))[1];
         assertEq(lockup1.amount, 0);
         assertEq(lockup1.points, 0);
@@ -196,7 +202,13 @@ contract StakingTest is BaseTest {
         // extend to 2 years
         vm.expectEmit(true, false, false, false);
         emit Extend(address(this), 0, amountBefore, 0, 0, 0, 0);
-        accToke.extend(0, 2 * ONE_YEAR);
+
+        uint256[] memory lockupIds = new uint256[](1);
+        lockupIds[0] = 0;
+
+        uint256[] memory durations = new uint256[](1);
+        durations[0] = 2 * ONE_YEAR;
+        accToke.extend(lockupIds, durations);
         // verify that duration (and points) increased
         IAccToke.Lockup memory lockup = accToke.getLockups(address(this))[0];
         assertEq(lockup.amount, amountBefore);
@@ -212,7 +224,13 @@ contract StakingTest is BaseTest {
         stake(amount, ONE_YEAR);
         // extend past the max
         vm.expectRevert(abi.encodeWithSelector(IAccToke.StakingDurationTooLong.selector));
-        accToke.extend(0, 10 * ONE_YEAR);
+
+        uint256[] memory lockupIds = new uint256[](1);
+        lockupIds[0] = 0;
+
+        uint256[] memory durations = new uint256[](1);
+        durations[0] = 10 * ONE_YEAR;
+        accToke.extend(lockupIds, durations);
     }
 
     function test_Revert_IfAmountIsInsufficient() public {
@@ -250,7 +268,9 @@ contract StakingTest is BaseTest {
         vm.expectEmit(true, false, false, false);
         emit Unstake(address(this), 0, 0, 0, 0);
         vm.warp(block.timestamp + warpTimespan);
-        accToke.unstake(lockupId);
+        uint256[] memory lockupIds = new uint256[](1);
+        lockupIds[0] = lockupId;
+        accToke.unstake(lockupIds);
     }
 
     /* **************************************************************************** */

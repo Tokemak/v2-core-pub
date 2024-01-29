@@ -163,27 +163,9 @@ contract MavEthOracleTest is Test {
 }
 
 contract GetSafeSpotPriceInfo is MavEthOracleTest {
-    function test_getSafeSpotPrice_RevertIfZeroAddress() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "pool"));
-        mavOracle.getSafeSpotPriceInfo(address(0), MAV_WSTETH_WETH_BOOSTED_POS, WETH_MAINNET);
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_boostedPosition"));
-        mavOracle.getSafeSpotPriceInfo(MAV_WSTETH_WETH_POOL, address(0), WETH_MAINNET);
-    }
-
-    function test_getSafeSpotPriceInfo() public {
+    function test_NotImplemented() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotImplemented.selector));
         (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
             mavOracle.getSafeSpotPriceInfo(MAV_WSTETH_WETH_POOL, MAV_WSTETH_WETH_BOOSTED_POS, WETH_MAINNET);
-
-        assertEq(reserves.length, 2);
-        assertEq(totalLPSupply, 1_583_228_439_277_980_125_577);
-        assertEq(reserves[0].token, WSTETH_MAINNET);
-        assertEq(reserves[0].reserveAmount, 1_219_492_263_128_448_752_227);
-        assertEq(reserves[0].rawSpotPrice, 1_146_037_501_992_223_339);
-        assertEq(reserves[0].actualQuoteToken, WETH_MAINNET);
-        assertEq(reserves[1].token, WETH_MAINNET);
-        assertEq(reserves[1].reserveAmount, 649_912_488_471_763_583_072);
-        assertEq(reserves[1].rawSpotPrice, 872_571_401_184_986_273);
-        assertEq(reserves[1].actualQuoteToken, WSTETH_MAINNET);
     }
 }

@@ -557,13 +557,13 @@ contract GetRangePricesLP is RootPriceOracleTests {
         reserves[0] = ISpotPriceOracle.ReserveItemInfo({
             token: _token1,
             reserveAmount: 21.5e24,
-            rawSpotPrice: 0.9e18,
+            rawSpotPrice: 0.9e6,
             actualQuoteToken: _actualToken
         });
         reserves[1] = ISpotPriceOracle.ReserveItemInfo({
             token: _token2,
             reserveAmount: 13.7e24,
-            rawSpotPrice: 1.005e18,
+            rawSpotPrice: 1.005e6,
             actualQuoteToken: _actualToken
         });
 

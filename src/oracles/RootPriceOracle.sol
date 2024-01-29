@@ -198,19 +198,23 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
 
         address weth = address(systemRegistry.weth());
 
-        return _getSpotPriceInQuote(oracle, token, pool, weth);
-    }
-
-    function _getSpotPriceInQuote(
-        ISpotPriceOracle oracle,
-        address token,
-        address pool,
-        address quoteToken
-    ) internal returns (uint256 price) {
         // Retrieve the spot price with weth as the requested quote token
-        (uint256 rawPrice, address actualQuoteToken) = oracle.getSpotPrice(token, pool, quoteToken);
+        (uint256 rawPrice, address actualQuoteToken) = oracle.getSpotPrice(token, pool, weth);
 
-        return _enforceQuoteToken(quoteToken, actualQuoteToken, rawPrice);
+        // If the returned quote token is weth, return the price directly
+        if (actualQuoteToken == weth) return rawPrice;
+
+        // If not, get the conversion rate from the actualQuoteToken to weth and then derive the spot price
+        IPriceOracle tokenOracle = tokenMappings[actualQuoteToken];
+        if (address(tokenOracle) == address(0)) revert MissingTokenOracle(actualQuoteToken);
+
+        uint256 conversionRate = tokenOracle.getPriceInEth(actualQuoteToken);
+
+        uint256 decimals = IERC20Metadata(actualQuoteToken).decimals();
+
+        price = rawPrice * conversionRate / (10 ** decimals);
+
+        return price;
     }
 
     /// @dev if quote token returned is not the requested one, do price conversion
@@ -218,10 +222,10 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         address quoteToken,
         address actualQuoteToken,
         uint256 rawPrice
-    ) internal returns (uint256 priceInQuote) {
+    ) internal returns (uint256) {
         uint256 actualQuoteTokenDecimals = IERC20Metadata(actualQuoteToken).decimals();
 
-        // If the returned quote token is weth, return the price directly padded to 18 decimals
+        // Pad price to 18 decimals
         if (actualQuoteToken == quoteToken) {
             if (actualQuoteTokenDecimals < 18) {
                 rawPrice *= (10 ** (18 - actualQuoteTokenDecimals));

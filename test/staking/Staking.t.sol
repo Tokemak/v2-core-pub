@@ -133,7 +133,7 @@ contract StakingTest is BaseTest {
         vm.warp(block.timestamp + ONE_YEAR - 1);
         vm.expectRevert(IAccToke.NotUnlockableYet.selector);
 
-        uint256[] memory lockupIds = new uint[](1);
+        uint256[] memory lockupIds = new uint256[](1);
         lockupIds[0] = lockupId;
         accToke.unstake(lockupIds);
         // get to proper timestamp and unlock

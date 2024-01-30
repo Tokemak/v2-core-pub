@@ -334,6 +334,7 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
             uint256 totalClaiming = netRewards + pendingRewards;
 
             // update running totals
+            //slither-disable-next-line costly-loop
             totalRewardsClaimed += totalClaiming;
             rewardsClaimed[user] += totalClaiming;
 

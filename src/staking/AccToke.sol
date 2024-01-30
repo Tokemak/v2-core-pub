@@ -132,43 +132,45 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
 
     /// @inheritdoc IAccToke
     function unstake(uint256[] memory lockupIds) external whenNotPaused {
+        _collectRewards(msg.sender, false);
+
         uint256 iter = 0;
         uint256 length = lockupIds.length;
         if (length == 0) revert InvalidLockupIds();
+
+        uint256 totalPoints = 0;
+        uint256 totalAmount = 0;
         do {
             uint256 lockupId = lockupIds[iter];
             if (lockupId >= lockups[msg.sender].length) revert LockupDoesNotExist();
 
             // get staking information
             Lockup memory lockup = lockups[msg.sender][lockupId];
-            uint256 amount = lockup.amount;
-            uint256 end = lockup.end;
-            uint256 points = lockup.points;
 
             // slither-disable-next-line timestamp
-            if (block.timestamp < end) revert NotUnlockableYet();
-            if (end == 0) revert AlreadyUnlocked();
-
-            if (iter == 0) {
-                // checkpoint rewards
-                _collectRewards(msg.sender, false);
-            }
+            if (block.timestamp < lockup.end) revert NotUnlockableYet();
+            if (lockup.end == 0) revert AlreadyUnlocked();
 
             // remove stake
             delete lockups[msg.sender][lockupId];
 
-            // wipe points
-            _burn(msg.sender, points);
+            // tally total points to be burned
+            totalPoints += lockup.points;
 
-            emit Unstake(msg.sender, lockupId, amount, end, points);
+            emit Unstake(msg.sender, lockupId, lockup.amount, lockup.end, lockup.points);
 
-            // send staked toke back to user
-            toke.safeTransfer(msg.sender, amount);
+            // tally total toke amount to be returned
+            totalAmount += lockup.amount;
 
             unchecked {
                 ++iter;
             }
         } while (iter < length);
+
+        // wipe points
+        _burn(msg.sender, totalPoints);
+        // send staked toke back to user
+        toke.safeTransfer(msg.sender, totalAmount);
     }
 
     /// @inheritdoc IAccToke
@@ -177,6 +179,9 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
         uint256 length = lockupIds.length;
         if (length == 0) revert InvalidLockupIds();
         if (length != durations.length) revert InvalidDurationLength();
+
+        uint256 totalExtendedPoints = 0;
+
         do {
             uint256 lockupId = lockupIds[iter];
             uint256 duration = durations[iter];
@@ -199,8 +204,7 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
             lockup.end = SafeCast.toUint128(newEnd);
             lockup.points = newPoints;
             lockups[msg.sender][lockupId] = lockup;
-            // issue extra points for extension
-            _mint(msg.sender, newPoints - oldPoints);
+            totalExtendedPoints = totalExtendedPoints + newPoints - oldPoints;
 
             emit Extend(msg.sender, lockupId, oldAmount, oldEnd, newEnd, oldPoints, newPoints);
 
@@ -208,6 +212,9 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
                 ++iter;
             }
         } while (iter < length);
+
+        // issue extra points for extension
+        _mint(msg.sender, totalExtendedPoints);
     }
 
     /// @inheritdoc IAccToke

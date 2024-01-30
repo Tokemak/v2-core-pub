@@ -169,21 +169,12 @@ contract BaseTest is Test {
         );
         MainRewarder mainRewarder = MainRewarder(
             new LMPVaultMainRewarder(
-<<<<<<< HEAD
                 systemRegistry, // registry
-                lmpVault, // stakeTracker
-                asset, // address(mockAsset("MAIN_REWARD", "MAIN_REWARD", 0)), // rewardToken
+                asset, 
                 800, // newRewardRatio
                 100, // durationInBlock
-                allowExtras
-=======
-            systemRegistry, // registry
-            asset, // address(mockAsset("MAIN_REWARD", "MAIN_REWARD", 0)), // rewardToken
-            800, // newRewardRatio
-            100, // durationInBlock
-            allowExtras,
-            makeAddr("STAKING_TOKEN")
->>>>>>> c4344129 (feat(rewards): stakeTracker refactoring and tests for LMP rewarder)
+                allowExtras,
+                lmpVault
             )
         );
         vm.label(address(mainRewarder), "Main Rewarder");

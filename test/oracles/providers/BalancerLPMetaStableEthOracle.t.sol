@@ -90,7 +90,7 @@ contract BalancerLPMetaStableEthOracleTests is Test {
         mockRootPrice(CBETH, 1_034_300_000_000_000_000); //cbETH
 
         // Runs a getPriceEth inside of a vault operation
-        ReentrancyTester tester = new ReentrancyTester(oracle, address(VAULT), WSTETH,WSTETH_CBETH_POOL);
+        ReentrancyTester tester = new ReentrancyTester(oracle, address(VAULT), WSTETH, WSTETH_CBETH_POOL);
         deal(WSTETH, address(tester), 10e18);
         deal(address(tester), 10e18);
         tester.run();

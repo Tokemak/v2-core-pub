@@ -83,7 +83,7 @@ contract MaverickAdapterTest is Test {
         uint256 preBalanceB = IERC20(WETH_MAINNET).balanceOf(address(this));
         uint256 preLpBalance = pool.balanceOf(INITIAL_TOKEN_ID, binId);
 
-        IPool.AddLiquidityParams[] memory maverickParams = new  IPool.AddLiquidityParams[](1);
+        IPool.AddLiquidityParams[] memory maverickParams = new IPool.AddLiquidityParams[](1);
         maverickParams[0] = IPool.AddLiquidityParams(3, 0, true, deltaA, deltaB);
 
         bytes memory extraParams =
@@ -116,7 +116,7 @@ contract MaverickAdapterTest is Test {
         deal(address(WETH_MAINNET), address(this), 10 * 1e18);
         deal(address(WSTETH_MAINNET), address(this), 10 * 1e18);
 
-        IPool.AddLiquidityParams[] memory maverickParams = new  IPool.AddLiquidityParams[](1);
+        IPool.AddLiquidityParams[] memory maverickParams = new IPool.AddLiquidityParams[](1);
         maverickParams[0] = IPool.AddLiquidityParams(3, 0, true, deltaA, deltaB);
 
         bytes memory extraParams =
@@ -131,7 +131,7 @@ contract MaverickAdapterTest is Test {
         uint256 preBalanceB = IERC20(WETH_MAINNET).balanceOf(address(this));
         uint256 preLpBalance = pool.balanceOf(withDrawTokenId, binId);
 
-        IPool.RemoveLiquidityParams[] memory maverickWithdrawalParams = new  IPool.RemoveLiquidityParams[](1);
+        IPool.RemoveLiquidityParams[] memory maverickWithdrawalParams = new IPool.RemoveLiquidityParams[](1);
         maverickWithdrawalParams[0] = IPool.RemoveLiquidityParams(binId, uint128(preLpBalance));
 
         bytes memory extraWithdrawalParams =
@@ -167,7 +167,7 @@ contract MaverickAdapterTest is Test {
         uint256 preBalanceB = IERC20(WETH_MAINNET).balanceOf(address(this));
         uint256 preLpBalance = pool.balanceOf(INITIAL_TOKEN_ID, binId);
 
-        IPool.AddLiquidityParams[] memory maverickParams = new  IPool.AddLiquidityParams[](1);
+        IPool.AddLiquidityParams[] memory maverickParams = new IPool.AddLiquidityParams[](1);
         maverickParams[0] = IPool.AddLiquidityParams(3, 0, true, deltaA, deltaB);
 
         bytes memory extraParams =
@@ -200,7 +200,7 @@ contract MaverickAdapterTest is Test {
         deal(address(WETH_MAINNET), address(this), 10 * 1e18);
         deal(address(CBETH_MAINNET), address(this), 10 * 1e18);
 
-        IPool.AddLiquidityParams[] memory maverickParams = new  IPool.AddLiquidityParams[](1);
+        IPool.AddLiquidityParams[] memory maverickParams = new IPool.AddLiquidityParams[](1);
         maverickParams[0] = IPool.AddLiquidityParams(3, 0, true, deltaA, deltaB);
 
         bytes memory extraParams =
@@ -215,7 +215,7 @@ contract MaverickAdapterTest is Test {
         uint256 preBalanceB = IERC20(WETH_MAINNET).balanceOf(address(this));
         uint256 preLpBalance = pool.balanceOf(withDrawTokenId, binId);
 
-        IPool.RemoveLiquidityParams[] memory maverickWithdrawalParams = new  IPool.RemoveLiquidityParams[](1);
+        IPool.RemoveLiquidityParams[] memory maverickWithdrawalParams = new IPool.RemoveLiquidityParams[](1);
         maverickWithdrawalParams[0] = IPool.RemoveLiquidityParams(binId, uint128(preLpBalance));
 
         bytes memory extraWithdrawalParams =
@@ -251,7 +251,7 @@ contract MaverickAdapterTest is Test {
         uint256 preBalanceB = IERC20(WETH_MAINNET).balanceOf(address(this));
         uint256 preLpBalance = pool.balanceOf(INITIAL_TOKEN_ID, binId);
 
-        IPool.AddLiquidityParams[] memory maverickParams = new  IPool.AddLiquidityParams[](1);
+        IPool.AddLiquidityParams[] memory maverickParams = new IPool.AddLiquidityParams[](1);
         maverickParams[0] = IPool.AddLiquidityParams(3, 0, true, deltaA, deltaB);
 
         bytes memory extraParams =
@@ -284,7 +284,7 @@ contract MaverickAdapterTest is Test {
         deal(address(SWETH_MAINNET), address(this), 100 * 1e18);
         deal(address(WETH_MAINNET), address(this), 100 * 1e18);
 
-        IPool.AddLiquidityParams[] memory maverickParams = new  IPool.AddLiquidityParams[](1);
+        IPool.AddLiquidityParams[] memory maverickParams = new IPool.AddLiquidityParams[](1);
         maverickParams[0] = IPool.AddLiquidityParams(3, 0, true, deltaA, deltaB);
 
         bytes memory extraParams =
@@ -299,7 +299,7 @@ contract MaverickAdapterTest is Test {
         uint256 preBalanceB = IERC20(WETH_MAINNET).balanceOf(address(this));
         uint256 preLpBalance = pool.balanceOf(withDrawTokenId, binId);
 
-        IPool.RemoveLiquidityParams[] memory maverickWithdrawalParams = new  IPool.RemoveLiquidityParams[](1);
+        IPool.RemoveLiquidityParams[] memory maverickWithdrawalParams = new IPool.RemoveLiquidityParams[](1);
         maverickWithdrawalParams[0] = IPool.RemoveLiquidityParams(binId, uint128(preLpBalance));
 
         bytes memory extraWithdrawalParams =

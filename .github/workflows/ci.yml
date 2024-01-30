@@ -25,7 +25,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly-cc5637a979050c39b3d06bc4cc6134f0591ee8d0
+          version: nightly-293fad73670b7b59ca901c7f2105bf7a29165a90
 
       - name: Install NodeJS
         uses: actions/setup-node@v4
@@ -35,6 +35,18 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Build package
+        run: forge build --build-info --skip test script
+
+      - name: Run Slither
+        uses: crytic/slither-action@v0.3.0
+        with:
+          ignore-compile: true
+          fail-on: all
+          solc-version: 0.8.17
+          slither-version: 0.10.0
+          node-version: 20
 
       - name: Lint commits - PR
         run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
@@ -59,6 +71,7 @@ jobs:
           OPTIMISM_MAINNET_RPC_URL: ${{ secrets.OPTIMISM_MAINNET_RPC_URL }}
           ARBITRUM_MAINNET_RPC_URL: ${{ secrets.ARBITRUM_MAINNET_RPC_URL }}
         run: npm run test
+
       - name: Scan for secrets
         uses: gitleaks/gitleaks-action@v2
         env:
@@ -69,17 +82,6 @@ jobs:
       #   run: |
       #     forge --version
       #     forge build --sizes
-
-      # - name: Build package
-      #   run: npm run build
-
-      - name: Run Slither
-        uses: crytic/slither-action@v0.3.0
-        with:
-          fail-on: all
-          solc-version: 0.8.17
-          slither-version: 0.10.0
-          node-version: 20
 
       - name: Publish Release
         run: npx semantic-release

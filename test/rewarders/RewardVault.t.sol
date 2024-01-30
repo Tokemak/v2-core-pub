@@ -70,28 +70,17 @@ contract MainRewarderTest is BaseTest {
         );
 
         mainRewardVault = MainRewarder(
-            new DestinationVaultMainRewarder(systemRegistry,
-            address(stakeTracker),
-            address(mainReward),
-            newRewardRatio,
-            durationInBlock,
-            true)
+            new DestinationVaultMainRewarder(
+                systemRegistry, address(stakeTracker), address(mainReward), newRewardRatio, durationInBlock, true
+            )
         );
 
         extraReward1Vault = new ExtraRewarder(
-            systemRegistry,
-            address(extraReward1),
-            address(mainRewardVault),
-            newRewardRatio,
-            durationInBlock
+            systemRegistry, address(extraReward1), address(mainRewardVault), newRewardRatio, durationInBlock
         );
 
         extraReward2Vault = new ExtraRewarder(
-            systemRegistry,
-            address(extraReward2),
-            address(mainRewardVault),
-            newRewardRatio,
-            durationInBlock
+            systemRegistry, address(extraReward2), address(mainRewardVault), newRewardRatio, durationInBlock
         );
 
         mainReward.mint(liquidator, amount);
@@ -181,30 +170,19 @@ contract MainRewarderTest is BaseTest {
     function test_toke_getExtraRewards_WhenTokeRewardIsLessThanMinStake() public {
         // setup toke rewarder
         MainRewarder tokeRewarder = MainRewarder(
-            new DestinationVaultMainRewarder(systemRegistry,
-            address(stakeTracker),
-            address(toke),
-            newRewardRatio,
-            durationInBlock,
-            true)
+            new DestinationVaultMainRewarder(
+                systemRegistry, address(stakeTracker), address(toke), newRewardRatio, durationInBlock, true
+            )
         );
         vm.prank(address(operator));
         tokeRewarder.setTokeLockDuration(30 days);
 
         // and some extra rewarders
         extraReward1Vault = new ExtraRewarder(
-            systemRegistry,
-            address(extraReward1),
-            address(tokeRewarder),
-            newRewardRatio,
-            durationInBlock
+            systemRegistry, address(extraReward1), address(tokeRewarder), newRewardRatio, durationInBlock
         );
         extraReward2Vault = new ExtraRewarder(
-            systemRegistry,
-            address(extraReward2),
-            address(tokeRewarder),
-            newRewardRatio,
-            durationInBlock
+            systemRegistry, address(extraReward2), address(tokeRewarder), newRewardRatio, durationInBlock
         );
         vm.startPrank(operator);
         tokeRewarder.addExtraReward(address(extraReward1Vault));
@@ -264,12 +242,9 @@ contract MainRewarderTest is BaseTest {
         bool accTokeIncreaseExpected
     ) private {
         MainRewarder tokeRewarder = MainRewarder(
-            new DestinationVaultMainRewarder(systemRegistry,
-            address(stakeTracker),
-            address(toke),
-            newRewardRatio,
-            durationInBlock,
-            true)
+            new DestinationVaultMainRewarder(
+                systemRegistry, address(stakeTracker), address(toke), newRewardRatio, durationInBlock, true
+            )
         );
 
         // set duration

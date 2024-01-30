@@ -139,11 +139,7 @@ contract AbstractRewarderTest is Test {
             address(systemRegistry), abi.encodeWithSelector(ISystemRegistry.isRewardToken.selector), abi.encode(true)
         );
         rewarder = new Rewarder(
-            systemRegistry,
-            address(rewardToken),
-            newRewardRatio,
-            durationInBlock,
-            Roles.DV_REWARD_MANAGER_ROLE
+            systemRegistry, address(rewardToken), newRewardRatio, durationInBlock, Roles.DV_REWARD_MANAGER_ROLE
         );
 
         // mint reward token to liquidator
@@ -210,13 +206,8 @@ contract AbstractRewarderTest is Test {
         systemRegistry.setAccToke(address(accToke));
 
         // replace the rewarder by a new one with TOKE
-        rewarder = new Rewarder(
-            systemRegistry,
-            TOKE_MAINNET,
-            newRewardRatio,
-            durationInBlock,
-            Roles.DV_REWARD_MANAGER_ROLE
-        );
+        rewarder =
+            new Rewarder(systemRegistry, TOKE_MAINNET, newRewardRatio, durationInBlock, Roles.DV_REWARD_MANAGER_ROLE);
 
         // send 1_000_000_000 TOKE to liquidator for tests where reward token is TOKE
         deal(TOKE_MAINNET, liquidator, 1_000_000_000);
@@ -257,37 +248,19 @@ contract Constructor is AbstractRewarderTest {
     function test_RevertIf_RewardTokenIsZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_rewardToken"));
 
-        new Rewarder(
-            systemRegistry,
-            address(0),
-            newRewardRatio,
-            durationInBlock,
-            Roles.DV_REWARD_MANAGER_ROLE
-        );
+        new Rewarder(systemRegistry, address(0), newRewardRatio, durationInBlock, Roles.DV_REWARD_MANAGER_ROLE);
     }
 
     function test_RevertIf_DurationInBlockIsZero() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "_durationInBlock"));
 
-        new Rewarder(
-            systemRegistry,
-            address(1),
-            newRewardRatio,
-            0,
-            Roles.DV_REWARD_MANAGER_ROLE
-        );
+        new Rewarder(systemRegistry, address(1), newRewardRatio, 0, Roles.DV_REWARD_MANAGER_ROLE);
     }
 
     function test_RevertIf_NewRewardRatioIsZero() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "_newRewardRatio"));
 
-        new Rewarder(
-            systemRegistry,
-            address(1),
-            0,
-            durationInBlock,
-            Roles.DV_REWARD_MANAGER_ROLE
-        );
+        new Rewarder(systemRegistry, address(1), 0, durationInBlock, Roles.DV_REWARD_MANAGER_ROLE);
     }
 }
 

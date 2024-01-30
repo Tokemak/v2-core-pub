@@ -322,7 +322,6 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
              * contract.
              * The calling contract should transfer the funds first before updating the balance.
              */
-
             revert Errors.InsufficientBalance(tokenAddress);
         }
 

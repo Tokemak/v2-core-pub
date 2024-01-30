@@ -20,21 +20,13 @@ contract DestinationTemplatesSetupScript is BaseScript {
 
         vm.startBroadcast(privateKey);
 
-        BalancerAuraDestinationVault balVault = new BalancerAuraDestinationVault(
-            systemRegistry,
-            constants.ext.balancerVault,
-            constants.tokens.bal
-        );
+        BalancerAuraDestinationVault balVault =
+            new BalancerAuraDestinationVault(systemRegistry, constants.ext.balancerVault, constants.tokens.bal);
 
-        CurveConvexDestinationVault curveVault = new CurveConvexDestinationVault(
-            systemRegistry,
-            constants.tokens.cvx,
-            constants.ext.convexBooster
-        );
+        CurveConvexDestinationVault curveVault =
+            new CurveConvexDestinationVault(systemRegistry, constants.tokens.cvx, constants.ext.convexBooster);
 
-        MaverickDestinationVault mavVault = new MaverickDestinationVault(
-            systemRegistry
-        );
+        MaverickDestinationVault mavVault = new MaverickDestinationVault(systemRegistry);
 
         console.log("Bal Vault Template - bal-v1-no-aura: ", address(balVault));
         console.log("Curve Vault Template - crv-v1-no-cvx: ", address(curveVault));

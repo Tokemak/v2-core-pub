@@ -11,7 +11,6 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
  * @author Curve.Fi
  * @notice Evenly streams one or more reward tokens to a single recipient
  */
-
 interface IChildChainStreamer {
     /// @notice The count of reward tokens
     function reward_count() external view returns (uint256);

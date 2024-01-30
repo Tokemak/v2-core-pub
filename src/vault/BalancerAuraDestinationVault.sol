@@ -141,7 +141,7 @@ contract BalancerAuraDestinationVault is DestinationVault {
     function underlyingTokens() external view override returns (address[] memory ret) {
         if (isComposable) {
             uint256 len = poolTokens.length;
-            ret = new address[](len -1);
+            ret = new address[](len - 1);
             uint256 bptIndex = IBalancerComposableStablePool(balancerPool).getBptIndex();
             uint256 h = 0;
             for (uint256 i = 0; i < len; ++i) {

@@ -164,10 +164,10 @@ contract RootOracleIntegrationTest is Test {
         curveCryptoOracle = new CurveV2CryptoEthOracle(systemRegistry, ICurveResolver(curveResolver));
         customSetOracle = new CustomSetOracle(systemRegistry, 52 weeks); // Max age doesn't matter for testing.
         crvUsdOracle = new CrvUsdOracle(
-          systemRegistry,
-          IAggregatorV3Interface(USDC_IN_USD_CL_FEED_MAINNET),
-          IAggregatorV3Interface(USDT_IN_USD_CL_FEED_MAINNET),
-          IAggregatorV3Interface(ETH_CL_FEED_MAINNET)
+            systemRegistry,
+            IAggregatorV3Interface(USDC_IN_USD_CL_FEED_MAINNET),
+            IAggregatorV3Interface(USDT_IN_USD_CL_FEED_MAINNET),
+            IAggregatorV3Interface(ETH_CL_FEED_MAINNET)
         );
 
         //

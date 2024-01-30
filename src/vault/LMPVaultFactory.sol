@@ -73,7 +73,7 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
 
         address newToken = template.predictDeterministicAddress(salt);
 
-        LMPVaultMainRewarder mainRewarder = new LMPVaultMainRewarder{ salt: salt}(
+        LMPVaultMainRewarder mainRewarder = new LMPVaultMainRewarder{ salt: salt }(
             systemRegistry,
             newToken,
             address(systemRegistry.toke()),

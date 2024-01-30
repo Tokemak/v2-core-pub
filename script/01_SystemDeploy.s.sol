@@ -122,10 +122,7 @@ contract DeploySystem is BaseScript {
 
         // LMP Factory setup.
         lmpFactory = new LMPVaultFactory(
-          systemRegistry,
-          address(lmpVaultTemplate),
-          defaultRewardRatioLmp,
-          defaultRewardBlockDurationLmp
+            systemRegistry, address(lmpVaultTemplate), defaultRewardRatioLmp, defaultRewardBlockDurationLmp
         );
         systemRegistry.setLMPVaultFactory(lmpVaultType, address(lmpFactory));
         accessController.setupRole(Roles.REGISTRY_UPDATER, address(lmpFactory));

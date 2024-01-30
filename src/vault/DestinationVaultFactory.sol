@@ -75,7 +75,7 @@ contract DestinationVaultFactory is SystemComponent, IDestinationVaultFactory, S
 
         address newVaultAddress = template.predictDeterministicAddress(salt);
 
-        DestinationVaultMainRewarder mainRewarder = new DestinationVaultMainRewarder{ salt: salt}(
+        DestinationVaultMainRewarder mainRewarder = new DestinationVaultMainRewarder{ salt: salt }(
             systemRegistry,
             newVaultAddress,
             baseAsset, // Main rewards for a dv are always in base asset

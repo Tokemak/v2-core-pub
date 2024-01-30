@@ -151,12 +151,7 @@ contract LiquidationRowTest is Test {
         systemRegistry.addRewardToken(address(targetToken));
         mainRewarder = MainRewarder(
             new DestinationVaultMainRewarder(
-            systemRegistry,
-            address(stakeTracker),
-            address(targetToken),
-            newRewardRatio,
-            durationInBlock,
-            true
+                systemRegistry, address(stakeTracker), address(targetToken), newRewardRatio, durationInBlock, true
             )
         );
 

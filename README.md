@@ -21,7 +21,7 @@ Details on the system can be found [here](https://medium.com/tokemak/tokemak-v2-
 Install the same version of foundry that the CI will use. Ensures formatting stays consistent
 
 ```
- foundryup --version nightly-cc5637a979050c39b3d06bc4cc6134f0591ee8d0
+ foundryup --version nightly-293fad73670b7b59ca901c7f2105bf7a29165a90
 ```
 
 From there:

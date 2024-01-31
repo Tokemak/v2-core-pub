@@ -3,8 +3,7 @@
 pragma solidity 0.8.17;
 
 import { IERC20, SafeERC20, Address } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-import { ILMPVault, ILMPVaultRouterBase } from "src/interfaces/vault/ILMPVaultRouterBase.sol";
-import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
+import { ILMPVault, ILMPVaultRouterBase, IMainRewarder } from "src/interfaces/vault/ILMPVaultRouterBase.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
 import { LibAdapter } from "src/libs/LibAdapter.sol";
@@ -132,7 +131,8 @@ abstract contract LMPVaultRouterBase is
 
     /// @inheritdoc ILMPVaultRouterBase
     function stakeVaultToken(IERC20 vault, uint256 maxAmount) external returns (uint256) {
-        IMainRewarder lmpRewarder = _checkVaultAndReturnRewarder(address(vault));
+        _checkVault(address(vault));
+        IMainRewarder lmpRewarder = ILMPVault(address(vault)).rewarder();
 
         uint256 userBalance = vault.balanceOf(msg.sender);
         if (userBalance < maxAmount) {
@@ -146,26 +146,41 @@ abstract contract LMPVaultRouterBase is
         return maxAmount;
     }
 
-    /// @inheritdoc ILMPVaultRouterBase
-    function withdrawVaultToken(address vault, uint256 maxAmount, bool claim) external returns (uint256) {
-        IMainRewarder lmpRewarder = _checkVaultAndReturnRewarder(vault);
+    /**
+     * TODO - Tests
+     *
+     *    Reverts when rewarder is not past or present - both functions this touches
+     *    Can claim rewards from past rewarder
+     *    Can withdraw from past rewarder
+     */
 
-        uint256 userRewardBalance = lmpRewarder.balanceOf(msg.sender);
+    /// @inheritdoc ILMPVaultRouterBase
+    function withdrawVaultToken(
+        ILMPVault vault,
+        IMainRewarder rewarder,
+        uint256 maxAmount,
+        bool claim
+    ) external returns (uint256) {
+        _checkVault(address(vault));
+        _checkRewarder(vault, address(rewarder));
+
+        uint256 userRewardBalance = rewarder.balanceOf(msg.sender);
         if (maxAmount > userRewardBalance) {
             maxAmount = userRewardBalance;
         }
 
-        lmpRewarder.withdraw(msg.sender, maxAmount, claim);
+        rewarder.withdraw(msg.sender, maxAmount, claim);
 
         return maxAmount;
     }
 
     /// @inheritdoc ILMPVaultRouterBase
-    function claimRewards(address vaultToken) external {
-        IMainRewarder lmpRewarder = _checkVaultAndReturnRewarder(vaultToken);
+    function claimRewards(ILMPVault vault, IMainRewarder rewarder) external {
+        _checkVault(address(vault));
+        _checkRewarder(vault, address(rewarder));
 
         // Always claims any extra rewards that exist.
-        lmpRewarder.getReward(msg.sender, true);
+        rewarder.getReward(msg.sender, true);
     }
 
     ///@dev Function assumes that vault.asset() is verified externally to be weth9
@@ -186,11 +201,15 @@ abstract contract LMPVaultRouterBase is
     }
 
     // Helper function for repeat functionalities.
-    function _checkVaultAndReturnRewarder(address vault) internal view returns (IMainRewarder) {
+    function _checkVault(address vault) internal view {
         if (!systemRegistry.lmpVaultRegistry().isVault(vault)) {
             revert Errors.ItemNotFound();
         }
+    }
 
-        return ILMPVault(vault).rewarder();
+    function _checkRewarder(ILMPVault vault, address rewarder) internal view {
+        if (rewarder != address(vault.rewarder()) && !vault.isPastRewarder(rewarder)) {
+            revert Errors.ItemNotFound();
+        }
     }
 }

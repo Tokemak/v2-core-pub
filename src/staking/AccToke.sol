@@ -134,13 +134,12 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
     function unstake(uint256[] memory lockupIds) external whenNotPaused {
         _collectRewards(msg.sender, false);
 
-        uint256 iter = 0;
         uint256 length = lockupIds.length;
         if (length == 0) revert InvalidLockupIds();
 
         uint256 totalPoints = 0;
         uint256 totalAmount = 0;
-        do {
+        for (uint256 iter = 0; iter < length;) {
             uint256 lockupId = lockupIds[iter];
             if (lockupId >= lockups[msg.sender].length) revert LockupDoesNotExist();
 
@@ -165,7 +164,7 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
             unchecked {
                 ++iter;
             }
-        } while (iter < length);
+        }
 
         // wipe points
         _burn(msg.sender, totalPoints);
@@ -175,14 +174,13 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
 
     /// @inheritdoc IAccToke
     function extend(uint256[] memory lockupIds, uint256[] memory durations) external whenNotPaused {
-        uint256 iter = 0;
         uint256 length = lockupIds.length;
         if (length == 0) revert InvalidLockupIds();
         if (length != durations.length) revert InvalidDurationLength();
 
         uint256 totalExtendedPoints = 0;
 
-        do {
+        for (uint256 iter = 0; iter < length;) {
             uint256 lockupId = lockupIds[iter];
             uint256 duration = durations[iter];
             if (lockupId >= lockups[msg.sender].length) revert LockupDoesNotExist();
@@ -211,7 +209,7 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
             unchecked {
                 ++iter;
             }
-        } while (iter < length);
+        }
 
         // issue extra points for extension
         _mint(msg.sender, totalExtendedPoints);

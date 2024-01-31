@@ -44,12 +44,12 @@ contract ExtraRewarder is AbstractRewarder, IExtraRewarder, ReentrancyGuard {
 
     function stake(address account, uint256 amount) external mainRewardOnly {
         _updateReward(account);
-        _stake(account, amount);
+        _stakeAbstractRewarder(account, amount);
     }
 
     function withdraw(address account, uint256 amount) external mainRewardOnly {
         _updateReward(account);
-        _withdraw(account, amount);
+        _withdrawAbstractRewarder(account, amount);
     }
 
     function getReward(address account) public nonReentrant {

@@ -91,9 +91,9 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         return _extraRewards.values();
     }
 
-    function withdraw(address account, uint256 amount, bool claim) public virtual {
+    function _withdraw(address account, uint256 amount, bool claim) internal {
         _updateReward(account);
-        _withdraw(account, amount);
+        _withdrawAbstractRewarder(account, amount);
 
         uint256 length = _extraRewards.length();
         for (uint256 i = 0; i < length; ++i) {
@@ -111,9 +111,9 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         _balances[account] -= amount;
     }
 
-    function stake(address account, uint256 amount) public virtual {
+    function _stake(address account, uint256 amount) internal {
         _updateReward(account);
-        _stake(account, amount);
+        _stakeAbstractRewarder(account, amount);
 
         uint256 length = _extraRewards.length();
         for (uint256 i = 0; i < length; ++i) {
@@ -132,7 +132,7 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         _processRewards(msg.sender, true);
     }
 
-    function getReward(address account, bool claimExtras) public virtual nonReentrant {
+    function _getReward(address account, bool claimExtras) internal nonReentrant {
         _updateReward(account);
         _processRewards(account, claimExtras);
     }

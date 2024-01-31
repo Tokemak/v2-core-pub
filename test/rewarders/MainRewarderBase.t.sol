@@ -29,6 +29,18 @@ contract MainRewarderNotAbstract is MainRewarder {
         bytes32 _rewardRole,
         bool _allowExtraRewards
     ) MainRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock, _rewardRole, _allowExtraRewards) { }
+
+    function stake(address account, uint256 amount) external {
+        _stake(account, amount);
+    }
+
+    function withdraw(address account, uint256 amount, bool claim) external {
+        _withdraw(account, amount, claim);
+    }
+
+    function getReward(address account, bool claimExtras) external {
+        _getReward(account, claimExtras);
+    }
 }
 
 contract MainRewarderTest is Test {
@@ -59,12 +71,7 @@ contract MainRewarderTest is Test {
         systemRegistry.setAccessController(address(accessController));
         rewardToken = new ERC20Mock("MAIN_REWARD", "MAIN_REWARD", address(this), 0);
         rewarder = new MainRewarderNotAbstract(
-            systemRegistry,
-            address(rewardToken),
-            newRewardRatio,
-            durationInBlock,
-            Roles.LMP_REWARD_MANAGER_ROLE,
-            true
+            systemRegistry, address(rewardToken), newRewardRatio, durationInBlock, Roles.LMP_REWARD_MANAGER_ROLE, true
         );
 
         accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
@@ -75,12 +82,7 @@ contract MainRewarderTest is Test {
 contract AddExtraReward is MainRewarderTest {
     function test_RevertIf_ExtraRewardNotAllowed() public {
         MainRewarderNotAbstract mainReward = new MainRewarderNotAbstract(
-            systemRegistry,
-            address(rewardToken),
-            newRewardRatio,
-            durationInBlock,
-            Roles.LMP_REWARD_MANAGER_ROLE,
-            false
+            systemRegistry, address(rewardToken), newRewardRatio, durationInBlock, Roles.LMP_REWARD_MANAGER_ROLE, false
         );
 
         vm.expectRevert(abi.encodeWithSignature("ExtraRewardsNotAllowed()"));

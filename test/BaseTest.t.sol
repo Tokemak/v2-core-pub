@@ -170,7 +170,7 @@ contract BaseTest is Test {
         MainRewarder mainRewarder = MainRewarder(
             new LMPVaultMainRewarder(
                 systemRegistry, // registry
-                asset, 
+                asset,
                 800, // newRewardRatio
                 100, // durationInBlock
                 allowExtras,

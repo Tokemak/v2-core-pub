@@ -37,12 +37,7 @@ contract DestinationVaultRewarderTest is Test {
         vm.mockCall(systemRegistry, abi.encodeWithSignature("isRewardToken(address)"), abi.encode(true));
 
         rewarder = new DestinationVaultMainRewarder(
-            ISystemRegistry(systemRegistry),
-            stakeTracker,
-            address(rewardToken),
-            newRewardRatio,
-            durationInBlock,
-            false
+            ISystemRegistry(systemRegistry), stakeTracker, address(rewardToken), newRewardRatio, durationInBlock, false
         );
     }
 }
@@ -51,12 +46,7 @@ contract DVRewarderConstructorTest is DestinationVaultRewarderTest {
     function test_RevertsZeroAddressStakeTracker() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_stakeTracker"));
         new DestinationVaultMainRewarder(
-            ISystemRegistry(systemRegistry),
-            address(0),
-            address(rewardToken),
-            newRewardRatio,
-            durationInBlock,
-            false
+            ISystemRegistry(systemRegistry), address(0), address(rewardToken), newRewardRatio, durationInBlock, false
         );
     }
 
@@ -111,7 +101,7 @@ contract DVRewarderGetRewardTest is DestinationVaultRewarderTest {
 
         // Mock calls specifically for reward claiming.
         vm.mockCall(accessController, abi.encodeWithSignature("hasRole(bytes32,address)"), abi.encode(true));
-        vm.mockCall(systemRegistry, abi.encodeWithSignature("gpToke()"), abi.encode(makeAddr("GP_TOKE")));
+        vm.mockCall(systemRegistry, abi.encodeWithSignature("accToke()"), abi.encode(makeAddr("ACC_TOKE")));
         vm.mockCall(systemRegistry, abi.encodeWithSignature("toke()"), abi.encode(makeAddr("TOKE")));
 
         // Queue rewards.

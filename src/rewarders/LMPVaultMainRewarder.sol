@@ -49,12 +49,12 @@ contract LMPVaultMainRewarder is MainRewarder {
      * @param amount Amount of assets to be withdrawn.
      * @param claim Whether or not to claim rewards.
      */
-    function withdraw(address account, uint256 amount, bool claim) public override {
+    function withdraw(address account, uint256 amount, bool claim) public {
         if (msg.sender != account && msg.sender != address(systemRegistry.lmpVaultRouter())) {
             revert Errors.AccessDenied();
         }
 
-        super.withdraw(account, amount, claim);
+        _withdraw(account, amount, claim);
 
         stakingToken.safeTransfer(account, amount);
     }
@@ -65,8 +65,8 @@ contract LMPVaultMainRewarder is MainRewarder {
      * @param account Account staking.
      * @param amount Amount of autopilot vault token to stake.
      */
-    function stake(address account, uint256 amount) public override {
-        super.stake(account, amount);
+    function stake(address account, uint256 amount) public {
+        _stake(account, amount);
 
         // slither-disable-next-line arbitrary-send-erc20
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
@@ -77,11 +77,11 @@ contract LMPVaultMainRewarder is MainRewarder {
      * @dev Used to enforce msg.sender check.
      * @param account Account to claim rewards for
      */
-    function getReward(address account, bool claimExtras) public override {
+    function getReward(address account, bool claimExtras) public {
         if (msg.sender != account && msg.sender != address(systemRegistry.lmpVaultRouter())) {
             revert Errors.AccessDenied();
         }
 
-        super.getReward(account, claimExtras);
+        _getReward(account, claimExtras);
     }
 }

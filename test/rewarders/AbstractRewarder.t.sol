@@ -52,7 +52,7 @@ contract Rewarder is AbstractRewarder {
     }
 
     function stake(address account, uint256 amount) external override {
-        _stake(account, amount);
+        _stakeAbstractRewarder(account, amount);
     }
 
     /// @dev This function is used to test the onlyWhitelisted modifier.
@@ -65,7 +65,7 @@ contract Rewarder is AbstractRewarder {
     }
 
     function withdraw(address account, uint256 amount) external {
-        _withdraw(account, amount);
+        _withdrawAbstractRewarder(account, amount);
     }
 
     function totalSupply() public view override returns (uint256) {

@@ -57,7 +57,7 @@ contract WithdrawLMPRewarder is LMPVaultMainRewarderTest {
         super.setUp();
 
         // Mock GPToke and Toke calls.
-        vm.mockCall(systemRegistry, abi.encodeWithSignature("gpToke()"), abi.encode(makeAddr("GP_TOKE")));
+        vm.mockCall(systemRegistry, abi.encodeWithSignature("accToke()"), abi.encode(makeAddr("ACC_TOKE")));
         vm.mockCall(systemRegistry, abi.encodeWithSignature("toke()"), abi.encode(makeAddr("TOKE")));
 
         // Set up staker with some tokens.
@@ -180,7 +180,7 @@ contract GetRewardLMPRewarder is LMPVaultMainRewarderTest {
 
         // Mocks calls.
         vm.mockCall(accessController, abi.encodeWithSignature("hasRole(bytes32,address)"), abi.encode(true));
-        vm.mockCall(systemRegistry, abi.encodeWithSignature("gpToke()"), abi.encode(makeAddr("GP_TOKE")));
+        vm.mockCall(systemRegistry, abi.encodeWithSignature("accToke()"), abi.encode(makeAddr("GP_TOKE")));
         vm.mockCall(systemRegistry, abi.encodeWithSignature("toke()"), abi.encode(makeAddr("toke()")));
 
         // Queue rewards.

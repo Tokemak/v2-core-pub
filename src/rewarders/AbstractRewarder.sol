@@ -358,7 +358,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
      *      - Enhancing system monitoring capabilities through emitted events.
      * @param amount The amount to be withdrawn.
      */
-    function _withdraw(address account, uint256 amount) internal {
+    function _withdrawAbstractRewarder(address account, uint256 amount) internal {
         Errors.verifyNotZero(account, "account");
         Errors.verifyNotZero(amount, "amount");
 
@@ -374,7 +374,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
      * @param account The address of the user to handle staking.
      * @param amount The amount to be staked.
      */
-    function _stake(address account, uint256 amount) internal {
+    function _stakeAbstractRewarder(address account, uint256 amount) internal {
         Errors.verifyNotZero(account, "account");
         Errors.verifyNotZero(amount, "amount");
 

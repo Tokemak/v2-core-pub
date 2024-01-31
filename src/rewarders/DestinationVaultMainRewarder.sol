@@ -49,8 +49,8 @@ contract DestinationVaultMainRewarder is MainRewarder {
      * @param account Account to stake for.
      * @param amount Amount to stake.
      */
-    function stake(address account, uint256 amount) public override onlyStakeTracker {
-        super.stake(account, amount);
+    function stake(address account, uint256 amount) public onlyStakeTracker {
+        _stake(account, amount);
     }
 
     /**
@@ -59,8 +59,8 @@ contract DestinationVaultMainRewarder is MainRewarder {
      * @param amount Amount to withdraw.
      * @param claim Whether or not to claim.
      */
-    function withdraw(address account, uint256 amount, bool claim) public override onlyStakeTracker {
-        super.withdraw(account, amount, claim);
+    function withdraw(address account, uint256 amount, bool claim) public onlyStakeTracker {
+        _withdraw(account, amount, claim);
     }
 
     /**
@@ -70,7 +70,7 @@ contract DestinationVaultMainRewarder is MainRewarder {
      * @param account Account to claim rewards for.
      * @param claimExtras Whether or not to claim extra rewards.
      */
-    function getReward(address account, bool claimExtras) public override onlyStakeTracker {
-        super.getReward(account, claimExtras);
+    function getReward(address account, bool claimExtras) public onlyStakeTracker {
+        _getReward(account, claimExtras);
     }
 }

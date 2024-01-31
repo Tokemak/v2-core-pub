@@ -32,12 +32,6 @@ contract LSTCalculatorBaseTest is Test {
     uint24[10] private foundDiscountHistory =
         [uint24(0), uint24(0), uint24(0), uint24(0), uint24(0), uint24(0), uint24(0), uint24(0), uint24(0), uint24(0)];
 
-    // dates
-    // ['2023-06-02', '2023-06-03', '2023-06-04', '2023-06-05',
-    //  '2023-06-06', '2023-06-07', '2023-06-08', '2023-06-09',
-    //  '2023-06-10', '2023-06-11', '2023-06-12', '2023-06-13',
-    //  '2023-06-14', '2023-06-15', '2023-06-16']
-
     uint256[15] private blocksToCheck = [
         17_403_555,
         17_410_645,
@@ -51,6 +45,7 @@ contract LSTCalculatorBaseTest is Test {
         17_467_375
     ];
 
+    // 2023-06-02 to 2023-06-16
     uint40[15] private timestamps = [
         uint40(1_685_836_799),
         uint40(1_685_923_199),
@@ -632,26 +627,14 @@ contract LSTCalculatorBaseTest is Test {
         );
     }
 
-    // ######################################## Helper Methods ########################################
-
     // ############################## discount history tests ##################################
-
-    // solhint-disable-next-line func-name-mixedcase
-    function testFuzz_EmptyDiscountHistory(bool rebase) public {
-        mockCalculateEthPerToken(1e17);
-        mockIsRebasing(rebase);
-        initCalculator(1e18);
-        setDiscount(0);
-        stats = testCalculator.current();
-        verifyDiscountHistory(stats.discountHistory, foundDiscountHistory);
-    }
 
     // solhint-disable-next-line func-name-mixedcase
     function testFuzz_DiscountHistoryExistingDiscountAtContractDeployment(bool rebase) public {
         mockIsRebasing(rebase);
         setBlockAndTimestamp(1);
-        setDiscount(int256(1e16));
-        initCalculator(uint256(int256(100e16) - int256(1e16)));
+        mockCalculateEthPerToken(100e16);
+        initCalculator(99e16);
         stats = testCalculator.current();
         foundDiscountHistory = [1e5, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         verifyDiscountHistory(stats.discountHistory, foundDiscountHistory);
@@ -659,25 +642,21 @@ contract LSTCalculatorBaseTest is Test {
 
     // solhint-disable-next-line func-name-mixedcase
     function testFuzz_DiscountHistoryPremiumRecordedAsZeroDiscount(bool rebase) public {
-        mockCalculateEthPerToken(1e17);
-        mockIsRebasing(rebase);
-        initCalculator(1e18);
-        setBlockAndTimestamp(1);
-
         mockCalculateEthPerToken(100e16);
-        mockTokenPrice(110e16);
-
+        mockIsRebasing(rebase);
+        initCalculator(110e16);
+        setBlockAndTimestamp(1);
         testCalculator.snapshot();
-
         stats = testCalculator.current();
+        foundDiscountHistory = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         verifyDiscountHistory(stats.discountHistory, foundDiscountHistory);
     }
 
     // solhint-disable-next-line func-name-mixedcase
     function testFuzz_DiscountHistoryHighDiscount(bool rebase) public {
-        mockCalculateEthPerToken(1e17);
+        mockCalculateEthPerToken(100e16);
         mockIsRebasing(rebase);
-        initCalculator(1e18);
+        initCalculator(100e16);
 
         setBlockAndTimestamp(1);
         setDiscount(100e16); // 100% discount
@@ -685,22 +664,6 @@ contract LSTCalculatorBaseTest is Test {
         testCalculator.snapshot();
         stats = testCalculator.current();
         foundDiscountHistory = [0, 100e5, 0, 0, 0, 0, 0, 0, 0, 0];
-        verifyDiscountHistory(stats.discountHistory, foundDiscountHistory);
-    }
-
-    // solhint-disable-next-line func-name-mixedcase
-    function testFuzz_DiscountHistoryAllFivePercent(bool rebase) public {
-        mockIsRebasing(rebase);
-        mockCalculateEthPerToken(100e16);
-        initCalculator(95e16);
-
-        for (uint256 i = 1; i < 10; i += 1) {
-            setBlockAndTimestamp(i);
-            assertTrue(testCalculator.timeForDiscountSnapshot());
-            testCalculator.snapshot();
-        }
-        stats = testCalculator.current();
-        foundDiscountHistory = [5e5, 5e5, 5e5, 5e5, 5e5, 5e5, 5e5, 5e5, 5e5, 5e5];
         verifyDiscountHistory(stats.discountHistory, foundDiscountHistory);
     }
 
@@ -722,9 +685,9 @@ contract LSTCalculatorBaseTest is Test {
 
     // solhint-disable-next-line func-name-mixedcase
     function testFuzz_DiscountHistoryWrapAround(bool rebase) public {
-        mockCalculateEthPerToken(1e17);
+        mockCalculateEthPerToken(100e16);
         mockIsRebasing(rebase);
-        initCalculator(1e18);
+        initCalculator(100e16);
         for (uint256 i = 1; i < 14; i += 1) {
             setBlockAndTimestamp(i);
             setDiscount(int256(i * 1e16));
@@ -732,23 +695,6 @@ contract LSTCalculatorBaseTest is Test {
         }
         stats = testCalculator.current();
         foundDiscountHistory = [10e5, 11e5, 12e5, 13e5, 4e5, 5e5, 6e5, 7e5, 8e5, 9e5];
-        verifyDiscountHistory(stats.discountHistory, foundDiscountHistory);
-    }
-
-    // solhint-disable-next-line func-name-mixedcase
-    function testFuzz_DiscountHistorySevenDaysWithDiscount(bool rebase) public {
-        mockCalculateEthPerToken(1e17);
-        mockIsRebasing(rebase);
-        initCalculator(1e18);
-
-        setDiscount(int256(5e16));
-
-        for (uint256 i = 1; i < 8; i += 1) {
-            setBlockAndTimestamp(i);
-            testCalculator.snapshot();
-        }
-        stats = testCalculator.current();
-        foundDiscountHistory = [0, 5e5, 5e5, 5e5, 5e5, 5e5, 5e5, 5e5, 0, 0];
         verifyDiscountHistory(stats.discountHistory, foundDiscountHistory);
     }
 

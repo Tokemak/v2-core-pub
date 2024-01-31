@@ -1,0 +1,9 @@
+cryticArgs:
+    [
+        "--solc-remap",
+        "openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/ src/=src/ forge-std/=lib/forge-std/src/",
+    ]
+coverage: true
+workers: 5
+testLimit: 500000
+allowFFI: true

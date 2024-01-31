@@ -1,5 +1,5 @@
 {
-	"filter_paths": "lib|script|test",
+	"filter_paths": "lib|script|test|src/echidna",
 	"solc_remaps": ["ds-test/=lib/forge-std/lib/ds-test/src/", "forge-std/=lib/forge-std/src/", "src/=src/"],
 	"detectors_to_exclude": "solc-version|naming-convention|calls-loop"
 }

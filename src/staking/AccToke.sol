@@ -139,9 +139,11 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
 
         uint256 totalPoints = 0;
         uint256 totalAmount = 0;
+
+        uint256 totalLockups = lockups[msg.sender].length;
         for (uint256 iter = 0; iter < length;) {
             uint256 lockupId = lockupIds[iter];
-            if (lockupId >= lockups[msg.sender].length) revert LockupDoesNotExist();
+            if (lockupId >= totalLockups) revert LockupDoesNotExist();
 
             // get staking information
             Lockup memory lockup = lockups[msg.sender][lockupId];
@@ -178,17 +180,16 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
         if (length == 0) revert InvalidLockupIds();
         if (length != durations.length) revert InvalidDurationLength();
 
+        // before doing anything, make sure the rewards checkpoints are updated!
+        _collectRewards(msg.sender, false);
+        
         uint256 totalExtendedPoints = 0;
 
+        uint256 totalLockups = lockups[msg.sender].length;
         for (uint256 iter = 0; iter < length;) {
             uint256 lockupId = lockupIds[iter];
             uint256 duration = durations[iter];
-            if (lockupId >= lockups[msg.sender].length) revert LockupDoesNotExist();
-
-            if (iter == 0) {
-                // before doing anything, make sure the rewards checkpoints are updated!
-                _collectRewards(msg.sender, false);
-            }
+            if (lockupId >= totalLockups) revert LockupDoesNotExist();
 
             // duration checked inside previewPoints
             Lockup storage lockup = lockups[msg.sender][lockupId];

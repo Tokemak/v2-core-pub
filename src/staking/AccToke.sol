@@ -182,7 +182,7 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
 
         // before doing anything, make sure the rewards checkpoints are updated!
         _collectRewards(msg.sender, false);
-        
+
         uint256 totalExtendedPoints = 0;
 
         uint256 totalLockups = lockups[msg.sender].length;

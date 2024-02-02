@@ -153,7 +153,44 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     /* ******************************** */
     /* Events                           */
     /* ******************************** */
-    event RebalanceComplete();
+
+    // rebalance to Idle Events
+    enum RebalanceToIdleReason {
+        DestinationisShutdown,
+        LMPVaultIsShutdown,
+        TrimDustPosition,
+        DestinationIsQueuedForRemoval,
+        DestinationViolatedConstraint
+    }
+
+    event ReasonRebalancedToIdle(RebalanceToIdleReason reason); // there can be more than one reason.
+    event TrimRebalanceDetails(uint256 assetIndex, uint256 numViolationsOne, uint256 numViolationsTwo, int256 discount);
+    event TrimOperationMaxTrimAmount(uint256 trimAmount);
+    event RebalanceToIdle(
+        RebalanceValueStats valueStats, IStrategy.SummaryStats outSummary, IStrategy.RebalanceParams params
+    );
+    event RebalanceToIdleSlippage(uint256 slippage, uint256 maxSlippage);
+
+    event RebalanceBetweenDestinations(
+        RebalanceValueStats valueStats,
+        IStrategy.RebalanceParams params,
+        IStrategy.SummaryStats outSummaryStats,
+        IStrategy.SummaryStats inSummaryStats,
+        uint256 swapOffsetPeriod,
+        int256 predictedAnnualizedGain
+    );
+
+    event AddToWithdrawalQueueHead(address dest);
+    event AddToWithdrawalQueueTail(address dest);
+
+    // what was the
+    event SuccessfulRebalanceBetweenDestinations(
+        address destinationOut, uint40 lastTimestampAddedToDestination, uint40 swapCostOffsetPeriod
+    ); // the destination we are leaving, what was the last time that we added
+
+    // other events (maybe not needed)
+    event LSTPriceGap(address token, uint256 priceSafe, uint256 priceSpot);
+    event NavPerShare(uint256 navPerShare);
 
     /* ******************************** */
     /* Errors                           */
@@ -266,6 +303,8 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // if the move is valid, the constraints are different than if assets are moving to a normal destination
         if (params.destinationIn == address(lmpVault)) {
             verifyRebalanceToIdle(params, valueStats.slippage);
+            // slither-disable-next-line reentrancy-events
+            emit RebalanceToIdle(valueStats, outSummary, params);
             // exit early b/c the remaining constraints only apply when moving to a normal destination
             return (true, "");
         }
@@ -312,6 +351,10 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // the swap cost then revert b/c the vault will not offset slippage in sufficient time
         // slither-disable-next-line timestamp
         if (predictedGainAtOffsetEnd <= convertUintToInt(valueStats.swapCost)) revert SwapCostExceeded();
+        // slither-disable-next-line reentrancy-events
+        emit RebalanceBetweenDestinations(
+            valueStats, params, outSummary, inSummary, swapOffsetPeriod, predictedAnnualizedGain
+        );
 
         return (true, "");
     }
@@ -439,6 +482,8 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             for (uint256 i = 0; i < numLsts; ++i) {
                 uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
                 uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], dvPoolAddress);
+                // slither-disable-next-line reentrancy-events
+                emit LSTPriceGap(lstTokens[i], priceSafe, priceSpot);
                 // For out destination, the pool tokens should not be lower than safe price by tolerance
                 if ((priceSafe == 0) || (priceSpot == 0)) {
                     return false;
@@ -458,6 +503,8 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         for (uint256 i = 0; i < numLsts; ++i) {
             uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
             uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], dvPoolAddress);
+            // slither-disable-next-line reentrancy-events
+            emit LSTPriceGap(lstTokens[i], priceSafe, priceSpot);
             // For in destination, the pool tokens should not be higher than safe price by tolerance
             if ((priceSafe == 0) || (priceSpot == 0)) {
                 return false;
@@ -470,6 +517,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
         return true;
     }
+    // what is the best way to emit why it is
 
     function verifyRebalanceToIdle(IStrategy.RebalanceParams memory params, uint256 slippage) internal {
         IDestinationVault outDest = IDestinationVault(params.destinationOut);
@@ -480,31 +528,39 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
         // Scenario 1: the destination has been shutdown -- done when a fast exit is required
         if (outDest.isShutdown()) {
+            emit ReasonRebalancedToIdle(RebalanceToIdleReason.DestinationisShutdown);
             maxSlippage = maxEmergencyOperationSlippage;
         }
 
         // Scenario 2: the LMPVault has been shutdown
         if (lmpVault.isShutdown() && maxShutdownOperationSlippage > maxSlippage) {
+            emit ReasonRebalancedToIdle(RebalanceToIdleReason.LMPVaultIsShutdown);
             maxSlippage = maxShutdownOperationSlippage;
         }
 
         // Scenario 3: position is a dust position and should be trimmed
         if (verifyCleanUpOperation(params) && maxNormalOperationSlippage > maxSlippage) {
+            emit ReasonRebalancedToIdle(RebalanceToIdleReason.TrimDustPosition);
             maxSlippage = maxNormalOperationSlippage;
         }
 
         // Scenario 4: the destination has been moved out of the LMPs active destinations
         if (lmpVault.isDestinationQueuedForRemoval(params.destinationOut) && maxNormalOperationSlippage > maxSlippage) {
+            emit ReasonRebalancedToIdle(RebalanceToIdleReason.DestinationIsQueuedForRemoval);
             maxSlippage = maxNormalOperationSlippage;
         }
 
         // Scenario 5: the destination needs to be trimmed because it violated a constraint
         if (maxTrimOperationSlippage > maxSlippage) {
+            emit ReasonRebalancedToIdle(RebalanceToIdleReason.DestinationViolatedConstraint);
             uint256 trimAmount = getDestinationTrimAmount(outDest); // this is expensive, can it be refactored?
             if (trimAmount < 1e18 && verifyTrimOperation(params, trimAmount)) {
                 maxSlippage = maxTrimOperationSlippage;
             }
+            emit TrimOperationMaxTrimAmount(trimAmount);
         }
+
+        emit RebalanceToIdleSlippage(slippage, maxSlippage);
 
         // if none of the scenarios are active then this rebalance is invalid
         if (maxSlippage == 0) revert InvalidRebalanceToIdle();
@@ -592,9 +648,12 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             (uint256 numViolationsOne, uint256 numViolationsTwo) =
                 getDiscountAboveThreshold(targetLst.discountHistory, discountThresholdOne, discountThresholdTwo);
 
+            emit TrimRebalanceDetails(i, numViolationsOne, numViolationsTwo, targetLst.discount);
+
             if (targetLst.discount >= int256(discountThresholdTwo * 1e11) && numViolationsTwo >= discountDaysThreshold)
             {
                 // this is the worst possible trim, so we can exit without checking other LSTs
+
                 return 0;
             }
 
@@ -918,6 +977,8 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
                 lastPausedTimestamp = blockTime;
             }
         }
+        // slither-disable-next-line reentrancy-events
+        emit NavPerShare(navPerShare);
     }
 
     /// @inheritdoc ILMPStrategy
@@ -938,9 +999,10 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // violations are only tracked when moving between non-idle assets
         if (params.destinationOut != lmpAddress && params.destinationIn != lmpAddress) {
             uint40 lastAddForRemoveDestination = lastAddTimestampByDestination[params.destinationOut];
+            uint40 swapCostOffsetPeriod = uint40(swapCostOffsetPeriodInDays());
             if (
                 // slither-disable-start timestamp
-                lastRebalanceTimestamp - lastAddForRemoveDestination < uint40(swapCostOffsetPeriodInDays()) * 1 days
+                lastRebalanceTimestamp - lastAddForRemoveDestination < swapCostOffsetPeriod * 1 days
             ) {
                 // slither-disable-end timestamp
 
@@ -948,6 +1010,9 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             } else {
                 violationTrackingState.insert(false);
             }
+            emit SuccessfulRebalanceBetweenDestinations(
+                params.destinationOut, lastAddForRemoveDestination, swapCostOffsetPeriod
+            );
         }
 
         // tighten if X of the last 10 rebalances were violations
@@ -963,9 +1028,13 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // don't add Idle ETH to either the head or the tail of the withdrawal queue
         if (params.destinationOut != address(lmpVault)) {
             ILMPVault(lmpVault).addToWithdrawalQueueHead(params.destinationOut);
+            // slither-disable-next-line reentrancy-events
+            emit AddToWithdrawalQueueHead(params.destinationOut);
         }
         if (params.destinationIn != address(lmpVault)) {
             ILMPVault(lmpVault).addToWithdrawalQueueTail(params.destinationIn);
+            // slither-disable-next-line reentrancy-events
+            emit AddToWithdrawalQueueTail(params.destinationIn);
         }
     }
 

@@ -154,8 +154,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     /* Events                           */
     /* ******************************** */
 
-    // rebalance to Idle Events
-    enum RebalanceToIdleReason {
+    enum RebalanceToIdleReasonEnum {
         DestinationisShutdown,
         LMPVaultIsShutdown,
         TrimDustPosition,
@@ -163,13 +162,13 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         DestinationViolatedConstraint
     }
 
-    event ReasonRebalancedToIdle(RebalanceToIdleReason reason); // there can be more than one reason.
+    event RebalanceToIdleReason(RebalanceToIdleReasonEnum reason, uint256 maxSlippage, uint256 slippage);
+
     event TrimRebalanceDetails(uint256 assetIndex, uint256 numViolationsOne, uint256 numViolationsTwo, int256 discount);
     event TrimOperationMaxTrimAmount(uint256 trimAmount);
     event RebalanceToIdle(
         RebalanceValueStats valueStats, IStrategy.SummaryStats outSummary, IStrategy.RebalanceParams params
     );
-    event RebalanceToIdleSlippage(uint256 slippage, uint256 maxSlippage);
 
     event RebalanceBetweenDestinations(
         RebalanceValueStats valueStats,
@@ -183,10 +182,9 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     event AddToWithdrawalQueueHead(address dest);
     event AddToWithdrawalQueueTail(address dest);
 
-    // what was the
     event SuccessfulRebalanceBetweenDestinations(
         address destinationOut, uint40 lastTimestampAddedToDestination, uint40 swapCostOffsetPeriod
-    ); // the destination we are leaving, what was the last time that we added
+    );
 
     // other events (maybe not needed)
     event LSTPriceGap(address token, uint256 priceSafe, uint256 priceSpot);
@@ -517,7 +515,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
         return true;
     }
-    // what is the best way to emit why it is
 
     function verifyRebalanceToIdle(IStrategy.RebalanceParams memory params, uint256 slippage) internal {
         IDestinationVault outDest = IDestinationVault(params.destinationOut);
@@ -525,42 +522,41 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // multiple scenarios can be active at a given time. We want to use the highest
         // slippage among the active scenarios.
         uint256 maxSlippage = 0;
-
+        RebalanceToIdleReasonEnum reason;
         // Scenario 1: the destination has been shutdown -- done when a fast exit is required
         if (outDest.isShutdown()) {
-            emit ReasonRebalancedToIdle(RebalanceToIdleReason.DestinationisShutdown);
+            reason = RebalanceToIdleReasonEnum.DestinationisShutdown;
             maxSlippage = maxEmergencyOperationSlippage;
         }
 
         // Scenario 2: the LMPVault has been shutdown
         if (lmpVault.isShutdown() && maxShutdownOperationSlippage > maxSlippage) {
-            emit ReasonRebalancedToIdle(RebalanceToIdleReason.LMPVaultIsShutdown);
+            reason = RebalanceToIdleReasonEnum.LMPVaultIsShutdown;
             maxSlippage = maxShutdownOperationSlippage;
         }
 
         // Scenario 3: position is a dust position and should be trimmed
         if (verifyCleanUpOperation(params) && maxNormalOperationSlippage > maxSlippage) {
-            emit ReasonRebalancedToIdle(RebalanceToIdleReason.TrimDustPosition);
+            reason = RebalanceToIdleReasonEnum.TrimDustPosition;
             maxSlippage = maxNormalOperationSlippage;
         }
 
         // Scenario 4: the destination has been moved out of the LMPs active destinations
         if (lmpVault.isDestinationQueuedForRemoval(params.destinationOut) && maxNormalOperationSlippage > maxSlippage) {
-            emit ReasonRebalancedToIdle(RebalanceToIdleReason.DestinationIsQueuedForRemoval);
+            reason = RebalanceToIdleReasonEnum.DestinationIsQueuedForRemoval;
             maxSlippage = maxNormalOperationSlippage;
         }
 
         // Scenario 5: the destination needs to be trimmed because it violated a constraint
         if (maxTrimOperationSlippage > maxSlippage) {
-            emit ReasonRebalancedToIdle(RebalanceToIdleReason.DestinationViolatedConstraint);
+            reason = RebalanceToIdleReasonEnum.DestinationViolatedConstraint;
             uint256 trimAmount = getDestinationTrimAmount(outDest); // this is expensive, can it be refactored?
             if (trimAmount < 1e18 && verifyTrimOperation(params, trimAmount)) {
                 maxSlippage = maxTrimOperationSlippage;
             }
             emit TrimOperationMaxTrimAmount(trimAmount);
         }
-
-        emit RebalanceToIdleSlippage(slippage, maxSlippage);
+        emit RebalanceToIdleReason(reason, maxSlippage, slippage);
 
         // if none of the scenarios are active then this rebalance is invalid
         if (maxSlippage == 0) revert InvalidRebalanceToIdle();

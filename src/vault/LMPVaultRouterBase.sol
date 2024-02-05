@@ -146,14 +146,6 @@ abstract contract LMPVaultRouterBase is
         return maxAmount;
     }
 
-    /**
-     * TODO - Tests
-     *
-     *    Reverts when rewarder is not past or present - both functions this touches
-     *    Can claim rewards from past rewarder
-     *    Can withdraw from past rewarder
-     */
-
     /// @inheritdoc ILMPVaultRouterBase
     function withdrawVaultToken(
         ILMPVault vault,

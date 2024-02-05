@@ -1098,7 +1098,6 @@ contract LMPVault is
         return totalSupply;
     }
 
-    // TODO: Look at this, balanceOf rewarder may cause problems?
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override whenNotPaused {
         // Nothing to do really do here
         if (from == to) {

@@ -25,7 +25,7 @@ Vaults should treat tokens that they “track” different than other tokens. �
 
 Autopilot Vaults generate yield in multiple ways. One of the ways they do this is through auto-compounding. Auto-compounding happens at the Rebalancer + Destination Vault levels and isn’t much of a concern Autopilot the Autopilot Vault itself. However, each Autopilot Vault is itself a participant in a Convex-style Rewarder. This rewarder that emits some amount of TOKE or other tokens. The Rewarder itself doesn’t take a deposit of the Autopilot Vault LP token, but it is up to the Autopilot Vault to update the users balance in the rewarder before any minting/burning/transferring of the Autopilot LP units occurs.
 
-A Rewarder will exist per Autopilot Vault contract.
+An LMPVault can have multiple rewarders, however only one will be actively supplied with rewards. The others will be put into a `pastRewarders` state variable. NOTE: This structure leaves a loophole where users can 'hide' tokens in a deprecated rewarder and get around any imposed per wallet limit. This is a known possibility and was determined to be okay. This is because the wallet limit is only planned to be used during any ramp up phase that the vault may have, after that it will not be used.
 
 ## Profit Loss & Reporting
 

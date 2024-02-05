@@ -1,28 +1,31 @@
 # Rewards Contracts Architecture
 
-The rewards architecture consists of three main contracts:
+The rewards architecture consists of a few main contracts:
 
+-   LMPVaultMainRewarder,
+-   DestinationVaultMainRewarder,
 -   MainRewarder,
--   ExtraRewarder,
--   StakeTracking (which can either be an LMPVault or a DestinationVault).
+-   ExtraRewarder
 
 The purpose of these contracts is to distribute rewards to users who stake their tokens.
 
-## Summary
+## LMPVaultMainRewarder
 
-The StakeTracking contract, whether it's an LMPVault or a DestinationVault in our architecture, is responsible for keeping track of staked token balances. This contract is the only one that can call the stake or withdraw functions of the MainRewarder.
+The LMPVaultMainRewarder contract is responsible for LMPVault rewards. This contract takes control of a user's LMPVault tokens, and is meant to be interacted with via the LMPVaultRouter and directly by the user. This contract inherits the majority of its functionality from the MainRewarder and AbstractRewarder contracts.
 
-The MainRewarder contract distributes the main reward tokens and manages the distribution of additional reward tokens through the ExtraRewarder contracts.
+## DestinationVaultMainRewarder
+
+The DestinationVaultMainRewarder is responsible for Destination Vault rewards. This contract does not take control of tokens, and can only be interacted with via its paired Destination Vault contract, also known as a stake tracker. Much like the LMPVaultMainRewarder, this contract inherits most of its functionality from the MainRewarder and AbstractRewarder contracts.
 
 ## MainRewarder
 
-The MainRewarder contract is responsible for distributing the main reward tokens to stakers.
+The MainRewarder contract is responsible for distributing the main reward tokens to stakers. This contract is abstract, staking, withdrawing and one of the two `getReward()` functions need to be inherited to be accessible.
 
 The operator can queue new rewards to be distributed to stakers using the queueNewRewards function. The rewards are added to a reward queue, which is then distributed to stakers based on their staked balances.
 
 The addExtraReward function adds the address of the ExtraRewarder contract to a list of ExtraRewarder contracts that can distribute additional rewards to stakers. When a user calls the getReward function, the MainRewarder contract distributes rewards from the main reward queue and all extra reward queues. The amount of rewards distributed from each queue is proportional to the user's staked balance.
 
-The MainRewarder contract also includes a stake and withdraw functions that allow the StakeTracking contract to keep track of liquidity moves like stake or withdraw.
+The MainRewarder contract also includes a stake and withdraw functions that allow any contract tracking stakes to keep track of liquidity moves like stake or withdraw.
 It keeps track of both user balances and the total supply. It acts as a duplicate ledger of the Vault, but ensures that rewards are not mistakenly given to others.
 The order in which balances and rewards are updated is important.
 Thus, we maintain a balance tracking mechanism within the MainRewarder contract to preserve the order of operations.

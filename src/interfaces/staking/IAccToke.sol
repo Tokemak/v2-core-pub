@@ -93,7 +93,7 @@ interface IAccToke {
     function stake(uint256 amount, uint256 duration) external;
 
     /**
-     * @notice Collect staked OGV for a lockup and any earned rewards.
+     * @notice Collect staked TOKE for a lockup and any earned rewards.
      * @param lockupIds the id of the lockup to unstake
      */
     function unstake(uint256[] memory lockupIds) external;

@@ -202,7 +202,6 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
             if (newEnd <= oldEnd) revert ExtendDurationTooShort();
             lockup.end = SafeCast.toUint128(newEnd);
             lockup.points = newPoints;
-            lockups[msg.sender][lockupId] = lockup;
             totalExtendedPoints = totalExtendedPoints + newPoints - oldPoints;
 
             emit Extend(msg.sender, lockupId, oldAmount, oldEnd, newEnd, oldPoints, newPoints);

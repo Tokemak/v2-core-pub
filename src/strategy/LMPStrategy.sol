@@ -159,7 +159,8 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         LMPVaultIsShutdown,
         TrimDustPosition,
         DestinationIsQueuedForRemoval,
-        DestinationViolatedConstraint
+        DestinationViolatedConstraint,
+        UnknownReason
     }
 
     event RebalanceToIdleReason(RebalanceToIdleReasonEnum reason, uint256 maxSlippage, uint256 slippage);
@@ -524,7 +525,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // multiple scenarios can be active at a given time. We want to use the highest
         // slippage among the active scenarios.
         uint256 maxSlippage = 0;
-        RebalanceToIdleReasonEnum reason;
+        RebalanceToIdleReasonEnum reason = RebalanceToIdleReasonEnum.UnknownReason;
         // Scenario 1: the destination has been shutdown -- done when a fast exit is required
         if (outDest.isShutdown()) {
             reason = RebalanceToIdleReasonEnum.DestinationisShutdown;
@@ -648,6 +649,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             (uint256 numViolationsOne, uint256 numViolationsTwo) =
                 getDiscountAboveThreshold(targetLst.discountHistory, discountThresholdOne, discountThresholdTwo);
 
+            // slither-disable-next-line reentrancy-events
             emit TrimRebalanceDetails(i, numViolationsOne, numViolationsTwo, targetLst.discount);
 
             if (targetLst.discount >= int256(discountThresholdTwo * 1e11) && numViolationsTwo >= discountDaysThreshold)

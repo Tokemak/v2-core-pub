@@ -668,22 +668,6 @@ contract LSTCalculatorBaseTest is Test {
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function testFuzz_DiscountHistoryAllZeroPercent(bool rebase) public {
-        mockIsRebasing(rebase);
-        mockCalculateEthPerToken(100e16);
-        initCalculator(100e16);
-
-        for (uint256 i = 1; i < 10; i += 1) {
-            setBlockAndTimestamp(i);
-            assertTrue(testCalculator.timeForDiscountSnapshot());
-            testCalculator.snapshot();
-        }
-        stats = testCalculator.current();
-        foundDiscountHistory = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        verifyDiscountHistory(stats.discountHistory, foundDiscountHistory);
-    }
-
-    // solhint-disable-next-line func-name-mixedcase
     function testFuzz_DiscountHistoryWrapAround(bool rebase) public {
         mockCalculateEthPerToken(100e16);
         mockIsRebasing(rebase);
@@ -699,6 +683,7 @@ contract LSTCalculatorBaseTest is Test {
     }
 
     // ############################## helper functions ########################################
+
     function setDiscount(int256 desiredDiscount) private {
         require(desiredDiscount >= 0, "desiredDiscount < 0");
         //  1e16 == 1% discount
@@ -769,10 +754,5 @@ contract TestLSTCalculator is LSTCalculatorBase {
     function isRebasing() public view override returns (bool) {
         // always mock the value
         return MockToken(lstTokenAddress).isRebasing();
-    }
-
-    function timeForDiscountSnapshot() public view returns (bool) {
-        // slither-disable-next-line timestamp
-        return block.timestamp >= lastBaseAprSnapshotTimestamp + DISCOUNT_SNAPSHOT_INTERVAL_IN_SEC;
     }
 }

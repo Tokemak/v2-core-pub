@@ -186,7 +186,9 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         address destinationOut, uint40 lastTimestampAddedToDestination, uint40 swapCostOffsetPeriod
     );
 
-    // other events (maybe not needed)
+    event PauseStart();
+    event PauseStop();
+
     event LSTPriceGap(address token, uint256 priceSafe, uint256 priceSpot);
     event NavPerShare(uint256 navPerShare);
 
@@ -554,8 +556,10 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             if (trimAmount < 1e18 && verifyTrimOperation(params, trimAmount)) {
                 maxSlippage = maxTrimOperationSlippage;
             }
+            // slither-disable-next-line reentrancy-events
             emit TrimOperationMaxTrimAmount(trimAmount);
         }
+        // slither-disable-next-line reentrancy-events
         emit RebalanceToIdleReason(reason, maxSlippage, slippage);
 
         // if none of the scenarios are active then this rebalance is invalid
@@ -971,6 +975,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
             if (navPerShare < nav1 && navPerShare < nav2 && navPerShare < nav3) {
                 lastPausedTimestamp = blockTime;
+                emit PauseStart();
             }
         }
         // slither-disable-next-line reentrancy-events
@@ -1095,6 +1100,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         if (!expiredPauseState()) return false;
 
         lastPausedTimestamp = 0;
+        emit PauseStop();
         _swapCostOffsetPeriod = swapCostOffsetMinInDays;
         return true;
     }

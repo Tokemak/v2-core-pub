@@ -23,4 +23,13 @@ interface IConvexRewardPool {
 
     /// @notice convex pool id
     function convexPoolId() external view returns (uint256);
+
+    /// @notice queue new rewards to the pool
+    function queueNewRewards(uint256) external;
+
+    /// @notice the operator of the pool
+    function operator() external view returns (address);
+
+    /// @notice the period end time
+    function periodFinish() external view returns (uint256);
 }

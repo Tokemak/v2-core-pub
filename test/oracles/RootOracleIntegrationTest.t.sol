@@ -106,8 +106,6 @@ import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVaul
 import { CurveResolverMainnet, ICurveResolver, ICurveMetaRegistry } from "src/utils/CurveResolverMainnet.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
 
-import { console } from "forge-std/console.sol";
-
 /**
  * This series of tests compares expected values with contract calculated values for lp token pricing.  Below is a guide
  *      that can be used to add tests to this contract.

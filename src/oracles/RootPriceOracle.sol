@@ -227,16 +227,17 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         address actualQuoteToken,
         uint256 rawPrice
     ) internal returns (uint256) {
+        uint256 quoteTokenDecimals = IERC20Metadata(quoteToken).decimals();
         uint256 actualQuoteTokenDecimals = IERC20Metadata(actualQuoteToken).decimals();
 
         // Pad price to 18 decimals
         if (actualQuoteToken == quoteToken) {
             // slither-disable-start divide-before-multiply
-            if (actualQuoteTokenDecimals < 18) {
-                uint256 pad = 10 ** (18 - actualQuoteTokenDecimals);
+            if (actualQuoteTokenDecimals < quoteTokenDecimals) {
+                uint256 pad = 10 ** (quoteTokenDecimals - actualQuoteTokenDecimals);
                 rawPrice *= pad;
-            } else if (actualQuoteTokenDecimals > 18) {
-                uint256 pad = 10 ** (actualQuoteTokenDecimals - 18);
+            } else if (actualQuoteTokenDecimals > quoteTokenDecimals) {
+                uint256 pad = 10 ** (actualQuoteTokenDecimals - quoteTokenDecimals);
                 rawPrice = rawPrice / pad;
             }
             // slither-disable-end divide-before-multiply

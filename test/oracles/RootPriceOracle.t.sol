@@ -513,8 +513,8 @@ contract GetRangePricesLP is RootPriceOracleTests {
         (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) =
             _rootPriceOracle.getRangePricesLP(_token, _pool, _actualToken);
 
-        assertEq(safePriceInQuote, 1.003873269587555301 * 1e18);
-        assertEq(spotPriceInQuote, 946_242_857_142_857_142);
+        assertEq(safePriceInQuote, 1_003_872);
+        assertEq(spotPriceInQuote, 946_242);
         assertEq(isSpotSafe, true);
     }
 
@@ -529,8 +529,8 @@ contract GetRangePricesLP is RootPriceOracleTests {
         (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) =
             _rootPriceOracle.getRangePricesLP(_token, _pool, _actualToken);
 
-        assertEq(safePriceInQuote, 1.003873269587555301 * 1e18);
-        assertEq(spotPriceInQuote, 946_242_857_142_857_142);
+        assertEq(safePriceInQuote, 1_003_872);
+        assertEq(spotPriceInQuote, 946_242);
         assertEq(isSpotSafe, false);
     }
 

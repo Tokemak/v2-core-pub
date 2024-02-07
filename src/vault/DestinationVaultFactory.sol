@@ -61,6 +61,7 @@ contract DestinationVaultFactory is SystemComponent, IDestinationVaultFactory, S
         string memory vaultType,
         address baseAsset,
         address underlyer,
+        address incentiveCalculator,
         address[] memory additionalTrackedTokens,
         bytes32 salt,
         bytes memory params
@@ -88,7 +89,7 @@ contract DestinationVaultFactory is SystemComponent, IDestinationVaultFactory, S
         vault = template.cloneDeterministic(salt);
 
         IDestinationVault(vault).initialize(
-            IERC20(baseAsset), IERC20(underlyer), mainRewarder, additionalTrackedTokens, params
+            IERC20(baseAsset), IERC20(underlyer), mainRewarder, incentiveCalculator, additionalTrackedTokens, params
         );
 
         // Add the vault to the registry

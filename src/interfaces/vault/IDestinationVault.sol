@@ -86,12 +86,14 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @param baseAsset_ Base asset of the system. WETH/USDC/etc
     /// @param underlyer_ Underlying asset the vault will wrap
     /// @param rewarder_ Reward tracker for this vault
+    /// @param incentiveCalculator_ Incentive calculator for this vault
     /// @param additionalTrackedTokens_ Additional tokens that should be considered 'tracked'
     /// @param params_ Any extra parameters needed to setup the contract
     function initialize(
         IERC20 baseAsset_,
         IERC20 underlyer_,
         IMainRewarder rewarder_,
+        address incentiveCalculator_,
         address[] memory additionalTrackedTokens_,
         bytes memory params_
     ) external;

@@ -17,6 +17,7 @@ import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
+import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 
 abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDestinationVault {
     using SafeERC20 for IERC20;
@@ -36,6 +37,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     error NothingToRecover();
     error DuplicateToken(address token);
     error VaultShutdown();
+    error InvalidIncentiveCalculator();
 
     ISystemRegistry internal immutable _systemRegistry;
 
@@ -49,6 +51,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
 
     address internal _baseAsset;
     address internal _underlying;
+    address internal _incentiveCalculator;
 
     IMainRewarder internal _rewarder;
 
@@ -82,20 +85,27 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
         IERC20 baseAsset_,
         IERC20 underlyer_,
         IMainRewarder rewarder_,
+        address incentiveCalculator_,
         address[] memory additionalTrackedTokens_,
         bytes memory
     ) public virtual initializer {
         Errors.verifyNotZero(address(baseAsset_), "baseAsset_");
         Errors.verifyNotZero(address(underlyer_), "underlyer_");
         Errors.verifyNotZero(address(rewarder_), "rewarder_");
+        Errors.verifyNotZero(address(incentiveCalculator_), "incentiveCalculator_");
 
         _name = string.concat("Tokemak-", baseAsset_.name(), "-", underlyer_.name());
         _symbol = string.concat("toke-", baseAsset_.symbol(), "-", underlyer_.symbol());
         _underlyingDecimals = underlyer_.decimals();
 
+        if (IncentiveCalculatorBase(incentiveCalculator_).resolveLpToken() != address(underlyer_)) {
+            revert InvalidIncentiveCalculator();
+        }
+
         _baseAsset = address(baseAsset_);
         _underlying = address(underlyer_);
         _rewarder = rewarder_;
+        _incentiveCalculator = incentiveCalculator_;
 
         // Setup the tracked tokens
         _addTrackedToken(address(baseAsset_));
@@ -470,8 +480,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
 
     /// @inheritdoc IDestinationVault
     function getStats() external virtual returns (IDexLSTStats) {
-        // TODO Implement
-        return IDexLSTStats(address(0));
+        return IDexLSTStats(_incentiveCalculator);
     }
 
     /// @inheritdoc IDestinationVault

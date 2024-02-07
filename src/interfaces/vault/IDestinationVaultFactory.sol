@@ -12,6 +12,7 @@ interface IDestinationVaultFactory is ISystemComponent {
     /// @param vaultType human readable key of the vault template
     /// @param baseAsset Base asset of the system. WETH/USDC/etc
     /// @param underlyer Underlying asset the vault will wrap
+    /// @param incentiveCalculator Incentive calculator of the vault
     /// @param additionalTrackedTokens Any tokens in addition to base and underlyer that should be tracked
     /// @param salt Contracts are created via CREATE2 with this value
     /// @param params params to be passed to vaults initialize function
@@ -20,6 +21,7 @@ interface IDestinationVaultFactory is ISystemComponent {
         string memory vaultType,
         address baseAsset,
         address underlyer,
+        address incentiveCalculator,
         address[] memory additionalTrackedTokens,
         bytes32 salt,
         bytes memory params

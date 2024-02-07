@@ -93,12 +93,13 @@ contract CurveConvexDestinationVault is DestinationVault {
         IERC20 baseAsset_,
         IERC20 underlyer_,
         IMainRewarder rewarder_,
+        address incentiveCalculator_,
         address[] memory additionalTrackedTokens_,
         bytes memory params_
     ) public virtual override {
         // Base class has the initializer() modifier to prevent double-setup
         // If you don't call the base initialize, make sure you protect this call
-        super.initialize(baseAsset_, underlyer_, rewarder_, additionalTrackedTokens_, params_);
+        super.initialize(baseAsset_, underlyer_, rewarder_, incentiveCalculator_, additionalTrackedTokens_, params_);
 
         // We must configure a the curve resolver to setup the vault
         ICurveResolver curveResolver = _systemRegistry.curveResolver();

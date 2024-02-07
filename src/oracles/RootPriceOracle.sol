@@ -204,7 +204,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         // If the returned quote token is weth, return the price directly
         if (actualQuoteToken == weth) return rawPrice;
 
-        // If not, get the conversion rate from the actualQuoteToken to weth and then derive the spot price
+        // If not, get the conversion rate from the actualQuoteToken to quoteToken and then derive the spot price
         IPriceOracle tokenOracle = tokenMappings[actualQuoteToken];
         if (address(tokenOracle) == address(0)) revert MissingTokenOracle(actualQuoteToken);
 
@@ -239,7 +239,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
             return rawPrice;
         }
 
-        // If not, get the conversion rate from the actualQuoteToken to weth and then derive the spot price
+        // If not, get the conversion rate from the actualQuoteToken to quoteToken and then derive the spot price
         IPriceOracle tokenOracle = tokenMappings[actualQuoteToken];
         if (address(tokenOracle) == address(0)) revert MissingTokenOracle(actualQuoteToken);
 

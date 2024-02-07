@@ -47,17 +47,11 @@ contract RootPriceOracleTests is Test {
         _systemRegistry.setAccessController(address(_accessController));
         _rootPriceOracle = new RootPriceOracle(_systemRegistry);
 
-        _pool = makeAddr("POOL");
-        _token = makeAddr("TOKEN");
-        _poolOracle = makeAddr("POOL_ORACLE");
-        _tokenOracle = makeAddr("TOKEN_ORACLE");
-        _actualToken = makeAddr("ACTUAL_TOKEN");
-
-        vm.label(_pool, "_pool");
-        vm.label(_token, "_token");
-        vm.label(_poolOracle, "_poolOracle");
-        vm.label(_tokenOracle, "_tokenOracle");
-        vm.label(_actualToken, "_actualToken");
+        _pool = makeAddr("_pool");
+        _token = makeAddr("_token");
+        _poolOracle = makeAddr("_poolOracle");
+        _tokenOracle = makeAddr("_tokenOracle");
+        _actualToken = makeAddr("_actualToken");
     }
 
     function testConstruction() public {
@@ -589,5 +583,50 @@ contract GetRangePricesLP is RootPriceOracleTests {
             abi.encodeWithSelector(ISpotPriceOracle.getSpotPrice.selector, token, _pool, _actualToken),
             abi.encode(price, _actualToken)
         );
+    }
+}
+
+contract GetPriceInQuote is RootPriceOracleTests {
+    address _token1;
+    address _token1Oracle;
+    uint8 _token1Decimals = 24;
+
+    address _token2;
+    address _token2Oracle;
+    uint8 _token2Decimals = 6;
+
+    function setUp() public override {
+        super.setUp();
+
+        _token1 = makeAddr("NEAR");
+        _token1Oracle = makeAddr("NEAROracle");
+        vm.mockCall(_token1, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(_token1Decimals));
+        mockSystemComponent(_token1Oracle, address(_systemRegistry));
+        _rootPriceOracle.registerMapping(_token1, IPriceOracle(_token1Oracle));
+
+        _token2 = makeAddr("USDC");
+        _token2Oracle = makeAddr("USDCOracle");
+        vm.mockCall(_token2, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(_token2Decimals));
+        mockSystemComponent(_token2Oracle, address(_systemRegistry));
+        _rootPriceOracle.registerMapping(_token2, IPriceOracle(_token2Oracle));
+    }
+
+    function test_HighDecimalQuote() public {
+        // Current NEAR Price: $2.80  - 0.00116049e18 ETH
+        // Current USDC Price: $1.00  - 0.00042001e18 ETH
+
+        _setGetPriceInEth(_token1, _token1Oracle, 0.00116049e18);
+        _setGetPriceInEth(_token2, _token2Oracle, 0.00042001e18);
+
+        uint256 calculatedPrice = uint256(0.3571e24);
+        uint256 safePrice = _rootPriceOracle.getPriceInQuote(_token2, _token1);
+
+        // Roughly $1/$2.8 or 0.00042001 / 0.00116049
+        assertEq(safePrice, 0.36192470421976923540918e24);
+    }
+
+    function _setGetPriceInEth(address token, address oracle, uint256 price) internal {
+        bytes memory selector = abi.encodeWithSelector(IPriceOracle.getPriceInEth.selector, token);
+        vm.mockCall(oracle, selector, abi.encode(price));
     }
 }

@@ -18,6 +18,7 @@ import {
     USDC_MAINNET,
     USDT_MAINNET,
     CBETH_MAINNET,
+    WETH_MAINNET,
     STETH_CL_FEED_MAINNET,
     RETH_CL_FEED_MAINNET,
     DAI_CL_FEED_MAINNET,
@@ -104,6 +105,8 @@ import { CrvUsdOracle } from "test/mocks/CrvUsdOracle.sol";
 import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
 import { CurveResolverMainnet, ICurveResolver, ICurveMetaRegistry } from "src/utils/CurveResolverMainnet.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
+
+import { console } from "forge-std/console.sol";
 
 /**
  * This series of tests compares expected values with contract calculated values for lp token pricing.  Below is a guide
@@ -376,24 +379,71 @@ contract RootOracleIntegrationTest is Test {
 }
 
 contract GetPriceInQuote is RootOracleIntegrationTest {
-    function test_GetPriceInQuote() external {
+    function test_LowDecimalQuote() public {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 18_021_563);
 
         // stEth in usdc
-        // calculated - 1724550123000000000000
-        // safe price - 1736857822983362723964
-        uint256 calculatedPrice = uint256(1_724_550_123_000_000_000_000);
+        // calculated - 1724550123
+        // safe price - 1736857822
+        uint256 calculatedPrice = uint256(1_724_550_123);
         uint256 safePrice = priceOracle.getPriceInQuote(STETH_MAINNET, USDC_MAINNET);
         (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
         assertGt(upperBound, safePrice);
         assertLt(lowerBound, safePrice);
+    }
+
+    function test_NonStableQuoteButMatchingDecimals() external {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 18_021_563);
 
         // usdt in crv
         // calculated - 2032995638000000000
         // safe price - 2017150178107977497
-        calculatedPrice = uint256(2_032_995_638_000_000_000);
-        safePrice = priceOracle.getPriceInQuote(USDT_MAINNET, CRV_MAINNET);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
+        uint256 calculatedPrice = uint256(2_032_995_638_000_000_000);
+        uint256 safePrice = priceOracle.getPriceInQuote(USDT_MAINNET, CRV_MAINNET);
+        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
+
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
+    }
+
+    function test_WETHAsAQuoteAndNonMatchingDecimals() public {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19_177_575);
+
+        // Current ETH Price:  $2,381.53  - 1 ETH
+        // Current USDC Price: $1.00      - 0.00042001e18 ETH
+
+        uint256 calculatedPrice = uint256(0.00042001e18);
+        uint256 safePrice = priceOracle.getPriceInQuote(USDC_MAINNET, WETH_MAINNET);
+        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
+
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
+    }
+
+    function test_WETHAsAQuoteAndMatchingDecimals() public {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19_177_575);
+
+        // Current ETH Price:  $2,381.53  - 1 ETH
+        // Current CRV Price:  $0.4823    - 0.00020269e18 ETH
+
+        uint256 calculatedPrice = uint256(0.00020269e18);
+        uint256 safePrice = priceOracle.getPriceInQuote(CRV_MAINNET, WETH_MAINNET);
+        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
+
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
+    }
+
+    function test_LowDecimalAsQuoteWithWETH() public {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19_177_575);
+
+        // Current ETH Price:  $2,381.53  - 1 ETH
+        // Current USDC Price: $1.00      - 0.00042001e18 ETH
+
+        uint256 calculatedPrice = uint256(2_381_530_000);
+        uint256 safePrice = priceOracle.getPriceInQuote(WETH_MAINNET, USDC_MAINNET);
+        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
+
         assertGt(upperBound, safePrice);
         assertLt(lowerBound, safePrice);
     }

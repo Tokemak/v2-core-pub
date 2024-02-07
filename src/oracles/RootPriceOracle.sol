@@ -13,6 +13,8 @@ import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 
 contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
+    address private immutable _weth;
+
     mapping(address => IPriceOracle) public tokenMappings;
     mapping(address => ISpotPriceOracle) public poolMappings;
     mapping(address => uint256) public safeSpotPriceThresholds;
@@ -40,7 +42,9 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     constructor(ISystemRegistry _systemRegistry)
         SystemComponent(_systemRegistry)
         SecurityBase(address(_systemRegistry.accessController()))
-    { }
+    {
+        _weth = address(_systemRegistry.weth());
+    }
 
     /// @notice Register a new token to oracle mapping
     /// @dev May require additional registration in the oracle itself
@@ -313,13 +317,24 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
 
     function getPriceInQuote(address base, address quote) public returns (uint256) {
         IPriceOracle baseOracle = tokenMappings[base];
-        IPriceOracle quoteOracle = tokenMappings[quote];
 
-        if (address(baseOracle) == address(0) || address(quoteOracle) == address(0)) {
+        if (address(baseOracle) == address(0)) {
             // Revert token being priced.
             revert MissingTokenOracle(base);
         }
 
-        return (baseOracle.getPriceInEth(base) * (10 ** 18)) / quoteOracle.getPriceInEth(quote);
+        // No need to go through the extra math if we're asking for it in terms we already have
+        uint256 baseInEth = baseOracle.getPriceInEth(base);
+        if (quote == _weth) {
+            return baseInEth;
+        }
+
+        IPriceOracle quoteOracle = tokenMappings[quote];
+        if (address(quoteOracle) == address(0)) {
+            // Revert token being priced.
+            revert MissingTokenOracle(quote);
+        }
+
+        return (baseInEth * (10 ** IERC20Metadata(quote).decimals())) / quoteOracle.getPriceInEth(quote);
     }
 }

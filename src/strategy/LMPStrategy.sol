@@ -180,14 +180,11 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         int256 predictedAnnualizedGain
     );
 
-    event AddToWithdrawalQueueHead(address dest);
-    event AddToWithdrawalQueueTail(address dest);
-
     event SuccessfulRebalanceBetweenDestinations(
         address destinationOut, uint40 lastTimestampAddedToDestination, uint40 swapCostOffsetPeriod
     );
 
-    event PauseStart();
+    event PauseStart(uint256 navPerShare, uint256 nav1, uint256 nav2, uint256 nav3);
     event PauseStop();
 
     event LSTPriceGap(address token, uint256 priceSafe, uint256 priceSpot);
@@ -977,11 +974,9 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
             if (navPerShare < nav1 && navPerShare < nav2 && navPerShare < nav3) {
                 lastPausedTimestamp = blockTime;
-                emit PauseStart();
+                emit PauseStart(navPerShare, nav1, nav2, nav3);
             }
         }
-        // slither-disable-next-line reentrancy-events
-        emit NavPerShare(navPerShare);
     }
 
     /// @inheritdoc ILMPStrategy
@@ -1031,13 +1026,9 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // don't add Idle ETH to either the head or the tail of the withdrawal queue
         if (params.destinationOut != address(lmpVault)) {
             ILMPVault(lmpVault).addToWithdrawalQueueHead(params.destinationOut);
-            // slither-disable-next-line reentrancy-events
-            emit AddToWithdrawalQueueHead(params.destinationOut);
         }
         if (params.destinationIn != address(lmpVault)) {
             ILMPVault(lmpVault).addToWithdrawalQueueTail(params.destinationIn);
-            // slither-disable-next-line reentrancy-events
-            emit AddToWithdrawalQueueTail(params.destinationIn);
         }
     }
 

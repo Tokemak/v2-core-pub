@@ -232,15 +232,6 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
 
         // Pad price to 18 decimals
         if (actualQuoteToken == quoteToken) {
-            // slither-disable-start divide-before-multiply
-            if (actualQuoteTokenDecimals < quoteTokenDecimals) {
-                uint256 pad = 10 ** (quoteTokenDecimals - actualQuoteTokenDecimals);
-                rawPrice *= pad;
-            } else if (actualQuoteTokenDecimals > quoteTokenDecimals) {
-                uint256 pad = 10 ** (actualQuoteTokenDecimals - quoteTokenDecimals);
-                rawPrice = rawPrice / pad;
-            }
-            // slither-disable-end divide-before-multiply
             return rawPrice;
         }
 

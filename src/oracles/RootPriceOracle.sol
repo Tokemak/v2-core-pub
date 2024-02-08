@@ -247,8 +247,6 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         address pool,
         address quoteToken
     ) external returns (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) {
-        isSpotSafe = true;
-
         IPriceOracle tokenOracle = tokenMappings[quoteToken];
         if (address(tokenOracle) == address(0)) revert MissingTokenOracle(quoteToken);
 
@@ -263,6 +261,8 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         if (totalLPSupply == 0 || reserves.length == 0) {
             return (0, 0, false);
         }
+
+        isSpotSafe = true; // default to true, and set to false if any threshold is breached in the loop below
 
         //
         // loop through reserves, and sum up aggregates
@@ -286,7 +286,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
                 uint256 priceDiff = largerPrice - smallerPrice;
 
                 if (largerPrice == 0 || (priceDiff * THRESHOLD_PRECISION / largerPrice) > threshold) {
-                    isSpotSafe = false;
+                    isSpotSafe = false; // validate that the spot price is safe
                 }
             }
 

@@ -37,7 +37,7 @@ contract BalancerBaseOracleWrapperTests is Test {
 
     uint256 private mainnetFork;
 
-    function setUp() public {
+    function setUp() public virtual {
         mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), 17_378_951);
         vm.selectFork(mainnetFork);
 
@@ -78,6 +78,10 @@ contract GetSpotPrice is BalancerBaseOracleWrapperTests {
 }
 
 contract GetSafeSpotPriceInfo is BalancerBaseOracleWrapperTests {
+    function setUp() public virtual override {
+        super.setUp();
+    }
+
     function test_getSafeSpotPrice_RevertIfZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "pool"));
         oracle.getSafeSpotPriceInfo(address(0), WSETH_RETH_SFRXETH_BAL_POOL, WETH_MAINNET);
@@ -94,7 +98,7 @@ contract GetSafeSpotPriceInfo is BalancerBaseOracleWrapperTests {
             oracle.getSafeSpotPriceInfo(WSETH_RETH_SFRXETH_BAL_POOL, WSETH_RETH_SFRXETH_BAL_POOL, WETH_MAINNET);
 
         assertEq(reserves.length, 3);
-        assertEq(totalLPSupply, 2_596_148_429_289_122_371_999_838_017_585_447);
+        assertEq(totalLPSupply, 22_960_477_413_652_244_357_906);
         assertEq(reserves[0].token, WSTETH_MAINNET);
         assertEq(reserves[0].reserveAmount, 7_066_792_475_374_351_999_170);
         assertEq(reserves[0].rawSpotPrice, 1_049_846_558_967_442_743);

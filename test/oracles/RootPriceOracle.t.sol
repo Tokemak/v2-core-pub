@@ -502,6 +502,61 @@ contract GetRangePricesLP is RootPriceOracleTests {
         _rootPriceOracle.getRangePricesLP(_token, _pool, _actualToken);
     }
 
+    function test_getRangePricesLP_ReturnsZeroWhenEmptyReserves() public {
+        _rootPriceOracle.setSafeSpotPriceThreshold(_token1, 1000);
+        _rootPriceOracle.setSafeSpotPriceThreshold(_token2, 1000);
+
+        // Mock empty reserves
+        ISpotPriceOracle.ReserveItemInfo[] memory reserves = new ISpotPriceOracle.ReserveItemInfo[](0);
+
+        vm.mockCall(
+            _poolOracle,
+            abi.encodeWithSelector(ISpotPriceOracle.getSafeSpotPriceInfo.selector, _pool, _token, _actualToken),
+            abi.encode(35_000_000 * 1e18, reserves)
+        );
+
+        (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) =
+            _rootPriceOracle.getRangePricesLP(_token, _pool, _actualToken);
+
+        assertEq(safePriceInQuote, 0);
+        assertEq(spotPriceInQuote, 0);
+        assertEq(isSpotSafe, false);
+    }
+
+    function test_getRangePricesLP_ReturnsZeroWhenZeroTotalSupply() public {
+        _rootPriceOracle.setSafeSpotPriceThreshold(_token1, 1000);
+        _rootPriceOracle.setSafeSpotPriceThreshold(_token2, 1000);
+
+        // Mock reserves with zero total supply
+        ISpotPriceOracle.ReserveItemInfo[] memory reserves = new ISpotPriceOracle.ReserveItemInfo[](2);
+
+        reserves[0] = ISpotPriceOracle.ReserveItemInfo({
+            token: _token1,
+            reserveAmount: 21.5e24,
+            rawSpotPrice: 0.9e6,
+            actualQuoteToken: _actualToken
+        });
+        reserves[1] = ISpotPriceOracle.ReserveItemInfo({
+            token: _token2,
+            reserveAmount: 13.7e24,
+            rawSpotPrice: 1.005e6,
+            actualQuoteToken: _actualToken
+        });
+
+        vm.mockCall(
+            _poolOracle,
+            abi.encodeWithSelector(ISpotPriceOracle.getSafeSpotPriceInfo.selector, _pool, _token, _actualToken),
+            abi.encode(0, reserves) // zero total supply
+        );
+
+        (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) =
+            _rootPriceOracle.getRangePricesLP(_token, _pool, _actualToken);
+
+        assertEq(safePriceInQuote, 0);
+        assertEq(spotPriceInQuote, 0);
+        assertEq(isSpotSafe, false);
+    }
+
     // @dev Pass safe threshold test by setting it to 10% (token 1 is 9% diff)
     function test_getRangePricesLP_PassThreshold() public {
         _setupBasicSafePricingScenario();

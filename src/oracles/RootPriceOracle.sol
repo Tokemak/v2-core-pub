@@ -260,7 +260,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
             spotPriceOracle.getSafeSpotPriceInfo(pool, lpToken, quoteToken);
 
         // if lp supply is 0 (while we hold it) means compromised pool, so return 0 for worth (and false for safety)
-        if (totalLPSupply == 0) {
+        if (totalLPSupply == 0 || reserves.length == 0) {
             return (0, 0, false);
         }
 

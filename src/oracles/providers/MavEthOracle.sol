@@ -124,10 +124,13 @@ contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPrice
 
     /// @inheritdoc ISpotPriceOracle
     function getSafeSpotPriceInfo(
+        // solhint-disable-next-line no-unused-vars
         address pool,
+        // solhint-disable-next-line no-unused-vars
         address _boostedPosition,
         address // we omit quoteToken as we get pricing info from the pool.
             // It's aligned with the requested quoteToken in RootPriceOracle.getRangePricesLP
+            // solhint-disable-next-line no-unused-vars
     ) external returns (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) {
         revert Errors.NotImplemented(); // Postponed until we have Maverick added to the system.
     }

@@ -642,13 +642,13 @@ contract GetRangePricesLP is RootPriceOracleTests {
 }
 
 contract GetPriceInQuote is RootPriceOracleTests {
-    address _token1;
-    address _token1Oracle;
-    uint8 _token1Decimals = 24;
+    address private _token1;
+    address private _token1Oracle;
+    uint8 private _token1Decimals = 24;
 
-    address _token2;
-    address _token2Oracle;
-    uint8 _token2Decimals = 6;
+    address private _token2;
+    address private _token2Oracle;
+    uint8 private _token2Decimals = 6;
 
     function setUp() public override {
         super.setUp();
@@ -673,6 +673,7 @@ contract GetPriceInQuote is RootPriceOracleTests {
         _setGetPriceInEth(_token1, _token1Oracle, 0.00116049e18);
         _setGetPriceInEth(_token2, _token2Oracle, 0.00042001e18);
 
+        // solhint-disable-next-line no-unused-vars
         uint256 calculatedPrice = uint256(0.3571e24);
         uint256 safePrice = _rootPriceOracle.getPriceInQuote(_token2, _token1);
 

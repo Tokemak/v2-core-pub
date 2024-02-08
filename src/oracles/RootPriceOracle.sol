@@ -227,9 +227,6 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         address actualQuoteToken,
         uint256 rawPrice
     ) internal returns (uint256) {
-        uint256 quoteTokenDecimals = IERC20Metadata(quoteToken).decimals();
-        uint256 actualQuoteTokenDecimals = IERC20Metadata(actualQuoteToken).decimals();
-
         // Pad price to 18 decimals
         if (actualQuoteToken == quoteToken) {
             return rawPrice;

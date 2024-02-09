@@ -142,6 +142,64 @@ contract StakingTest is BaseTest {
         assertEq(accToke.balanceOf(address(this)), 0);
     }
 
+    function testMultipleStakingAndUnstaking(uint256 amount) public {
+        _checkFuzz(amount);
+        vm.assume(amount >= 40_000);
+
+        prepareFunds(address(this), amount);
+
+        //
+        // stake 4 different stakes
+        //
+        stake(amount / 4, ONE_YEAR);
+        stake(amount / 4, ONE_YEAR);
+        stake(amount / 4, ONE_YEAR);
+        stake(amount / 4, ONE_YEAR);
+
+        IAccToke.Lockup[] memory lockups = accToke.getLockups(address(this));
+        assert(lockups.length == 4);
+
+        uint256 lockupId = 0;
+        IAccToke.Lockup memory lockup = lockups[lockupId];
+
+        assertEq(lockup.amount, amount / 4, "Lockup amount incorrect");
+        assertEq(lockup.end, block.timestamp + ONE_YEAR);
+
+        // voting power
+        // NOTE: doing exception for comparisons since with low numbers relative tolerance is trickier
+        assertApproxEqRel(accToke.balanceOf(address(this)), (amount * 18) / 10, TOLERANCE, "Voting power incorrect");
+
+        //
+        // Unstake 3 random positions
+        //
+
+        // make sure can't unstake too early
+        vm.warp(block.timestamp + ONE_YEAR - 1);
+        vm.expectRevert(IAccToke.NotUnlockableYet.selector);
+
+        uint256[] memory lockupIds = new uint256[](3);
+        lockupIds[0] = lockupId;
+        lockupIds[1] = 1;
+        lockupIds[2] = 3;
+        accToke.unstake(lockupIds);
+        // get to proper timestamp and unlock
+        vm.warp(block.timestamp + 1);
+        accToke.unstake(lockupIds);
+
+        // Make sure unstaked position is still relevant
+        lockupId = 2;
+        lockups = accToke.getLockups(address(this));
+        lockup = lockups[lockupId];
+        assertEq(lockup.amount, amount / 4, "Lockup amount incorrect");
+
+        lockup = lockups[0];
+        assertEq(lockup.amount, 0, "Lockup amount incorrect");
+        lockup = lockups[1];
+        assertEq(lockup.amount, 0, "Lockup amount incorrect");
+        lockup = lockups[3];
+        assertEq(lockup.amount, 0, "Lockup amount incorrect");
+    }
+
     function testStakingMultipleTimePeriods(uint256 amount) public {
         _checkFuzz(amount);
         prepareFunds(address(this), amount * 2);
@@ -214,6 +272,44 @@ contract StakingTest is BaseTest {
         assertEq(lockup.amount, amountBefore);
         assertEq(lockup.end, block.timestamp + 2 * ONE_YEAR);
         assert(lockup.points > pointsBefore);
+    }
+
+    function testMultipleExtend(uint256 amount) public {
+        _checkFuzz(amount);
+
+        vm.assume(amount >= 40_000);
+        prepareFunds(address(this), amount);
+
+        // original stake
+        stake(amount / 4, ONE_YEAR);
+        stake(amount / 4, ONE_YEAR);
+        stake(amount / 4, ONE_YEAR);
+        stake(amount / 4, ONE_YEAR);
+
+        (uint256 amountBefore,, uint256 pointsBefore) = accToke.lockups(address(this), 0);
+
+        vm.expectEmit(true, false, false, false);
+        emit Extend(address(this), 0, amountBefore, 0, 0, 0, 0);
+
+        //Extend lockup ID 0 to 2 years and 2 and to 3 year
+        uint256[] memory lockupIds = new uint256[](2);
+        lockupIds[0] = 0;
+        lockupIds[1] = 2;
+
+        uint256[] memory durations = new uint256[](2);
+        durations[0] = 2 * ONE_YEAR;
+        durations[1] = 3 * ONE_YEAR;
+        accToke.extend(lockupIds, durations);
+        // verify that duration (and points) increased
+        IAccToke.Lockup memory lockup = accToke.getLockups(address(this))[0];
+        assertEq(lockup.amount, amountBefore);
+        assertEq(lockup.end, block.timestamp + 2 * ONE_YEAR);
+        assert(lockup.points > pointsBefore);
+
+        IAccToke.Lockup memory lockup1 = accToke.getLockups(address(this))[2];
+        assertEq(lockup1.amount, amountBefore);
+        assertEq(lockup1.end, block.timestamp + 3 * ONE_YEAR);
+        assert(lockup1.points > pointsBefore);
     }
 
     function testExtendUnsafeDuration() public {

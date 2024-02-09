@@ -188,7 +188,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     event PauseStop();
 
     event LSTPriceGap(address token, uint256 priceSafe, uint256 priceSpot);
-    event NavPerShare(uint256 navPerShare);
 
     /* ******************************** */
     /* Errors                           */

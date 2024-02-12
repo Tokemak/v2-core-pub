@@ -26,6 +26,8 @@ contract SetupDestinationVaults is BaseScript {
 
         console.log("Owner: ", owner);
 
+        address incentiveCalculator = vm.envAddress("incentive_calculator");
+
         IDestinationVaultFactory factory = IDestinationVaultFactory(constants.sys.destinationVaultFactory);
 
         AccessController access = AccessController(constants.sys.accessController);
@@ -50,7 +52,7 @@ contract SetupDestinationVaults is BaseScript {
             "bal-v1-no-aura",
             constants.tokens.weth,
             poolAddress,
-            address(0), //TODO: incentiveCalculator
+            incentiveCalculator,
             additionalTrackTokens,
             salt,
             encodedParams
@@ -71,7 +73,7 @@ contract SetupDestinationVaults is BaseScript {
             "bal-v1-no-aura",
             constants.tokens.weth,
             poolAddress,
-            address(0), //TODO: incentiveCalculator
+            incentiveCalculator,
             additionalTrackTokens,
             salt,
             encodedParams

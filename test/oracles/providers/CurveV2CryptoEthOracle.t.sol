@@ -100,7 +100,7 @@ contract CurveV2CryptoEthOracleTest is Test {
     function test_LpTokenAlreadyRegistered() external {
         curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP, false);
 
-        vm.expectRevert(abi.encodeWithSelector(CurveV2CryptoEthOracle.AlreadyRegistered.selector, CRV_ETH_CURVE_V2_LP));
+        vm.expectRevert(abi.encodeWithSelector(Errors.AlreadyRegistered.selector, CRV_ETH_CURVE_V2_POOL));
         curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP, false);
     }
 

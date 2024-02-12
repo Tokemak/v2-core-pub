@@ -72,6 +72,10 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         (address[8] memory tokens, uint256 numTokens, address lpToken, bool isStableSwap) =
             curveResolver.resolveWithLpToken(curvePool);
 
+        if (lpTokenToPool[lpToken].pool != address(0)) {
+            revert Errors.AlreadyRegistered(curvePool);
+        }
+
         // This oracle uses the min-price approach for finding the current value of tokens
         // and only applies to stable swap pools. The resolver will resolve both stable and
         // crypto swap pools so we want to be sure only the correct type gets in.

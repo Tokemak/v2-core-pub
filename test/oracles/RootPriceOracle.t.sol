@@ -252,6 +252,15 @@ contract RegisterPoolMapping is RootPriceOracleTests {
         _rootPriceOracle.registerPoolMapping(_token, ISpotPriceOracle(_poolOracle));
     }
 
+    function test_RevertsIfRegisteringExistingPool() public {
+        mockSystemComponent(_poolOracle, address(_systemRegistry));
+
+        _rootPriceOracle.registerPoolMapping(_token, ISpotPriceOracle(_poolOracle));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.AlreadyRegistered.selector, _token));
+        _rootPriceOracle.registerPoolMapping(_token, ISpotPriceOracle(_poolOracle));
+    }
+
     function test_EmitsPoolRegisteredEvent() public {
         mockSystemComponent(_poolOracle, address(_systemRegistry));
 

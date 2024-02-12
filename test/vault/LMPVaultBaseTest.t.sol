@@ -40,8 +40,7 @@ contract LMPVaultBaseTest is BaseTest {
     event DestinationVaultAdded(address destination);
     event DestinationVaultRemoved(address destination);
     event WithdrawalQueueSet(address[] destinations);
-    event RewarderSet(address rewarder);
-    event RewarderReplaced(address rewarder);
+    event RewarderSet(address newRewarder, address oldRewarder);
 
     function setUp() public virtual override(BaseTest) {
         BaseTest.setUp();
@@ -240,10 +239,11 @@ contract LMPVaultBaseTest is BaseTest {
 
     function test_FactoryCanSetRewarder() public {
         address rewarder = makeAddr("REWARDER");
+        address oldRewarder = address(lmpVault.rewarder());
 
         vm.prank(address(lmpVaultFactory));
         vm.expectEmit(false, false, false, true);
-        emit RewarderSet(rewarder);
+        emit RewarderSet(rewarder, oldRewarder);
 
         lmpVault.setRewarder(rewarder);
 
@@ -254,9 +254,10 @@ contract LMPVaultBaseTest is BaseTest {
         assertTrue(accessController.hasRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this)));
 
         address rewarder = makeAddr("REWARDER");
+        address oldRewarder = address(lmpVault.rewarder());
 
         vm.expectEmit(false, false, false, true);
-        emit RewarderSet(rewarder);
+        emit RewarderSet(rewarder, oldRewarder);
         lmpVault.setRewarder(rewarder);
 
         assertEq(address(lmpVault.rewarder()), rewarder);
@@ -272,9 +273,7 @@ contract LMPVaultBaseTest is BaseTest {
 
         // Replace with new rewarder.
         vm.expectEmit(false, false, false, true);
-        emit RewarderReplaced(firstRewarder);
-        vm.expectEmit(false, false, false, true);
-        emit RewarderSet(secondRewarder);
+        emit RewarderSet(secondRewarder, firstRewarder);
 
         lmpVault.setRewarder(secondRewarder);
 

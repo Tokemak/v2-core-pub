@@ -183,7 +183,6 @@ contract LMPVault is
     event PendingManagementFeeSet(uint256 pendingManagementFeeBps);
     event ManagementFeeSinkSet(address newManagementFeeSink);
     event NextManagementFeeTakeSet(uint256 nextManagementFeeTake);
-    event RewarderReplaced(address rewarder);
 
     struct ExtraData {
         address lmpStrategyAddress;
@@ -390,11 +389,10 @@ contract LMPVault is
         if (toBeReplaced != address(0)) {
             // slither-disable-next-line unused-return
             pastRewarders.add(toBeReplaced);
-            emit RewarderReplaced(toBeReplaced);
         }
 
         rewarder = IMainRewarder(_rewarder);
-        emit RewarderSet(_rewarder);
+        emit RewarderSet(_rewarder, toBeReplaced);
     }
 
     /// @inheritdoc ILMPVault

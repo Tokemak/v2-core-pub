@@ -51,6 +51,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
 
     address internal _baseAsset;
     address internal _underlying;
+    // slither-disable-next-line similar-names
     address internal _incentiveCalculator;
 
     IMainRewarder internal _rewarder;

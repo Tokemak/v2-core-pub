@@ -759,7 +759,7 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
         priceOracle.setSafeSpotPriceThreshold(CRV_MAINNET, 200);
         priceOracle.setSafeSpotPriceThreshold(LDO_MAINNET, 200);
         priceOracle.setSafeSpotPriceThreshold(STG_MAINNET, 200);
-
+        // and 8% for those with higher volatility and lower liquidity
         priceOracle.setSafeSpotPriceThreshold(BADGER_MAINNET, 800);
         priceOracle.setSafeSpotPriceThreshold(WBTC_MAINNET, 800);
     }
@@ -861,8 +861,6 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_475_426);
 
         // 1)
-        curveStableOracle.registerPool(STETH_ETH_CURVE_POOL, ST_ETH_CURVE_LP_TOKEN_MAINNET, true);
-
         // Calculated WETH - 1.073735977000000000
         uint256 calculatedPrice = uint256(1.073735977 * 10 ** 18);
         (uint256 spotPrice, uint256 safePrice, bool isSpotSafe) =
@@ -878,8 +876,6 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
         // 2)
-        curveStableOracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, true);
-
         // Calculated WETH - 587546836000000 // 0.000587546836 * 10 ** 18
         calculatedPrice = uint256(587_546_836_000_000);
         (spotPrice, safePrice, isSpotSafe) =
@@ -896,7 +892,6 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
 
         // 3)
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_480_014);
-        curveStableOracle.registerPool(RETH_WSTETH_CURVE_POOL, RETH_WSTETH_CURVE_POOL_LP, true);
 
         // Calculated WETH - 1.098321582000000000
         calculatedPrice = uint256(1.098321582 * 10 ** 18);
@@ -917,8 +912,6 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_480_014);
 
         // 1)
-        curveStableOracle.registerPool(STETH_STABLESWAP_NG_POOL, STETH_STABLESWAP_NG_POOL, false);
-
         // Calculated WETH - 1.006028244000000000
         uint256 calculatedPrice = uint256(1.006028244 * 10 ** 18);
         (uint256 spotPrice, uint256 safePrice, bool isSpotSafe) =
@@ -935,7 +928,6 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
 
         // 2)
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_586_413);
-        curveStableOracle.registerPool(USDC_STABLESWAP_NG_POOL, USDC_STABLESWAP_NG_POOL, false);
 
         // Calculated WETH - 540613701000000
         calculatedPrice = uint256(0.000540613701 * 10 ** 18);
@@ -952,8 +944,6 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
         // 3)
-        curveStableOracle.registerPool(USDT_STABLESWAP_NG_POOL, USDT_STABLESWAP_NG_POOL, false);
-
         // Calculated WETH - 540416370000000
         calculatedPrice = uint256(0.00054041637 * 10 ** 18);
         (spotPrice, safePrice, isSpotSafe) =
@@ -969,8 +959,6 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
         // 4)
-        curveStableOracle.registerPool(TUSD_STABLESWAP_NG_POOL, TUSD_STABLESWAP_NG_POOL, false);
-
         // Calculated WETH - 539978431000000
         calculatedPrice = uint256(0.000539978431 * 10 ** 18);
         (spotPrice, safePrice, isSpotSafe) =
@@ -986,8 +974,6 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
         // 5)
-        curveStableOracle.registerPool(USDP_STABLESWAP_NG_POOL, USDP_STABLESWAP_NG_POOL, false);
-
         // Calculated WETH - 540443002000000
         calculatedPrice = uint256(0.000540443002 * 10 ** 18);
         (spotPrice, safePrice, isSpotSafe) =
@@ -1003,8 +989,6 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
         // 6)
-        curveStableOracle.registerPool(FRAX_STABLESWAP_NG_POOL, FRAX_STABLESWAP_NG_POOL, false);
-
         // Calculated WETH - 539914597000000
         calculatedPrice = uint256(0.000539914597 * 10 ** 18);
         (spotPrice, safePrice, isSpotSafe) =

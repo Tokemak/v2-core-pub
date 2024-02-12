@@ -70,9 +70,7 @@ library BalancerUtilities {
         (assets, balances,) = balancerVault.getPoolTokens(poolId);
     }
 
-    /**
-     * @dev This function retrieves Balancer pool tokens. Supports composable pools
-     */
+    /// @notice This function retrieves tokens (skipping the BPT) from Balancer composable pools
     function _getPoolTokensSkippingPoolToken(
         IVault balancerVault,
         address balancerPool
@@ -80,32 +78,27 @@ library BalancerUtilities {
         (IERC20[] memory allTokens, uint256[] memory allBalances) =
             BalancerUtilities._getPoolTokens(balancerVault, balancerPool);
 
-        if (isComposablePool(balancerPool)) {
-            uint256 nTokens = allTokens.length;
-            tokens = new IERC20[](nTokens - 1);
-            balances = new uint256[](nTokens - 1);
+        uint256 nTokens = allTokens.length;
+        tokens = new IERC20[](nTokens - 1);
+        balances = new uint256[](nTokens - 1);
 
-            uint256 lastIndex = 0;
-            uint256 bptIndex = IBalancerComposableStablePool(balancerPool).getBptIndex();
-            for (uint256 i = 0; i < nTokens;) {
-                // skip pool token
-                if (i == bptIndex) {
-                    unchecked {
-                        ++i;
-                    }
-                    continue;
-                }
-                // copy tokens and balances
-                tokens[lastIndex] = allTokens[i];
-                balances[lastIndex] = allBalances[i];
+        uint256 lastIndex = 0;
+        uint256 bptIndex = IBalancerComposableStablePool(balancerPool).getBptIndex();
+        for (uint256 i = 0; i < nTokens;) {
+            // skip pool token
+            if (i == bptIndex) {
                 unchecked {
                     ++i;
-                    ++lastIndex;
                 }
+                continue;
             }
-        } else {
-            tokens = allTokens;
-            balances = allBalances;
+            // copy tokens and balances
+            tokens[lastIndex] = allTokens[i];
+            balances[lastIndex] = allBalances[i];
+            unchecked {
+                ++i;
+                ++lastIndex;
+            }
         }
     }
 

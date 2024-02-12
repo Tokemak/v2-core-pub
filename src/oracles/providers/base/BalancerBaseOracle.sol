@@ -14,7 +14,6 @@ import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IAsset } from "src/interfaces/external/balancer/IAsset.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
-import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 
 abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
     /// @notice The Balancer Vault that all tokens we're resolving here should reference
@@ -57,6 +56,12 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
         (price, actualQuoteToken) = _getSpotPrice(token, pool, tokens, requestedQuoteToken);
     }
 
+    function getTotalSupply_(address lpToken) internal virtual returns (uint256 totalSupply);
+    function getPoolTokens_(address pool)
+        internal
+        virtual
+        returns (IERC20[] memory tokens, uint256[] memory balances);
+
     ///@notice Returns the total supply of the pool and the reserves (without pool token for composable pools)
     function getSafeSpotPriceInfo(
         address pool,
@@ -67,13 +72,10 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
         Errors.verifyNotZero(lpToken, "lpToken");
         Errors.verifyNotZero(quoteToken, "quoteToken");
 
-        totalLPSupply = BalancerUtilities.isComposablePool(pool)
-            ? IBalancerComposableStablePool(pool).getActualSupply()
-            : IERC20(lpToken).totalSupply();
+        totalLPSupply = getTotalSupply_(pool);
 
         // Get the pool tokens/reserves
-        (IERC20[] memory tokens, uint256[] memory balances) =
-            BalancerUtilities._getPoolTokensSkippingPoolToken(balancerVault, pool);
+        (IERC20[] memory tokens, uint256[] memory balances) = getPoolTokens_(pool);
 
         uint256 nTokens = tokens.length;
         reserves = new ReserveItemInfo[](nTokens);

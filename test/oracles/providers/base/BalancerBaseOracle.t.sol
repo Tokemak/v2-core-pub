@@ -6,11 +6,15 @@ pragma solidity 0.8.17;
 
 import { Test } from "forge-std/Test.sol";
 
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+
+import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
+import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { BalancerBaseOracle } from "src/oracles/providers/base/BalancerBaseOracle.sol";
+import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 import { Errors } from "src/utils/Errors.sol";
 
 import {
@@ -22,11 +26,29 @@ import {
     WSETH_RETH_SFRXETH_BAL_POOL
 } from "test/utils/Addresses.sol";
 
+/// @dev Universal wrapper for testing both Composable and Meta Stable Balancer pools
 contract BalancerBaseOracleWrapper is BalancerBaseOracle {
     constructor(
         ISystemRegistry _systemRegistry,
         IVault _balancerVault
     ) BalancerBaseOracle(_systemRegistry, _balancerVault) { }
+
+    function getTotalSupply_(address lpToken) internal virtual override returns (uint256 totalSupply) {
+        totalSupply = BalancerUtilities.isComposablePool(lpToken)
+            ? IBalancerComposableStablePool(lpToken).getActualSupply()
+            : IERC20(lpToken).totalSupply();
+    }
+
+    function getPoolTokens_(address pool)
+        internal
+        virtual
+        override
+        returns (IERC20[] memory tokens, uint256[] memory balances)
+    {
+        (tokens, balances) = BalancerUtilities.isComposablePool(pool)
+            ? BalancerUtilities._getPoolTokensSkippingPoolToken(balancerVault, pool)
+            : BalancerUtilities._getPoolTokens(balancerVault, pool);
+    }
 }
 
 contract BalancerBaseOracleWrapperTests is Test {

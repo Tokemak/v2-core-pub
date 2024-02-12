@@ -64,4 +64,17 @@ contract BalancerLPComposableStableEthOracle is BalancerBaseOracle, IPriceOracle
         // slither-disable-next-line divide-before-multiply
         price = (minPrice * pool.getRate()) / 1e18;
     }
+
+    function getTotalSupply_(address lpToken) internal virtual override returns (uint256 totalSupply) {
+        totalSupply = IBalancerComposableStablePool(lpToken).getActualSupply();
+    }
+
+    function getPoolTokens_(address pool)
+        internal
+        virtual
+        override
+        returns (IERC20[] memory tokens, uint256[] memory balances)
+    {
+        (tokens, balances) = BalancerUtilities._getPoolTokensSkippingPoolToken(balancerVault, pool);
+    }
 }

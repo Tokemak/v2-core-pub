@@ -199,7 +199,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         address pool,
         address[] memory tokens,
         address requestedQuoteToken
-    ) public view returns (uint256 price, address actualQuoteToken) {
+    ) internal view returns (uint256 price, address actualQuoteToken) {
         int256 tokenIndex = -1;
         int256 quoteTokenIndex = -1;
 

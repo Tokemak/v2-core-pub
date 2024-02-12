@@ -218,7 +218,7 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         address token,
         address pool,
         address lpToken
-    ) public view returns (uint256 price, address actualQuoteToken) {
+    ) internal view returns (uint256 price, address actualQuoteToken) {
         uint256 tokenIndex = 0;
         uint256 quoteTokenIndex = 0;
 

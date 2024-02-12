@@ -221,21 +221,21 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         return price;
     }
 
-    /// @dev if quote token returned is not the requested one, do price conversion
+    /// @notice Consolidate actualQuoteToken to terms of requested quoteToken
     function _enforceQuoteToken(
         address quoteToken,
         address actualQuoteToken,
         uint256 rawPrice
     ) internal returns (uint256) {
-        // Pad price to 18 decimals
+        // If quote token returned is the requested one we return price as is
         if (actualQuoteToken == quoteToken) {
             return rawPrice;
         }
 
-        // If not, get the conversion rate from the actualQuoteToken to quoteToken and then derive the spot price
         IPriceOracle tokenOracle = tokenMappings[actualQuoteToken];
         if (address(tokenOracle) == address(0)) revert MissingTokenOracle(actualQuoteToken);
 
+        // If not, get the conversion rate from the actualQuoteToken to quoteToken and then derive the spot price
         return rawPrice * getPriceInQuote(actualQuoteToken, quoteToken)
             / (10 ** IERC20Metadata(actualQuoteToken).decimals());
     }
@@ -247,9 +247,6 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         address pool,
         address quoteToken
     ) external returns (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) {
-        IPriceOracle tokenOracle = tokenMappings[quoteToken];
-        if (address(tokenOracle) == address(0)) revert MissingTokenOracle(quoteToken);
-
         ISpotPriceOracle spotPriceOracle = poolMappings[pool];
         if (address(spotPriceOracle) == address(0)) revert MissingSpotPriceOracle(pool);
 
@@ -258,15 +255,15 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
             spotPriceOracle.getSafeSpotPriceInfo(pool, lpToken, quoteToken);
 
         // if lp supply is 0 (while we hold it) means compromised pool, so return 0 for worth (and false for safety)
-        if (totalLPSupply == 0 || reserves.length == 0) {
+        uint256 nTokens = reserves.length;
+        if (totalLPSupply == 0 || nTokens == 0) {
             return (0, 0, false);
         }
 
         isSpotSafe = true; // default to true, and set to false if any threshold is breached in the loop below
 
-        //
         // loop through reserves, and sum up aggregates
-        uint256 nTokens = reserves.length;
+
         for (uint256 i = 0; i < nTokens; ++i) {
             ISpotPriceOracle.ReserveItemInfo memory reserve = reserves[i];
 

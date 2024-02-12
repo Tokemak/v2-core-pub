@@ -258,12 +258,11 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
 
         totalLPSupply = IERC20Metadata(lpToken).totalSupply();
 
-        (uint256 nTokens, address[8] memory tokens, uint256[8] memory balances) = curveResolver.getReservesInfo(pool);
+        address[] storage tokens = lpTokenToUnderlying[lpToken];
+        uint256[8] memory balances = curveResolver.getReservesInfo(pool);
 
+        uint256 nTokens = tokens.length;
         reserves = new ReserveItemInfo[](nTokens);
-
-        address[] memory dynTokens = Arrays.convertFixedCurveTokenArrayToDynamic(tokens, nTokens);
-
         for (uint256 i = 0; i < nTokens; ++i) {
             address token = tokens[i];
 
@@ -271,7 +270,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
                 token = WETH;
             }
 
-            (uint256 rawSpotPrice, address actualQuoteToken) = _getSpotPrice(token, pool, dynTokens, quoteToken);
+            (uint256 rawSpotPrice, address actualQuoteToken) = _getSpotPrice(token, pool, tokens, quoteToken);
 
             reserves[i] = ReserveItemInfo({
                 token: token,

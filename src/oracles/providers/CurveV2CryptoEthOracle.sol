@@ -254,21 +254,28 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
 
         totalLPSupply = IERC20Metadata(lpToken).totalSupply();
 
-        (uint256 nTokens, address[8] memory tokens, uint256[8] memory balances) = curveResolver.getReservesInfo(pool);
+        PoolData storage tokens = lpTokenToPool[lpToken];
+        uint256[8] memory balances = curveResolver.getReservesInfo(pool);
 
-        reserves = new ReserveItemInfo[](nTokens);
+        reserves = new ReserveItemInfo[](2); // In Curve V2, all pools have 2 tokens
+        //slither-disable-start similar-names
+        address token0 = tokens.tokenFromPrice;
+        (uint256 rawSpotPrice0, address actualQuoteToken0) = _getSpotPrice(token0, pool, lpToken);
+        reserves[0] = ReserveItemInfo({
+            token: token0,
+            reserveAmount: balances[0],
+            rawSpotPrice: rawSpotPrice0,
+            actualQuoteToken: actualQuoteToken0
+        });
 
-        for (uint256 i = 0; i < nTokens; ++i) {
-            address token = tokens[i];
-
-            (uint256 rawSpotPrice, address actualQuoteToken) = _getSpotPrice(token, pool, lpToken);
-
-            reserves[i] = ReserveItemInfo({
-                token: token,
-                reserveAmount: balances[i],
-                rawSpotPrice: rawSpotPrice,
-                actualQuoteToken: actualQuoteToken
-            });
-        }
+        address token1 = tokens.tokenToPrice;
+        (uint256 rawSpotPrice1, address actualQuoteToken1) = _getSpotPrice(token1, pool, lpToken);
+        reserves[1] = ReserveItemInfo({
+            token: token1,
+            reserveAmount: balances[1],
+            rawSpotPrice: rawSpotPrice1,
+            actualQuoteToken: actualQuoteToken1
+        });
+        //slither-disable-end similar-names
     }
 }

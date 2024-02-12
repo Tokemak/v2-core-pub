@@ -23,6 +23,8 @@ import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { MainRewarder } from "src/rewarders/MainRewarder.sol";
 
+import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
+
 contract DestinationVaultBaseTests is Test {
     address private testUser1;
     address private testUser2;
@@ -34,6 +36,7 @@ contract DestinationVaultBaseTests is Test {
 
     TestERC20 private baseAsset;
     TestERC20 private underlyer;
+    TestIncentiveCalculator private testIncentiveCalculator;
     TestDestinationVault private testVault;
 
     IRootPriceOracle private _rootPriceOracle;
@@ -64,8 +67,15 @@ contract DestinationVaultBaseTests is Test {
         underlyer = new TestERC20("DEF", "DEF");
         underlyer.setDecimals(6);
 
+        testIncentiveCalculator = new TestIncentiveCalculator(address(underlyer));
         testVault = new TestDestinationVault(
-            systemRegistry, baseAsset, underlyer, mainRewarder, new address[](0), abi.encode("")
+            systemRegistry,
+            baseAsset,
+            underlyer,
+            mainRewarder,
+            address(testIncentiveCalculator),
+            new address[](0),
+            abi.encode("")
         );
 
         _rootPriceOracle = IRootPriceOracle(vm.addr(34_399));
@@ -91,10 +101,36 @@ contract DestinationVaultBaseTests is Test {
 
     function test_debtValue_PriceInTermsOfBaseAssetWhenWeth() public {
         bytes memory d = abi.encode("");
-        TestDestinationVault bav =
-            new TestDestinationVault(systemRegistry, IERC20(_weth), underlyer, mainRewarder, new address[](0), d);
+        TestDestinationVault bav = new TestDestinationVault(
+            systemRegistry,
+            IERC20(_weth),
+            underlyer,
+            mainRewarder,
+            address(testIncentiveCalculator),
+            new address[](0),
+            d
+        );
         _mockRootPrice(address(underlyer), 2 ether);
         assertEq(bav.debtValue(10e6), 20 ether);
+    }
+
+    function testIncentiveCalculatorHasSameUnderlying() public {
+        testIncentiveCalculator = new TestIncentiveCalculator(address(0));
+        bytes memory d = abi.encode("");
+        vm.expectRevert(DestinationVault.InvalidIncentiveCalculator.selector);
+        TestDestinationVault bav = new TestDestinationVault(
+            systemRegistry,
+            IERC20(_weth),
+            underlyer,
+            mainRewarder,
+            address(testIncentiveCalculator),
+            new address[](0),
+            d
+        );
+    }
+
+    function testIncentiveCalculatorReturnsStats() public {
+        assertEq(address(testVault.getStats()), address(testIncentiveCalculator));
     }
 
     function testVaultNameIsWithConstituentValues() public {
@@ -348,10 +384,13 @@ contract TestDestinationVault is DestinationVault {
         IERC20 baseAsset_,
         IERC20 underlyer_,
         IMainRewarder rewarder_,
+        address incentiveCalculator_,
         address[] memory additionalTrackedTokens_,
         bytes memory params_
     ) DestinationVault(systemRegistry) {
-        DestinationVault.initialize(baseAsset_, underlyer_, rewarder_, additionalTrackedTokens_, params_);
+        DestinationVault.initialize(
+            baseAsset_, underlyer_, rewarder_, incentiveCalculator_, additionalTrackedTokens_, params_
+        );
     }
 
     function mint(address to, uint256 amount) public {
@@ -427,10 +466,6 @@ contract TestDestinationVault is DestinationVault {
 
     function externalQueriedBalance() public pure override returns (uint256) {
         return 0;
-    }
-
-    function getStats() external pure override returns (IDexLSTStats) {
-        return IDexLSTStats(address(0));
     }
 
     function getMarketplaceRewards()

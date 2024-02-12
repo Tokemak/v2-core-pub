@@ -22,6 +22,7 @@ import { Roles } from "src/libs/Roles.sol";
 import { BaseTest } from "test/BaseTest.t.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
 import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
+import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 
 import { WETH9_ADDRESS } from "test/utils/Addresses.sol";
 
@@ -82,7 +83,10 @@ contract LMPVaultBaseTest is BaseTest {
         // create vault (no need to initialize since working with mock)
 
         address underlyer = address(new TestERC20("underlyer", "underlyer"));
-        IDestinationVault vault = new TestDestinationVault(systemRegistry, vm.addr(34_343), asset, underlyer);
+        TestIncentiveCalculator testIncentiveCalculator = new TestIncentiveCalculator(underlyer);
+        IDestinationVault vault = new TestDestinationVault(
+            systemRegistry, vm.addr(34_343), asset, underlyer, address(testIncentiveCalculator)
+        );
         // mock "isRegistered" call
         vm.mockCall(
             address(systemRegistry.destinationVaultRegistry()),

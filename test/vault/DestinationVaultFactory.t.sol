@@ -21,6 +21,7 @@ import { IDestinationRegistry } from "src/interfaces/destinations/IDestinationRe
 import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
+import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 
 contract DestinationVaultFactoryBaseTests is Test {
     address private _testUser1;
@@ -33,6 +34,7 @@ contract DestinationVaultFactoryBaseTests is Test {
 
     address private _fakeUnderlyer;
     address[] private _fakeTracked;
+    TestIncentiveCalculator private _fakeIncentiveCalculator;
 
     event Initialized(ISystemRegistry registry, bytes params);
 
@@ -51,6 +53,8 @@ contract DestinationVaultFactoryBaseTests is Test {
 
         _fakeUnderlyer = vm.addr(10);
         _fakeTracked = new address[](0);
+
+        _fakeIncentiveCalculator = new TestIncentiveCalculator(_fakeUnderlyer);
 
         _systemRegistry.addRewardToken(address(8));
     }
@@ -106,13 +110,29 @@ contract DestinationVaultFactoryBaseTests is Test {
         vm.expectRevert(
             abi.encodeWithSelector(Errors.MissingRole.selector, Roles.CREATE_DESTINATION_VAULT_ROLE, address(this))
         );
-        _factory.create("x", address(8), _fakeUnderlyer, _fakeTracked, keccak256("abc"), abi.encode(""));
+        _factory.create(
+            "x",
+            address(8),
+            _fakeUnderlyer,
+            address(_fakeIncentiveCalculator),
+            _fakeTracked,
+            keccak256("abc"),
+            abi.encode("")
+        );
 
         bytes32 key = keccak256(abi.encode("x"));
         address template = vm.addr(6);
         _registerTemplate(_templateRegistry, key, template);
         _accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
-        _factory.create("x", address(8), _fakeUnderlyer, _fakeTracked, keccak256("abc"), abi.encode(""));
+        _factory.create(
+            "x",
+            address(8),
+            _fakeUnderlyer,
+            address(_fakeIncentiveCalculator),
+            _fakeTracked,
+            keccak256("abc"),
+            abi.encode("")
+        );
     }
 
     function testVaultTypeMustBeRegistered() public {
@@ -122,11 +142,27 @@ contract DestinationVaultFactoryBaseTests is Test {
         bytes32 badKey = keccak256(abi.encode("y"));
         _registerTemplate(_templateRegistry, badKey, address(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "template"));
-        _factory.create("y", address(8), _fakeUnderlyer, _fakeTracked, keccak256("abc"), abi.encode(""));
+        _factory.create(
+            "y",
+            address(8),
+            _fakeUnderlyer,
+            address(_fakeIncentiveCalculator),
+            _fakeTracked,
+            keccak256("abc"),
+            abi.encode("")
+        );
 
         // Succeeds when a template is registered
         _registerTemplate(_templateRegistry, badKey, address(1));
-        _factory.create("y", address(8), _fakeUnderlyer, _fakeTracked, keccak256("abc"), abi.encode(""));
+        _factory.create(
+            "y",
+            address(8),
+            _fakeUnderlyer,
+            address(_fakeIncentiveCalculator),
+            _fakeTracked,
+            keccak256("abc"),
+            abi.encode("")
+        );
     }
 
     function testCallsInitializeWithProvidedParams() public {
@@ -136,7 +172,15 @@ contract DestinationVaultFactoryBaseTests is Test {
         bytes32 badKey = keccak256(abi.encode("y"));
         _registerTemplate(_templateRegistry, badKey, address(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "template"));
-        _factory.create("y", address(8), _fakeUnderlyer, _fakeTracked, keccak256("abc"), abi.encode(""));
+        _factory.create(
+            "y",
+            address(8),
+            _fakeUnderlyer,
+            address(_fakeIncentiveCalculator),
+            _fakeTracked,
+            keccak256("abc"),
+            abi.encode("")
+        );
 
         // Succeeds when a template is registered
         TestVault tv = new TestVault(_systemRegistry);
@@ -145,7 +189,9 @@ contract DestinationVaultFactoryBaseTests is Test {
 
         vm.expectEmit(true, true, true, true);
         emit Initialized(_systemRegistry, data);
-        _factory.create("y", address(8), _fakeUnderlyer, _fakeTracked, keccak256("abc"), data);
+        _factory.create(
+            "y", address(8), _fakeUnderlyer, address(_fakeIncentiveCalculator), _fakeTracked, keccak256("abc"), data
+        );
     }
 
     function testAddsToRegistry() public {
@@ -155,7 +201,9 @@ contract DestinationVaultFactoryBaseTests is Test {
         bytes32 salt = keccak256("abc");
         _registerTemplate(_templateRegistry, badKey, address(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "template"));
-        _factory.create("y", address(8), _fakeUnderlyer, _fakeTracked, salt, abi.encode(""));
+        _factory.create(
+            "y", address(8), _fakeUnderlyer, address(_fakeIncentiveCalculator), _fakeTracked, salt, abi.encode("")
+        );
 
         TestVault tv = new TestVault(_systemRegistry);
         _registerTemplate(_templateRegistry, badKey, address(tv));
@@ -163,7 +211,7 @@ contract DestinationVaultFactoryBaseTests is Test {
 
         address nextAddress = Clones.predictDeterministicAddress(address(tv), salt, address(_factory));
         vm.expectCall(_vaultRegistry, abi.encodeCall(IDestinationVaultRegistry.register, nextAddress));
-        _factory.create("y", address(8), _fakeUnderlyer, _fakeTracked, salt, data);
+        _factory.create("y", address(8), _fakeUnderlyer, address(_fakeIncentiveCalculator), _fakeTracked, salt, data);
     }
 
     function testRewarderEndsUpWithCorrectStakeToken() public {
@@ -176,7 +224,15 @@ contract DestinationVaultFactoryBaseTests is Test {
 
         address nextAddress = Clones.predictDeterministicAddress(address(tv), salt, address(_factory));
         vm.expectCall(_vaultRegistry, abi.encodeCall(IDestinationVaultRegistry.register, nextAddress));
-        address newVault = _factory.create("y", address(8), _fakeUnderlyer, _fakeTracked, salt, data);
+        address newVault = _factory.create(
+            "y", address(8), address(_fakeIncentiveCalculator), _fakeUnderlyer, _fakeTracked, salt, data
+        );
+
+        IMainRewarder rewarder = IMainRewarder(IDestinationVault(newVault).rewarder());
+        address stakeToken = rewarder.stakeTracker();
+
+        assertEq(newVault, stakeToken);
+
     }
 
     function _registerTemplate(address templateReg, bytes32 key, address template) internal {
@@ -209,7 +265,14 @@ contract TestVault {
         _systemRegistry = _systemRegistry_;
     }
 
-    function initialize(IERC20, IERC20, IMainRewarder _rewarder, address[] memory, bytes memory params) external {
+    function initialize(
+        IERC20,
+        IERC20,
+        IMainRewarder _rewarder,
+        address,
+        address[] memory,
+        bytes memory params
+    ) external {
         emit Initialized(_systemRegistry, params);
 
         rewarder = address(_rewarder);

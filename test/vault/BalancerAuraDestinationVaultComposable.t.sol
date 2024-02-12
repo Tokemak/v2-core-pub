@@ -42,6 +42,7 @@ import {
     RETH_MAINNET,
     BALANCER_MAINNET_AUTHORIZER
 } from "test/utils/Addresses.sol";
+import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 
 contract BalancerAuraDestinationVaultComposableTests is Test {
     address private constant LP_TOKEN_WHALE = BAL_WSTETH_SFRX_ETH_RETH_WHALE;
@@ -61,7 +62,7 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
     IWETH9 private _asset;
 
     IERC20 private _underlyer;
-
+    TestIncentiveCalculator private _testIncentiveCalculator;
     BalancerAuraDestinationVault private _destVault;
 
     SwapRouter private swapRouter;
@@ -157,12 +158,13 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
             auraPoolId: 50
         });
         bytes memory initParamBytes = abi.encode(initParams);
-
+        _testIncentiveCalculator = new TestIncentiveCalculator(address(_underlyer));
         address payable newVault = payable(
             _destinationVaultFactory.create(
                 "template",
                 address(_asset),
                 address(_underlyer),
+                address(_testIncentiveCalculator),
                 additionalTrackedTokens,
                 keccak256("salt1"),
                 initParamBytes
@@ -204,12 +206,12 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
             auraPoolId: 50
         });
         bytes memory initParamBytes = abi.encode(initParams);
-
         address payable newVault = payable(
             _destinationVaultFactory.create(
                 "template",
                 address(_asset),
                 address(_underlyer),
+                address(_testIncentiveCalculator),
                 additionalTrackedTokens,
                 keccak256("salt2"),
                 initParamBytes

@@ -37,6 +37,7 @@ import {
     WSTETH_MAINNET,
     WSETH_WETH_BAL_POOL
 } from "test/utils/Addresses.sol";
+import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
 import { MaverickDestinationVault } from "src/vault/MaverickDestinationVault.sol";
 import { BalancerV2Swap } from "src/swapper/adapters/BalancerV2Swap.sol";
@@ -57,7 +58,7 @@ contract MaverickDestinationVaultTests is Test {
     IWETH9 private _asset;
 
     IERC20 private _underlyer;
-
+    TestIncentiveCalculator private _testIncentiveCalculator;
     MaverickDestinationVault private _destVault;
 
     SwapRouter private swapRouter;
@@ -111,6 +112,8 @@ contract MaverickDestinationVaultTests is Test {
         _underlyer = IERC20(MAV_WSTETH_WETH_BOOSTED_POS);
         vm.label(address(_underlyer), "underlyer");
 
+        _testIncentiveCalculator = new TestIncentiveCalculator(address(_underlyer));
+
         MaverickDestinationVault dvTemplate = new MaverickDestinationVault(_systemRegistry);
         bytes32 dvType = keccak256(abi.encode("template"));
         bytes32[] memory dvTypes = new bytes32[](1);
@@ -135,6 +138,7 @@ contract MaverickDestinationVaultTests is Test {
                 "template",
                 address(_asset),
                 address(_underlyer),
+                address(_testIncentiveCalculator),
                 additionalTrackedTokens,
                 keccak256("salt1"),
                 initParamBytes
@@ -173,6 +177,7 @@ contract MaverickDestinationVaultTests is Test {
                 "template",
                 address(_asset),
                 address(_underlyer),
+                address(_testIncentiveCalculator),
                 additionalTrackedTokens,
                 keccak256("salt2"),
                 initParamBytes

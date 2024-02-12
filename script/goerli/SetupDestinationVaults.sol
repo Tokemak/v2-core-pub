@@ -44,9 +44,16 @@ contract SetupDestinationVaults is BaseScript {
             auraBooster: address(1),
             auraPoolId: 1
         });
+
         bytes memory encodedParams = abi.encode(initParams);
         address newVault = factory.create(
-            "bal-v1-no-aura", constants.tokens.weth, poolAddress, additionalTrackTokens, salt, encodedParams
+            "bal-v1-no-aura",
+            constants.tokens.weth,
+            poolAddress,
+            address(0), //TODO: incentiveCalculator
+            additionalTrackTokens,
+            salt,
+            encodedParams
         );
         console.log("Composable Destination Vault: ", newVault);
 
@@ -61,7 +68,13 @@ contract SetupDestinationVaults is BaseScript {
         });
         encodedParams = abi.encode(initParams);
         newVault = factory.create(
-            "bal-v1-no-aura", constants.tokens.weth, poolAddress, additionalTrackTokens, salt, encodedParams
+            "bal-v1-no-aura",
+            constants.tokens.weth,
+            poolAddress,
+            address(0), //TODO: incentiveCalculator
+            additionalTrackTokens,
+            salt,
+            encodedParams
         );
         console.log("Meta Destination Vault: ", newVault);
 

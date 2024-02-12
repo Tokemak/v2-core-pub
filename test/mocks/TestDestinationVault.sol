@@ -21,10 +21,16 @@ contract TestDestinationVault is DestinationVault {
         ISystemRegistry systemRegistry,
         address rewarder,
         address token,
-        address underlyer
+        address underlyer,
+        address incentiveCalculator
     ) DestinationVault(systemRegistry) {
         initialize(
-            IERC20Metadata(token), IERC20Metadata(underlyer), IMainRewarder(rewarder), new address[](0), abi.encode("")
+            IERC20Metadata(token),
+            IERC20Metadata(underlyer),
+            IMainRewarder(rewarder),
+            incentiveCalculator,
+            new address[](0),
+            abi.encode("")
         );
     }
 

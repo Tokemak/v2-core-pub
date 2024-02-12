@@ -37,6 +37,7 @@ import {
     AURA_MAINNET,
     BAL_WSTETH_WETH_WHALE
 } from "test/utils/Addresses.sol";
+import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 
 contract BalancerAuraDestinationVaultTests is Test {
     address private constant LP_TOKEN_WHALE = BAL_WSTETH_WETH_WHALE; //~20
@@ -56,6 +57,8 @@ contract BalancerAuraDestinationVaultTests is Test {
     IWETH9 private _asset;
 
     IERC20 private _underlyer;
+
+    TestIncentiveCalculator private _testIncentiveCalculator;
 
     BalancerAuraDestinationVault private _destVault;
 
@@ -131,12 +134,13 @@ contract BalancerAuraDestinationVaultTests is Test {
             auraPoolId: 115
         });
         bytes memory initParamBytes = abi.encode(initParams);
-
+        _testIncentiveCalculator = new TestIncentiveCalculator(address(_underlyer));
         address payable newVault = payable(
             _destinationVaultFactory.create(
                 "template",
                 address(_asset),
                 address(_underlyer),
+                address(_testIncentiveCalculator),
                 additionalTrackedTokens,
                 keccak256("salt1"),
                 initParamBytes
@@ -175,6 +179,7 @@ contract BalancerAuraDestinationVaultTests is Test {
                 "template",
                 address(_asset),
                 address(_underlyer),
+                address(_testIncentiveCalculator),
                 additionalTrackedTokens,
                 keccak256("salt2"),
                 initParamBytes

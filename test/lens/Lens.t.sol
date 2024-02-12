@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 
 import { BaseTest } from "test/BaseTest.t.sol";
 import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
+import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Lens } from "src/lens/Lens.sol";
 import { ILens } from "src/interfaces/lens/ILens.sol";
@@ -19,8 +20,10 @@ contract LensTest is BaseTest {
         super._setUp(false);
 
         address underlyer = address(BaseTest.mockAsset("underlyer", "underlyer", 0));
-
-        defaultDestinationVault = new TestDestinationVault(systemRegistry, vm.addr(3434), address(baseAsset), underlyer);
+        testIncentiveCalculator = new TestIncentiveCalculator(underlyer);
+        defaultDestinationVault = new TestDestinationVault(
+            systemRegistry, vm.addr(3434), address(baseAsset), underlyer, address(testIncentiveCalculator)
+        );
         address[] memory destinations = new address[](1);
         destinations[0] = address(defaultDestinationVault);
 

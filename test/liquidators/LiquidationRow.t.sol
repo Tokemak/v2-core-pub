@@ -28,6 +28,7 @@ import { Errors } from "src/utils/Errors.sol";
 import { WETH_MAINNET, TOKE_MAINNET, RANDOM } from "test/utils/Addresses.sol";
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
+import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
 
 import { CurveConvexDestinationVault } from "src/vault/CurveConvexDestinationVault.sol";
@@ -83,6 +84,7 @@ contract LiquidationRowTest is Test {
     AsyncSwapperMock internal asyncSwapper;
     MockERC20 internal targetToken;
 
+    TestIncentiveCalculator internal testIncentiveCalculator;
     TestDestinationVault internal testVault;
     MainRewarder internal mainRewarder;
 
@@ -143,7 +145,10 @@ contract LiquidationRowTest is Test {
         // Set up test vault
         address baseAsset = address(new TestERC20("baseAsset", "baseAsset"));
         address underlyer = address(new TestERC20("underlyer", "underlyer"));
-        testVault = new TestDestinationVault(systemRegistry, address(mainRewarder), baseAsset, underlyer);
+        testIncentiveCalculator = new TestIncentiveCalculator(underlyer);
+        testVault = new TestDestinationVault(
+            systemRegistry, address(mainRewarder), baseAsset, underlyer, address(testIncentiveCalculator)
+        );
 
         // Set up the async swapper mock
         asyncSwapper = new AsyncSwapperMock(vm.addr(100), targetToken, address(liquidationRow));

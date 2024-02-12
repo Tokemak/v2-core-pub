@@ -49,6 +49,7 @@ import {
     LDO_MAINNET,
     CURVE_STETH_ETH_WHALE
 } from "test/utils/Addresses.sol";
+import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
 import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
@@ -71,9 +72,9 @@ contract CurveConvexDestinationVaultTests is Test {
 
     IWETH9 internal _asset;
     MainRewarder internal _rewarder;
-
     IERC20 internal _underlyer;
 
+    TestIncentiveCalculator private _testIncentiveCalculator;
     CurveResolverMainnet internal _curveResolver;
     CurveConvexDestinationVault private _destVault;
 
@@ -154,12 +155,13 @@ contract CurveConvexDestinationVaultTests is Test {
             baseAssetBurnTokenIndex: 0
         });
         bytes memory initParamBytes = abi.encode(initParams);
-
+        _testIncentiveCalculator = new TestIncentiveCalculator(address(_underlyer));
         address payable newVault = payable(
             _destinationVaultFactory.create(
                 "template",
                 address(_asset),
                 address(_underlyer),
+                address(_testIncentiveCalculator),
                 additionalTrackedTokens,
                 keccak256("salt1"),
                 initParamBytes
@@ -192,12 +194,12 @@ contract CurveConvexDestinationVaultTests is Test {
             baseAssetBurnTokenIndex: 0
         });
         bytes memory initParamBytes = abi.encode(initParams);
-
         address payable newVault = payable(
             _destinationVaultFactory.create(
                 "template",
                 address(_asset),
                 address(_underlyer),
+                address(_testIncentiveCalculator),
                 additionalTrackedTokens,
                 keccak256("salt2"),
                 initParamBytes
@@ -493,7 +495,7 @@ contract Constructor is CurveConvexDestinationVaultTests {
 
 contract Initialize is CurveConvexDestinationVaultTests {
     CurveConvexDestinationVault internal vault;
-
+    TestIncentiveCalculator internal _testIncentiveCalculator;
     bytes internal defaultInitParamBytes;
 
     function setUp() public override {
@@ -508,6 +510,8 @@ contract Initialize is CurveConvexDestinationVaultTests {
         });
 
         defaultInitParamBytes = abi.encode(defaultInitParams);
+
+        _testIncentiveCalculator = new TestIncentiveCalculator(address(_underlyer));
     }
 
     function test_RevertIf_ParamConvexStakingIsZeroAddress() public {
@@ -520,7 +524,14 @@ contract Initialize is CurveConvexDestinationVaultTests {
         bytes memory initParamBytes = abi.encode(initParams);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "convexStaking"));
-        vault.initialize(IERC20(address(_asset)), _underlyer, _rewarder, additionalTrackedTokens, initParamBytes);
+        vault.initialize(
+            IERC20(address(_asset)),
+            _underlyer,
+            _rewarder,
+            address(_testIncentiveCalculator),
+            additionalTrackedTokens,
+            initParamBytes
+        );
     }
 
     function test_RevertIf_ParamCurvePoolIsZeroAddress() public {
@@ -531,9 +542,15 @@ contract Initialize is CurveConvexDestinationVaultTests {
             baseAssetBurnTokenIndex: 0
         });
         bytes memory initParamBytes = abi.encode(initParams);
-
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "curvePool"));
-        vault.initialize(IERC20(address(_asset)), _underlyer, _rewarder, additionalTrackedTokens, initParamBytes);
+        vault.initialize(
+            IERC20(address(_asset)),
+            _underlyer,
+            _rewarder,
+            address(_testIncentiveCalculator),
+            additionalTrackedTokens,
+            initParamBytes
+        );
     }
 
     function test_RevertIf_PoolIsShutdown() public {
@@ -550,7 +567,14 @@ contract Initialize is CurveConvexDestinationVaultTests {
             )
         );
         vm.expectRevert(abi.encodeWithSelector(CurveConvexDestinationVault.PoolShutdown.selector));
-        vault.initialize(IERC20(address(_asset)), _underlyer, _rewarder, additionalTrackedTokens, defaultInitParamBytes);
+        vault.initialize(
+            IERC20(address(_asset)),
+            _underlyer,
+            _rewarder,
+            address(_testIncentiveCalculator),
+            additionalTrackedTokens,
+            defaultInitParamBytes
+        );
     }
 
     function test_RevertIf_LptokeFromBoosterIsZeroAddress() public {
@@ -560,7 +584,14 @@ contract Initialize is CurveConvexDestinationVaultTests {
             abi.encode(zero, zero, zero, zero, zero, false)
         );
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "lpToken"));
-        vault.initialize(IERC20(address(_asset)), _underlyer, _rewarder, additionalTrackedTokens, defaultInitParamBytes);
+        vault.initialize(
+            IERC20(address(_asset)),
+            _underlyer,
+            _rewarder,
+            address(_testIncentiveCalculator),
+            additionalTrackedTokens,
+            defaultInitParamBytes
+        );
     }
 
     function test_RevertIf_LptokeIsDifferentThanTheOneFromBooster() public {
@@ -570,7 +601,14 @@ contract Initialize is CurveConvexDestinationVaultTests {
             abi.encode(address(1), zero, zero, zero, zero, false)
         );
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "lpToken"));
-        vault.initialize(IERC20(address(_asset)), _underlyer, _rewarder, additionalTrackedTokens, defaultInitParamBytes);
+        vault.initialize(
+            IERC20(address(_asset)),
+            _underlyer,
+            _rewarder,
+            address(_testIncentiveCalculator),
+            additionalTrackedTokens,
+            defaultInitParamBytes
+        );
     }
 
     function test_RevertIf_CrvRewardsIsDifferentThanTheOneFromBooster() public {
@@ -580,7 +618,14 @@ contract Initialize is CurveConvexDestinationVaultTests {
             abi.encode(0x06325440D014e39736583c165C2963BA99fAf14E, zero, zero, zero, zero, false)
         );
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "crvRewards"));
-        vault.initialize(IERC20(address(_asset)), _underlyer, _rewarder, additionalTrackedTokens, defaultInitParamBytes);
+        vault.initialize(
+            IERC20(address(_asset)),
+            _underlyer,
+            _rewarder,
+            address(_testIncentiveCalculator),
+            additionalTrackedTokens,
+            defaultInitParamBytes
+        );
     }
 
     function test_RevertIf_NumtokensIsZero() public {
@@ -590,8 +635,14 @@ contract Initialize is CurveConvexDestinationVaultTests {
             abi.encodeWithSelector(ICurveResolver.resolveWithLpToken.selector),
             abi.encode(tokens, 0, address(1), false)
         );
-
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "numTokens"));
-        vault.initialize(IERC20(address(_asset)), _underlyer, _rewarder, additionalTrackedTokens, defaultInitParamBytes);
+        vault.initialize(
+            IERC20(address(_asset)),
+            _underlyer,
+            _rewarder,
+            address(_testIncentiveCalculator),
+            additionalTrackedTokens,
+            defaultInitParamBytes
+        );
     }
 }

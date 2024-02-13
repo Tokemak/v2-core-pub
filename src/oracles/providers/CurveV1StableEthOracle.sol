@@ -263,9 +263,12 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         totalLPSupply = IERC20Metadata(lpToken).totalSupply();
 
         address[] storage tokens = lpTokenToUnderlying[lpToken];
-        uint256[8] memory balances = curveResolver.getReservesInfo(pool);
-
         uint256 nTokens = tokens.length;
+        if (nTokens == 0) {
+            revert NotRegistered(lpToken);
+        }
+
+        uint256[8] memory balances = curveResolver.getReservesInfo(pool);
         reserves = new ReserveItemInfo[](nTokens);
         for (uint256 i = 0; i < nTokens; ++i) {
             address token = tokens[i];

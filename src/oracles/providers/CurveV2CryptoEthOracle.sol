@@ -249,6 +249,9 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         totalLPSupply = IERC20Metadata(lpToken).totalSupply();
 
         PoolData storage tokens = lpTokenToPool[lpToken];
+        if (tokens.pool == address(0)) {
+            revert NotRegistered(lpToken);
+        }
         uint256[8] memory balances = curveResolver.getReservesInfo(pool);
 
         reserves = new ReserveItemInfo[](2); // In Curve V2, all pools have 2 tokens

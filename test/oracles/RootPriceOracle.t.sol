@@ -511,7 +511,7 @@ contract GetRangePricesLP is RootPriceOracleTests {
         _rootPriceOracle.getRangePricesLP(_token, _pool, _actualToken);
     }
 
-    function test_getRangePricesLP_ReturnsZeroWhenEmptyReserves() public {
+    function test_getRangePricesLP_RevertsWhenEmptyReserves() public {
         _rootPriceOracle.setSafeSpotPriceThreshold(_token1, 1000);
         _rootPriceOracle.setSafeSpotPriceThreshold(_token2, 1000);
 
@@ -524,12 +524,9 @@ contract GetRangePricesLP is RootPriceOracleTests {
             abi.encode(35_000_000 * 1e18, reserves)
         );
 
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "reserves"));
         (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) =
             _rootPriceOracle.getRangePricesLP(_token, _pool, _actualToken);
-
-        assertEq(safePriceInQuote, 0);
-        assertEq(spotPriceInQuote, 0);
-        assertEq(isSpotSafe, false);
     }
 
     function test_getRangePricesLP_ReturnsZeroWhenZeroTotalSupply() public {

@@ -256,7 +256,10 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
 
         // if lp supply is 0 (while we hold it) means compromised pool, so return 0 for worth (and false for safety)
         uint256 nTokens = reserves.length;
-        if (totalLPSupply == 0 || nTokens == 0) {
+        if (nTokens == 0) {
+            revert Errors.InvalidParam("reserves");
+        }
+        if (totalLPSupply == 0) {
             return (0, 0, false);
         }
 

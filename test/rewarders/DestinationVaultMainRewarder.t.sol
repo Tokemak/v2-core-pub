@@ -134,4 +134,27 @@ contract DVRewarderGetRewardTest is DestinationVaultRewarderTest {
         assertEq(rewardToken.balanceOf(stakeTracker), stakeAmount);
         assertEq(rewardToken.balanceOf(address(rewarder)), 0);
     }
+
+    function test_RewardsCanOnlyBeClaimedByAccount() public {
+        // Check balances of reward token beforehand.
+        assertEq(rewardToken.balanceOf(stakeTracker), 0);
+        assertEq(rewardToken.balanceOf(address(rewarder)), stakeAmount);
+
+        address user = makeAddr("user");
+
+        // Prank `stakeTracker`, stake on behalf of staker.
+        vm.startPrank(stakeTracker);
+        rewarder.stake(user, stakeAmount);
+
+        // Roll block duration + 1, will give staker all rewards.
+        vm.roll(durationInBlock + 1);
+        vm.stopPrank();
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        rewarder.getReward(user, false);
+
+        vm.startPrank(user);
+        rewarder.getReward(user, false);
+        vm.stopPrank();
+    }
 }

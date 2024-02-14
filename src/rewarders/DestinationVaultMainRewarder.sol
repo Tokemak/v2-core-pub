@@ -70,7 +70,11 @@ contract DestinationVaultMainRewarder is MainRewarder {
      * @param account Account to claim rewards for.
      * @param claimExtras Whether or not to claim extra rewards.
      */
-    function getReward(address account, bool claimExtras) public onlyStakeTracker {
+    function getReward(address account, bool claimExtras) public {
+        if (msg.sender != account) {
+            revert Errors.AccessDenied();
+        }
+
         _getReward(account, claimExtras);
     }
 }

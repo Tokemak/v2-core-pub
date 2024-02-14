@@ -110,7 +110,9 @@ contract CurveV2CryptoEthOracleTest is Test {
     }
 
     function test_NotCryptoPool() external {
-        vm.expectRevert(abi.encodeWithSelector(CurveV2CryptoEthOracle.NotCryptoPool.selector, STETH_WETH_CURVE_POOL_CONCENTRATED));
+        vm.expectRevert(
+            abi.encodeWithSelector(CurveV2CryptoEthOracle.NotCryptoPool.selector, STETH_WETH_CURVE_POOL_CONCENTRATED)
+        );
         curveOracle.registerPool(STETH_WETH_CURVE_POOL_CONCENTRATED, CRV_ETH_CURVE_V2_LP, false);
     }
 

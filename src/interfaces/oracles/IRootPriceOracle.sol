@@ -36,7 +36,7 @@ interface IRootPriceOracle {
     /// @notice Returns floor price of the supplied lp token in terms of requested quote.
     /// @param pool Address of pool to get spot pricing from.
     /// @param lpToken Address of the lp token to price.
-    /// @param inQuote Address of quote token.
+    /// @param inQuote Address of desired quote token.
     /// @param ceiling Bool indicating whether to get floor or ceiling price.
     /// @return floorOrCeilingPerLpToken Floor or ceiling price of the lp token.
     function getFloorCeilingPrice(

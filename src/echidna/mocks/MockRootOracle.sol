@@ -46,7 +46,12 @@ contract MockRootOracle is Numbers, IRootPriceOracle {
         revert NotImplemented();
     }
 
-    function getFloorCeilingPrice(address pool, address lptoken, address inQuote, bool ceiling) external returns (uint256) {
-      revert NotImplemented();
+    function getFloorCeilingPrice(
+        address pool,
+        address lptoken,
+        address inQuote,
+        bool ceiling
+    ) external returns (uint256) {
+        revert NotImplemented();
     }
 }

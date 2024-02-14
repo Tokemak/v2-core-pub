@@ -14,6 +14,8 @@ import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
+import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
+import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 
 contract PermitTests is Test {
     SystemRegistry private _systemRegistry;
@@ -55,7 +57,10 @@ contract PermitTests is Test {
         _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, template, 800, 100);
         _accessController.grantRole(Roles.REGISTRY_UPDATER, address(_lmpVaultFactory));
 
-        bytes memory initData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: vm.addr(10_001) }));
+        bytes memory initData = abi.encode("");
+
+        LMPStrategy stratTemplate = new LMPStrategy(_systemRegistry, stratHelpers.getDefaultConfig());
+        _lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
         // Mock LMPVaultRouter call for LMPVault creation.
         vm.mockCall(
@@ -65,7 +70,9 @@ contract PermitTests is Test {
         );
 
         uint256 limit = type(uint112).max;
-        _lmpVault = LMPVault(_lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256("v1"), initData));
+        _lmpVault = LMPVault(
+            _lmpVaultFactory.createVault(limit, limit, address(stratTemplate), "x", "y", keccak256("v1"), initData)
+        );
         vm.label(address(_lmpVault), "lmpVault");
     }
 

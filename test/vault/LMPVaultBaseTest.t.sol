@@ -24,6 +24,7 @@ import { VaultTypes } from "src/vault/VaultTypes.sol";
 import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 
+import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { WETH9_ADDRESS } from "test/utils/Addresses.sol";
 
 contract LMPVaultBaseTest is BaseTest {
@@ -63,6 +64,7 @@ contract LMPVaultBaseTest is BaseTest {
 
         // create test lmpVault
         ILMPVaultFactory vaultFactory = systemRegistry.getLMPVaultFactoryByType(VaultTypes.LST);
+        vaultFactory.addStrategyTemplate(lmpStrategy);
         accessController.grantRole(Roles.CREATE_POOL_ROLE, address(vaultFactory));
 
         // We use mock since this function is called not from owner and
@@ -71,10 +73,14 @@ contract LMPVaultBaseTest is BaseTest {
             address(systemRegistry), abi.encodeWithSelector(SystemRegistry.isRewardToken.selector), abi.encode(true)
         );
 
-        bytes memory initData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: lmpStrategy }));
-        lmpVault = LMPVault(
-            vaultFactory.createVault(type(uint112).max, type(uint112).max, "x", "y", keccak256("vault"), initData)
+        vm.mockCall(
+            lmpStrategy, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(systemRegistry)
         );
+
+        bytes memory initData = abi.encode("");
+        uint256 limit = type(uint112).max;
+        bytes32 template = keccak256("vault");
+        lmpVault = LMPVault(vaultFactory.createVault(limit, limit, lmpStrategy, "x", "y", template, initData));
 
         assert(systemRegistry.lmpVaultRegistry().isVault(address(lmpVault)));
     }
@@ -107,31 +113,6 @@ contract LMPVaultBaseTest is BaseTest {
     function test_DestinationVault_add() public {
         _addDestinationVault(destinationVault);
         assert(lmpVault.getDestinations()[0] == address(destinationVault));
-    }
-
-    function test_DestinationVault_Max() public {
-        address[] memory localDestVaults = new address[](50); // 50 DV vaults is max.
-        // Generate 50 "vaults".
-        for (uint256 i = 0; i < 50; ++i) {
-            localDestVaults[i] = vm.addr(i + 1); // Private key cannot be 0.
-        }
-
-        // Mock DV registry call.
-        vm.mockCall(
-            address(systemRegistry.destinationVaultRegistry()),
-            abi.encodeWithSelector(destinationVaultRegistry.isRegistered.selector),
-            abi.encode(true)
-        );
-
-        // Add 50 DVs to LMP.
-        lmpVault.addDestinations(localDestVaults);
-
-        // Reset array with one extra "vault";
-        localDestVaults = new address[](1);
-        localDestVaults[0] = vm.addr(51);
-
-        vm.expectRevert(DestinationLimitExceeded.selector);
-        lmpVault.addDestinations(localDestVaults);
     }
 
     function test_DestinationVault_add_permissions() public {
@@ -184,38 +165,6 @@ contract LMPVaultBaseTest is BaseTest {
         emit DestinationVaultRemoved(destinations[0]);
         lmpVault.removeDestinations(destinations);
         assert(lmpVault.getDestinations().length == numDestinationsBefore - 1);
-    }
-
-    function test_WithdrawalQueue() public {
-        // add some vaults
-        _addDestinationVault(destinationVault);
-        _addDestinationVault(destinationVault2);
-
-        assert(lmpVault.getWithdrawalQueue().length == 0);
-
-        // set the queue for same vaults but reverse order
-        address[] memory withdrawalDestinations = new address[](2);
-        withdrawalDestinations[0] = address(destinationVault2);
-        withdrawalDestinations[1] = address(destinationVault);
-
-        vm.expectEmit(true, false, false, false);
-        emit WithdrawalQueueSet(withdrawalDestinations);
-
-        lmpVault.setWithdrawalQueue(withdrawalDestinations);
-
-        // check queue
-        IDestinationVault[] memory withdrawalQueue = lmpVault.getWithdrawalQueue();
-        assert(withdrawalQueue.length == 2);
-        assert(withdrawalQueue[0] == destinationVault2);
-        assert(withdrawalQueue[1] == destinationVault);
-    }
-
-    function test_WithdrawalQueue_permissions() public {
-        vm.prank(unauthorizedUser);
-        address[] memory destinations = new address[](1);
-        destinations[0] = address(destinationVault);
-        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        lmpVault.setWithdrawalQueue(destinations);
     }
 
     //////////////////////////////////////////////////////////////////////

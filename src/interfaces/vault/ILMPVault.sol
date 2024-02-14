@@ -8,12 +8,52 @@ import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
+import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 
 interface ILMPVault is IERC4626, IERC20Permit {
     enum VaultShutdownStatus {
         Active,
         Deprecated,
         Exploit
+    }
+
+    struct ProfitUnlockSettings {
+        /// @notice Time it takes for profit to unlock in seconds
+        uint48 unlockPeriodInSeconds;
+        /// @notice Time at which all profit will have been unlocked
+        uint48 fullProfitUnlockTime;
+        /// @notice Last time profits were unlocked
+        uint48 lastProfitUnlockTime;
+        /// @notice Per second rate at which profit shares unlocks
+        /// @dev Rate when calculated is denominated in MAX_BPS_PROFIT. TODO: Get into uint112
+        uint256 profitUnlockRate;
+    }
+
+    struct AutoPoolFeeSettings {
+        address feeSink;
+        uint256 totalAssetsHighMark;
+        uint256 totalAssetsHighMarkTimestamp;
+        uint256 nextManagementFeeTake;
+        address managementFeeSink;
+        uint256 managementFeeBps;
+        uint256 pendingManagementFeeBps;
+        uint256 performanceFeeBps;
+        uint256 navPerShareLastFeeMark;
+        uint256 navPerShareLastFeeMarkTimestamp;
+        bool rebalanceFeeHighWaterMarkEnabled;
+    }
+
+    struct AssetBreakdown {
+        uint256 totalIdle;
+        uint256 totalDebt;
+        uint256 totalDebtMin;
+        uint256 totalDebtMax;
+    }
+
+    enum TotalAssetPurpose {
+        Global,
+        Deposit,
+        Withdraw
     }
 
     /* ******************************** */
@@ -24,6 +64,7 @@ interface ILMPVault is IERC4626, IERC20Permit {
     event Nav(uint256 idle, uint256 debt, uint256 totalSupply);
     event RewarderSet(address newRewarder, address oldRewarder);
     event DestinationDebtReporting(address destination, uint256 debtValue, uint256 claimed, uint256 claimGasUsed);
+    event RewarderSet(address rewarder);
     event FeeCollected(uint256 fees, address feeSink, uint256 mintedShares, uint256 profit, uint256 idle, uint256 debt);
     event ManagementFeeCollected(uint256 fees, address feeSink, uint256 mintedShares);
     event Shutdown(VaultShutdownStatus reason);
@@ -55,15 +96,10 @@ interface ILMPVault is IERC4626, IERC20Permit {
     //       How it'll delegate is still being decided
     // function setWithdrawalQueue(address[] calldata destinations) external;
 
-    /// @notice Set the withdrawal queue to be used when taking out Assets
-    /// @param _destinations The ordered list of destination vaults to go for withdrawals
-    function setWithdrawalQueue(address[] calldata _destinations) external;
-
-    /// @notice Get the withdrawal queue to be used when taking out Assets
-    function getWithdrawalQueue() external returns (IDestinationVault[] memory _destinations);
-
     /// @notice Get a list of destination vaults with pending assets to clear out
     function getRemovalQueue() external view returns (address[] memory);
+
+    function getFeeSettings() external view returns (AutoPoolFeeSettings memory);
 
     /// @notice Remove emptied destination vault from pending removal queue
     function removeFromRemovalQueue(address vaultToRemove) external;
@@ -81,14 +117,23 @@ interface ILMPVault is IERC4626, IERC20Permit {
     /// @return _destinations List of supported destination vaults
     function getDestinations() external view returns (address[] memory _destinations);
 
-    /// @notice Current performance fee taken on profit. 100% == 10000
-    function performanceFeeBps() external view returns (uint256);
+    function convertToShares(
+        uint256 assets,
+        uint256 totalAssetsForPurpose,
+        uint256 supply,
+        Math.Rounding rounding
+    ) external view returns (uint256 shares);
 
-    /// @notice The amount of baseAsset deposited into the contract pending deployment
-    function totalIdle() external view returns (uint256);
+    function convertToAssets(
+        uint256 shares,
+        uint256 totalAssetsForPurpose,
+        uint256 supply,
+        Math.Rounding rounding
+    ) external view returns (uint256 assets);
 
-    /// @notice The current (though cached) value of assets we've deployed
-    function totalDebt() external view returns (uint256);
+    function totalAssets(TotalAssetPurpose purpose) external view returns (uint256);
+
+    function getAssetBreakdown() external view returns (AssetBreakdown memory);
 
     /// @notice get a destinations last reported debt value
     /// @param destVault the address of the target destination
@@ -100,12 +145,6 @@ interface ILMPVault is IERC4626, IERC20Permit {
 
     /// @notice get if a destinationVault is queued for removal by the LMPVault
     function isDestinationQueuedForRemoval(address destination) external view returns (bool);
-
-    /// @notice add (or move to if it already exists) a destination to the head of the withdrawal queue
-    function addToWithdrawalQueueHead(address destinationVault) external;
-
-    /// @notice add (or move to if it already exists) a destination to the tail of the withdrawal queue
-    function addToWithdrawalQueueTail(address destinationVault) external;
 
     /// @notice Returns instance of vault rewarder.
     function rewarder() external view returns (IMainRewarder);

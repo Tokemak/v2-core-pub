@@ -39,6 +39,8 @@ contract DestinationVaultBaseTests is Test {
     TestIncentiveCalculator private testIncentiveCalculator;
     TestDestinationVault private testVault;
 
+    address private pool;
+
     IRootPriceOracle private _rootPriceOracle;
 
     address private _weth;
@@ -50,6 +52,7 @@ contract DestinationVaultBaseTests is Test {
     function setUp() public {
         testUser1 = vm.addr(1);
         testUser2 = vm.addr(2);
+        pool = vm.addr(234_234);
         mainRewarder = IMainRewarder(vm.addr(3));
         lmpVaultRegistry = ILMPVaultRegistry(vm.addr(3));
 
@@ -76,7 +79,8 @@ contract DestinationVaultBaseTests is Test {
             mainRewarder,
             address(testIncentiveCalculator),
             new address[](0),
-            abi.encode("")
+            abi.encode(""),
+            pool
         );
 
         _rootPriceOracle = IRootPriceOracle(vm.addr(34_399));
@@ -109,9 +113,11 @@ contract DestinationVaultBaseTests is Test {
             mainRewarder,
             address(testIncentiveCalculator),
             new address[](0),
-            d
+            d,
+            pool
         );
         _mockRootPrice(address(underlyer), 2 ether);
+        _mockRootPriceGetRangesPriceLP(address(underlyer), pool, _weth, 1 ether, 2 ether, true);
         assertEq(bav.debtValue(10e6), 20 ether);
     }
 
@@ -120,14 +126,15 @@ contract DestinationVaultBaseTests is Test {
         testIncentiveCalculator.setLpToken(address(0));
         bytes memory d = abi.encode("");
         vm.expectRevert(DestinationVault.InvalidIncentiveCalculator.selector);
-        TestDestinationVault bav = new TestDestinationVault(
+        new TestDestinationVault(
             systemRegistry,
             IERC20(_weth),
             underlyer,
             mainRewarder,
             address(testIncentiveCalculator),
             new address[](0),
-            d
+            d,
+            pool
         );
     }
 
@@ -344,8 +351,72 @@ contract DestinationVaultBaseTests is Test {
         assertEq(underlyer.balanceOf(vm.addr(55)), 1000);
     }
 
-    function testGetPools() public {
-        assertEq(testVault.getPool(), address(0));
+    function test_getValidatedSpotPrice_RevertsWhenNotSafe() public {
+        _mockRootPriceGetRangesPriceLP(1, 2, false);
+
+        vm.expectRevert(abi.encodeWithSelector(DestinationVault.PricesOutOfRange.selector, 1, 2));
+        testVault.getValidatedSpotPrice();
+    }
+
+    function test_getValidatedSpotPrice_ReturnsSpotPriceFromOracle() public {
+        _mockRootPriceGetRangesPriceLP(3, 2, true);
+
+        uint256 spotPrice = testVault.getValidatedSpotPrice();
+        assertEq(spotPrice, 3);
+    }
+
+    function test_getPool_ReturnsPool() public {
+        assertEq(testVault.getPool(), pool);
+    }
+
+    function test_getRangePricesLP_ProxiesCallToRootOracle() public {
+        _mockRootPriceGetRangesPriceLP(3, 4, true);
+
+        vm.expectCall(
+            address(_rootPriceOracle),
+            abi.encodeCall(_rootPriceOracle.getRangePricesLP, (address(underlyer), pool, address(baseAsset)))
+        );
+        (uint256 spotPrice, uint256 safePrice, bool isSpotSafe) = testVault.getRangePricesLP();
+
+        assertEq(spotPrice, 3, "spotPrice");
+        assertEq(safePrice, 4, "safePrice");
+        assertEq(isSpotSafe, true, "isSpotSafe");
+    }
+
+    function test_getUnderlyerFloorPrice_ProxiesCallToRootOracle() public {
+        vm.mockCall(
+            address(_rootPriceOracle),
+            abi.encodeWithSelector(
+                IRootPriceOracle.getFloorPrice.selector, address(underlyer), pool, address(baseAsset)
+            ),
+            abi.encode(3)
+        );
+
+        vm.expectCall(
+            address(_rootPriceOracle),
+            abi.encodeCall(_rootPriceOracle.getFloorPrice, (address(underlyer), pool, address(baseAsset)))
+        );
+        uint256 floorPrice = testVault.getUnderlyerFloorPrice();
+
+        assertEq(floorPrice, 3, "floorPrice");
+    }
+
+    function test_getUnderlyerCeilingPrice_ProxiesCallToRootOracle() public {
+        vm.mockCall(
+            address(_rootPriceOracle),
+            abi.encodeWithSelector(
+                IRootPriceOracle.getCeilingPrice.selector, address(underlyer), pool, address(baseAsset)
+            ),
+            abi.encode(7)
+        );
+
+        vm.expectCall(
+            address(_rootPriceOracle),
+            abi.encodeCall(_rootPriceOracle.getCeilingPrice, (address(underlyer), pool, address(baseAsset)))
+        );
+        uint256 ceilingPrice = testVault.getUnderlyerCeilingPrice();
+
+        assertEq(ceilingPrice, 7, "ceilingPrice");
     }
 
     function mockSystemBound(address addr, address systemRegistry_) internal {
@@ -369,6 +440,31 @@ contract DestinationVaultBaseTests is Test {
             abi.encode(price)
         );
     }
+
+    function _mockRootPriceGetRangesPriceLP(uint256 spotPrice, uint256 safePrice, bool isSafe) internal {
+        vm.mockCall(
+            address(_rootPriceOracle),
+            abi.encodeWithSelector(
+                IRootPriceOracle.getRangePricesLP.selector, address(underlyer), pool, address(baseAsset)
+            ),
+            abi.encode(spotPrice, safePrice, isSafe)
+        );
+    }
+
+    function _mockRootPriceGetRangesPriceLP(
+        address underlyer_,
+        address pool_,
+        address baseAsset_,
+        uint256 spotPrice,
+        uint256 safePrice,
+        bool isSafe
+    ) internal {
+        vm.mockCall(
+            address(_rootPriceOracle),
+            abi.encodeWithSelector(IRootPriceOracle.getRangePricesLP.selector, underlyer_, pool_, baseAsset_),
+            abi.encode(spotPrice, safePrice, isSafe)
+        );
+    }
 }
 
 contract TestDestinationVault is DestinationVault {
@@ -378,6 +474,7 @@ contract TestDestinationVault is DestinationVault {
     uint256 private _claimVested;
     uint256 private _reclaimDebtAmount;
     uint256 private _reclaimDebtLoss;
+    address private _pool;
 
     event OnDepositCalled();
 
@@ -388,11 +485,13 @@ contract TestDestinationVault is DestinationVault {
         IMainRewarder rewarder_,
         address incentiveCalculator_,
         address[] memory additionalTrackedTokens_,
-        bytes memory params_
+        bytes memory params_,
+        address pool_
     ) DestinationVault(systemRegistry) {
         DestinationVault.initialize(
             baseAsset_, underlyer_, rewarder_, incentiveCalculator_, additionalTrackedTokens_, params_
         );
+        _pool = pool_;
     }
 
     function mint(address to, uint256 amount) public {
@@ -479,8 +578,8 @@ contract TestDestinationVault is DestinationVault {
         return (new uint256[](0), new uint256[](0));
     }
 
-    function getPool() external view override returns (address poolAddress) {
-        return address(0);
+    function getPool() public view override returns (address poolAddress) {
+        return _pool;
     }
 
     function _validateCalculator(address incentiveCalculator) internal override {

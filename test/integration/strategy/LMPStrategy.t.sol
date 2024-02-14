@@ -130,12 +130,10 @@ contract LMPStrategyInt is Test {
 
         _strategy = new ValueCheckingStrategy(_systemRegistry, lmpVaultAddress, getDefaultConfig());
 
-        LMPVault.ExtraData memory extraData = LMPVault.ExtraData({ lmpStrategyAddress: address(_strategy) });
-
         _vault = LMPVault(
             address(
                 _lmpVaultFactory.createVault(
-                    type(uint112).max, type(uint112).max, "X", "X", lmpSalt, abi.encode(extraData)
+                    type(uint112).max, type(uint112).max, address(_strategy), "X", "X", lmpSalt, abi.encode("")
                 )
             )
         );
@@ -169,7 +167,7 @@ contract LMPStrategyInt is Test {
     function test_Construction() public {
         assertTrue(address(_vault) != address(0), "vaultAddress");
         assertEq(_vault.balanceOf(V2_DEPLOYER), 100e18, "userBal");
-        assertEq(_vault.totalIdle(), 100e18, "totalIdle");
+        assertEq(_vault.getAssetBreakdown().totalIdle, 100e18, "totalIdle");
     }
 
     function test_IdleToCurveNg() public {
@@ -326,7 +324,7 @@ contract LMPStrategyInt is Test {
             IERC3156FlashBorrower(_tokenReturnSolver), rebalanceParams, abi.encode(inAmount, address(weth))
         );
 
-        assertEq(_vault.totalIdle(), inAmount, "vaultBal");
+        assertEq(_vault.getAssetBreakdown().totalIdle, inAmount, "vaultBal");
     }
 
     // TODO: Finish and fix when with new LMPVault code, currently fails
@@ -489,7 +487,9 @@ contract ValueCheckingStrategy is LMPStrategy, Test {
         ISystemRegistry _systemRegistry,
         address _lmpVault,
         LMPStrategyConfig.StrategyConfig memory conf
-    ) LMPStrategy(_systemRegistry, _lmpVault, conf) { }
+    ) LMPStrategy(_systemRegistry, conf) {
+        _initialize(_lmpVault);
+    }
 
     function setCheckInLpPrice(uint256 price) external {
         _checkInLpPrice = price;

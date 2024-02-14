@@ -1,0 +1,19 @@
+cryticArgs:
+    [
+        "--solc-remap",
+        "openzeppelin-contracts/=./lib/openzeppelin-contracts/contracts/ src/=./src/ forge-std/=./lib/forge-std/src/ test/=./test/ crytic/properties/=./lib/properties/",
+        "--compile-libraries",
+        "(LMPDebt,0x1f),(LMPDestinations,0x2f),(StructuredLinkedList,0x3f),(WithdrawalQueue,0x4f),(AutoPoolToken,0x5f),(AutoPoolFees,0x6f)",
+    ]
+workers: 3
+testLimit: 1000000
+quiet: false
+codeSize: 0xffffff
+allowFFI: true
+deployContracts:
+    - ["0x1f", "LMPDebt"]
+    - ["0x2f", "LMPDestinations"]
+    - ["0x3f", "StructuredLinkedList"]
+    - ["0x4f", "WithdrawalQueue"]
+    - ["0x5f", "AutoPoolToken"]
+    - ["0x6f", "AutoPoolFees"]

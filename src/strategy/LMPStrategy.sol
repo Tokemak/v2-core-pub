@@ -21,8 +21,9 @@ import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IE
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
+import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 
-contract LMPStrategy is ILMPStrategy, SecurityBase {
+contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
     using ViolationTracking for ViolationTracking.State;
     using NavTracking for NavTracking.State;
     using SubSaturateMath for uint256;
@@ -37,9 +38,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     /* ******************************** */
     /// @notice Tokemak system-level registry. Used to lookup other services (e.g., pricing)
     ISystemRegistry public immutable systemRegistry;
-
-    /// @notice The LMPVault that this strategy is associated with
-    ILMPVault public immutable lmpVault;
 
     /// @notice the number of days to pause rebalancing due to NAV decay
     uint16 public immutable pauseRebalancePeriodInDays;
@@ -130,9 +128,16 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     /// @notice model weight applied to an LST premium when entering or exiting the position
     uint256 public immutable lstPriceGapTolerance;
 
+    /// @notice initial value of the swap cost offset to use
+    uint16 public immutable swapCostOffsetInit;
+
     /* ******************************** */
     /* State Variables                  */
     /* ******************************** */
+
+    /// @notice The LMPVault that this strategy is associated with
+    ILMPVault public lmpVault;
+
     /// @notice The timestamp for when rebalancing was last paused
     uint40 public lastPausedTimestamp;
 
@@ -155,7 +160,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     /* ******************************** */
 
     enum RebalanceToIdleReasonEnum {
-        DestinationisShutdown,
+        DestinationIsShutdown,
         LMPVaultIsShutdown,
         TrimDustPosition,
         DestinationIsQueuedForRemoval,
@@ -245,18 +250,9 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
     constructor(
         ISystemRegistry _systemRegistry,
-        address _lmpVault,
         LMPStrategyConfig.StrategyConfig memory conf
     ) SecurityBase(address(_systemRegistry.accessController())) {
         systemRegistry = _systemRegistry;
-        Errors.verifyNotZero(_lmpVault, "_lmpVault");
-
-        // This is retooled a bit in a later branch so just removing the check temporarily
-        // if (ISystemComponent(_lmpVault).getSystemRegistry() != address(_systemRegistry)) {
-        //     revert SystemRegistryMismatch();
-        // }
-
-        lmpVault = ILMPVault(_lmpVault);
 
         LMPStrategyConfig.validate(conf);
 
@@ -288,9 +284,26 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         weightPriceDiscountEnter = conf.modelWeights.priceDiscountEnter;
         weightPricePremium = conf.modelWeights.pricePremium;
         lstPriceGapTolerance = conf.lstPriceGapTolerance;
+        swapCostOffsetInit = conf.swapCostOffset.initInDays;
 
-        _swapCostOffsetPeriod = conf.swapCostOffset.initInDays;
-        lastRebalanceTimestamp = uint40(block.timestamp) - uint40(conf.rebalanceTimeGapInSeconds);
+        _disableInitializers();
+    }
+
+    function initialize(address _lmpVault) external virtual initializer {
+        _initialize(_lmpVault);
+    }
+
+    function _initialize(address _lmpVault) internal virtual {
+        Errors.verifyNotZero(_lmpVault, "_lmpVault");
+
+        if (ISystemComponent(_lmpVault).getSystemRegistry() != address(systemRegistry)) {
+            revert SystemRegistryMismatch();
+        }
+
+        lmpVault = ILMPVault(_lmpVault);
+
+        lastRebalanceTimestamp = uint40(block.timestamp) - uint40(rebalanceTimeGapInSeconds);
+        _swapCostOffsetPeriod = swapCostOffsetInit;
     }
 
     /// @inheritdoc ILMPStrategy
@@ -397,7 +410,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             if (params.tokenOut != baseAsset) {
                 revert RebalanceDestinationUnderlyerMismatch(params.destinationOut, params.tokenOut, baseAsset);
             }
-            if (params.amountOut > lmpVault.totalIdle()) {
+            if (params.amountOut > lmpVault.getAssetBreakdown().totalIdle) {
                 revert InsufficientAssets(params.tokenOut);
             }
         } else {
@@ -530,7 +543,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         RebalanceToIdleReasonEnum reason = RebalanceToIdleReasonEnum.UnknownReason;
         // Scenario 1: the destination has been shutdown -- done when a fast exit is required
         if (outDest.isShutdown()) {
-            reason = RebalanceToIdleReasonEnum.DestinationisShutdown;
+            reason = RebalanceToIdleReasonEnum.DestinationIsShutdown;
             maxSlippage = maxEmergencyOperationSlippage;
         }
 
@@ -582,7 +595,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // withdrawals reduce totalAssets, but do not update the destinationInfo
         // adjust the current debt based on the currently owned shares
         uint256 currentDebt =
-            destInfo.ownedShares == 0 ? 0 : ((destInfo.currentDebt * currentShares) / destInfo.ownedShares);
+            destInfo.ownedShares == 0 ? 0 : destInfo.cachedDebtValue * currentShares / destInfo.ownedShares;
 
         // If the current position is < 2% of total assets, trim to idle is allowed
         // slither-disable-next-line divide-before-multiply
@@ -611,7 +624,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // withdrawals reduce totalAssets, but do not update the destinationInfo
         // adjust the current debt based on the currently owned shares
         uint256 currentDebt =
-            destInfo.ownedShares == 0 ? 0 : destInfo.currentDebt * currentShares / destInfo.ownedShares;
+            destInfo.ownedShares == 0 ? 0 : destInfo.cachedDebtValue * currentShares / destInfo.ownedShares;
 
         // prior validation ensures that currentShares >= amountOut
         uint256 sharesAfterRebalance = currentShares - params.amountOut;
@@ -741,7 +754,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
         if (destAddress == address(lmpVault)) {
             result.destination = destAddress;
-            result.ownedShares = lmpVault.totalIdle();
+            result.ownedShares = lmpVault.getAssetBreakdown().totalIdle;
             result.pricePerShare = price;
             return result;
         }
@@ -936,7 +949,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             // discountTimestampByPercent array holds the timestamp in position i for discount = (i+1)%
             uint40[5] memory discountTimestampByPercent = data.discountTimestampByPercent;
 
-            // 1e16 means a 1% LST discount where fullscale is 1e18.
+            // 1e16 means a 1% LST discount where full scale is 1e18.
             if (discount > 1e16) {
                 // linear approximation for exponential function with approx. half life of 30 days
                 uint256 halfLifeSec = 30 * 24 * 60 * 60;
@@ -1025,15 +1038,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         ) {
             tightenSwapCostOffset();
             violationTrackingState.reset();
-        }
-
-        // move the destination decreased to the head and the destination increased to the tail of the withdrawal queue
-        // don't add Idle ETH to either the head or the tail of the withdrawal queue
-        if (params.destinationOut != address(lmpVault)) {
-            ILMPVault(lmpVault).addToWithdrawalQueueHead(params.destinationOut);
-        }
-        if (params.destinationIn != address(lmpVault)) {
-            ILMPVault(lmpVault).addToWithdrawalQueueTail(params.destinationIn);
         }
     }
 

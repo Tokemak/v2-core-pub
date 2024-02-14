@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 /* solhint-disable func-name-mixedcase,max-line-length,const-name-snakecase,no-console */
 
-import { IRewards } from "src/echidna/external/convex/Interfaces.sol";
+import { IRewards } from "test/echidna/fuzz/external/convex/Interfaces.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { console } from "forge-std/console.sol";

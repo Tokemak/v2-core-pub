@@ -11,7 +11,7 @@ library ReadPlan {
         Vm vm,
         string memory fileName,
         address adapter
-    ) public returns (bytes32[] memory, bytes[] memory) {
+    ) public view returns (bytes32[] memory, bytes[] memory) {
         string memory root = "solver/test/payloads/adapters/";
         string memory path = string.concat(root, fileName);
         string memory data = vm.readFile(path);

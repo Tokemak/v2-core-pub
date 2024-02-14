@@ -28,11 +28,11 @@ contract Lens is ILens, SystemComponent {
                 symbol: vault.symbol(),
                 vaultType: vault.vaultType(),
                 baseAsset: vault.asset(),
-                performanceFeeBps: vault.performanceFeeBps(),
+                performanceFeeBps: vault.getFeeSettings().performanceFeeBps,
                 totalSupply: vault.totalSupply(),
                 totalAssets: vault.totalAssets(),
-                totalIdle: vault.totalIdle(),
-                totalDebt: vault.totalDebt()
+                totalIdle: vault.getAssetBreakdown().totalIdle,
+                totalDebt: vault.getAssetBreakdown().totalDebt
             });
         }
     }

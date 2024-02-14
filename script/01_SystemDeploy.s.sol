@@ -129,12 +129,12 @@ contract DeploySystem is BaseScript {
         console.log("LMP Factory address: ", address(lmpFactory));
 
         // Initial LMP Vault creation.
-        address establishedLmp =
-            lmpFactory.createVault(lmp1SupplyLimit, lmp1WalletLimit, lmp1SymbolSuffix, lmp1DescPrefix, lmp1Salt, "");
-        address emergingLmp =
-            lmpFactory.createVault(lmp2SupplyLimit, lmp2WalletLimit, lmp2SymbolSuffix, lmp2DescPrefix, lmp2Salt, "");
-        console.log("Established LMP Vault address: ", establishedLmp);
-        console.log("Emerging LMP Vault address: ", emergingLmp);
+        // address establishedLmp =
+        //     lmpFactory.createVault(lmp1SupplyLimit, lmp1WalletLimit, lmp1SymbolSuffix, lmp1DescPrefix, lmp1Salt, "");
+        // address emergingLmp =
+        //     lmpFactory.createVault(lmp2SupplyLimit, lmp2WalletLimit, lmp2SymbolSuffix, lmp2DescPrefix, lmp2Salt, "");
+        // console.log("Established LMP Vault address: ", establishedLmp);
+        // console.log("Emerging LMP Vault address: ", emergingLmp);
 
         // LMP router setup.
         lmpRouter = new LMPVaultRouter(systemRegistry, wethAddress);

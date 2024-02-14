@@ -22,3 +22,6 @@
 	path = lib/usingtellor
 	url = https://github.com/tellor-io/usingtellor
 	branch = v5.0.4
+[submodule "lib/properties"]
+	path = lib/properties
+	url = https://github.com/crytic/properties

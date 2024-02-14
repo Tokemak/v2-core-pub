@@ -114,7 +114,7 @@ contract TestDestinationVault is DestinationVault {
         return 0;
     }
 
-    function getPool() external pure override returns (address poolAddress) {
+    function getPool() public pure override returns (address poolAddress) {
         return address(0);
     }
 

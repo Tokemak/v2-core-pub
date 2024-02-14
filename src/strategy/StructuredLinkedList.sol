@@ -26,7 +26,7 @@ library StructuredLinkedList {
      * @param self stored linked list from contract
      * @return bool true if list exists, false otherwise
      */
-    function listExists(List storage self) internal view returns (bool) {
+    function listExists(List storage self) public view returns (bool) {
         // if the head nodes previous or next pointers both point to itself, then there are no items in the list
         if (self.list[_HEAD][_PREV] != _HEAD || self.list[_HEAD][_NEXT] != _HEAD) {
             return true;
@@ -41,7 +41,7 @@ library StructuredLinkedList {
      * @param _node a node to search for
      * @return bool true if node exists, false otherwise
      */
-    function nodeExists(List storage self, uint256 _node) internal view returns (bool) {
+    function nodeExists(List storage self, uint256 _node) public view returns (bool) {
         if (self.list[_node][_PREV] == _HEAD && self.list[_node][_NEXT] == _HEAD) {
             if (self.list[_HEAD][_NEXT] == _node) {
                 return true;
@@ -59,7 +59,7 @@ library StructuredLinkedList {
      * @return uint256
      */
     // slither-disable-next-line dead-code
-    function sizeOf(List storage self) internal view returns (uint256) {
+    function sizeOf(List storage self) public view returns (uint256) {
         return self.size;
     }
 
@@ -88,7 +88,7 @@ library StructuredLinkedList {
      * @return bool, uint256, uint256 true if node exists or false otherwise, previous node, next node
      */
     // slither-disable-next-line dead-code
-    function getNode(List storage self, uint256 _node) internal view returns (bool, uint256, uint256) {
+    function getNode(List storage self, uint256 _node) public view returns (bool, uint256, uint256) {
         if (!nodeExists(self, _node)) {
             return (false, 0, 0);
         } else {
@@ -104,7 +104,7 @@ library StructuredLinkedList {
      * @return bool, uint256 true if node exists or false otherwise, node in _direction
      */
     // slither-disable-next-line dead-code
-    function getAdjacent(List storage self, uint256 _node, bool _direction) internal view returns (bool, uint256) {
+    function getAdjacent(List storage self, uint256 _node, bool _direction) public view returns (bool, uint256) {
         if (!nodeExists(self, _node)) {
             return (false, 0);
         } else {
@@ -120,7 +120,7 @@ library StructuredLinkedList {
      * @return bool, uint256 true if node exists or false otherwise, next node
      */
     // slither-disable-next-line dead-code
-    function getNextNode(List storage self, uint256 _node) internal view returns (bool, uint256) {
+    function getNextNode(List storage self, uint256 _node) public view returns (bool, uint256) {
         return getAdjacent(self, _node, _NEXT);
     }
 
@@ -131,7 +131,7 @@ library StructuredLinkedList {
      * @return bool, uint256 true if node exists or false otherwise, previous node
      */
     // slither-disable-next-line dead-code
-    function getPreviousNode(List storage self, uint256 _node) internal view returns (bool, uint256) {
+    function getPreviousNode(List storage self, uint256 _node) public view returns (bool, uint256) {
         return getAdjacent(self, _node, _PREV);
     }
 
@@ -143,7 +143,7 @@ library StructuredLinkedList {
      * @return bool true if success, false otherwise
      */
     // slither-disable-next-line dead-code
-    function insertAfter(List storage self, uint256 _node, uint256 _new) internal returns (bool) {
+    function insertAfter(List storage self, uint256 _node, uint256 _new) public returns (bool) {
         return _insert(self, _node, _new, _NEXT);
     }
 
@@ -155,7 +155,7 @@ library StructuredLinkedList {
      * @return bool true if success, false otherwise
      */
     // slither-disable-next-line dead-code
-    function insertBefore(List storage self, uint256 _node, uint256 _new) internal returns (bool) {
+    function insertBefore(List storage self, uint256 _node, uint256 _new) public returns (bool) {
         return _insert(self, _node, _new, _PREV);
     }
 
@@ -165,7 +165,7 @@ library StructuredLinkedList {
      * @param _node node to remove from the list
      * @return uint256 the removed node
      */
-    function remove(List storage self, uint256 _node) internal returns (uint256) {
+    function remove(List storage self, uint256 _node) public returns (uint256) {
         if ((_node == _NULL) || (!nodeExists(self, _node))) {
             return 0;
         }
@@ -184,7 +184,7 @@ library StructuredLinkedList {
      * @param _node new entry to push to the head
      * @return bool true if success, false otherwise
      */
-    function pushFront(List storage self, uint256 _node) internal returns (bool) {
+    function pushFront(List storage self, uint256 _node) public returns (bool) {
         return _push(self, _node, _NEXT);
     }
 
@@ -194,7 +194,7 @@ library StructuredLinkedList {
      * @param _node new entry to push to the tail
      * @return bool true if success, false otherwise
      */
-    function pushBack(List storage self, uint256 _node) internal returns (bool) {
+    function pushBack(List storage self, uint256 _node) public returns (bool) {
         return _push(self, _node, _PREV);
     }
 
@@ -204,7 +204,7 @@ library StructuredLinkedList {
      * @return uint256 the removed node
      */
     // slither-disable-next-line dead-code
-    function popFront(List storage self) internal returns (uint256) {
+    function popFront(List storage self) public returns (uint256) {
         return _pop(self, _NEXT);
     }
 
@@ -214,7 +214,7 @@ library StructuredLinkedList {
      * @return uint256 the removed node
      */
     // slither-disable-next-line dead-code
-    function popBack(List storage self) internal returns (uint256) {
+    function popBack(List storage self) public returns (uint256) {
         return _pop(self, _PREV);
     }
 

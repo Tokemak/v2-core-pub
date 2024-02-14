@@ -14,6 +14,8 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { ILMPVault, LMPVault } from "src/vault/LMPVault.sol";
 
 import { Roles } from "src/libs/Roles.sol";
+import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
+import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 
 contract LMPVaultTest is ERC4626Test, BaseTest {
     address private lmpStrategy = vm.addr(10_001);
@@ -25,9 +27,14 @@ contract LMPVaultTest is ERC4626Test, BaseTest {
         _underlying_ = address(baseAsset);
 
         // create vault
-        bytes memory initData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: lmpStrategy }));
+        bytes memory initData = abi.encode("");
+
+        LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
+
+        uint256 limit = type(uint112).max;
         LMPVault vault = LMPVault(
-            lmpVaultFactory.createVault(type(uint112).max, type(uint112).max, "x", "y", keccak256("v8"), initData)
+            lmpVaultFactory.createVault(limit, limit, address(stratTemplate), "x", "y", keccak256("v8"), initData)
         );
 
         _vault_ = address(vault);

@@ -45,4 +45,8 @@ interface IRootPriceOracle {
         address inQuote,
         bool ceiling
     ) external returns (uint256 floorOrCeilingPerLpToken);
+
+    function getFloorPrice(address, address, address) external returns (uint256 price);
+
+    function getCeilingPrice(address, address, address) external returns (uint256 price);
 }

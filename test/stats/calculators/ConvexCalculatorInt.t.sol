@@ -27,8 +27,8 @@ import {
 contract ConvexCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
     ConvexCalculator internal _calculator;
     IDexLSTStats internal _curveStats;
-    address convexRewarder;
-    address curveLpToken;
+    address internal convexRewarder;
+    address internal curveLpToken;
 
     event IncentiveSnapshot(
         uint256 totalApr,

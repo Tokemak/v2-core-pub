@@ -24,6 +24,7 @@ import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
 import { NavTracking } from "src/strategy/NavTracking.sol";
 import { ViolationTracking } from "src/strategy/ViolationTracking.sol";
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 
@@ -84,18 +85,8 @@ contract LMPStrategyTest is Test {
     }
 
     /* **************************************** */
-    /* constructor Tests                    */
+    /* constructor Tests                        */
     /* **************************************** */
-    function test_constructor_RevertIf_lmpVaultZero() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_lmpVault"));
-        new LMPStrategyHarness(ISystemRegistry(address(systemRegistry)), address(0), helpers.getDefaultConfig());
-    }
-
-    // function test_constructor_RevertIf_systemRegistryMismatch() public {
-    //     setLmpSystemRegistry(address(1));
-    //     vm.expectRevert(abi.encodeWithSelector(LMPStrategy.SystemRegistryMismatch.selector));
-    //     defaultStrat = deployStrategy(helpers.getDefaultConfig());
-    // }
 
     function test_constructor_RevertIf_invalidConfig() public {
         // this test only tests a single failure to ensure that config validation is occurring
@@ -107,6 +98,28 @@ contract LMPStrategyTest is Test {
         cfg.swapCostOffset.minInDays = 11;
         vm.expectRevert(abi.encodeWithSelector(LMPStrategyConfig.InvalidConfig.selector, "swapCostOffsetPeriodInit"));
         defaultStrat = deployStrategy(cfg);
+    }
+
+    /* **************************************** */
+    /* initialize Tests                         */
+    /* **************************************** */
+
+    function test_initialize_RevertIf_systemRegistryMismatch() public {
+        setLmpSystemRegistry(address(1));
+        LMPStrategyHarness stratHarness =
+            new LMPStrategyHarness(ISystemRegistry(address(systemRegistry)), helpers.getDefaultConfig());
+        LMPStrategyHarness s = LMPStrategyHarness(Clones.clone(address(stratHarness)));
+
+        vm.expectRevert(abi.encodeWithSelector(LMPStrategy.SystemRegistryMismatch.selector));
+        s.initialize(mockLMPVault);
+    }
+
+    function test_initialize_RevertIf_lmpVaultZero() public {
+        LMPStrategyHarness harness =
+            new LMPStrategyHarness(ISystemRegistry(address(systemRegistry)), helpers.getDefaultConfig());
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_lmpVault"));
+        harness.init(address(0));
     }
 
     /* **************************************** */
@@ -178,10 +191,11 @@ contract LMPStrategyTest is Test {
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
-            currentDebt: 330e18, // implied price of 1.1
+            cachedDebtValue: 330e18, // implied price of 1.1
+            cachedMinDebtValue: 330e18, // implied price of 1.1
+            cachedMaxDebtValue: 330e18, // implied price of 1.1
             lastReport: startBlockTime,
-            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
-            debtBasis: 0 // unused
+            ownedShares: 300e18 // set higher than starting balance to handle withdraw scenario
          });
 
         defaultParams.amountOut = 50e18;
@@ -210,10 +224,11 @@ contract LMPStrategyTest is Test {
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 90e17;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
-            currentDebt: 99e17, // implied price of 1.1
+            cachedDebtValue: 99e17, // implied price of 1.1
+            cachedMinDebtValue: 99e17, // implied price of 1.1
+            cachedMaxDebtValue: 99e17, // implied price of 1.1
             lastReport: startBlockTime,
-            ownedShares: 90e17, // set higher than starting balance to handle withdraw scenario
-            debtBasis: 0 // unused
+            ownedShares: 90e17 // set higher than starting balance to handle withdraw scenario
          });
 
         defaultParams.amountOut = 90e17;
@@ -245,10 +260,11 @@ contract LMPStrategyTest is Test {
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
-            currentDebt: 330e18, // implied price of 1.1
-            lastReport: 91 days,
-            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
-            debtBasis: 0 // unused
+            cachedDebtValue: 330e18, // implied price of 1.1
+            cachedMinDebtValue: 330e18, // implied price of 1.1
+            cachedMaxDebtValue: 330e18, // implied price of 1.1
+            lastReport: 91 days, // unused
+            ownedShares: 300e18 // set higher than starting balance to handle withdraw scenario
          });
 
         defaultParams.amountOut = 50e18;
@@ -408,47 +424,52 @@ contract LMPStrategyTest is Test {
     /* updateWithdrawalQueueAfterRebalance Tests  */
     /* ****************************************** */
 
-    function test_updateWithdrawalQueueAfterRebalance_betweenDestinations() public {
-        vm.prank(mockLMPVault);
-        vm.expectCall(
-            address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueHead, defaultParams.destinationOut), 1
-        );
-        vm.expectCall(
-            address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueTail, defaultParams.destinationIn), 1
-        );
+    // TODO: Move these to Vault
 
-        defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
-    }
+    // function test_updateWithdrawalQueueAfterRebalance_betweenDestinations() public {
+    //     vm.prank(mockLMPVault);
+    //     vm.expectCall(
+    //         address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueHead, defaultParams.destinationOut),
+    // 1
+    //     );
+    //     vm.expectCall(
+    //         address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueTail, defaultParams.destinationIn), 1
+    //     );
 
-    function test_updateWithdrawalQueueAfterRebalance_fromIdle() public {
-        defaultParams.destinationOut = address(mockLMPVault);
+    //     defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
+    // }
 
-        vm.prank(mockLMPVault);
+    // function test_updateWithdrawalQueueAfterRebalance_fromIdle() public {
+    //     defaultParams.destinationOut = address(mockLMPVault);
 
-        vm.expectCall(
-            address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueHead, defaultParams.destinationOut), 0
-        );
-        vm.expectCall(
-            address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueTail, defaultParams.destinationIn), 1
-        );
+    //     vm.prank(mockLMPVault);
 
-        defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
-    }
+    //     vm.expectCall(
+    //         address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueHead, defaultParams.destinationOut),
+    // 0
+    //     );
+    //     vm.expectCall(
+    //         address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueTail, defaultParams.destinationIn), 1
+    //     );
 
-    function test_updateWithdrawalQueueAfterRebalance_toIdle() public {
-        defaultParams.destinationIn = address(mockLMPVault);
+    //     defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
+    // }
 
-        vm.prank(mockLMPVault);
+    // function test_updateWithdrawalQueueAfterRebalance_toIdle() public {
+    //     defaultParams.destinationIn = address(mockLMPVault);
 
-        vm.expectCall(
-            address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueHead, defaultParams.destinationOut), 1
-        );
-        vm.expectCall(
-            address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueTail, defaultParams.destinationIn), 0
-        );
+    //     vm.prank(mockLMPVault);
 
-        defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
-    }
+    //     vm.expectCall(
+    //         address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueHead, defaultParams.destinationOut),
+    // 1
+    //     );
+    //     vm.expectCall(
+    //         address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueTail, defaultParams.destinationIn), 0
+    //     );
+
+    //     defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
+    // }
 
     /* **************************************** */
     /* validateRebalanceParams Tests            */
@@ -688,10 +709,11 @@ contract LMPStrategyTest is Test {
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
-            currentDebt: 330e18, // implied price of 1.1
+            cachedDebtValue: 330e18, // implied price of 1.1
+            cachedMinDebtValue: 330e18, // implied price of 1.1
+            cachedMaxDebtValue: 330e18, // implied price of 1.1
             lastReport: startBlockTime,
-            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
-            debtBasis: 0 // unused
+            ownedShares: 300e18 // set higher than starting balance to handle withdraw scenario
          });
 
         defaultParams.amountOut = 50e18;
@@ -724,10 +746,11 @@ contract LMPStrategyTest is Test {
         // rebalance will reduce to 24% of the portfolio
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
-            currentDebt: 330e18, // implied price of 1.1
+            cachedDebtValue: 330e18, // implied price of 1.1
+            cachedMinDebtValue: 330e18, // implied price of 1.1
+            cachedMaxDebtValue: 330e18, // implied price of 1.1
             lastReport: startBlockTime,
-            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
-            debtBasis: 0 // unused
+            ownedShares: 300e18 // set higher than starting balance to handle withdraw scenario
          });
 
         defaultParams.amountOut = 50e18;
@@ -759,10 +782,11 @@ contract LMPStrategyTest is Test {
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
-            currentDebt: 330e18, // implied price of 1.1
+            cachedDebtValue: 330e18, // implied price of 1.1
+            cachedMinDebtValue: 330e18, // implied price of 1.1
+            cachedMaxDebtValue: 330e18, // implied price of 1.1
             lastReport: startBlockTime,
-            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
-            debtBasis: 0 // unused
+            ownedShares: 300e18 // set higher than starting balance to handle withdraw scenario
          });
 
         defaultParams.amountOut = 50e18;
@@ -791,10 +815,11 @@ contract LMPStrategyTest is Test {
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
-            currentDebt: 330e18, // implied price of 1.1
+            cachedDebtValue: 330e18, // implied price of 1.1
+            cachedMinDebtValue: 330e18, // implied price of 1.1
+            cachedMaxDebtValue: 330e18, // implied price of 1.1
             lastReport: startBlockTime,
-            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
-            debtBasis: 0 // unused
+            ownedShares: 300e18 // set higher than starting balance to handle withdraw scenario
          });
 
         defaultParams.amountOut = 50e18;
@@ -823,10 +848,11 @@ contract LMPStrategyTest is Test {
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
-            currentDebt: 330e18, // implied price of 1.1
+            cachedDebtValue: 330e18, // implied price of 1.1
+            cachedMinDebtValue: 330e18, // implied price of 1.1
+            cachedMaxDebtValue: 330e18, // implied price of 1.1
             lastReport: startBlockTime,
-            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
-            debtBasis: 0 // unused
+            ownedShares: 300e18 // set higher than starting balance to handle withdraw scenario
          });
 
         defaultParams.amountOut = 50e18;
@@ -857,10 +883,11 @@ contract LMPStrategyTest is Test {
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
-            currentDebt: 330e18, // implied price of 1.1
+            cachedDebtValue: 330e18, // implied price of 1.1
+            cachedMinDebtValue: 330e18, // implied price of 1.1
+            cachedMaxDebtValue: 330e18, // implied price of 1.1
             lastReport: startBlockTime,
-            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
-            debtBasis: 0 // unused
+            ownedShares: 300e18 // set higher than starting balance to handle withdraw scenario
          });
 
         defaultParams.amountOut = 50e18;
@@ -973,10 +1000,11 @@ contract LMPStrategyTest is Test {
     function test_verifyTrimOperation_validRebalance() public {
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
-            currentDebt: 330e18, // implied price of 1.1
+            cachedDebtValue: 330e18, // implied price of 1.1
+            cachedMinDebtValue: 330e18, // implied price of 1.1
+            cachedMaxDebtValue: 330e18, // implied price of 1.1
             lastReport: startBlockTime,
-            ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
-            debtBasis: 0 // unused
+            ownedShares: 300e18 // set higher than starting balance to handle withdraw scenario
          });
 
         defaultParams.amountOut = 50e18;
@@ -1902,7 +1930,9 @@ contract LMPStrategyTest is Test {
     /* Test Helpers                             */
     /* **************************************** */
     function deployStrategy(LMPStrategyConfig.StrategyConfig memory cfg) internal returns (LMPStrategyHarness strat) {
-        strat = new LMPStrategyHarness(ISystemRegistry(address(systemRegistry)), mockLMPVault, cfg);
+        LMPStrategyHarness stratHarness = new LMPStrategyHarness(ISystemRegistry(address(systemRegistry)), cfg);
+        strat = LMPStrategyHarness(Clones.clone(address(stratHarness)));
+        strat.initialize(mockLMPVault);
     }
 
     // rebalance params that will pass validation
@@ -1948,7 +1978,11 @@ contract LMPStrategyTest is Test {
     }
 
     function setLmpIdle(uint256 amount) private {
-        vm.mockCall(mockLMPVault, abi.encodeWithSelector(ILMPVault.totalIdle.selector), abi.encode(amount));
+        vm.mockCall(
+            mockLMPVault,
+            abi.encodeWithSelector(ILMPVault.getAssetBreakdown.selector),
+            abi.encode(ILMPVault.AssetBreakdown({ totalIdle: amount, totalDebt: 0, totalDebtMin: 0, totalDebtMax: 0 }))
+        );
     }
 
     function setLmpDestInfo(address dest, LMPDebt.DestinationInfo memory info) private {
@@ -2111,9 +2145,12 @@ contract LMPStrategyTest is Test {
 contract LMPStrategyHarness is LMPStrategy {
     constructor(
         ISystemRegistry _systemRegistry,
-        address _lmpVault,
         LMPStrategyConfig.StrategyConfig memory conf
-    ) LMPStrategy(_systemRegistry, _lmpVault, conf) { }
+    ) LMPStrategy(_systemRegistry, conf) { }
+
+    function init(address lmpVault) public {
+        _initialize(lmpVault);
+    }
 
     function _validateRebalanceParams(IStrategy.RebalanceParams memory params) public view {
         validateRebalanceParams(params);

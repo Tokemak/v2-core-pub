@@ -36,21 +36,4 @@ contract SecurityBase {
     function _hasRole(bytes32 role, address account) internal view returns (bool) {
         return accessController.hasRole(role, account);
     }
-
-    // NOTE: left commented forward methods in here for potential future use
-    //     function _getRoleAdmin(bytes32 role) internal view returns (bytes32) {
-    //         return accessController.getRoleAdmin(role);
-    //     }
-    //
-    //     function _grantRole(bytes32 role, address account) internal {
-    //         accessController.grantRole(role, account);
-    //     }
-    //
-    //     function _revokeRole(bytes32 role, address account) internal {
-    //         accessController.revokeRole(role, account);
-    //     }
-    //
-    //     function _renounceRole(bytes32 role, address account) internal {
-    //         accessController.renounceRole(role, account);
-    //     }
 }

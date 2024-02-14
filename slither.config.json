@@ -1,5 +1,11 @@
 {
-	"filter_paths": "lib|script|test|src/echidna",
-	"solc_remaps": ["ds-test/=lib/forge-std/lib/ds-test/src/", "forge-std/=lib/forge-std/src/", "src/=src/"],
+	"filter_paths": "lib|script|test",
+	"solc_remaps": [
+		"ds-test/=lib/forge-std/lib/ds-test/src/",
+		"forge-std/=lib/forge-std/src/",
+		"src/=src/",
+		"openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/",
+		"crytic/properties/=lib/properties/"
+	],
 	"detectors_to_exclude": "solc-version|naming-convention|calls-loop"
 }

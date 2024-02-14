@@ -76,7 +76,7 @@ library Errors {
         }
     }
 
-    function verifyArrayLengths(uint256 length1, uint256 length2, string memory details) external pure {
+    function verifyArrayLengths(uint256 length1, uint256 length2, string memory details) internal pure {
         if (length1 != length2) {
             revert ArrayLengthMismatch(length1, length2, details);
         }

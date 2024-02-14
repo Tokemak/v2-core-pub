@@ -189,6 +189,58 @@ contract WithdrawalQueueTest is Test {
         verifyEmptyQueue(queue);
     }
 
+    function test_sizeOf_ReturnsZeroWhenEmpty() public {
+        assertEq(WithdrawalQueue.sizeOf(queue), 0, "length");
+    }
+
+    function test_sizeOf_ReturnsNumOfItemsAdded() public {
+        WithdrawalQueue.addToTail(queue, DESTINATION1);
+        WithdrawalQueue.addToTail(queue, DESTINATION2);
+        WithdrawalQueue.addToTail(queue, DESTINATION3);
+
+        assertEq(WithdrawalQueue.sizeOf(queue), 3, "length");
+    }
+
+    function test_sizeOf_DecreasesWhenItemsPopped() public {
+        WithdrawalQueue.addToTail(queue, DESTINATION1);
+        WithdrawalQueue.addToTail(queue, DESTINATION2);
+        WithdrawalQueue.addToTail(queue, DESTINATION3);
+
+        WithdrawalQueue.popHead(queue);
+
+        assertEq(WithdrawalQueue.sizeOf(queue), 2, "length");
+    }
+
+    function test_size_ReturnsZeroWhenAllItemsRemoved() public {
+        WithdrawalQueue.addToTail(queue, DESTINATION1);
+        WithdrawalQueue.addToTail(queue, DESTINATION2);
+        WithdrawalQueue.addToTail(queue, DESTINATION3);
+
+        WithdrawalQueue.popHead(queue);
+        WithdrawalQueue.popHead(queue);
+        WithdrawalQueue.popHead(queue);
+
+        assertEq(WithdrawalQueue.sizeOf(queue), 0, "length");
+    }
+
+    function test_popHead_DoesntRevertOnEmpty() public {
+        address a = WithdrawalQueue.popHead(queue);
+        assertEq(a, address(0), "address");
+    }
+
+    function test_popHead_RemovesTopItem() public {
+        WithdrawalQueue.addToTail(queue, DESTINATION1);
+        WithdrawalQueue.addToTail(queue, DESTINATION2);
+        WithdrawalQueue.addToTail(queue, DESTINATION3);
+
+        assertEq(WithdrawalQueue.peekHead(queue), DESTINATION1, "pre");
+
+        address a = WithdrawalQueue.popHead(queue);
+
+        assertEq(a, DESTINATION1, "address");
+        assertEq(WithdrawalQueue.peekHead(queue), DESTINATION2, "post");
+    }
+
     // // ############################## TEST PERMUTE Queue ############################
 
     function test_permute_queue() public {
@@ -221,6 +273,43 @@ contract WithdrawalQueueTest is Test {
         // looks like (2,3,1)
         assertEq(WithdrawalQueue.peekHead(queue), DESTINATION2);
         assertEq(WithdrawalQueue.peekTail(queue), DESTINATION1);
+    }
+
+    function test_getList_ReturnsEmptyArrayWhenEmpty() public {
+        address[] memory list = WithdrawalQueue.getList(queue);
+        assertEq(list.length, 0, "listLength");
+    }
+
+    function test_getList_EnumeratesFromHeadToTail() public {
+        // Order should be 3,1,2,3,4,5
+        WithdrawalQueue.addToTail(queue, DESTINATION1);
+        WithdrawalQueue.addToTail(queue, DESTINATION2);
+        WithdrawalQueue.addToTail(queue, DESTINATION4);
+        WithdrawalQueue.addToTail(queue, DESTINATION5);
+        WithdrawalQueue.addToHead(queue, DESTINATION3);
+
+        // Verify the head and tail are as we expect
+        assertEq(WithdrawalQueue.peekHead(queue), DESTINATION3, "head");
+        assertEq(WithdrawalQueue.peekTail(queue), DESTINATION5, "tail");
+
+        // Check the actual list
+        address[] memory list = WithdrawalQueue.getList(queue);
+        assertEq(list[0], DESTINATION3, "destination3");
+        assertEq(list[1], DESTINATION1, "destination1");
+        assertEq(list[2], DESTINATION2, "destination2");
+        assertEq(list[3], DESTINATION4, "destination4");
+        assertEq(list[4], DESTINATION5, "destination5");
+    }
+
+    function test_getList_ReturnedCountMatchesSizeOf() public {
+        WithdrawalQueue.addToTail(queue, DESTINATION1);
+        WithdrawalQueue.addToTail(queue, DESTINATION2);
+        WithdrawalQueue.addToTail(queue, DESTINATION4);
+        WithdrawalQueue.addToTail(queue, DESTINATION5);
+        WithdrawalQueue.addToHead(queue, DESTINATION3);
+
+        address[] memory list = WithdrawalQueue.getList(queue);
+        assertEq(WithdrawalQueue.sizeOf(queue), list.length, "length");
     }
 
     // ############################## HELPER FUNCTIONS ##############################

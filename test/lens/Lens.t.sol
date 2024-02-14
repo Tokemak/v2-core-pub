@@ -14,6 +14,8 @@ import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
+import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
+import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 
 contract LensTest is BaseTest {
     Lens private lens;
@@ -42,10 +44,13 @@ contract LensTest is BaseTest {
         vm.prank(address(destinationVaultFactory));
         destinationVaultRegistry.register(destinations[0]);
 
-        bytes memory initData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: vm.addr(10_001) }));
+        bytes memory initData = abi.encode("");
+        LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
+        uint256 limit = type(uint112).max;
         LMPVault lmpVault = LMPVault(
-            lmpVaultFactory.createVault(type(uint112).max, type(uint112).max, "x", "y", keccak256("v8"), initData)
+            lmpVaultFactory.createVault(limit, limit, address(stratTemplate), "x", "y", keccak256("v8"), initData)
         );
 
         accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));

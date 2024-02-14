@@ -28,6 +28,8 @@ import { WETH_MAINNET, ZERO_EX_MAINNET, CVX_MAINNET, TREASURY } from "test/utils
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 
 import { ERC2612 } from "test/utils/ERC2612.sol";
+import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
+import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 
 // solhint-disable func-name-mixedcase
 contract LMPVaultRouterTest is BaseTest {
@@ -60,7 +62,7 @@ contract LMPVaultRouterTest is BaseTest {
 
         deal(address(baseAsset), address(this), depositAmount * 10);
 
-        lmpVaultInitData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: vm.addr(10_001) }));
+        lmpVaultInitData = abi.encode("");
 
         lmpVault = _setupVault("v1");
 
@@ -70,7 +72,14 @@ contract LMPVaultRouterTest is BaseTest {
 
     function _setupVault(bytes memory salt) internal returns (LMPVault _lmpVault) {
         uint256 limit = type(uint112).max;
-        _lmpVault = LMPVault(lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256(salt), lmpVaultInitData));
+        LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
+
+        _lmpVault = LMPVault(
+            lmpVaultFactory.createVault(
+                limit, limit, address(stratTemplate), "x", "y", keccak256(salt), lmpVaultInitData
+            )
+        );
         assert(systemRegistry.lmpVaultRegistry().isVault(address(_lmpVault)));
     }
 
@@ -171,9 +180,8 @@ contract LMPVaultRouterTest is BaseTest {
         );
     }
 
-    // TODO: fuzzing
     function test_deposit() public {
-        uint256 amount = depositAmount; // TODO: fuzz
+        uint256 amount = depositAmount;
         baseAsset.approve(address(lmpVaultRouter), amount);
 
         // -- try to fail slippage first -- //
@@ -733,9 +741,15 @@ contract LMPVaultRouterTest is BaseTest {
         // NOTE: deployer grants factory permission to update the registry
         accessController.grantRole(Roles.REGISTRY_UPDATER, address(lmpVaultFactory));
         systemRegistry.setLMPVaultFactory(VaultTypes.LST, address(lmpVaultFactory));
+        LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
         uint256 limit = type(uint112).max;
-        lmpVault = LMPVault(lmpVaultFactory.createVault(limit, limit, "x", "y", keccak256("weth"), lmpVaultInitData));
+        lmpVault = LMPVault(
+            lmpVaultFactory.createVault(
+                limit, limit, address(stratTemplate), "x", "y", keccak256("weth"), lmpVaultInitData
+            )
+        );
         assert(systemRegistry.lmpVaultRegistry().isVault(address(lmpVault)));
     }
 }

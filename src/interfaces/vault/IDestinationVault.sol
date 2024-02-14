@@ -103,6 +103,8 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @return value The current value of our debt in terms of the baseAsset
     function debtValue() external returns (uint256 value);
 
+    function getRangePricesLP() external returns (uint256 spotPrice, uint256 safePrice, bool isSpotSafe);
+
     /// @notice Calculates the current value of a portion of the debt based on shares
     /// @dev Queries the current value of all tokens we have deployed, whether its a single place, multiple, staked, etc
     /// @param shares The number of shares to value
@@ -175,4 +177,14 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @dev Price validated to be inside our tolerance against safe price. Will revert if outside.
     /// @return price Value of 1 unit of the underlying LP token in terms of the base asset
     function getValidatedSpotPrice() external returns (uint256 price);
+
+    /// @notice Get the lowest price we can get for the LP token
+    /// @dev This price can be attacked is not validate to be in any range
+    /// @return price Value of 1 unit of the underlying LP token in terms of the base asset
+    function getUnderlyerFloorPrice() external returns (uint256 price);
+
+    /// @notice Get the highest price we can get for the LP token
+    /// @dev This price can be attacked is not validate to be in any range
+    /// @return price Value of 1 unit of the underlying LP token in terms of the base asset
+    function getUnderlyerCeilingPrice() external returns (uint256 price);
 }

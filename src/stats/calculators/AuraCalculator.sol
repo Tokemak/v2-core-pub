@@ -2,6 +2,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+// solhint-disable var-name-mixedcase
+
 import { Errors } from "src/utils/Errors.sol";
 import { AuraRewards } from "src/libs/AuraRewards.sol";
 import { IBooster } from "src/interfaces/external/aura/IBooster.sol";

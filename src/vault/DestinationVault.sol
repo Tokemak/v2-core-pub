@@ -37,6 +37,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     error DuplicateToken(address token);
     error VaultShutdown();
     error InvalidIncentiveCalculator();
+    error PricesOutOfRange(uint256 spot, uint256 safe);
 
     ISystemRegistry internal immutable _systemRegistry;
 
@@ -376,12 +377,14 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     }
 
     /// @inheritdoc IDestinationVault
-    function getValidatedSpotPrice() external pure returns (uint256 price) {
-        // TODO: Implement
-        // Use getPool() and underlyer() and rootPriceOracle.getRangePriceLP()
-        // Revert if !isSpotSafe
-        // See: https://github.com/Tokemak/v2-core/issues/371
-        price = 1e18;
+    function getValidatedSpotPrice() external returns (uint256 price) {
+        //slither-disable-next-line unused-return
+        (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) =
+            _systemRegistry.rootPriceOracle().getRangePricesLP(address(_underlying), getPool(), _baseAsset);
+        if (!isSpotSafe) {
+            revert PricesOutOfRange(spotPriceInQuote, safePriceInQuote);
+        }
+        price = spotPriceInQuote;
     }
 
     /// @inheritdoc IDestinationVault
@@ -408,16 +411,35 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     }
 
     function _debtValue(uint256 shares) private returns (uint256 value) {
-        //slither-disable-next-line incorrect-equality
-        if (shares == 0) {
-            return 0;
+        //slither-disable-next-line unused-return
+        (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) =
+            _systemRegistry.rootPriceOracle().getRangePricesLP(address(_underlying), getPool(), _baseAsset);
+        if (!isSpotSafe) {
+            revert PricesOutOfRange(spotPriceInQuote, safePriceInQuote);
         }
 
-        uint256 price = _systemRegistry.rootPriceOracle().getPriceInEth(_underlying);
+        return (safePriceInQuote * shares) / (10 ** _underlyingDecimals);
+    }
 
-        // At the moment we are only supporting WETH baseAsset
-        // We know its 1:1 to ETH so we'll just return the current value
-        return (price * shares) / (10 ** _underlyingDecimals);
+    /// @inheritdoc IDestinationVault
+    function getRangePricesLP()
+        external
+        virtual
+        override
+        returns (uint256 spotPrice, uint256 safePrice, bool isSpotSafe)
+    {
+        (spotPrice, safePrice, isSpotSafe) =
+            _systemRegistry.rootPriceOracle().getRangePricesLP(address(_underlying), getPool(), _baseAsset);
+    }
+
+    /// @inheritdoc IDestinationVault
+    function getUnderlyerFloorPrice() external virtual override returns (uint256 price) {
+        price = _systemRegistry.rootPriceOracle().getFloorPrice(address(_underlying), getPool(), _baseAsset);
+    }
+
+    /// @inheritdoc IDestinationVault
+    function getUnderlyerCeilingPrice() external virtual override returns (uint256 price) {
+        price = _systemRegistry.rootPriceOracle().getCeilingPrice(address(_underlying), getPool(), _baseAsset);
     }
 
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override {

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
+// solhint-disable var-name-mixedcase,no-global-import,const-name-snakecase,max-line-length
+
 // adapted from
 // https://github.com/convex-eth/platform/blob/main/contracts/contracts/VirtualBalanceRewardPool.sol
 

@@ -25,8 +25,8 @@ contract AuraCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
     AuraCalculator internal _calculator;
     IDexLSTStats internal _balancerStats;
     address internal _auraFeed;
-    address auraRewarder;
-    address balancerPool;
+    address internal auraRewarder;
+    address internal balancerPool;
 
     event IncentiveSnapshot(
         uint256 totalApr,

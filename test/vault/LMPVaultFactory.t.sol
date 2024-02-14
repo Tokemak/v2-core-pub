@@ -14,7 +14,9 @@ import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
 import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
 import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
 import { AccessController } from "src/security/AccessController.sol";
+import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
+import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 
 contract LMPVaultFactoryTest is Test {
     SystemRegistry private _systemRegistry;
@@ -27,6 +29,7 @@ contract LMPVaultFactoryTest is Test {
     TestERC20 private _toke;
 
     address private _template;
+    address private _stratTemplate;
     bytes private lmpVaultInitData;
 
     function setUp() public {
@@ -58,7 +61,10 @@ contract LMPVaultFactoryTest is Test {
         _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, _template, 800, 100);
         _accessController.grantRole(Roles.REGISTRY_UPDATER, address(_lmpVaultFactory));
 
-        lmpVaultInitData = abi.encode(LMPVault.ExtraData({ lmpStrategyAddress: vm.addr(10_001) }));
+        lmpVaultInitData = abi.encode("");
+
+        _stratTemplate = address(new LMPStrategy(_systemRegistry, stratHelpers.getDefaultConfig()));
+        _lmpVaultFactory.addStrategyTemplate(_stratTemplate);
 
         // Mock LMPVaultRouter call.
         vm.mockCall(
@@ -87,20 +93,20 @@ contract LMPVaultFactoryTest is Test {
 
     function test_createVault_CreatesVaultAndAddsToRegistry() public {
         address newVault =
-            _lmpVaultFactory.createVault(1_000_000, 1_000_000, "x", "y", keccak256("v1"), lmpVaultInitData);
+            _lmpVaultFactory.createVault(1e18, 1e18, _stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData);
         assertTrue(_lmpVaultRegistry.isVault(newVault));
     }
 
     function test_createVault_MustHaveVaultCreatorRole() public {
         vm.startPrank(address(34));
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        _lmpVaultFactory.createVault(1_000_000, 1_000_000, "x", "y", keccak256("v1"), "");
+        _lmpVaultFactory.createVault(1e18, 1e18, _stratTemplate, "x", "y", keccak256("v1"), "");
         vm.stopPrank();
     }
 
     function test_createVault_FixesUpTokenFields() public {
         address newVault =
-            _lmpVaultFactory.createVault(1_000_000, 1_000_000, "x", "y", keccak256("v1"), lmpVaultInitData);
+            _lmpVaultFactory.createVault(1e18, 1e18, _stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData);
         assertEq(IERC20(newVault).symbol(), "lmpx");
         assertEq(IERC20(newVault).name(), "y Pool Token");
     }

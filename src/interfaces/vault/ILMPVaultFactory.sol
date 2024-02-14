@@ -11,6 +11,7 @@ interface ILMPVaultFactory {
      * @notice Spin up a new LMPVault
      * @param supplyLimit Total supply limit for the new vault
      * @param walletLimit Wallet limit for the new vault
+     * @param strategy Strategy template address
      * @param symbolSuffix Symbol suffix of the new token
      * @param descPrefix Description prefix of the new token
      * @param salt Vault creation salt
@@ -19,9 +20,14 @@ interface ILMPVaultFactory {
     function createVault(
         uint256 supplyLimit,
         uint256 walletLimit,
+        address strategy,
         string memory symbolSuffix,
         string memory descPrefix,
         bytes32 salt,
         bytes calldata extraParams
     ) external returns (address newVaultAddress);
+
+    function addStrategyTemplate(address strategyTemplate) external;
+
+    function removeStrategyTemplate(address strategyTemplate) external;
 }

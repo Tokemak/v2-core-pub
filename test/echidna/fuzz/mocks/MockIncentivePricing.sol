@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { Numbers } from "src/echidna/utils/Numbers.sol";
+import { Numbers } from "test/echidna/fuzz/utils/Numbers.sol";
 
 /// @title Incentive pricing with no permissions and abilities to set and tweak prices
 contract MockIncentivePricing is Numbers {

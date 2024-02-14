@@ -197,7 +197,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         address lpToken,
         address inQuote,
         bool ceiling
-    ) external returns (uint256 floorOrCeilingPerLpToken) {
+    ) public returns (uint256 floorOrCeilingPerLpToken) {
         uint256 totalLpSupply;
         ISpotPriceOracle.ReserveItemInfo[] memory reserveInfoArray;
 
@@ -389,5 +389,13 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         if (address(spotOracle) == address(0)) {
             revert MissingSpotPriceOracle(pool);
         }
+    }
+
+    function getFloorPrice(address lpToken, address pool, address quote) external returns (uint256 price) {
+        price = getFloorCeilingPrice(pool, lpToken, quote, false);
+    }
+
+    function getCeilingPrice(address lpToken, address pool, address quote) external returns (uint256 price) {
+        price = getFloorCeilingPrice(pool, lpToken, quote, true);
     }
 }

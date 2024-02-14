@@ -3,6 +3,8 @@
 
 pragma solidity 0.8.17;
 
+// solhint-disable var-name-mixedcase
+
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { Errors } from "src/utils/Errors.sol";

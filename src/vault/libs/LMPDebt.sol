@@ -11,31 +11,63 @@ import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSe
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
+import { StructuredLinkedList } from "src/strategy/StructuredLinkedList.sol";
+import { WithdrawalQueue } from "src/strategy/WithdrawalQueue.sol";
+import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
+import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 
 library LMPDebt {
     using Math for uint256;
     using SafeERC20 for IERC20;
+    using WithdrawalQueue for StructuredLinkedList.List;
+    using EnumerableSet for EnumerableSet.AddressSet;
+
+    /// @notice Max time a cached debt report can be used
+    uint256 public constant MAX_DEBT_REPORT_AGE_SECONDS = 1 days;
 
     error VaultShutdown();
     error WithdrawShareCalcInvalid(uint256 currentShares, uint256 cachedShares);
     error RebalanceDestinationsMatch(address destinationVault);
     error RebalanceFailed(string message);
+    error InvalidPrices();
+    error InvalidTotalAssetPurpose();
+    error InvalidDestination(address destination);
+
+    event DestinationDebtReporting(
+        address destination, LMPDebt.IdleDebtUpdates debtInfo, uint256 claimed, uint256 claimGasUsed
+    );
 
     struct DestinationInfo {
-        /// @notice Current underlying and reward value at the destination vault
-        /// @dev Used for calculating totalDebt of the LMPVault
-        uint256 currentDebt;
+        /// @notice Current underlying value at the destination vault
+        /// @dev Used for calculating totalDebt, mid point of min and max
+        uint256 cachedDebtValue;
+        /// @notice Current minimum underlying value at the destination vault
+        /// @dev Used for calculating totalDebt during withdrawal
+        uint256 cachedMinDebtValue;
+        /// @notice Current maximum underlying value at the destination vault
+        /// @dev Used for calculating totalDebt of the deposit
+        uint256 cachedMaxDebtValue;
         /// @notice Last block timestamp this info was updated
         uint256 lastReport;
         /// @notice How many shares of the destination vault we owned at last report
         uint256 ownedShares;
-        /// @notice Amount of baseAsset transferred out in service of deployments
-        /// @dev Used for calculating 'in profit' or not during user withdrawals
-        uint256 debtBasis;
+    }
+
+    struct IdleDebtUpdates {
+        bool pricesWereSafe;
+        uint256 totalIdleDecrease;
+        uint256 totalIdleIncrease;
+        uint256 totalDebtIncrease;
+        uint256 totalDebtDecrease;
+        uint256 totalMinDebtIncrease;
+        uint256 totalMinDebtDecrease;
+        uint256 totalMaxDebtIncrease;
+        uint256 totalMaxDebtDecrease;
     }
 
     struct RebalanceOutParams {
@@ -51,12 +83,17 @@ library LMPDebt {
         bool _shutdown;
     }
 
-    /// @dev In memory struct only for managing vars in rebalances
-    struct IdleDebtChange {
-        uint256 debtDecrease;
-        uint256 debtIncrease;
-        uint256 idleDecrease;
+    /// @dev In memory struct only for managing vars in _withdraw
+    struct WithdrawInfo {
+        uint256 currentIdle;
+        uint256 assetsFromIdle;
+        uint256 totalAssetsToPull;
+        uint256 assetsToPull;
+        uint256 assetsPulled;
         uint256 idleIncrease;
+        uint256 debtDecrease;
+        uint256 debtMinDecrease;
+        uint256 debtMaxDecrease;
     }
 
     struct FlashRebalanceParams {
@@ -81,13 +118,11 @@ library LMPDebt {
         ILMPStrategy lmpStrategy,
         FlashRebalanceParams memory flashParams,
         bytes calldata data
-    ) external returns (uint256 idle, uint256 debt) {
-        LMPDebt.IdleDebtChange memory idleDebtChange;
-
+    ) external returns (IdleDebtUpdates memory result) {
         // Handle decrease (shares going "Out", cashing in shares and sending underlying back to swapper)
         // If the tokenOut is _asset we assume they are taking idle
         // which is already in the contract
-        idleDebtChange = _handleRebalanceOut(
+        result = _handleRebalanceOut(
             LMPDebt.RebalanceOutParams({
                 receiver: address(receiver),
                 destinationOut: params.destinationOut,
@@ -98,6 +133,10 @@ library LMPDebt {
             }),
             destInfoOut
         );
+
+        if (!result.pricesWereSafe) {
+            revert InvalidPrices();
+        }
 
         // Handle increase (shares coming "In", getting underlying from the swapper and trading for new shares)
         if (params.amountIn > 0) {
@@ -130,99 +169,25 @@ library LMPDebt {
             }
 
             if (params.tokenIn != address(flashParams.baseAsset)) {
-                (uint256 debtDecreaseIn, uint256 debtIncreaseIn) = _handleRebalanceIn(
+                IdleDebtUpdates memory inDebtResult = _handleRebalanceIn(
                     destInfoIn,
                     IDestinationVault(params.destinationIn),
                     params.tokenIn,
                     flashResultInfo.tokenInBalanceAfter
                 );
-                idleDebtChange.debtDecrease += debtDecreaseIn;
-                idleDebtChange.debtIncrease += debtIncreaseIn;
+                if (!inDebtResult.pricesWereSafe) {
+                    revert InvalidPrices();
+                }
+                result.totalDebtDecrease += inDebtResult.totalDebtDecrease;
+                result.totalDebtIncrease += inDebtResult.totalDebtIncrease;
+                result.totalMinDebtDecrease += inDebtResult.totalMinDebtDecrease;
+                result.totalMinDebtIncrease += inDebtResult.totalMinDebtIncrease;
+                result.totalMaxDebtDecrease += inDebtResult.totalMaxDebtDecrease;
+                result.totalMaxDebtIncrease += inDebtResult.totalMaxDebtIncrease;
             } else {
-                idleDebtChange.idleIncrease +=
-                    flashResultInfo.tokenInBalanceAfter - flashResultInfo.tokenInBalanceBefore;
+                result.totalIdleIncrease += flashResultInfo.tokenInBalanceAfter - flashResultInfo.tokenInBalanceBefore;
             }
         }
-
-        {
-            idle = flashParams.totalIdle;
-            debt = flashParams.totalDebt;
-
-            if (idleDebtChange.idleDecrease > 0 || idleDebtChange.idleIncrease > 0) {
-                idle = idle + idleDebtChange.idleIncrease - idleDebtChange.idleDecrease;
-            }
-
-            if (idleDebtChange.debtDecrease > 0 || idleDebtChange.debtIncrease > 0) {
-                debt = debt + idleDebtChange.debtIncrease - idleDebtChange.debtDecrease;
-            }
-        }
-    }
-
-    function _calcUserWithdrawSharesToBurn(
-        DestinationInfo storage destInfo,
-        IDestinationVault destVault,
-        uint256 userShares,
-        uint256 maxAssetsToPull,
-        uint256 totalVaultShares
-    ) external returns (uint256 sharesToBurn, uint256 totalDebtBurn) {
-        // Figure out how many shares we can burn from the destination as well
-        // as what our totalDebt deduction should be (totalDebt being a cached value).
-        // If the destination vault is currently sitting at a profit, then the user can burn
-        // all the shares this vault owns. If its at a loss, they can only burn an amount
-        // proportional to their ownership of this vault. This is so a user doesn't lock in
-        // a loss for the entire vault during their withdrawal
-
-        uint256 currentDvShares = destVault.balanceOf(address(this));
-
-        // slither-disable-next-line incorrect-equality
-        if (currentDvShares == 0) {
-            return (0, 0);
-        }
-
-        // Calculate the current value of our shares
-        uint256 currentDvDebtValue = destVault.debtValue(currentDvShares);
-
-        // Get the basis for the current deployment
-        uint256 cachedDebtBasis = destInfo.debtBasis;
-
-        // The amount of shares we had at the last debt reporting
-        uint256 cachedDvShares = destInfo.ownedShares;
-
-        // The value of our debt + earned rewards at last debt reporting
-        uint256 cachedCurrentDebt = destInfo.currentDebt;
-
-        // Our current share balance should only ever be lte the last snapshot
-        // Any update to the deployment should update the snapshot and withdrawals
-        // can only lower it
-        if (currentDvShares > cachedDvShares) {
-            revert WithdrawShareCalcInvalid(currentDvShares, cachedDvShares);
-        }
-
-        // Recalculated what the debtBasis is with the current number of shares
-        uint256 updatedDebtBasis = cachedDebtBasis.mulDiv(currentDvShares, cachedDvShares, Math.Rounding.Up);
-
-        // Neither of these numbers include rewards from the DV
-        if (currentDvDebtValue < updatedDebtBasis) {
-            // We are currently sitting at a loss. Limit the value we can pull from
-            // the destination vault
-            currentDvDebtValue = currentDvDebtValue.mulDiv(userShares, totalVaultShares, Math.Rounding.Down);
-            currentDvShares = currentDvShares.mulDiv(userShares, totalVaultShares, Math.Rounding.Down);
-        }
-
-        // Shouldn't pull more than we want
-        // Or, we're not in profit so we limit the pull
-        if (currentDvDebtValue < maxAssetsToPull) {
-            maxAssetsToPull = currentDvDebtValue;
-        }
-
-        // Calculate the portion of shares to burn based on the assets we need to pull
-        // and the current total debt value. These are destination vault shares.
-        sharesToBurn = currentDvShares.mulDiv(maxAssetsToPull, currentDvDebtValue, Math.Rounding.Up);
-
-        // This is what will be deducted from totalDebt with the withdrawal. The totalDebt number
-        // is calculated based on the cached values so we need to be sure to reduce it
-        // proportional to the original cached debt value
-        totalDebtBurn = cachedCurrentDebt.mulDiv(sharesToBurn, cachedDvShares, Math.Rounding.Up);
     }
 
     /// @notice Perform deposit and debt info update for the "in" destination during a rebalance
@@ -230,15 +195,14 @@ library LMPDebt {
     /// @param dvIn The "in" destination vault
     /// @param tokenIn The underlyer for dvIn
     /// @param depositAmount The amount of tokenIn that will be deposited
-    /// @return debtDecrease The previous amount of debt dvIn accounted for in totalDebt
-    /// @return debtIncrease The current amount of debt dvIn should account for in totalDebt
+    /// @return result Changes in debt values
     function handleRebalanceIn(
         DestinationInfo storage destInfo,
         IDestinationVault dvIn,
         address tokenIn,
         uint256 depositAmount
-    ) external returns (uint256 debtDecrease, uint256 debtIncrease) {
-        (debtDecrease, debtIncrease) = _handleRebalanceIn(destInfo, dvIn, tokenIn, depositAmount);
+    ) external returns (IdleDebtUpdates memory result) {
+        result = _handleRebalanceIn(destInfo, dvIn, tokenIn, depositAmount);
     }
 
     /// @notice Perform deposit and debt info update for the "in" destination during a rebalance
@@ -246,14 +210,13 @@ library LMPDebt {
     /// @param dvIn The "in" destination vault
     /// @param tokenIn The underlyer for dvIn
     /// @param depositAmount The amount of tokenIn that will be deposited
-    /// @return debtDecrease The previous amount of debt dvIn accounted for in totalDebt
-    /// @return debtIncrease The current amount of debt dvIn should account for in totalDebt
+    /// @return result Changes in debt values
     function _handleRebalanceIn(
         DestinationInfo storage destInfo,
         IDestinationVault dvIn,
         address tokenIn,
         uint256 depositAmount
-    ) private returns (uint256 debtDecrease, uint256 debtIncrease) {
+    ) private returns (IdleDebtUpdates memory result) {
         LibAdapter._approve(IERC20(tokenIn), address(dvIn), depositAmount);
 
         // Snapshot our current shares so we know how much to back out
@@ -263,26 +226,7 @@ library LMPDebt {
         uint256 newShares = dvIn.depositUnderlying(depositAmount);
 
         // Update the debt info snapshot
-        (debtDecrease, debtIncrease) =
-            _recalculateDestInfo(destInfo, dvIn, originalShareBal, originalShareBal + newShares, true);
-    }
-
-    /**
-     * @notice Perform withdraw and debt info update for the "out" destination during a rebalance
-     * @dev This "out" function performs more validations and handles idle as opposed to "in" which does not
-     *  debtDecrease The previous amount of debt destinationOut accounted for in totalDebt
-     *  debtIncrease The current amount of debt destinationOut should account for in totalDebt
-     *  idleDecrease Amount of baseAsset that was sent from the vault. > 0 only when tokenOut == baseAsset
-     *  idleIncrease Amount of baseAsset that was claimed from Destination Vault
-     * @param params Rebalance out params
-     * @param destOutInfo The "out" destination vault info
-     * @return assetChange debt and idle change data
-     */
-    function handleRebalanceOut(
-        RebalanceOutParams memory params,
-        DestinationInfo storage destOutInfo
-    ) external returns (IdleDebtChange memory assetChange) {
-        (assetChange) = _handleRebalanceOut(params, destOutInfo);
+        result = _recalculateDestInfo(destInfo, dvIn, originalShareBal, originalShareBal + newShares);
     }
 
     /**
@@ -299,7 +243,7 @@ library LMPDebt {
     function _handleRebalanceOut(
         RebalanceOutParams memory params,
         DestinationInfo storage destOutInfo
-    ) private returns (IdleDebtChange memory assetChange) {
+    ) private returns (IdleDebtUpdates memory assetChange) {
         // Handle decrease (shares going "Out", cashing in shares and sending underlying back to swapper)
         // If the tokenOut is _asset we assume they are taking idle
         // which is already in the contract
@@ -311,20 +255,21 @@ library LMPDebt {
                 uint256 originalShareBal = dvOut.balanceOf(address(this));
 
                 // Burning our shares will claim any pending baseAsset
-                // rewards and send them to us. Make sure we capture them
-                // so they can end up in idle
+                // rewards and send them to us.
+                // Get our starting balance
                 uint256 beforeBaseAssetBal = params._baseAsset.balanceOf(address(this));
 
-                // withdraw underlying from dv
+                // Withdraw underlying from the destination vault
+                // Shares are sent directly to the flashRebalance receiver
                 // slither-disable-next-line unused-return
                 dvOut.withdrawUnderlying(params.amountOut, params.receiver);
 
-                assetChange.idleIncrease = params._baseAsset.balanceOf(address(this)) - beforeBaseAssetBal;
-
                 // Update the debt info snapshot
-                (assetChange.debtDecrease, assetChange.debtIncrease) = _recalculateDestInfo(
-                    destOutInfo, dvOut, originalShareBal, originalShareBal - params.amountOut, true
-                );
+                assetChange =
+                    _recalculateDestInfo(destOutInfo, dvOut, originalShareBal, originalShareBal - params.amountOut);
+
+                // Capture any rewards we may have claimed as part of withdrawing
+                assetChange.totalIdleIncrease = params._baseAsset.balanceOf(address(this)) - beforeBaseAssetBal;
             } else {
                 // If we are shutdown then the only operations we should be performing are those that get
                 // the base asset back to the vault. We shouldn't be sending out more
@@ -334,7 +279,11 @@ library LMPDebt {
                 // Working with idle baseAsset which should be in the vault already
                 // Just send it out
                 IERC20(params.tokenOut).safeTransfer(params.receiver, params.amountOut);
-                assetChange.idleDecrease = params.amountOut;
+                assetChange.totalIdleDecrease = params.amountOut;
+
+                // We weren't dealing with any debt or pricing, just idle, so we can just mark
+                // it as safe
+                assetChange.pricesWereSafe = true;
             }
         }
     }
@@ -343,39 +292,347 @@ library LMPDebt {
         DestinationInfo storage destInfo,
         IDestinationVault destVault,
         uint256 originalShares,
-        uint256 currentShares,
-        bool resetDebtBasis
-    ) external returns (uint256 totalDebtDecrease, uint256 totalDebtIncrease) {
-        (totalDebtDecrease, totalDebtIncrease) =
-            _recalculateDestInfo(destInfo, destVault, originalShares, currentShares, resetDebtBasis);
+        uint256 currentShares
+    ) external returns (IdleDebtUpdates memory result) {
+        result = _recalculateDestInfo(destInfo, destVault, originalShares, currentShares);
     }
 
+    /// @dev Will not revert on unsafe prices. Up to the caller.
     function _recalculateDestInfo(
         DestinationInfo storage destInfo,
         IDestinationVault destVault,
         uint256 originalShares,
-        uint256 currentShares,
-        bool resetDebtBasis
-    ) private returns (uint256 totalDebtDecrease, uint256 totalDebtIncrease) {
+        uint256 currentShares
+    ) private returns (IdleDebtUpdates memory result) {
+        // TODO: Trace the use of this fn and ensure that every is handling is pricesWereSafe
+
         // Figure out what to back out of our totalDebt number.
         // We could have had withdraws since the last snapshot which means our
         // cached currentDebt number should be decreased based on the remaining shares
         // totalDebt is decreased using the same proportion of shares method during withdrawals
         // so this should represent whatever is remaining.
 
-        // Figure out how much our debt is currently worth
-        uint256 dvDebtValue = destVault.debtValue(currentShares);
+        // Prices are per LP token and whether or not the prices are safe to use
+        // If they aren't safe then just continue and we'll get it on the next go around
+        (uint256 spotPrice, uint256 safePrice, bool isSpotSafe) = destVault.getRangePricesLP();
 
-        // Calculate what we're backing out based on the original shares
-        uint256 currentDebt = (destInfo.currentDebt * originalShares) / Math.max(destInfo.ownedShares, 1);
-        destInfo.currentDebt = dvDebtValue;
-        destInfo.lastReport = block.timestamp;
-        destInfo.ownedShares = currentShares;
-        if (resetDebtBasis) {
-            destInfo.debtBasis = dvDebtValue;
+        // We won't update anything
+        if (!isSpotSafe) {
+            return result;
         }
 
-        totalDebtDecrease = currentDebt;
-        totalDebtIncrease = dvDebtValue;
+        // Calculate what we're backing out based on the original shares
+        uint256 minPrice = spotPrice > safePrice ? safePrice : spotPrice;
+        uint256 maxPrice = spotPrice > safePrice ? spotPrice : safePrice;
+
+        // If we previously had shares, calculate how much of our cached numbers
+        // still remain as this will be deducted from the overall debt numbers
+        // TODO: Evaluate whether to round these up so we don't accumulate small amounts
+        // over time
+        uint256 prevOwnedShares = destInfo.ownedShares;
+        if (prevOwnedShares > 0) {
+            result.totalDebtDecrease = (destInfo.cachedDebtValue * originalShares) / prevOwnedShares;
+            result.totalMinDebtDecrease = (destInfo.cachedMinDebtValue * originalShares) / prevOwnedShares;
+            result.totalMaxDebtDecrease = (destInfo.cachedMaxDebtValue * originalShares) / prevOwnedShares;
+        }
+
+        // The overall debt value is the mid point of min and max
+        uint256 div = 10 ** destVault.decimals();
+        uint256 newDebtValue = (minPrice * currentShares + maxPrice * currentShares) / (div * 2);
+
+        result.pricesWereSafe = true;
+        result.totalDebtIncrease = newDebtValue;
+        result.totalMinDebtIncrease = minPrice * currentShares / div;
+        result.totalMaxDebtIncrease = maxPrice * currentShares / div;
+
+        // Save our current new values
+        destInfo.cachedDebtValue = newDebtValue;
+        destInfo.cachedMinDebtValue = result.totalMinDebtIncrease;
+        destInfo.cachedMaxDebtValue = result.totalMaxDebtIncrease;
+        destInfo.lastReport = block.timestamp;
+        destInfo.ownedShares = currentShares;
+    }
+
+    function _totalAssetsTimeChecked(
+        StructuredLinkedList.List storage debtReportQueue,
+        mapping(address => LMPDebt.DestinationInfo) storage destinationInfo,
+        ILMPVault.TotalAssetPurpose purpose
+    ) external returns (uint256) {
+        IDestinationVault destVault = IDestinationVault(debtReportQueue.peekHead());
+        uint256 recalculatedTotalAssets = ILMPVault(address(this)).totalAssets(purpose);
+        uint256 divisor = 10 ** ILMPVault(address(this)).decimals();
+
+        while (address(destVault) != address(0)) {
+            uint256 lastReport = destinationInfo[address(destVault)].lastReport;
+
+            if (lastReport + MAX_DEBT_REPORT_AGE_SECONDS > block.timestamp) {
+                // Its not stale
+
+                // This report is OK, we don't need to recalculate anything
+                break;
+            } else {
+                // It is stale, recalculate
+
+                //slither-disable-next-line unused-return
+                uint256 currentShares = destVault.balanceOf(address(this));
+                uint256 staleDebt;
+                uint256 extremePrice;
+
+                // Figure out exactly which price to use based on its purpose
+                if (purpose == ILMPVault.TotalAssetPurpose.Deposit) {
+                    // We use max value so that anything deposited is worth less
+                    extremePrice = destVault.getUnderlyerCeilingPrice();
+
+                    // Round down. We are subtracting this value out of the total so some left
+                    // behind just increases the value which is what we want
+                    staleDebt = destinationInfo[address(destVault)].cachedMaxDebtValue.mulDiv(
+                        currentShares, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Down
+                    );
+                } else if (purpose == ILMPVault.TotalAssetPurpose.Withdraw) {
+                    // We use min value so that we value the shares as worth less
+                    extremePrice = destVault.getUnderlyerFloorPrice();
+
+                    // Round up. We are subtracting this value out of the total so if we take a little
+                    // extra it just decreases the value which is what we want
+                    staleDebt = destinationInfo[address(destVault)].cachedMinDebtValue.mulDiv(
+                        currentShares, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Up
+                    );
+                } else {
+                    revert InvalidTotalAssetPurpose();
+                }
+
+                // Back out our stale debt, add in its new value
+                // Our goal is to find the most conservative value in each situation. If the current
+                // value we have represents that, then use it. Otherwise, use the new one.
+                uint256 newValue = (currentShares * extremePrice) / divisor;
+                if (purpose == ILMPVault.TotalAssetPurpose.Deposit && staleDebt > newValue) {
+                    newValue = staleDebt;
+                } else if (purpose == ILMPVault.TotalAssetPurpose.Withdraw && staleDebt < newValue) {
+                    newValue = staleDebt;
+                }
+
+                recalculatedTotalAssets = recalculatedTotalAssets + newValue - staleDebt;
+            }
+
+            destVault = IDestinationVault(debtReportQueue.getAdjacent(address(destVault), true));
+        }
+
+        return recalculatedTotalAssets;
+    }
+
+    function _updateDebtReporting(
+        StructuredLinkedList.List storage debtReportQueue,
+        EnumerableSet.AddressSet storage _destinations,
+        mapping(address => LMPDebt.DestinationInfo) storage destinationInfo,
+        uint256 numToProcess
+    ) external returns (IdleDebtUpdates memory result) {
+        // For destinations we can't process atm due to price discrepancies
+        address[] memory reprocesses = new address[](numToProcess);
+        uint256 reprocessCount = 0;
+
+        numToProcess = Math.min(numToProcess, debtReportQueue.sizeOf());
+
+        for (uint256 i = 0; i < numToProcess; ++i) {
+            IDestinationVault destVault = IDestinationVault(debtReportQueue.popHead());
+
+            if (!_destinations.contains(address(destVault))) {
+                revert InvalidDestination(address(destVault));
+            }
+
+            // Get the reward value we've earned. DV rewards are always in terms of base asset
+            // We track the gas used purely for off-chain stats purposes
+            // Main rewarder on DV's store the earned and liquidated rewards
+            // Extra rewarders are disabled at the DV level
+            uint256 claimGasUsed = gasleft();
+            uint256 beforeBaseAsset = IERC20(ILMPVault(address(this)).asset()).balanceOf(address(this));
+            IMainRewarder(destVault.rewarder()).getReward(address(this), false);
+            uint256 claimedRewardValue =
+                IERC20(ILMPVault(address(this)).asset()).balanceOf(address(this)) - beforeBaseAsset;
+            result.totalDebtIncrease += claimedRewardValue;
+
+            // Recalculate the debt info figuring out the change in
+            // total debt value we can roll up later
+            uint256 currentShareBalance = destVault.balanceOf(address(this));
+
+            LMPDebt.IdleDebtUpdates memory debtResult = _recalculateDestInfo(
+                destinationInfo[address(destVault)], destVault, currentShareBalance, currentShareBalance
+            );
+
+            // If they aren't safe then just continue and we'll get it on the next go around
+            // No updates were made in recalculateDestInfo if prices weren't safe
+            if (!debtResult.pricesWereSafe) {
+                reprocesses[reprocessCount] = address(destVault);
+                ++reprocessCount;
+                continue;
+            }
+
+            result.totalDebtDecrease += debtResult.totalDebtDecrease;
+            result.totalDebtIncrease += debtResult.totalDebtIncrease;
+            result.totalMinDebtDecrease += debtResult.totalMinDebtDecrease;
+            result.totalMinDebtIncrease += debtResult.totalMinDebtIncrease;
+            result.totalMaxDebtDecrease += debtResult.totalMaxDebtDecrease;
+            result.totalMaxDebtIncrease += debtResult.totalMaxDebtIncrease;
+
+            // If we no longer have shares, then there's no reason to continue reporting on the destination.
+            // The strategy will only call for the info if its moving "out" of the destination
+            // and that will only happen if we have shares.
+            // A rebalance where we move "in" to the position will refresh the data at that time
+            if (currentShareBalance > 0) {
+                debtReportQueue.addToTail(address(destVault));
+            }
+
+            claimGasUsed -= gasleft();
+
+            emit DestinationDebtReporting(address(destVault), debtResult, claimedRewardValue, claimGasUsed);
+        }
+
+        // Add the destinations that had bad prices back to the queue in their original order
+        if (reprocessCount > 0) {
+            for (uint256 i = reprocessCount - 1; i >= 0; --i) {
+                debtReportQueue.addToHead(address(reprocesses[i]));
+            }
+        }
+    }
+
+    function _withdraw(
+        uint256 assets,
+        uint256 applicableTotalAssets,
+        ILMPVault.AssetBreakdown storage assetBreakdown,
+        StructuredLinkedList.List storage withdrawalQueue,
+        mapping(address => LMPDebt.DestinationInfo) storage destinationInfo
+    ) external returns (uint256 actualAssets, uint256 actualShares, uint256 debtBurned) {
+        uint256 idle = assetBreakdown.totalIdle;
+        WithdrawInfo memory info = WithdrawInfo({
+            currentIdle: idle,
+            assetsFromIdle: assets >= idle ? idle : assets,
+            totalAssetsToPull: assets - (assets >= idle ? idle : assets),
+            assetsToPull: assets - (assets >= idle ? idle : assets),
+            assetsPulled: 0,
+            idleIncrease: 0,
+            debtDecrease: 0,
+            debtMinDecrease: 0,
+            debtMaxDecrease: 0
+        });
+
+        // If not enough funds in idle, then pull what we need from destinations
+
+        while (info.assetsToPull > 0) {
+            IDestinationVault destVault = IDestinationVault(withdrawalQueue.peekHead());
+            if (address(destVault) == address(0)) {
+                // TODO: This may be some NULL value too, check the underlying library
+                break;
+            }
+
+            uint256 dvShares = destVault.balanceOf(address(this));
+            uint256 dvSharesToBurn = dvShares;
+            {
+                // Valuing these shares higher, rounding up, will result in us burning less of them
+                // in the event we don't burn all of them. Good thing.
+                uint256 dvSharesValue = destinationInfo[address(destVault)].cachedMinDebtValue.mulDiv(
+                    dvSharesToBurn, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Up
+                );
+
+                // If the dv shares we own are worth more than we need, limit the shares to burn
+                // Any extra we get will be dropped into idle
+                if (dvSharesValue > info.assetsToPull) {
+                    uint256 limitedShares = (dvSharesToBurn * info.assetsToPull) / dvSharesValue;
+
+                    // Final set for the actual shares we'll burn later
+                    dvSharesToBurn = limitedShares;
+                }
+            }
+
+            // Destination Vaults always burn the exact amount we instruct them to
+            uint256 pulledAssets = destVault.withdrawBaseAsset(dvSharesToBurn, address(this));
+
+            info.assetsPulled += pulledAssets;
+
+            // Calculate the totalDebt we'll need to remove based on the shares we're burning
+            // We're rounding up here so take care when actually applying to totalDebt
+            // The assets we calculated to pull are from the minDebt number we track so
+            // we'll use that one to ensure we properly account for slippage (the `pulled` var below)
+            // The other two debt numbers we just need to keep up to date.
+            uint256 debtMinDecrease = destinationInfo[address(destVault)].cachedMinDebtValue.mulDiv(
+                dvSharesToBurn, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Up
+            );
+            info.debtMinDecrease += debtMinDecrease;
+
+            info.debtDecrease += destinationInfo[address(destVault)].cachedDebtValue.mulDiv(
+                dvSharesToBurn, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Up
+            );
+            info.debtMaxDecrease += destinationInfo[address(destVault)].cachedMaxDebtValue.mulDiv(
+                dvSharesToBurn, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Up
+            );
+
+            // If we've exhausted all shares we can remove the destination from the queue
+            // We also won't need to debt report on it and it'll be added back in the rebalance
+            // should we deploy there again
+            if (dvShares == dvSharesToBurn) {
+                withdrawalQueue.popAddress(address(destVault));
+            }
+
+            // It's possible we'll get back more assets than we anticipate from a swap
+            // so if we do, throw it in idle and stop processing. You don't get more than we've calculated
+            if (info.assetsPulled >= info.totalAssetsToPull) {
+                info.idleIncrease += info.assetsPulled - info.totalAssetsToPull;
+                info.assetsPulled = info.totalAssetsToPull;
+                break;
+            }
+
+            // Any deficiency in the amount we received is slippage. debtDecrease is what we expected
+            // to receive. If we received any extra, that's great we'll roll it forward so we burn
+            // less on the next loop.
+            uint256 pulled = Math.max(debtMinDecrease, pulledAssets);
+            if (pulled >= info.assetsToPull) {
+                // We either have enough assets, or we've burned the max debt we're allowed
+                info.assetsToPull = 0;
+                break;
+            } else {
+                info.assetsToPull -= pulled;
+            }
+
+            // If we didn't burn all the dv shares, that means we expected the destination
+            // to cover everything so we can stop.
+            // TODO: Check the scenario
+            // if (dvSharesToBurn < dvShares) {
+            //     break;
+            // }
+            // console.log("----------------");
+        }
+
+        // info.totalAssetsToPull isn't safe to use past this point.
+        // It may or may not be accurate from the previous loop
+
+        debtBurned = info.assetsFromIdle + info.debtMinDecrease;
+
+        actualShares = ILMPVault(address(this)).convertToShares(
+            debtBurned, applicableTotalAssets, ILMPVault(address(this)).totalSupply(), Math.Rounding.Up
+        );
+        actualAssets = info.assetsFromIdle + info.assetsPulled;
+
+        // Subtract what's taken out of idle from totalIdle
+        // We may also have some increase to account for it we over pulled
+        // or received better execution than we were anticipating
+        // slither-disable-next-line events-maths
+        assetBreakdown.totalIdle = info.currentIdle + info.idleIncrease - info.assetsFromIdle;
+
+        // Save off our various debt numbers
+        if (info.debtDecrease > assetBreakdown.totalDebt) {
+            assetBreakdown.totalDebt = 0;
+        } else {
+            assetBreakdown.totalDebt -= info.debtDecrease;
+        }
+
+        if (info.debtMinDecrease > assetBreakdown.totalDebtMin) {
+            assetBreakdown.totalDebtMin = 0;
+        } else {
+            assetBreakdown.totalDebtMin -= info.debtMinDecrease;
+        }
+
+        if (info.debtMaxDecrease > assetBreakdown.totalDebtMax) {
+            assetBreakdown.totalDebtMax = 0;
+        } else {
+            assetBreakdown.totalDebtMax -= info.debtMaxDecrease;
+        }
     }
 }

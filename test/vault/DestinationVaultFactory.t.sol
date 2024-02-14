@@ -225,9 +225,7 @@ contract DestinationVaultFactoryBaseTests is Test {
 
         address nextAddress = Clones.predictDeterministicAddress(address(tv), salt, address(_factory));
         vm.expectCall(_vaultRegistry, abi.encodeCall(IDestinationVaultRegistry.register, nextAddress));
-        address newVault = _factory.create(
-            "y", address(8), address(_fakeIncentiveCalculator), _fakeUnderlyer, _fakeTracked, salt, data
-        );
+        _factory.create("y", address(8), address(_fakeIncentiveCalculator), _fakeUnderlyer, _fakeTracked, salt, data);
     }
 
     function _registerTemplate(address templateReg, bytes32 key, address template) internal {

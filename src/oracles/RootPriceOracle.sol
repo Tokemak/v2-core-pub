@@ -231,9 +231,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         if (actualQuoteToken == quoteToken) {
             return rawPrice;
         }
-
-        IPriceOracle tokenOracle = tokenMappings[actualQuoteToken];
-        if (address(tokenOracle) == address(0)) revert MissingTokenOracle(actualQuoteToken);
+        if (address(tokenMappings[actualQuoteToken]) == address(0)) revert MissingTokenOracle(actualQuoteToken);
 
         // If not, get the conversion rate from the actualQuoteToken to quoteToken and then derive the spot price
         return rawPrice * getPriceInQuote(actualQuoteToken, quoteToken)

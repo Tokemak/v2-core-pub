@@ -71,7 +71,7 @@ library BalancerUtilities {
     }
 
     /// @notice This function retrieves tokens (skipping the BPT) from Balancer composable pools
-    function _getPoolTokensSkippingPoolToken(
+    function _getComposablePoolTokensSkipBpt(
         IVault balancerVault,
         address balancerPool
     ) internal view returns (IERC20[] memory tokens, uint256[] memory balances) {

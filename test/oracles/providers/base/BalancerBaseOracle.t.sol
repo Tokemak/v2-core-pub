@@ -46,7 +46,7 @@ contract BalancerBaseOracleWrapper is BalancerBaseOracle {
         returns (IERC20[] memory tokens, uint256[] memory balances)
     {
         (tokens, balances) = BalancerUtilities.isComposablePool(pool)
-            ? BalancerUtilities._getPoolTokensSkippingPoolToken(balancerVault, pool)
+            ? BalancerUtilities._getComposablePoolTokensSkipBpt(balancerVault, pool)
             : BalancerUtilities._getPoolTokens(balancerVault, pool);
     }
 }

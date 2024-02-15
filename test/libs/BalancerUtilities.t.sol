@@ -59,7 +59,7 @@ contract BalancerUtilitiesTest is Test {
         assertEq(balances[3], 166_972_211_148_502_452_054);
     }
 
-    function test_getPoolTokensSkippingPoolToken_ReturnsProperValues() public {
+    function test_getComposablePoolTokensSkipBpt_ReturnsProperValues() public {
         (IERC20[] memory assets, uint256[] memory balances) =
             BalancerUtilities._getPoolTokens(IVault(BAL_VAULT), WSETH_RETH_SFRXETH_BAL_POOL);
 
@@ -77,9 +77,9 @@ contract BalancerUtilitiesTest is Test {
         assertEq(balances[3], 166_972_211_148_502_452_054);
     }
 
-    function test_getPoolTokensSkippingPoolToken_ReturnsProperValues_AndFiltersPoolToken() public {
+    function test_getComposablePoolTokensSkipBpt_ReturnsProperValues_AndFiltersPoolToken() public {
         (IERC20[] memory assets, uint256[] memory balances) =
-            BalancerUtilities._getPoolTokensSkippingPoolToken(IVault(BAL_VAULT), WSETH_RETH_SFRXETH_BAL_POOL);
+            BalancerUtilities._getComposablePoolTokensSkipBpt(IVault(BAL_VAULT), WSETH_RETH_SFRXETH_BAL_POOL);
 
         // Verify assets
         assertEq(assets.length, 3);

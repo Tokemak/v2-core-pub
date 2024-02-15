@@ -252,27 +252,24 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         if (tokens.pool == address(0)) {
             revert NotRegistered(lpToken);
         }
+
+        reserves = new ReserveItemInfo[](2); // This contract only allows CurveV2 pools with two tokens
         uint256[8] memory balances = curveResolver.getReservesInfo(pool);
 
-        reserves = new ReserveItemInfo[](2); // In Curve V2, all pools have 2 tokens
-        //slither-disable-start similar-names
-        address token0 = tokens.tokenFromPrice;
-        (uint256 rawSpotPrice0, address actualQuoteToken0) = _getSpotPrice(token0, pool, lpToken);
+        (uint256 rawSpotPrice, address actualQuoteToken) = _getSpotPrice(tokens.tokenFromPrice, pool, lpToken);
         reserves[0] = ReserveItemInfo({
-            token: token0,
+            token: tokens.tokenFromPrice,
             reserveAmount: balances[0],
-            rawSpotPrice: rawSpotPrice0,
-            actualQuoteToken: actualQuoteToken0
+            rawSpotPrice: rawSpotPrice,
+            actualQuoteToken: actualQuoteToken
         });
 
-        address token1 = tokens.tokenToPrice;
-        (uint256 rawSpotPrice1, address actualQuoteToken1) = _getSpotPrice(token1, pool, lpToken);
+        (rawSpotPrice, actualQuoteToken) = _getSpotPrice(tokens.tokenToPrice, pool, lpToken);
         reserves[1] = ReserveItemInfo({
-            token: token1,
+            token: tokens.tokenToPrice,
             reserveAmount: balances[1],
-            rawSpotPrice: rawSpotPrice1,
-            actualQuoteToken: actualQuoteToken1
+            rawSpotPrice: rawSpotPrice,
+            actualQuoteToken: actualQuoteToken
         });
-        //slither-disable-end similar-names
     }
 }

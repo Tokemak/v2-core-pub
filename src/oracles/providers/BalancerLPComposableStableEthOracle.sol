@@ -75,6 +75,6 @@ contract BalancerLPComposableStableEthOracle is BalancerBaseOracle, IPriceOracle
         override
         returns (IERC20[] memory tokens, uint256[] memory balances)
     {
-        (tokens, balances) = BalancerUtilities._getPoolTokensSkippingPoolToken(balancerVault, pool);
+        (tokens, balances) = BalancerUtilities._getComposablePoolTokensSkipBpt(balancerVault, pool);
     }
 }

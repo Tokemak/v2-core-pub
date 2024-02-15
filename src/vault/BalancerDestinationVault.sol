@@ -1,0 +1,170 @@
+// SPDX-License-Identifier: UNLICENSED
+// Copyright (c) 2023 Tokemak Foundation. All rights reserved.
+pragma solidity 0.8.17;
+
+import { Errors } from "src/utils/Errors.sol";
+import { DestinationVault } from "src/vault/DestinationVault.sol";
+import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
+import { IVault } from "src/interfaces/external/balancer/IVault.sol";
+import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
+import { IBalancerPool } from "src/interfaces/external/balancer/IBalancerPool.sol";
+import { BalancerBeethovenAdapter } from "src/destinations/adapters/BalancerBeethovenAdapter.sol";
+import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
+
+/// @title Destination Vault to proxy a Balancer Pool that goes into Aura
+contract BalancerDestinationVault is DestinationVault {
+    /// @notice Only used to initialize the vault
+    struct InitParams {
+        /// @notice Pool and LP token this vault proxies
+        address balancerPool;
+    }
+
+    string internal constant EXCHANGE_NAME = "balancer";
+
+    /// @notice Balancer Vault
+    IVault public immutable balancerVault;
+
+    /// @notice Token minted during reward claiming. Specific to Convex-style rewards. Aura in this case.
+    address public immutable defaultRewardToken;
+
+    /// @notice Pool tokens changed – possible for Balancer pools with no liquidity
+    error PoolTokensChanged(IERC20[] cachedTokens, IERC20[] actualTokens);
+
+    /* ******************************** */
+    /* State Variables                  */
+    /* ******************************** */
+
+    IERC20[] internal poolTokens;
+
+    /// @notice Pool and LP token this vault proxies
+    address public balancerPool;
+
+    /// @notice Whether the balancePool is a ComposableStable pool. false -> MetaStable
+    bool public isComposable;
+
+    constructor(
+        ISystemRegistry sysRegistry,
+        address _balancerVault,
+        address _defaultStakingRewardToken
+    ) DestinationVault(sysRegistry) {
+        Errors.verifyNotZero(_balancerVault, "_balancerVault");
+        Errors.verifyNotZero(_defaultStakingRewardToken, "_defaultStakingRewardToken");
+
+        // Both are checked above
+        // slither-disable-next-line missing-zero-check
+        balancerVault = IVault(_balancerVault);
+        // slither-disable-next-line missing-zero-check
+        defaultRewardToken = _defaultStakingRewardToken;
+    }
+
+    /// @inheritdoc DestinationVault
+    function initialize(
+        IERC20Metadata baseAsset_,
+        IERC20Metadata underlyer_,
+        IMainRewarder rewarder_,
+        address incentiveCalculator_,
+        address[] memory additionalTrackedTokens_,
+        bytes memory params_
+    ) public virtual override {
+        // Base class has the initializer() modifier to prevent double-setup
+        // If you don't call the base initialize, make sure you protect this call
+        super.initialize(baseAsset_, underlyer_, rewarder_, incentiveCalculator_, additionalTrackedTokens_, params_);
+
+        // Decode the init params, validate, and save off
+        InitParams memory initParams = abi.decode(params_, (InitParams));
+        Errors.verifyNotZero(initParams.balancerPool, "balancerPool");
+
+        balancerPool = initParams.balancerPool;
+        isComposable = BalancerUtilities.isComposablePool(initParams.balancerPool);
+
+        // Tokens that are used by the proxied pool cannot be removed from the vault
+        // via recover(). Make sure we track those tokens here.
+        // slither-disable-next-line unused-return
+        (poolTokens,) = BalancerUtilities._getPoolTokens(balancerVault, balancerPool);
+        if (poolTokens.length == 0) revert ArrayLengthMismatch();
+
+        for (uint256 i = 0; i < poolTokens.length; ++i) {
+            _addTrackedToken(address(poolTokens[i]));
+        }
+    }
+
+    /// @inheritdoc DestinationVault
+    /// @notice In this vault all underlyer should be staked externally, so internal debt should be 0.
+    function internalDebtBalance() public view override returns (uint256) {
+        return totalSupply();
+    }
+
+    /// @inheritdoc DestinationVault
+    /// @notice In this vault all underlyer should be staked, and mint is 1:1, so external debt is `totalSupply()`.
+    function externalDebtBalance() public pure override returns (uint256) {
+        return 0;
+    }
+
+    /// @notice Get the balance of underlyer currently staked in Aura
+    /// @return Balance of underlyer currently staked in Aura
+    function externalQueriedBalance() public pure override returns (uint256) {
+        return 0;
+    }
+
+    /// @inheritdoc DestinationVault
+    function exchangeName() external pure override returns (string memory) {
+        return EXCHANGE_NAME;
+    }
+
+    /// @inheritdoc DestinationVault
+    function underlyingTokens() external view override returns (address[] memory ret) {
+        if (isComposable) {
+            uint256 len = poolTokens.length;
+            ret = new address[](len - 1);
+            uint256 bptIndex = IBalancerComposableStablePool(balancerPool).getBptIndex();
+            uint256 h = 0;
+            for (uint256 i = 0; i < len; ++i) {
+                if (i != bptIndex) {
+                    ret[h] = address(poolTokens[i]);
+                    h++;
+                }
+            }
+        } else {
+            ret = BalancerUtilities._convertERC20sToAddresses(poolTokens);
+        }
+    }
+
+    /// @inheritdoc DestinationVault
+    function _onDeposit(uint256 amount) internal virtual override {
+        // Accept LP tokens and do nothing
+    }
+
+    /// @inheritdoc DestinationVault
+    function _ensureLocalUnderlyingBalance(uint256 amount) internal virtual override {
+        // Do nothing, LP balance exists
+    }
+
+    /// @inheritdoc DestinationVault
+    function _collectRewards() internal virtual override returns (uint256[] memory amounts, address[] memory tokens) {
+        // Do nothing and return empty amounts and tokens
+    }
+
+    /// @inheritdoc DestinationVault
+    function _burnUnderlyer(uint256 underlyerAmount)
+        internal
+        virtual
+        override
+        returns (address[] memory tokens, uint256[] memory amounts)
+    {
+        // Min amounts are intentionally 0. This fn is only called during a
+        // user initiated withdrawal where they've accounted for slippage
+        // at the router or otherwise
+        uint256[] memory minAmounts = new uint256[](poolTokens.length);
+        tokens = BalancerUtilities._convertERC20sToAddresses(poolTokens);
+        amounts =
+            BalancerBeethovenAdapter.removeLiquidity(balancerVault, balancerPool, tokens, minAmounts, underlyerAmount);
+    }
+
+    /// @inheritdoc DestinationVault
+    function getPool() external view override returns (address) {
+        return balancerPool;
+    }
+}

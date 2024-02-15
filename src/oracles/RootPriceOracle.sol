@@ -376,8 +376,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         address quoteToken
     ) external returns (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) {
         // TODO: Can be consolidated.
-        ISpotPriceOracle spotPriceOracle = poolMappings[pool];
-        if (address(spotPriceOracle) == address(0)) revert MissingSpotPriceOracle(pool);
+        ISpotPriceOracle spotPriceOracle = ISpotPriceOracle(_checkSpotOracleRegistration(pool));
 
         // Retrieve the reserves info for calculations
         (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =

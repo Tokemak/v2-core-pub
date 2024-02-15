@@ -37,6 +37,7 @@ import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
 
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
+import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 
 /**
  * @notice This file is a test to ensure that the flow from DestinationVault to LiquidationRow to BaseAsyncSwapper works
@@ -61,6 +62,7 @@ contract LiquidationRowTest is Test {
     IAccessController internal accessController;
     LiquidationRow internal liquidationRow;
     BaseAsyncSwapper internal swapper;
+    TestIncentiveCalculator internal testIncentiveCalculator;
 
     /**
      * @notice Set up the minimal system for the tests
@@ -146,6 +148,7 @@ contract CurveIntegrationTest is LiquidationRowTest {
 
     function runScenario(CurvePoolInfo memory poolInfo) public {
         address underlyer = poolInfo.curveLpToken;
+        testIncentiveCalculator = new TestIncentiveCalculator(underlyer);
         address convexStaking = poolInfo.convexStaking;
         uint256 periodFinish = IConvexRewardPool(convexStaking).periodFinish();
 
@@ -171,6 +174,7 @@ contract CurveIntegrationTest is LiquidationRowTest {
                 "curve template",
                 WETH_MAINNET,
                 address(underlyer),
+                address(testIncentiveCalculator),
                 new address[](0), // additionalTrackedTokens
                 keccak256("salt1"),
                 initParamBytes
@@ -352,6 +356,7 @@ contract BalancerAuraDestinationVaultIntegrationTest is LiquidationRowTest {
 
     function runScenario(BalancerPoolInfo memory poolInfo) public {
         address underlyer = poolInfo.balancerLpToken;
+        testIncentiveCalculator = new TestIncentiveCalculator(underlyer);
         address auraStaking = poolInfo.auraStaking;
         uint256 periodFinish = IConvexRewardPool(auraStaking).periodFinish();
 
@@ -378,6 +383,7 @@ contract BalancerAuraDestinationVaultIntegrationTest is LiquidationRowTest {
                 "balancer template",
                 WETH_MAINNET,
                 address(underlyer),
+                address(testIncentiveCalculator),
                 new address[](0), // additionalTrackedTokens
                 keccak256("salt1"),
                 initParamBytes

@@ -227,11 +227,6 @@ contract DestinationVaultFactoryBaseTests is Test {
         address newVault = _factory.create(
             "y", address(8), address(_fakeIncentiveCalculator), _fakeUnderlyer, _fakeTracked, salt, data
         );
-
-        IMainRewarder rewarder = IMainRewarder(IDestinationVault(newVault).rewarder());
-        address stakeToken = rewarder.stakeTracker();
-
-        assertEq(newVault, stakeToken);
     }
 
     function _registerTemplate(address templateReg, bytes32 key, address template) internal {

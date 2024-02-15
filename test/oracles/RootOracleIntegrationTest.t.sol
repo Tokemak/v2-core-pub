@@ -1176,7 +1176,7 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
  *      prices, ie those that had not been adjusted for quote or decimals yet.
  *    - Floor and ceiling prices returned from the `getFloorCeilingPrice` contract call.
  *
- * 2) Once the floor and ceiling price base and quote are determined, getting a raw spot price is needed.
+ * 2) Once the floor and ceiling price path base and quote are determined, getting a raw spot price is needed.
  *    The easiest way to do this is to use the `ISpotPriceOracle.getSpotPrice` function.
  *
  * 3) If the raw spot price is not in the decimals or quote desired, it will have to adjusted.  For decimals,

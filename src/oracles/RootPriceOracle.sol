@@ -186,7 +186,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     function getPriceInEth(address token) external returns (uint256 price) {
         // Skip the token address(0) check and just rely on the oracle lookup
         // Emit token so we can figure out what was actually 0 later
-        IPriceOracle oracle = IPriceOracle(_checkTokenOracleRegistration(token));
+        IPriceOracle oracle = _checkTokenOracleRegistration(token);
 
         price = oracle.getPriceInEth(token);
     }
@@ -200,10 +200,11 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     ) external returns (uint256 floorOrCeilingPerLpToken) {
         uint256 totalLpSupply;
         ISpotPriceOracle.ReserveItemInfo[] memory reserveInfoArray;
+
         // Scoping for stack too deep.
         {
             // Check oracle, get spot pricing info.
-            ISpotPriceOracle oracle = ISpotPriceOracle(_checkSpotOracleRegistration(pool));
+            ISpotPriceOracle oracle = _checkSpotOracleRegistration(pool);
             (totalLpSupply, reserveInfoArray) = oracle.getSafeSpotPriceInfo(pool, lpToken, inQuote);
         }
 
@@ -269,7 +270,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         Errors.verifyNotZero(token, "token");
         Errors.verifyNotZero(pool, "pool");
 
-        ISpotPriceOracle oracle = ISpotPriceOracle(_checkSpotOracleRegistration(pool));
+        ISpotPriceOracle oracle = _checkSpotOracleRegistration(pool);
 
         address weth = address(systemRegistry.weth());
 
@@ -375,7 +376,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         address pool,
         address quoteToken
     ) external returns (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) {
-        ISpotPriceOracle spotPriceOracle = ISpotPriceOracle(_checkSpotOracleRegistration(pool));
+        ISpotPriceOracle spotPriceOracle = _checkSpotOracleRegistration(pool);
 
         // Retrieve the reserves info for calculations
         (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
@@ -448,7 +449,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
 
     ///@inheritdoc IRootPriceOracle
     function getPriceInQuote(address base, address quote) public returns (uint256) {
-        IPriceOracle baseOracle = IPriceOracle(_checkTokenOracleRegistration(base));
+        IPriceOracle baseOracle = _checkTokenOracleRegistration(base);
 
         // No need to go through the extra math if we're asking for it in terms we already have
         uint256 baseInEth = baseOracle.getPriceInEth(base);
@@ -456,21 +457,21 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
             return baseInEth;
         }
 
-        IPriceOracle quoteOracle = IPriceOracle(_checkTokenOracleRegistration(quote));
+        IPriceOracle quoteOracle = _checkTokenOracleRegistration(quote);
 
         return (baseInEth * (10 ** IERC20Metadata(quote).decimals())) / quoteOracle.getPriceInEth(quote);
     }
 
-    function _checkTokenOracleRegistration(address token) private view returns (address oracle) {
-        oracle = address(tokenMappings[token]);
-        if (oracle == address(0)) {
+    function _checkTokenOracleRegistration(address token) private view returns (IPriceOracle oracle) {
+        oracle = tokenMappings[token];
+        if (address(oracle) == address(0)) {
             revert MissingTokenOracle(token);
         }
     }
 
-    function _checkSpotOracleRegistration(address pool) private view returns (address spotOracle) {
-        spotOracle = address(poolMappings[pool]);
-        if (spotOracle == address(0)) {
+    function _checkSpotOracleRegistration(address pool) private view returns (ISpotPriceOracle spotOracle) {
+        spotOracle = poolMappings[pool];
+        if (address(spotOracle) == address(0)) {
             revert MissingSpotPriceOracle(pool);
         }
     }

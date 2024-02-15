@@ -27,9 +27,6 @@ contract BalancerDestinationVault is DestinationVault {
     /// @notice Balancer Vault
     IVault public immutable balancerVault;
 
-    /// @notice Token minted during reward claiming. Specific to Convex-style rewards. Aura in this case.
-    address public immutable defaultRewardToken;
-
     /// @notice Pool tokens changed – possible for Balancer pools with no liquidity
     error PoolTokensChanged(IERC20[] cachedTokens, IERC20[] actualTokens);
 
@@ -45,19 +42,12 @@ contract BalancerDestinationVault is DestinationVault {
     /// @notice Whether the balancePool is a ComposableStable pool. false -> MetaStable
     bool public isComposable;
 
-    constructor(
-        ISystemRegistry sysRegistry,
-        address _balancerVault,
-        address _defaultStakingRewardToken
-    ) DestinationVault(sysRegistry) {
+    constructor(ISystemRegistry sysRegistry, address _balancerVault) DestinationVault(sysRegistry) {
         Errors.verifyNotZero(_balancerVault, "_balancerVault");
-        Errors.verifyNotZero(_defaultStakingRewardToken, "_defaultStakingRewardToken");
 
-        // Both are checked above
+        // Checked above
         // slither-disable-next-line missing-zero-check
         balancerVault = IVault(_balancerVault);
-        // slither-disable-next-line missing-zero-check
-        defaultRewardToken = _defaultStakingRewardToken;
     }
 
     /// @inheritdoc DestinationVault

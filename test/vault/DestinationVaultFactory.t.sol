@@ -232,7 +232,6 @@ contract DestinationVaultFactoryBaseTests is Test {
         address stakeToken = rewarder.stakeTracker();
 
         assertEq(newVault, stakeToken);
-
     }
 
     function _registerTemplate(address templateReg, bytes32 key, address template) internal {

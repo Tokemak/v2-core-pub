@@ -103,45 +103,6 @@ library BalancerUtilities {
     }
 
     /**
-     * @dev This function retrieves Balancer pool tokens. Supports composable pools
-     */
-    function _getPoolTokensSkippingPoolToken(
-        IVault balancerVault,
-        address balancerPool
-    ) internal view returns (IERC20[] memory tokens, uint256[] memory balances) {
-        (IERC20[] memory allTokens, uint256[] memory allBalances) =
-            BalancerUtilities._getPoolTokens(balancerVault, balancerPool);
-
-        if (isComposablePool(balancerPool)) {
-            uint256 nTokens = allTokens.length;
-            tokens = new IERC20[](nTokens - 1);
-            balances = new uint256[](nTokens - 1);
-
-            uint256 lastIndex = 0;
-            uint256 bptIndex = IBalancerComposableStablePool(balancerPool).getBptIndex();
-            for (uint256 i = 0; i < nTokens;) {
-                // skip pool token
-                if (i == bptIndex) {
-                    unchecked {
-                        ++i;
-                    }
-                    continue;
-                }
-                // copy tokens and balances
-                tokens[lastIndex] = allTokens[i];
-                balances[lastIndex] = allBalances[i];
-                unchecked {
-                    ++i;
-                    ++lastIndex;
-                }
-            }
-        } else {
-            tokens = allTokens;
-            balances = allBalances;
-        }
-    }
-
-    /**
      * @notice Gets the virtual price of a Balancer metastable pool with an invariant adjustment
      * @dev removes accrued admin fees that haven't been taken yet by Balancer
      */

@@ -18,6 +18,8 @@ import { IAccessController } from "src/interfaces/security/IAccessController.sol
 import { TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 
+import { MockERC20 } from "test/mocks/MockERC20.sol";
+
 contract RootPriceOracleTests is Test {
     SystemRegistry internal _systemRegistry;
     AccessController private _accessController;
@@ -384,7 +386,7 @@ contract GetSpotPriceInEth is RootPriceOracleTests {
     }
 
     function test_RevertsIfMissingTokenOracleForPool() public {
-        vm.expectRevert(abi.encodeWithSelector(RootPriceOracle.MissingTokenOracle.selector, _pool));
+        vm.expectRevert(abi.encodeWithSelector(RootPriceOracle.MissingSpotPriceOracle.selector, _pool));
         _rootPriceOracle.getSpotPriceInEth(_token, _pool);
     }
 
@@ -410,13 +412,15 @@ contract GetSpotPriceInEth is RootPriceOracleTests {
         mockSystemComponent(_poolOracle, address(_systemRegistry));
         _rootPriceOracle.registerPoolMapping(pool, ISpotPriceOracle(_poolOracle));
 
+        address __actualToken = address(new MockERC20());
+
         vm.mockCall(
             _poolOracle,
             abi.encodeWithSelector(ISpotPriceOracle.getSpotPrice.selector, _token, pool, WETH_MAINNET),
-            abi.encode(rawPrice, _actualToken)
+            abi.encode(rawPrice, __actualToken)
         );
 
-        vm.expectRevert(abi.encodeWithSelector(RootPriceOracle.MissingTokenOracle.selector, _actualToken));
+        vm.expectRevert(abi.encodeWithSelector(RootPriceOracle.MissingTokenOracle.selector, __actualToken));
         _rootPriceOracle.getSpotPriceInEth(_token, pool);
     }
 

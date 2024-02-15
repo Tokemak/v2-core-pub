@@ -373,6 +373,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         address pool,
         address quoteToken
     ) external returns (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) {
+        // TODO: Can be consolidated.
         ISpotPriceOracle spotPriceOracle = poolMappings[pool];
         if (address(spotPriceOracle) == address(0)) revert MissingSpotPriceOracle(pool);
 
@@ -441,8 +442,8 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
             return rawPrice;
         }
 
-        return rawPrice * getPriceInQuote(actualQuoteToken, quoteToken)
-            / (10 ** IERC20Metadata(actualQuoteToken).decimals());
+        return
+            rawPrice * getPriceInQuote(actualQuoteToken, quoteToken) / 10 ** IERC20Metadata(actualQuoteToken).decimals();
     }
 
     ///@inheritdoc IRootPriceOracle

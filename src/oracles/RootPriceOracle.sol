@@ -219,8 +219,10 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         }
 
         // Track highest or lowest price, total number of reserves in pool.
+        // slither-disable-start uninitialized-local
         uint256 floorOrCeilingPrice;
         uint256 totalReserves;
+        // slither-disable-end uninitialized-local
         uint256 nTokens = reserveInfoArray.length;
         for (uint256 i = 0; i < nTokens; ++i) {
             ISpotPriceOracle.ReserveItemInfo memory reserveInfo = reserveInfoArray[i];

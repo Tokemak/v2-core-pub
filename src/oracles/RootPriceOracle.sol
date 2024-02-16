@@ -244,20 +244,9 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
                 totalReserves += reserveAmount;
             }
 
-            // If this is the first iteration, set floorOrCeilingPrice with price calculated.
-            // If not first iteration, check price and replace if it makes sense to do so.
-            if (i == 0) {
+            if (i == 0 || (ceiling && spotPrice > floorOrCeilingPrice) || (!ceiling && spotPrice < floorOrCeilingPrice))
+            {
                 floorOrCeilingPrice = spotPrice;
-            } else {
-                if (ceiling) {
-                    if (spotPrice > floorOrCeilingPrice) {
-                        floorOrCeilingPrice = spotPrice;
-                    }
-                } else {
-                    if (spotPrice < floorOrCeilingPrice) {
-                        floorOrCeilingPrice = spotPrice;
-                    }
-                }
             }
         }
 

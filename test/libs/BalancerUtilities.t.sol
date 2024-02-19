@@ -59,7 +59,7 @@ contract BalancerUtilitiesTest is Test {
         assertEq(balances[3], 166_972_211_148_502_452_054);
     }
 
-    function test_getComposablePoolTokensSkipBpt_ReturnsProperValues() public {
+    function test_getPoolTokensSkippingPoolToken_ReturnsProperValues() public {
         (IERC20[] memory assets, uint256[] memory balances) =
             BalancerUtilities._getPoolTokens(IVault(BAL_VAULT), WSETH_RETH_SFRXETH_BAL_POOL);
 

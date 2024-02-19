@@ -74,7 +74,6 @@ abstract contract IncentiveCalculatorBase is
         tooSoon, // Indicates that it's too soon to take another snapshot since the last one.
         shouldFinalize, // Indicates that the conditions are met for finalizing a snapshot.
         shouldRestart // Indicates that the conditions are met for restarting a snapshot.
-
     }
 
     struct InitData {
@@ -190,9 +189,24 @@ abstract contract IncentiveCalculatorBase is
             safeTotalSupply[i + 2] += safeSupply;
         }
 
+        // Select current value of safeTotalSupply
+        uint256 currentSafeTotalSupply = 0;
+        bool setFlag = false;
+        for (uint256 i = 0; i < totalRewardsLength; ++i) {
+            if ((annualizedRewardAmounts[i] > 0) && (block.timestamp < periodFinishForRewards[i])) {
+                currentSafeTotalSupply = safeTotalSupply[i];
+                setFlag = true;
+                break;
+            }
+        }
+        // If value was not set, set to the safe supply of main rewarder
+        if (!setFlag) {
+            currentSafeTotalSupply = safeTotalSupply[0];
+        }
+
         // Compile aggregated data into the result struct
         data.stakingIncentiveStats = StakingIncentiveStats({
-            safeTotalSupply: safeTotalSupply[0], // supply across all rewarders
+            safeTotalSupply: currentSafeTotalSupply, // supply across all rewarders
             rewardTokens: rewardTokens,
             annualizedRewardAmounts: annualizedRewardAmounts,
             periodFinishForRewards: periodFinishForRewards,
@@ -393,7 +407,10 @@ abstract contract IncentiveCalculatorBase is
 
             uint256 timeBetweenSnapshots = block.timestamp - lastSnapshotTimestamp;
 
-            safeTotalSupplies[_rewarder] = diff == 0 ? 0 : rewardRate * timeBetweenSnapshots * 1e18 / diff;
+            // Set safe total supply only when we are able to calculate it
+            if (diff > 0) {
+                safeTotalSupplies[_rewarder] = rewardRate * timeBetweenSnapshots * 1e18 / diff;
+            }
             lastSnapshotRewardPerToken[_rewarder] = 0;
             lastSnapshotTimestamps[_rewarder] = block.timestamp;
 

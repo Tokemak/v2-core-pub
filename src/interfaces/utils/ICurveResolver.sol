@@ -33,5 +33,9 @@ interface ICurveResolver {
     /// @param poolAddress pool address to lookup
     function getLpToken(address poolAddress) external view returns (address);
 
+    /// @notice Get the reserves of a Curve pools' tokens
+    /// @dev Actual balances length might differ from 8 and should be verified by the caller
+    /// @param poolAddress pool address to lookup
+    /// @return balances reserves of the pool tokens
     function getReservesInfo(address poolAddress) external view returns (uint256[8] memory balances);
 }

@@ -369,19 +369,24 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         uint8 tokenInDecimals = IERC20Metadata(params.tokenIn).decimals();
         address lmpVaultAddress = address(lmpVault);
 
+        // Prices are all in terms of the base asset, so when its a rebalance back to the vault
+        // or out of the vault, We can just take things as 1:1
+
         // Get the price of one unit of the underlying lp token, the params.tokenOut/tokenIn
         // Prices are calculated using the spot of price of the constituent tokens
         // validated to be within a tolerance of the safe price of those tokens
-        uint256 outPrice = IDestinationVault(params.destinationOut).getValidatedSpotPrice();
+        uint256 outPrice = params.destinationOut != lmpVaultAddress
+            ? IDestinationVault(params.destinationOut).getValidatedSpotPrice()
+            : 10 ** tokenOutDecimals;
 
-        // Prices are all in terms of the base asset, so when its a rebalance back to the vault
-        // We can just take things as 1:1
         uint256 inPrice = params.destinationIn != lmpVaultAddress
             ? IDestinationVault(params.destinationIn).getValidatedSpotPrice()
             : 10 ** tokenInDecimals;
 
         // prices are 1e18 and we want values in 1e18, so divide by token decimals
-        uint256 outEthValue = outPrice * params.amountOut / 10 ** tokenOutDecimals;
+        uint256 outEthValue = params.destinationOut != lmpVaultAddress
+            ? outPrice * params.amountOut / 10 ** tokenOutDecimals
+            : params.amountOut;
 
         // amountIn is a minimum to receive, but it is OK if we receive more
         uint256 inEthValue = params.destinationIn != lmpVaultAddress

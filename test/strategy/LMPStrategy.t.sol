@@ -642,6 +642,23 @@ contract LMPStrategyTest is Test {
         assertEq(stats.swapCost, 0);
     }
 
+    function test_getRebalanceValueStats_idleOutPricesAtOneToOne() public {
+        // Setting all other possibilities to something that wouldn't be 1:1
+        setDestinationSpotPrice(mockOutDest, 99e16);
+        setDestinationSpotPrice(mockInDest, 99e16);
+        setDestinationSpotPrice(mockLMPVault, 99e16);
+
+        uint256 outAmount = 77.7e18;
+
+        defaultParams.tokenOut = mockBaseAsset;
+        defaultParams.destinationOut = mockLMPVault;
+        defaultParams.amountOut = outAmount;
+
+        LMPStrategy.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
+        assertEq(stats.outPrice, 1e18, "outPrice");
+        assertEq(stats.outEthValue, outAmount, "outEthValue");
+    }
+
     /* **************************************** */
     /* verifyRebalanceToIdle Tests              */
     /* **************************************** */

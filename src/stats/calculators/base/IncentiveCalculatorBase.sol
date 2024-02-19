@@ -191,16 +191,16 @@ abstract contract IncentiveCalculatorBase is
 
         // Select current value of safeTotalSupply
         uint256 currentSafeTotalSupply = 0;
-        bool setFlag = false;
+        bool isSet = false;
         for (uint256 i = 0; i < totalRewardsLength; ++i) {
             if ((annualizedRewardAmounts[i] > 0) && (block.timestamp < periodFinishForRewards[i])) {
                 currentSafeTotalSupply = safeTotalSupply[i];
-                setFlag = true;
+                isSet = true;
                 break;
             }
         }
         // If value was not set, set to the safe supply of main rewarder
-        if (!setFlag) {
+        if (!isSet) {
             currentSafeTotalSupply = safeTotalSupply[0];
         }
 

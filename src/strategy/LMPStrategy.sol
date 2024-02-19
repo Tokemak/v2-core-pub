@@ -283,8 +283,9 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
         // if the swap is only moving lp tokens from one destination to another
         // make the swap offset period more conservative b/c the gas costs/complexity is lower
+        // Discard the fractional part resulting from div by 2 to be conservative
         if (params.tokenIn == params.tokenOut) {
-            swapOffsetPeriod = swapOffsetPeriod / 2; // TODO: this should be configurable
+            swapOffsetPeriod = swapOffsetPeriod / 2;
         }
         // slither-disable-start divide-before-multiply
         // equation is `compositeReturn * ethValue` / 1e18, which is multiply before divide
@@ -394,7 +395,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             : params.amountIn;
 
         uint256 swapCost = outEthValue.subSaturate(inEthValue);
-        uint256 slippage = swapCost * 1e18 / outEthValue;
+        uint256 slippage = outEthValue == 0 ? 0 : swapCost * 1e18 / outEthValue;
 
         return RebalanceValueStats({
             inPrice: inPrice,
@@ -421,7 +422,9 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
             uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], dvPoolAddress);
             // For out destination, the pool tokens should not be lower than safe price by tolerance
-            if (priceSafe > priceSpot) {
+            if ((priceSafe == 0) || (priceSpot == 0)) {
+                return false;
+            } else if (priceSafe > priceSpot) {
                 if (((priceSafe * 1.0e18 / priceSpot - 1.0e18) * 10_000) / 1.0e18 > tolerance) {
                     return false;
                 }
@@ -437,7 +440,9 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
             uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], dvPoolAddress);
             // For in destination, the pool tokens should not be higher than safe price by tolerance
-            if (priceSpot > priceSafe) {
+            if ((priceSafe == 0) || (priceSpot == 0)) {
+                return false;
+            } else if (priceSpot > priceSafe) {
                 if (((priceSpot * 1.0e18 / priceSafe - 1.0e18) * 10_000) / 1.0e18 > tolerance) {
                     return false;
                 }
@@ -498,10 +503,11 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         uint256 currentShares = outDest.balanceOf(address(lmpVault));
         // withdrawals reduce totalAssets, but do not update the destinationInfo
         // adjust the current debt based on the currently owned shares
-        uint256 currentDebt = destInfo.currentDebt * currentShares / destInfo.ownedShares;
+        uint256 currentDebt =
+            destInfo.ownedShares == 0 ? 0 : destInfo.currentDebt * currentShares / destInfo.ownedShares;
 
         // If the current position is < 2% of total assets, trim to idle is allowed
-        if (currentDebt < lmpVault.totalAssets() / 50) {
+        if (currentDebt * 1e18 < lmpVault.totalAssets() * 1e18 / 50) {
             return true;
         }
 
@@ -525,7 +531,8 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
         // withdrawals reduce totalAssets, but do not update the destinationInfo
         // adjust the current debt based on the currently owned shares
-        uint256 currentDebt = destInfo.currentDebt * currentShares / destInfo.ownedShares;
+        uint256 currentDebt =
+            destInfo.ownedShares == 0 ? 0 : destInfo.currentDebt * currentShares / destInfo.ownedShares;
 
         // prior validation ensures that currentShares >= amountOut
         uint256 sharesAfterRebalance = currentShares - params.amountOut;
@@ -540,7 +547,12 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             (lmpVault.totalAssets() + params.amountIn + destValueAfterRebalance - currentDebt);
 
         // trimming may occur over multiple rebalances, so we only want to ensure we aren't removing too much
-        return destValueAfterRebalance * 1e18 / lmpAssetsAfterRebalance >= trimAmount;
+        if (lmpAssetsAfterRebalance > 0) {
+            return destValueAfterRebalance * 1e18 / lmpAssetsAfterRebalance >= trimAmount;
+        } else {
+            // LMP assets after rebalance are 0
+            return true;
+        }
     }
 
     function getDestinationTrimAmount(IDestinationVault dest) internal returns (uint256) {
@@ -930,8 +942,9 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
         // truncation is desirable because we only want the number of times it has exceeded the threshold
         // slither-disable-next-line divide-before-multiply
-        uint40 numRelaxPeriods =
-            (uint40(block.timestamp) - lastRebalanceTimestamp) / 1 days / uint40(swapCostOffsetRelaxThresholdInDays);
+        uint40 numRelaxPeriods = swapCostOffsetRelaxThresholdInDays == 0
+            ? 0
+            : (uint40(block.timestamp) - lastRebalanceTimestamp) / 1 days / uint40(swapCostOffsetRelaxThresholdInDays);
         uint40 relaxDays = numRelaxPeriods * uint40(swapCostOffsetRelaxStepInDays);
         uint40 newSwapCostOffset = uint40(_swapCostOffsetPeriod) + relaxDays;
 

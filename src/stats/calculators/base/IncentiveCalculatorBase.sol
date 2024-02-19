@@ -74,7 +74,6 @@ abstract contract IncentiveCalculatorBase is
         tooSoon, // Indicates that it's too soon to take another snapshot since the last one.
         shouldFinalize, // Indicates that the conditions are met for finalizing a snapshot.
         shouldRestart // Indicates that the conditions are met for restarting a snapshot.
-
     }
 
     struct InitData {

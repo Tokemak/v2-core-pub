@@ -32,10 +32,8 @@ import {
     WSETH_RETH_SFRXETH_BAL_POOL,
     STETH_MAINNET,
     BAL_VAULT,
-    AURA_BOOSTER,
     WSTETH_MAINNET,
     WSETH_WETH_BAL_POOL,
-    AURA_MAINNET,
     BAL_WSTETH_SFRX_ETH_RETH_WHALE,
     SFRXETH_MAINNET,
     RETH_WETH_BAL_POOL,
@@ -46,7 +44,6 @@ import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol"
 
 contract BalancerDestinationVaultComposableTests is Test {
     address private constant LP_TOKEN_WHALE = BAL_WSTETH_SFRX_ETH_RETH_WHALE;
-    // address private constant AURA_STAKING = 0xd26948E7a0223700e3C3cdEA21cA2471abCb8d47;
 
     uint256 private _mainnetFork;
 
@@ -241,7 +238,7 @@ contract BalancerDestinationVaultComposableTests is Test {
         _underlyer.approve(address(_destVault), 10e18);
         _destVault.depositUnderlying(10e18);
 
-        // Ensure the funds went to Aura
+        // Ensure the funds went to destination vault
         assertEq(_destVault.internalDebtBalance(), 10e18);
     }
 

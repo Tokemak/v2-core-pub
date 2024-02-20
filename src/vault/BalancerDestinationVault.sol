@@ -14,7 +14,7 @@ import { BalancerBeethovenAdapter } from "src/destinations/adapters/BalancerBeet
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 
-/// @title Destination Vault to proxy a Balancer Pool that goes into Aura
+/// @title Destination Vault to proxy a Balancer Pool that holds the LP asset
 contract BalancerDestinationVault is DestinationVault {
     /// @notice Only used to initialize the vault
     struct InitParams {
@@ -82,19 +82,19 @@ contract BalancerDestinationVault is DestinationVault {
     }
 
     /// @inheritdoc DestinationVault
-    /// @notice In this vault all underlyer should be staked externally, so internal debt should be 0.
+    /// @notice In this vault no underlyer should be staked externally, so external debt should be 0.
     function internalDebtBalance() public view override returns (uint256) {
         return totalSupply();
     }
 
     /// @inheritdoc DestinationVault
-    /// @notice In this vault all underlyer should be staked, and mint is 1:1, so external debt is `totalSupply()`.
+    /// @notice In this vault no underlyer should be staked.
     function externalDebtBalance() public pure override returns (uint256) {
         return 0;
     }
 
-    /// @notice Get the balance of underlyer currently staked in Aura
-    /// @return Balance of underlyer currently staked in Aura
+    /// @notice Get the balance of underlyer currently staked outside the Vault
+    /// @return Return 0 as no LP token is deployed outsie of vault
     function externalQueriedBalance() public pure override returns (uint256) {
         return 0;
     }

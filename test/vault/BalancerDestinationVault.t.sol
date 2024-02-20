@@ -32,16 +32,13 @@ import {
     STETH_MAINNET,
     BAL_VAULT,
     BAL_MAINNET,
-    AURA_BOOSTER,
     WSTETH_MAINNET,
-    AURA_MAINNET,
     BAL_WSTETH_WETH_WHALE
 } from "test/utils/Addresses.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 
 contract BalancerDestinationVaultTests is Test {
     address private constant LP_TOKEN_WHALE = BAL_WSTETH_WETH_WHALE; //~20
-    // address private constant AURA_STAKING = 0x59D66C58E83A26d6a0E35114323f65c3945c89c1;
 
     uint256 private _mainnetFork;
 

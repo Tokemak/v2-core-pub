@@ -21,10 +21,10 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
     ICurveResolver public immutable curveResolver;
 
     /**
-     * @notice Struct for neccessary information for single Curve pool.
+     * @notice Struct for necessary information for single Curve pool.
      * @param pool The address of the curve pool.
      * @param checkReentrancy uint8 representing a boolean.  0 for false, 1 for true.
-     * @param tokentoPrice Address of the token being priced in the Curve pool.
+     * @param tokenToPrice Address of the token being priced in the Curve pool.
      * @param tokenFromPrice Address of the token being used to price the token in the Curve pool.
      */
     struct PoolData {
@@ -79,6 +79,9 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
     /// @notice Reverse mapping of LP token to pool info.
     mapping(address => PoolData) public lpTokenToPool;
 
+    /// @notice Mapping of pool address to it's LP token.
+    mapping(address => address) public poolToLpToken;
+
     /**
      * @param _systemRegistry Instance of system registry for this version of the system.
      * @param _curveResolver Instance of Curve Resolver.
@@ -108,7 +111,9 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
     function registerPool(address curvePool, address curveLpToken, bool checkReentrancy) external onlyOwner {
         Errors.verifyNotZero(curvePool, "curvePool");
         Errors.verifyNotZero(curveLpToken, "curveLpToken");
-        if (lpTokenToPool[curveLpToken].pool != address(0)) revert Errors.AlreadyRegistered(curvePool);
+        if (lpTokenToPool[curveLpToken].pool != address(0) || poolToLpToken[curvePool] != address(0)) {
+            revert Errors.AlreadyRegistered(curvePool);
+        }
 
         (address[8] memory tokens, uint256 numTokens, address lpToken, bool isStableSwap) =
             curveResolver.resolveWithLpToken(curvePool);
@@ -117,6 +122,8 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         if (numTokens != 2) revert InvalidNumTokens(numTokens);
         if (isStableSwap) revert NotCryptoPool(curvePool);
         if (lpToken != curveLpToken) revert ResolverMismatch(curveLpToken, lpToken);
+
+        poolToLpToken[curvePool] = curveLpToken;
 
         /**
          * Curve V2 pools always price second token in `coins` array in first token in `coins` array.  This means that
@@ -139,8 +146,13 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
     function unregister(address curveLpToken) external onlyOwner {
         Errors.verifyNotZero(curveLpToken, "curveLpToken");
 
-        if (lpTokenToPool[curveLpToken].pool == address(0)) revert NotRegistered(curveLpToken);
+        address curvePool = lpTokenToPool[curveLpToken].pool;
 
+        if (curvePool == address(0)) revert NotRegistered(curveLpToken);
+
+        // Remove LP token from pool mapping
+        delete poolToLpToken[curvePool];
+        // Remove pool from LP token mapping
         delete lpTokenToPool[curveLpToken];
 
         emit TokenUnregistered(curveLpToken);
@@ -202,7 +214,8 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
     ) public view returns (uint256 price, address actualQuoteToken) {
         Errors.verifyNotZero(pool, "pool");
 
-        address lpToken = curveResolver.getLpToken(pool);
+        address lpToken = poolToLpToken[pool];
+        if (lpToken == address(0)) revert NotRegistered(pool);
 
         (price, actualQuoteToken) = _getSpotPrice(token, pool, lpToken);
     }

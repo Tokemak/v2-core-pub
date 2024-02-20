@@ -54,7 +54,7 @@ abstract contract IncentiveCalculatorBase is
     uint8 public incentiveCredits;
 
     /// @dev Interval between two consecutive snapshot steps during the snapshot process.
-    uint256 public constant SNAPSHOT_INTERVAL = 4 hours;
+    uint256 public constant SNAPSHOT_INTERVAL = 3 hours;
 
     /// @dev Non-trivial annual rate set at 0.5% (in fixed point format 1e18 = 1).
     uint256 public constant NON_TRIVIAL_ANNUAL_RATE = 5e15;
@@ -358,10 +358,10 @@ abstract contract IncentiveCalculatorBase is
 
         uint256 safeTotalSupply = safeTotalSupplies[_rewarder];
 
-        // If the staked supply deviates by more than 5% from the safe supply and 8 hours have passed since
+        // If the staked supply deviates by more than 5% from the safe supply and 6 hours have passed since
         // the last snapshot, take another snapshot.
         // slither-disable-next-line timestamp
-        if (_differsByMoreThanFivePercent(safeTotalSupply, _totalSupply) && timeBetweenSnapshots > 8 hours) {
+        if (_differsByMoreThanFivePercent(safeTotalSupply, _totalSupply) && timeBetweenSnapshots > 6 hours) {
             return true;
         }
 

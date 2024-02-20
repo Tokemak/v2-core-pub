@@ -507,7 +507,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             destInfo.ownedShares == 0 ? 0 : destInfo.currentDebt * currentShares / destInfo.ownedShares;
 
         // If the current position is < 2% of total assets, trim to idle is allowed
-        if (currentDebt * 1e18 < lmpVault.totalAssets() * 1e18 / 50) {
+        if (currentDebt * 1e18 < ((lmpVault.totalAssets() * 1e18) / 50)) {
             return true;
         }
 

@@ -107,10 +107,8 @@ contract BalancerDestinationVault is DestinationVault {
     /// @inheritdoc DestinationVault
     function underlyingTokens() external view override returns (address[] memory ret) {
         if (isComposable) {
-            IERC20[] memory tokens;
-
             // slither-disable-next-line unused-return
-            (tokens,) = BalancerUtilities._getComposablePoolTokensSkipBpt(balancerVault, balancerPool);
+            (IERC20[] memory tokens,) = BalancerUtilities._getComposablePoolTokensSkipBpt(balancerVault, balancerPool);
             ret = BalancerUtilities._convertERC20sToAddresses(tokens);
         } else {
             ret = BalancerUtilities._convertERC20sToAddresses(poolTokens);

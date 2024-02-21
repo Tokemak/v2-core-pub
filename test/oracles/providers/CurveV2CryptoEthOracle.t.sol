@@ -137,6 +137,8 @@ contract CurveV2CryptoEthOracleTest is Test {
         assertEq(reentrancy, 0);
         assertEq(priceToken, CRV_MAINNET);
         assertEq(tokenFromPrice, WETH9_ADDRESS);
+        // Verify pool to lp token
+        assertEq(CRV_ETH_CURVE_V2_LP, curveOracle.poolToLpToken(CRV_ETH_CURVE_V2_POOL));
     }
 
     // Unregister
@@ -171,6 +173,8 @@ contract CurveV2CryptoEthOracleTest is Test {
         assertEq(reentrancy, 0);
         assertEq(tokenToPrice, address(0));
         assertEq(tokenFromPrice, address(0));
+        // Verify pool to lp token
+        assertEq(address(0), curveOracle.poolToLpToken(CRV_ETH_CURVE_V2_POOL));
     }
 
     // getPriceInEth

@@ -34,7 +34,7 @@ contract BalancerDestinationVault is DestinationVault {
     /* State Variables                  */
     /* ******************************** */
 
-    IERC20[] internal poolTokens;
+    address[] internal poolTokens;
 
     /// @notice Pool and LP token this vault proxies
     address public balancerPool;
@@ -73,11 +73,12 @@ contract BalancerDestinationVault is DestinationVault {
         // Tokens that are used by the proxied pool cannot be removed from the vault
         // via recover(). Make sure we track those tokens here.
         // slither-disable-next-line unused-return
-        (poolTokens,) = BalancerUtilities._getPoolTokens(balancerVault, balancerPool);
-        if (poolTokens.length == 0) revert ArrayLengthMismatch();
+        (IERC20[] memory _poolTokens,) = BalancerUtilities._getPoolTokens(balancerVault, balancerPool);
+        if (_poolTokens.length == 0) revert ArrayLengthMismatch();
 
+        poolTokens = BalancerUtilities._convertERC20sToAddresses(_poolTokens);
         for (uint256 i = 0; i < poolTokens.length; ++i) {
-            _addTrackedToken(address(poolTokens[i]));
+            _addTrackedToken(poolTokens[i]);
         }
     }
 
@@ -111,7 +112,7 @@ contract BalancerDestinationVault is DestinationVault {
             (IERC20[] memory tokens,) = BalancerUtilities._getComposablePoolTokensSkipBpt(balancerVault, balancerPool);
             ret = BalancerUtilities._convertERC20sToAddresses(tokens);
         } else {
-            ret = BalancerUtilities._convertERC20sToAddresses(poolTokens);
+            ret = poolTokens;
         }
     }
 
@@ -141,7 +142,7 @@ contract BalancerDestinationVault is DestinationVault {
         // user initiated withdrawal where they've accounted for slippage
         // at the router or otherwise
         uint256[] memory minAmounts = new uint256[](poolTokens.length);
-        tokens = BalancerUtilities._convertERC20sToAddresses(poolTokens);
+        tokens = poolTokens;
         amounts =
             BalancerBeethovenAdapter.removeLiquidity(balancerVault, balancerPool, tokens, minAmounts, underlyerAmount);
     }

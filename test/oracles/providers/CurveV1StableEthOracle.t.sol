@@ -122,6 +122,7 @@ contract CurveV1StableEthOracleTests is Test {
 
         address[] memory tokens = oracle.getLpTokenToUnderlying(THREE_CURVE_POOL_MAINNET_LP);
         (address pool, uint8 checkReentrancy) = oracle.lpTokenToPool(THREE_CURVE_POOL_MAINNET_LP);
+        address poolToLpToken = oracle.poolToLpToken(THREE_CURVE_MAINNET);
 
         assertEq(tokens.length, 3);
         assertEq(tokens[0], DAI_MAINNET);
@@ -129,15 +130,18 @@ contract CurveV1StableEthOracleTests is Test {
         assertEq(tokens[2], USDT_MAINNET);
         assertEq(pool, THREE_CURVE_MAINNET);
         assertEq(checkReentrancy, 1);
+        assertEq(poolToLpToken, THREE_CURVE_POOL_MAINNET_LP);
 
         oracle.unregister(THREE_CURVE_POOL_MAINNET_LP);
 
         address[] memory afterTokens = oracle.getLpTokenToUnderlying(THREE_CURVE_POOL_MAINNET_LP);
         (address afterPool, uint8 afterCheckReentrancy) = oracle.lpTokenToPool(THREE_CURVE_POOL_MAINNET_LP);
+        address afterPoolToLpToken = oracle.poolToLpToken(THREE_CURVE_MAINNET);
 
         assertEq(afterTokens.length, 0);
         assertEq(afterPool, address(0));
         assertEq(afterCheckReentrancy, 0);
+        assertEq(afterPoolToLpToken, address(0));
     }
 
     function testRegistrationSecurity() public {

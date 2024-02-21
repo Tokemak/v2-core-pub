@@ -47,6 +47,9 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
     /// @notice Reverse mapping of LP token to pool info
     mapping(address => PoolData) public lpTokenToPool;
 
+    /// @notice Mapping of pool address to it's LP token
+    mapping(address => address) public poolToLpToken;
+
     constructor(
         ISystemRegistry _systemRegistry,
         ICurveResolver _curveResolver
@@ -72,7 +75,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         (address[8] memory tokens, uint256 numTokens, address lpToken, bool isStableSwap) =
             curveResolver.resolveWithLpToken(curvePool);
 
-        if (lpTokenToPool[lpToken].pool != address(0)) {
+        if (lpTokenToPool[lpToken].pool != address(0) || poolToLpToken[curvePool] != address(0)) {
             revert Errors.AlreadyRegistered(curvePool);
         }
 
@@ -96,7 +99,10 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
                 ++i;
             }
         }
+        // Reverse mapping setup
         lpTokenToPool[lpToken] = PoolData({ pool: curvePool, checkReentrancy: checkReentrancy ? 1 : 0 });
+        // Direct mapping setup
+        poolToLpToken[curvePool] = curveLpToken;
 
         emit TokenRegistered(lpToken);
     }
@@ -113,6 +119,9 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         if (lpTokenToUnderlying[curveLpToken].length == 0) {
             revert NotRegistered(curveLpToken);
         }
+
+        address curvePool = lpTokenToPool[curveLpToken].pool;
+        delete poolToLpToken[curvePool];
 
         delete lpTokenToUnderlying[curveLpToken];
         delete lpTokenToPool[curveLpToken];
@@ -187,7 +196,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
     ) public view returns (uint256 price, address actualQuoteToken) {
         Errors.verifyNotZero(pool, "pool");
 
-        address lpToken = curveResolver.getLpToken(pool);
+        address lpToken = poolToLpToken[pool];
         address[] memory tokens = lpTokenToUnderlying[lpToken];
 
         uint256 nTokens = tokens.length;

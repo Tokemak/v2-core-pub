@@ -207,7 +207,6 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         (price, actualQuoteToken) = _getSpotPrice(token, pool, tokens, requestedQuoteToken);
     }
 
-    // TODO: May have broken something with `getSpotPriceInfo()`
     function _getSpotPrice(
         address token,
         address pool,
@@ -217,7 +216,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         int256 tokenIndex = -1;
         int256 quoteTokenIndex = -1;
 
-        // Adjust in case of Eth, prevents failure on decimals call later.
+        // Adjust in case of Eth.
         if (token == ETH) {
             token = WETH;
         }
@@ -231,7 +230,6 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
                 t = WETH;
             }
 
-            // If pool token == token to price,
             if (t == token) {
                 tokenIndex = int256(i);
             } else if (t == requestedQuoteToken) {

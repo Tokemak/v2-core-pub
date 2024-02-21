@@ -87,11 +87,11 @@ contract LMPStrategyTest is Test {
         new LMPStrategyHarness(ISystemRegistry(address(systemRegistry)), address(0), helpers.getDefaultConfig());
     }
 
-    function test_constructor_RevertIf_systemRegistryMismatch() public {
-        setLmpSystemRegistry(address(1));
-        vm.expectRevert(abi.encodeWithSelector(LMPStrategy.SystemRegistryMismatch.selector));
-        defaultStrat = deployStrategy(helpers.getDefaultConfig());
-    }
+    // function test_constructor_RevertIf_systemRegistryMismatch() public {
+    //     setLmpSystemRegistry(address(1));
+    //     vm.expectRevert(abi.encodeWithSelector(LMPStrategy.SystemRegistryMismatch.selector));
+    //     defaultStrat = deployStrategy(helpers.getDefaultConfig());
+    // }
 
     function test_constructor_RevertIf_invalidConfig() public {
         // this test only tests a single failure to ensure that config validation is occurring

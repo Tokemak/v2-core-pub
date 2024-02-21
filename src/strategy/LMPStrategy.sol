@@ -207,9 +207,10 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         systemRegistry = _systemRegistry;
         Errors.verifyNotZero(_lmpVault, "_lmpVault");
 
-        if (ISystemComponent(_lmpVault).getSystemRegistry() != address(_systemRegistry)) {
-            revert SystemRegistryMismatch();
-        }
+        // This is retooled a bit in a later branch so just removing the check temporarily
+        // if (ISystemComponent(_lmpVault).getSystemRegistry() != address(_systemRegistry)) {
+        //     revert SystemRegistryMismatch();
+        // }
 
         lmpVault = ILMPVault(_lmpVault);
 
@@ -413,20 +414,27 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // Pricer
         IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
 
+        IDestinationVault dest;
+        address[] memory lstTokens;
+        uint256 numLsts;
+        address dvPoolAddress;
+
         // Out Destination
-        IDestinationVault dest = IDestinationVault(params.destinationOut);
-        address[] memory lstTokens = dest.underlyingTokens();
-        uint256 numLsts = lstTokens.length;
-        address dvPoolAddress = dest.getPool();
-        for (uint256 i = 0; i < numLsts; ++i) {
-            uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
-            uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], dvPoolAddress);
-            // For out destination, the pool tokens should not be lower than safe price by tolerance
-            if ((priceSafe == 0) || (priceSpot == 0)) {
-                return false;
-            } else if (priceSafe > priceSpot) {
-                if (((priceSafe * 1.0e18 / priceSpot - 1.0e18) * 10_000) / 1.0e18 > tolerance) {
+        if (params.destinationOut != address(lmpVault)) {
+            dest = IDestinationVault(params.destinationOut);
+            lstTokens = dest.underlyingTokens();
+            numLsts = lstTokens.length;
+            dvPoolAddress = dest.getPool();
+            for (uint256 i = 0; i < numLsts; ++i) {
+                uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
+                uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], dvPoolAddress);
+                // For out destination, the pool tokens should not be lower than safe price by tolerance
+                if ((priceSafe == 0) || (priceSpot == 0)) {
                     return false;
+                } else if (priceSafe > priceSpot) {
+                    if (((priceSafe * 1.0e18 / priceSpot - 1.0e18) * 10_000) / 1.0e18 > tolerance) {
+                        return false;
+                    }
                 }
             }
         }
@@ -612,6 +620,14 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         external
         returns (IStrategy.SummaryStats memory outSummary)
     {
+        outSummary = _getRebalanceOutSummaryStats(rebalanceParams);
+    }
+
+    function _getRebalanceOutSummaryStats(IStrategy.RebalanceParams memory rebalanceParams)
+        internal
+        virtual
+        returns (IStrategy.SummaryStats memory outSummary)
+    {
         // Use safe price
         IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
         uint256 outPrice = pricer.getPriceInEth(rebalanceParams.tokenOut);
@@ -625,6 +641,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     // Summary stats for destination In
     function getRebalanceInSummaryStats(IStrategy.RebalanceParams memory rebalanceParams)
         internal
+        virtual
         returns (IStrategy.SummaryStats memory inSummary)
     {
         // Use safe price
@@ -671,13 +688,22 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
         uint256 reservesTotal = 0;
         for (uint256 i = 0; i < numLstStats; ++i) {
-            ensureNotStaleData("lstData", stats.lstStatsData[i].lastSnapshotTimestamp);
-
             uint256 reserveValue = stats.reservesInEth[i];
             reservesTotal += reserveValue;
 
+            if (priceReturns[i] != 0) {
+                interimStats.priceReturn += calculateWeightedPriceReturn(priceReturns[i], reserveValue, direction);
+            }
+
+            // For tokens like WETH/ETH who have no data, tokens we've configured as NO_OP's in the
+            // destinations/calculators, we can just skip the rest of these calcs as they have no stats
+            if (stats.lstStatsData[i].baseApr == 0 && stats.lstStatsData[i].lastSnapshotTimestamp == 0) {
+                continue;
+            }
+
+            ensureNotStaleData("lstData", stats.lstStatsData[i].lastSnapshotTimestamp);
+
             interimStats.baseApr += stats.lstStatsData[i].baseApr * reserveValue;
-            interimStats.priceReturn += calculateWeightedPriceReturn(priceReturns[i], reserveValue, direction);
 
             int256 discount = stats.lstStatsData[i].discount;
             // slither-disable-next-line timestamp

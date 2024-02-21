@@ -821,12 +821,7 @@ contract LMPVault is
     }
 
     /// @inheritdoc ILMPVault
-    function getDestinationInfo(address destVault)
-        external
-        view
-        nonReentrantReadOnly
-        returns (LMPDebt.DestinationInfo memory)
-    {
+    function getDestinationInfo(address destVault) external view returns (LMPDebt.DestinationInfo memory) {
         return destinationInfo[destVault];
     }
 

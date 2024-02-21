@@ -36,12 +36,16 @@ import {
     FRAX_USDC,
     FRAX_USDC_LP,
     FRAX_MAINNET,
-    WETH9_ADDRESS
+    WETH9_ADDRESS,
+    STETH_ETH_CURVE_POOL,
+    ST_ETH_CURVE_LP_TOKEN_MAINNET,
+    STETH_MAINNET
 } from "test/utils/Addresses.sol";
 
 contract CurveV1StableEthOracleTests is Test {
     address internal constant STETH_ETH_LP_TOKEN = ST_ETH_CURVE_LP_TOKEN_MAINNET;
     IstEth internal constant STETH_CONTRACT = IstEth(STETH_MAINNET);
+    address internal constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     IRootPriceOracle internal rootPriceOracle;
     ISystemRegistry internal systemRegistry;
@@ -314,6 +318,22 @@ contract CurveV1StableEthOracleTests is Test {
         // price: 1000713478636784229
 
         assertEq(price, 1_000_713_478_636_784_229);
+    }
+
+    // Testing fix for bug involving Eth being submitted as `address token` param on `getSpotPrice()`
+    function testGetSpotPriceWorksWithEthAsToken() external {
+        oracle.registerPool(STETH_ETH_CURVE_POOL, ST_ETH_CURVE_LP_TOKEN_MAINNET, false);
+
+        (uint256 price, address actualQuote) = oracle.getSpotPrice(ETH, STETH_ETH_CURVE_POOL, STETH_MAINNET);
+
+        // Data at block 17_379_099
+        // dy: 1000032797037899490
+        // fee: 4000000
+        // FEE_PRECISION: 1e10
+        // price: 1000432970225989885
+
+        assertEq(price, 1_000_432_970_225_989_885);
+        assertEq(actualQuote, STETH_MAINNET);
     }
 
     function testGetSafeSpotPriceRevertIfZeroAddress() public {

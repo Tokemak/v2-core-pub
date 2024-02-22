@@ -445,6 +445,7 @@ contract GetSpotPriceInEth is RootPriceOracleTests {
             abi.encode(actualTokenPriceInEth)
         );
 
+        vm.mockCall(WETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
         vm.mockCall(
             _actualToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(actualTokenDecimals)
         );

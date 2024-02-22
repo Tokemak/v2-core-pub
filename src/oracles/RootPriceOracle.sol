@@ -361,6 +361,11 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     function getPriceInQuote(address base, address quote) public returns (uint256) {
         IPriceOracle baseOracle = _checkTokenOracleRegistration(base);
 
+        uint256 quoteDecimals = IERC20Metadata(quote).decimals();
+        if (base == quote) {
+            return 1 * 10 ** quoteDecimals;
+        }
+
         // No need to go through the extra math if we're asking for it in terms we already have
         uint256 baseInEth = baseOracle.getPriceInEth(base);
         if (quote == _weth) {
@@ -369,7 +374,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
 
         IPriceOracle quoteOracle = _checkTokenOracleRegistration(quote);
 
-        return (baseInEth * (10 ** IERC20Metadata(quote).decimals())) / quoteOracle.getPriceInEth(quote);
+        return (baseInEth * (10 ** quoteDecimals)) / quoteOracle.getPriceInEth(quote);
     }
 
     function _checkTokenOracleRegistration(address token) private view returns (IPriceOracle oracle) {

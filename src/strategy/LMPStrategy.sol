@@ -680,7 +680,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         uint256 numLstStats = stats.lstStatsData.length;
         if (numLstStats != stats.reservesInEth.length) revert LstStatsReservesMismatch();
 
-        // TODO: move this into the loop to avoid iterating the LSTs 2x
         int256[] memory priceReturns = calculatePriceReturns(stats);
 
         // temporary holder to reduce variables
@@ -760,7 +759,6 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         }
     }
 
-    // TODO: how are tokemak-level rewards accounted for?
     function calculateIncentiveApr(
         IDexLSTStats.StakingIncentiveStats memory stats,
         RebalanceDirection direction,

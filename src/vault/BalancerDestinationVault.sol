@@ -13,6 +13,7 @@ import { IBalancerPool } from "src/interfaces/external/balancer/IBalancerPool.so
 import { BalancerBeethovenAdapter } from "src/destinations/adapters/BalancerBeethovenAdapter.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
+import { BalancerStablePoolCalculatorBase } from "src/stats/calculators/base/BalancerStablePoolCalculatorBase.sol";
 
 /// @title Destination Vault to proxy a Balancer Pool that holds the LP asset
 contract BalancerDestinationVault is DestinationVault {
@@ -150,5 +151,11 @@ contract BalancerDestinationVault is DestinationVault {
     /// @inheritdoc DestinationVault
     function getPool() external view override returns (address) {
         return balancerPool;
+    }
+
+    function _validateCalculator(address incentiveCalculator) internal view override {
+        if (BalancerStablePoolCalculatorBase(incentiveCalculator).poolAddress() != _underlying) {
+            revert InvalidIncentiveCalculator();
+        }
     }
 }

@@ -14,6 +14,7 @@ import { IPoolPositionSlim } from "src/interfaces/external/maverick/IPoolPositio
 import { MaverickStakingAdapter } from "src/destinations/adapters/staking/MaverickStakingAdapter.sol";
 import { MaverickRewardsAdapter } from "src/destinations/adapters/rewards/MaverickRewardsAdapter.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 
 contract MaverickDestinationVault is DestinationVault {
     error NothingToClaim();
@@ -171,5 +172,11 @@ contract MaverickDestinationVault is DestinationVault {
     /// @inheritdoc DestinationVault
     function getPool() external view override returns (address) {
         return address(maverickPool);
+    }
+
+    function _validateCalculator(address incentiveCalculator) internal view override {
+        if (IncentiveCalculatorBase(incentiveCalculator).resolveLpToken() != _underlying) {
+            revert InvalidIncentiveCalculator();
+        }
     }
 }

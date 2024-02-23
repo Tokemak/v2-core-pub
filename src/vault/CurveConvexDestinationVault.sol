@@ -15,6 +15,7 @@ import { IBaseRewardPool } from "src/interfaces/external/convex/IBaseRewardPool.
 import { ConvexRewards } from "src/destinations/adapters/rewards/ConvexRewardsAdapter.sol";
 import { CurveV2FactoryCryptoAdapter } from "src/destinations/adapters/CurveV2FactoryCryptoAdapter.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 
 /// @notice Destination Vault to proxy a Curve Pool that goes into Convex
 /// @dev Supports Curve V1 StableSwap, Curve V2 CryptoSwap, and Curve-ng pools
@@ -230,5 +231,11 @@ contract CurveConvexDestinationVault is DestinationVault {
     /// @inheritdoc DestinationVault
     function getPool() external view override returns (address) {
         return curvePool;
+    }
+
+    function _validateCalculator(address incentiveCalculator) internal view override {
+        if (IncentiveCalculatorBase(incentiveCalculator).resolveLpToken() != _underlying) {
+            revert InvalidIncentiveCalculator();
+        }
     }
 }

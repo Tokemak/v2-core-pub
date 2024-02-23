@@ -22,7 +22,7 @@ import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { MainRewarder } from "src/rewarders/MainRewarder.sol";
-
+import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 
 contract DestinationVaultBaseTests is Test {
@@ -479,5 +479,11 @@ contract TestDestinationVault is DestinationVault {
 
     function getPool() external view override returns (address poolAddress) {
         return address(0);
+    }
+
+    function _validateCalculator(address incentiveCalculator) internal override {
+        if (IncentiveCalculatorBase(incentiveCalculator).resolveLpToken() != _underlying) {
+            revert InvalidIncentiveCalculator();
+        }
     }
 }

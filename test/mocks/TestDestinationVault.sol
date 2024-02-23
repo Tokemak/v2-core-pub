@@ -8,6 +8,7 @@ import { IERC20, ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
+import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 
 contract TestDestinationVault is DestinationVault {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -115,5 +116,11 @@ contract TestDestinationVault is DestinationVault {
 
     function getPool() external pure override returns (address poolAddress) {
         return address(0);
+    }
+
+    function _validateCalculator(address incentiveCalculator) internal view override {
+        if (IncentiveCalculatorBase(incentiveCalculator).resolveLpToken() != _underlying) {
+            revert InvalidIncentiveCalculator();
+        }
     }
 }

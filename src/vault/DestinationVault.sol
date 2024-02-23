@@ -17,7 +17,6 @@ import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
-import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 
 abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDestinationVault {
     using SafeERC20 for IERC20;
@@ -99,9 +98,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
         _symbol = string.concat("toke-", baseAsset_.symbol(), "-", underlyer_.symbol());
         _underlyingDecimals = underlyer_.decimals();
 
-        if (IncentiveCalculatorBase(incentiveCalculator_).resolveLpToken() != address(underlyer_)) {
-            revert InvalidIncentiveCalculator();
-        }
+        _validateCalculator(incentiveCalculator_);
 
         _baseAsset = address(baseAsset_);
         _underlying = address(underlyer_);
@@ -496,4 +493,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
 
     /// @inheritdoc IDestinationVault
     function getPool() external view virtual returns (address poolAddress);
+
+    /// @notice Validates incentive calculator for the destination vault
+    function _validateCalculator(address calculator) internal virtual;
 }

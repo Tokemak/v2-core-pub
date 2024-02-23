@@ -112,7 +112,8 @@ contract MaverickDestinationVaultTests is Test {
         _underlyer = IERC20(MAV_WSTETH_WETH_BOOSTED_POS);
         vm.label(address(_underlyer), "underlyer");
 
-        _testIncentiveCalculator = new TestIncentiveCalculator(address(_underlyer));
+        _testIncentiveCalculator = new TestIncentiveCalculator();
+        _testIncentiveCalculator.setLpToken(address(_underlyer));
 
         MaverickDestinationVault dvTemplate = new MaverickDestinationVault(_systemRegistry);
         bytes32 dvType = keccak256(abi.encode("template"));

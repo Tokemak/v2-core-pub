@@ -158,7 +158,8 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
             auraPoolId: 50
         });
         bytes memory initParamBytes = abi.encode(initParams);
-        _testIncentiveCalculator = new TestIncentiveCalculator(address(_underlyer));
+        _testIncentiveCalculator = new TestIncentiveCalculator();
+        _testIncentiveCalculator.setLpToken(address(_underlyer));
         address payable newVault = payable(
             _destinationVaultFactory.create(
                 "template",

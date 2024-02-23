@@ -54,7 +54,8 @@ contract DestinationVaultFactoryBaseTests is Test {
         _fakeUnderlyer = vm.addr(10);
         _fakeTracked = new address[](0);
 
-        _fakeIncentiveCalculator = new TestIncentiveCalculator(_fakeUnderlyer);
+        _fakeIncentiveCalculator = new TestIncentiveCalculator();
+        _fakeIncentiveCalculator.setLpToken(_fakeUnderlyer);
 
         _systemRegistry.addRewardToken(address(8));
     }

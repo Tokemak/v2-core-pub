@@ -20,7 +20,8 @@ contract LensTest is BaseTest {
         super._setUp(false);
 
         address underlyer = address(BaseTest.mockAsset("underlyer", "underlyer", 0));
-        testIncentiveCalculator = new TestIncentiveCalculator(underlyer);
+        testIncentiveCalculator = new TestIncentiveCalculator();
+        testIncentiveCalculator.setLpToken(underlyer);
         defaultDestinationVault = new TestDestinationVault(
             systemRegistry, vm.addr(3434), address(baseAsset), underlyer, address(testIncentiveCalculator)
         );

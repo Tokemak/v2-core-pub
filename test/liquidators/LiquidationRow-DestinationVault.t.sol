@@ -148,7 +148,8 @@ contract CurveIntegrationTest is LiquidationRowTest {
 
     function runScenario(CurvePoolInfo memory poolInfo) public {
         address underlyer = poolInfo.curveLpToken;
-        testIncentiveCalculator = new TestIncentiveCalculator(underlyer);
+        testIncentiveCalculator = new TestIncentiveCalculator();
+        testIncentiveCalculator.setLpToken(underlyer);
         address convexStaking = poolInfo.convexStaking;
         uint256 periodFinish = IConvexRewardPool(convexStaking).periodFinish();
 
@@ -356,7 +357,8 @@ contract BalancerAuraDestinationVaultIntegrationTest is LiquidationRowTest {
 
     function runScenario(BalancerPoolInfo memory poolInfo) public {
         address underlyer = poolInfo.balancerLpToken;
-        testIncentiveCalculator = new TestIncentiveCalculator(underlyer);
+        testIncentiveCalculator = new TestIncentiveCalculator();
+        testIncentiveCalculator.setLpToken(address(underlyer));
         address auraStaking = poolInfo.auraStaking;
         uint256 periodFinish = IConvexRewardPool(auraStaking).periodFinish();
 

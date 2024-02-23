@@ -83,7 +83,8 @@ contract LMPVaultBaseTest is BaseTest {
         // create vault (no need to initialize since working with mock)
 
         address underlyer = address(new TestERC20("underlyer", "underlyer"));
-        TestIncentiveCalculator testIncentiveCalculator = new TestIncentiveCalculator(underlyer);
+        TestIncentiveCalculator testIncentiveCalculator = new TestIncentiveCalculator();
+        testIncentiveCalculator.setLpToken(underlyer);
         IDestinationVault vault = new TestDestinationVault(
             systemRegistry, vm.addr(34_343), asset, underlyer, address(testIncentiveCalculator)
         );

@@ -150,7 +150,8 @@ contract BalancerDestinationVaultComposableTests is Test {
         BalancerDestinationVault.InitParams memory initParams =
             BalancerDestinationVault.InitParams({ balancerPool: WSETH_RETH_SFRXETH_BAL_POOL });
         bytes memory initParamBytes = abi.encode(initParams);
-        _testIncentiveCalculator = new TestIncentiveCalculator(address(_underlyer));
+        _testIncentiveCalculator = new TestIncentiveCalculator();
+        _testIncentiveCalculator.setPoolAddress(address(_underlyer));
         address payable newVault = payable(
             _destinationVaultFactory.create(
                 "template",

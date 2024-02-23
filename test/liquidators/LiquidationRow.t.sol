@@ -145,7 +145,8 @@ contract LiquidationRowTest is Test {
         // Set up test vault
         address baseAsset = address(new TestERC20("baseAsset", "baseAsset"));
         address underlyer = address(new TestERC20("underlyer", "underlyer"));
-        testIncentiveCalculator = new TestIncentiveCalculator(underlyer);
+        testIncentiveCalculator = new TestIncentiveCalculator();
+        testIncentiveCalculator.setLpToken(underlyer);
         testVault = new TestDestinationVault(
             systemRegistry, address(mainRewarder), baseAsset, underlyer, address(testIncentiveCalculator)
         );

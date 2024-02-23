@@ -155,7 +155,8 @@ contract CurveConvexDestinationVaultTests is Test {
             baseAssetBurnTokenIndex: 0
         });
         bytes memory initParamBytes = abi.encode(initParams);
-        _testIncentiveCalculator = new TestIncentiveCalculator(address(_underlyer));
+        _testIncentiveCalculator = new TestIncentiveCalculator();
+        _testIncentiveCalculator.setLpToken(address(_underlyer));
         address payable newVault = payable(
             _destinationVaultFactory.create(
                 "template",
@@ -511,7 +512,8 @@ contract Initialize is CurveConvexDestinationVaultTests {
 
         defaultInitParamBytes = abi.encode(defaultInitParams);
 
-        _testIncentiveCalculator = new TestIncentiveCalculator(address(_underlyer));
+        _testIncentiveCalculator = new TestIncentiveCalculator();
+        _testIncentiveCalculator.setLpToken(address(_underlyer));
     }
 
     function test_RevertIf_ParamConvexStakingIsZeroAddress() public {

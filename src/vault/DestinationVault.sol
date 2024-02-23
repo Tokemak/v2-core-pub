@@ -98,11 +98,11 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
         _symbol = string.concat("toke-", baseAsset_.symbol(), "-", underlyer_.symbol());
         _underlyingDecimals = underlyer_.decimals();
 
-        _validateCalculator(incentiveCalculator_);
-
         _baseAsset = address(baseAsset_);
         _underlying = address(underlyer_);
         _rewarder = rewarder_;
+
+        _validateCalculator(incentiveCalculator_);
 
         // non null address verified above
         // slither-disable-next-line missing-zero-check

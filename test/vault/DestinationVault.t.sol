@@ -67,7 +67,8 @@ contract DestinationVaultBaseTests is Test {
         underlyer = new TestERC20("DEF", "DEF");
         underlyer.setDecimals(6);
 
-        testIncentiveCalculator = new TestIncentiveCalculator(address(underlyer));
+        testIncentiveCalculator = new TestIncentiveCalculator();
+        testIncentiveCalculator.setLpToken(address(underlyer));
         testVault = new TestDestinationVault(
             systemRegistry,
             baseAsset,
@@ -115,7 +116,8 @@ contract DestinationVaultBaseTests is Test {
     }
 
     function testIncentiveCalculatorHasSameUnderlying() public {
-        testIncentiveCalculator = new TestIncentiveCalculator(address(0));
+        testIncentiveCalculator = new TestIncentiveCalculator();
+        testIncentiveCalculator.setLpToken(address(0));
         bytes memory d = abi.encode("");
         vm.expectRevert(DestinationVault.InvalidIncentiveCalculator.selector);
         TestDestinationVault bav = new TestDestinationVault(

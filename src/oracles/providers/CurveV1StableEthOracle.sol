@@ -293,9 +293,9 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
     }
 
     function _checkEth(address tokenToCheck) private view returns (address) {
-      if (tokenToCheck == LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER) {
-        return WETH;
-      }
-      return tokenToCheck;
+        if (tokenToCheck == LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER) {
+            return WETH;
+        }
+        return tokenToCheck;
     }
 }

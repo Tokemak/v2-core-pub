@@ -9,7 +9,7 @@ import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 
 /// @title Price oracle for tokens we want to configure 1:1 to ETH. WETH for example
-/// @dev getPriceEth is not a view fn to support reentrancy checks. Dont actually change state.
+/// @dev getPriceEth is not a view fn to support reentrancy checks. Doesn't actually change state.
 contract EthPeggedOracle is SystemComponent, IPriceOracle {
     constructor(ISystemRegistry _systemRegistry) SystemComponent(_systemRegistry) { }
 

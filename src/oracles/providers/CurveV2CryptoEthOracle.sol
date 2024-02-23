@@ -14,11 +14,12 @@ import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { ICryptoSwapPool } from "src/interfaces/external/curve/ICryptoSwapPool.sol";
 import { ICurveV2Swap } from "src/interfaces/external/curve/ICurveV2Swap.sol";
+import { LibAdapter } from "src/libs/LibAdapter.sol";
 
 contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, ISpotPriceOracle {
     uint256 public constant FEE_PRECISION = 1e10;
-    address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     ICurveResolver public immutable curveResolver;
+    address public immutable WETH;
 
     /**
      * @notice Struct for necessary information for single Curve pool.
@@ -94,6 +95,7 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         Errors.verifyNotZero(address(_curveResolver), "_curveResolver");
 
         curveResolver = _curveResolver;
+        WETH = address(_systemRegistry.weth());
     }
 
     /**
@@ -103,6 +105,8 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
      *      as the known Curve reentrancy vulnerability only works when the caller recieves these tokens.
      *      Therefore, reentrancy checks should only be set to `1` when these tokens are present.  Otherwise we
      *      waste gas claiming admin fees for Curve.
+     * @dev Converts any pool tokens that are the Eth pointer address to weth. Even if pools actually hold Eth,
+     *      the `coins` array returns weth address.  Still have a check for future proofing.
      * @param curvePool Address of CurveV2 pool.
      * @param curveLpToken Address of LP token associated with v2 pool.
      * @param checkReentrancy Whether to check read-only reentrancy on pool.  Set to true for pools containing
@@ -132,8 +136,8 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         lpTokenToPool[lpToken] = PoolData({
             pool: curvePool,
             checkReentrancy: checkReentrancy ? 1 : 0,
-            tokenToPrice: tokens[1],
-            tokenFromPrice: tokens[0]
+            tokenToPrice: tokens[1] != LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER ? tokens[1] : WETH,
+            tokenFromPrice: tokens[0] != LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER ? tokens[0] : WETH
         });
 
         emit TokenRegistered(lpToken);
@@ -178,7 +182,8 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         uint256 virtualPrice = cryptoPool.get_virtual_price();
         // `getPriceInQuote` works for both eth pegged and non eth pegged assets.
         uint256 basePrice = systemRegistry.rootPriceOracle().getPriceInQuote(base, quote);
-        uint256 ethInQuote = systemRegistry.rootPriceOracle().getPriceInQuote(ETH, quote);
+        uint256 ethInQuote =
+            systemRegistry.rootPriceOracle().getPriceInQuote(LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER, quote);
 
         return (2 * virtualPrice * sqrt(basePrice)) / ethInQuote;
     }
@@ -229,6 +234,10 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         uint256 quoteTokenIndex = 0;
 
         PoolData storage poolInfo = lpTokenToPool[lpToken];
+
+        if (token == LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER) {
+            token = WETH;
+        }
 
         // Find the token and quote token indices
         if (poolInfo.tokenToPrice == token) {

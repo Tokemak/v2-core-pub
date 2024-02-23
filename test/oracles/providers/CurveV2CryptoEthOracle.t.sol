@@ -20,7 +20,11 @@ import {
     WETH9_ADDRESS,
     RETH_WETH_CURVE_POOL,
     RETH_ETH_CURVE_LP,
-    RETH_MAINNET
+    RETH_MAINNET,
+    CURVE_ETH,
+    CBETH_ETH_V2_POOL,
+    CBETH_ETH_V2_POOL_LP,
+    CBETH_MAINNET
 } from "test/utils/Addresses.sol";
 
 import { CurveV2CryptoEthOracle } from "src/oracles/providers/CurveV2CryptoEthOracle.sol";
@@ -48,7 +52,7 @@ contract CurveV2CryptoEthOracleTest is Test {
     function setUp() external {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_671_884);
 
-        registry = new SystemRegistry(address(1), address(2));
+        registry = new SystemRegistry(address(1), WETH9_ADDRESS);
 
         accessControl = new AccessController(address(registry));
         registry.setAccessController(address(accessControl));
@@ -226,6 +230,39 @@ contract CurveV2CryptoEthOracleTest is Test {
         // price: 928736964397357484
 
         assertEq(price, 928_736_964_397_357_484);
+    }
+
+    // Tests edge case where Eth is submitted as `address token`.
+    function testGetSpotPriceEthCbEth() public {
+        curveOracle.registerPool(CBETH_ETH_V2_POOL, CBETH_ETH_V2_POOL_LP, true);
+
+        (uint256 price, address quote) = curveOracle.getSpotPrice(CURVE_ETH, CBETH_ETH_V2_POOL, CBETH_MAINNET);
+
+        assertEq(quote, CBETH_MAINNET);
+
+        // Data at block 17_671_884
+        // dy: 957370368235487269
+        // fee: 6113197
+        // FEE_PRECISION: 10000000000
+        // price: 957955985601218210
+
+        assertEq(price, 957_955_985_601_218_210);
+    }
+
+    function testGetSpotPriceCbEthEth() public {
+        curveOracle.registerPool(CBETH_ETH_V2_POOL, CBETH_ETH_V2_POOL_LP, true);
+
+        (uint256 price, address quote) = curveOracle.getSpotPrice(CBETH_MAINNET, CBETH_ETH_V2_POOL, WETH9_ADDRESS);
+
+        assertEq(quote, WETH9_ADDRESS);
+
+        // Data at block 17_671_884
+        // dy: 1043111624360725300
+        // fee: 6113197
+        // FEE_PRECISION: 10000000000
+        // price: 1043749689107545618
+
+        assertEq(price, 1_043_749_689_107_545_618);
     }
 
     function tesSpotPriceRevertIfNotRegistered() public {

@@ -15,14 +15,12 @@ import { ICurveOwner } from "src/interfaces/external/curve/ICurveOwner.sol";
 import { ICurveV1StableSwap } from "src/interfaces/external/curve/ICurveV1StableSwap.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
-import { Arrays } from "src/utils/Arrays.sol";
 
 /// @title Price oracle for Curve StableSwap pools
 /// @dev getPriceEth is not a view fn to support reentrancy checks. Don't actually change state.
 contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, ISpotPriceOracle {
     ICurveResolver public immutable curveResolver;
     uint256 public constant FEE_PRECISION = 1e10;
-    address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     // solhint-disable-next-line var-name-mixedcase
     address public immutable WETH;
@@ -217,9 +215,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         int256 quoteTokenIndex = -1;
 
         // Adjust in case of Eth.
-        if (token == ETH) {
-            token = WETH;
-        }
+        token = _checkEth(token);
 
         // Find the token and quote token indices
         uint256 nTokens = tokens.length;
@@ -297,7 +293,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
     }
 
     function _checkEth(address tokenToCheck) private view returns (address) {
-      if (tokenToCheck == ETH) {
+      if (tokenToCheck == LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER) {
         return WETH;
       }
       return tokenToCheck;

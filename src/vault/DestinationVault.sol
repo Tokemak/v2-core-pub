@@ -103,6 +103,9 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
         _baseAsset = address(baseAsset_);
         _underlying = address(underlyer_);
         _rewarder = rewarder_;
+
+        // non null address verified above
+        // slither-disable-next-line missing-zero-check
         _incentiveCalculator = incentiveCalculator_;
 
         // Setup the tracked tokens

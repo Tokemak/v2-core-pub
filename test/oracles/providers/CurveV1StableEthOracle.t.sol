@@ -45,7 +45,6 @@ import {
 contract CurveV1StableEthOracleTests is Test {
     address internal constant STETH_ETH_LP_TOKEN = ST_ETH_CURVE_LP_TOKEN_MAINNET;
     IstEth internal constant STETH_CONTRACT = IstEth(STETH_MAINNET);
-    address internal constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     IRootPriceOracle internal rootPriceOracle;
     ISystemRegistry internal systemRegistry;
@@ -324,7 +323,7 @@ contract CurveV1StableEthOracleTests is Test {
     function testGetSpotPriceWorksWithEthAsToken() external {
         oracle.registerPool(STETH_ETH_CURVE_POOL, ST_ETH_CURVE_LP_TOKEN_MAINNET, false);
 
-        (uint256 price, address actualQuote) = oracle.getSpotPrice(ETH, STETH_ETH_CURVE_POOL, STETH_MAINNET);
+        (uint256 price, address actualQuote) = oracle.getSpotPrice(CURVE_ETH, STETH_ETH_CURVE_POOL, STETH_MAINNET);
 
         // Data at block 17_379_099
         // dy: 1000032797037899490

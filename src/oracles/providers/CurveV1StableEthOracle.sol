@@ -226,9 +226,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         for (uint256 i = 0; i < nTokens; ++i) {
             address t = tokens[i];
 
-            if (t == ETH) {
-                t = WETH;
-            }
+            t = _checkEth(t);
 
             if (t == token) {
                 tokenIndex = int256(i);
@@ -259,9 +257,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         actualQuoteToken = ICurveV1StableSwap(pool).coins(uint256(quoteTokenIndex));
 
         // If the quote token is ETH, we convert it to WETH.
-        if (actualQuoteToken == ETH) {
-            actualQuoteToken = WETH;
-        }
+        actualQuoteToken = _checkEth(actualQuoteToken);
     }
 
     /// @inheritdoc ISpotPriceOracle
@@ -287,9 +283,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         for (uint256 i = 0; i < nTokens; ++i) {
             address token = tokens[i];
 
-            if (token == ETH) {
-                token = WETH;
-            }
+            token = _checkEth(token);
 
             (uint256 rawSpotPrice, address actualQuoteToken) = _getSpotPrice(token, pool, tokens, quoteToken);
 
@@ -300,5 +294,12 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
                 actualQuoteToken: actualQuoteToken
             });
         }
+    }
+
+    function _checkEth(address tokenToCheck) private view returns (address) {
+      if (tokenToCheck == ETH) {
+        return WETH;
+      }
+      return tokenToCheck;
     }
 }

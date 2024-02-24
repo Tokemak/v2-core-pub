@@ -88,7 +88,11 @@ import {
     SFRXETH_MAINNET,
     WSETH_RETH_SFRXETH_BAL_POOL,
     STETH_WETH_CURVE_POOL_CONCENTRATED,
-    STETH_WETH_CURVE_POOL_CONCENTRATED_LP
+    STETH_WETH_CURVE_POOL_CONCENTRATED_LP,
+    CURVE_CRYPTO_FACTORY,
+    USDC_WHALE,
+    WETH_WHALE,
+    RETH_WHALE
 } from "../utils/Addresses.sol";
 
 import { SystemRegistry } from "src/SystemRegistry.sol";
@@ -110,6 +114,10 @@ import { CrvUsdOracle } from "test/mocks/CrvUsdOracle.sol";
 import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
 import { CurveResolverMainnet, ICurveResolver, ICurveMetaRegistry } from "src/utils/CurveResolverMainnet.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
+
+import { ICurveFactoryV2 } from "src/interfaces/external/curve/ICurveFactoryV2.sol";
+import { ICryptoSwapPool } from "src/interfaces/external/curve/ICryptoSwapPool.sol";
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 /**
  * This series of tests compares expected values with contract calculated values for lp token pricing.  Below is a guide
@@ -694,6 +702,146 @@ contract GetPriceInEth is RootOracleIntegrationTest {
         // Calculated - 280364973000000000
         calculatedPrice = uint256(280_364_973_000_000_000);
         safePrice = priceOracle.getPriceInEth(WBTC_BADGER_CURVE_V2_LP);
+        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
+    }
+
+    /**
+     * Funtion tests path where quote token is < 18 decimals.  This was a bug that came about due to a change
+     *    in the functionality of `getPriceInQuote()`.  The change was that getPriceInQuote went from returning
+     *    18 decimals to returning decimals of the quote token.  This was resulting in safe prices being returned
+     *    orders of magnitude off.
+     */
+    function test_GetSpotPriceQuoteNot18Decimals() external {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19_298_357);
+
+        // ------------------
+        // WETH / USDC POOL
+        // ------------------
+
+        // Create Weth / Usdc pool using Curve Crypto factory.  Usdc must be quote token (coins[0]) for this test to
+        // be effective.  Params taken from here: https://docs.curve.fi/factory/cryptoswap/deployer-api/#liquidity-pools
+        ICurveFactoryV2 factory = ICurveFactoryV2(CURVE_CRYPTO_FACTORY);
+        address newPoolAddress = factory.deploy_pool(
+            "Test Decimals Quote Pool",
+            "TDQP",
+            [USDC_MAINNET, WETH_MAINNET],
+            20_000_000, // A
+            10_000_000_000_000_000, // Gamma
+            3_000_000, // Mid fee
+            45_000_000, // Out fee
+            10_000_000_000, // Allowed extra profit
+            300_000_000_000_000_000, // Fee gamma
+            5_500_000_000_000, // Adjustment step
+            5_000_000_000, // Admin fee
+            600, // Ma half time
+            3_000_000_000_000_000_000_000 // Initial price, ~3k Eth per USDC at pinned block.
+        );
+
+        ICryptoSwapPool pool = ICryptoSwapPool(newPoolAddress);
+        address newPoolToken = pool.token();
+
+        // Provide liquidity to pool.  Adhere to initial price set above (3k Usdc per Weth).
+        vm.prank(USDC_WHALE);
+        IERC20(USDC_MAINNET).transfer(address(this), 30_000e6);
+
+        vm.prank(WETH_WHALE);
+        IERC20(WETH_MAINNET).transfer(address(this), 10e18);
+
+        IERC20(WETH_MAINNET).approve(newPoolAddress, 10e18);
+        IERC20(USDC_MAINNET).approve(newPoolAddress, 30_000e6);
+
+        // Add liquidity to pool.
+        pool.add_liquidity([uint256(30_000e6), uint256(10e18)], 1);
+
+        /**
+         * Eth in usdc - 2958732380000000000000
+         * virtual - 1000000000000000000 -- No swaps yet, remains 1.
+         * sqrt value - 54394231127942235120
+         * Lp supply - 547722557505166113456
+         *
+         * Calculated price -      36764963801605100
+         * Safe price -            36768605025333338
+         * safe price before fix - 36768605025333180015422
+         */
+
+        // Checks for token ordering, if usdc is not coins[0] this test doesn't check what we need it to check.
+        // This is due to how the lp_pricce in CurveV2 is calculated.
+        address[2] memory coins = factory.get_coins(newPoolAddress);
+        assertEq(coins[0], USDC_MAINNET);
+
+        // Register pool with v2 oracle.
+        curveCryptoOracle.registerPool(newPoolAddress, newPoolToken, false);
+
+        uint256 safePrice = curveCryptoOracle.getPriceInEth(newPoolToken);
+        uint256 calculatedPrice = uint256(36_764_963_801_605_100);
+
+        // Checks for calculated price vs safe price.
+        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
+
+        // ------------------
+        // RETH / Usdc POOL
+        // ------------------
+
+        // Create rEth usdt pool.
+        newPoolAddress = factory.deploy_pool(
+            "Test Decimals Quote Pool 2",
+            "TDQP 2",
+            [USDC_MAINNET, RETH_MAINNET],
+            20_000_000, // A
+            10_000_000_000_000_000, // Gamma
+            3_000_000, // Mid fee
+            45_000_000, // Out fee
+            10_000_000_000, // Allowed extra profit
+            300_000_000_000_000_000, // Fee gamma
+            5_500_000_000_000, // Adjustment step
+            5_000_000_000, // Admin fee
+            600, // Ma half time
+            3_000_000_000_000_000_000_000 // Initial price, ~3k rEth per usdc at pinned block.
+        );
+
+        pool = ICryptoSwapPool(newPoolAddress);
+        newPoolToken = pool.token();
+
+        // Provide liquidity to pool.  Adhere to initial price set above (3k Usdc per rETh).
+        vm.prank(USDC_WHALE);
+        IERC20(USDC_MAINNET).transfer(address(this), 30_000e6);
+
+        vm.prank(RETH_WHALE);
+        IERC20(RETH_MAINNET).transfer(address(this), 10e18);
+
+        IERC20(RETH_MAINNET).approve(newPoolAddress, 10e18);
+        IERC20(USDC_MAINNET).approve(newPoolAddress, type(uint256).max);
+
+        // Add liquidity to pool.
+        pool.add_liquidity([uint256(30_000e6), uint256(10e18)], 1);
+
+        /**
+         * Eth in usdc - 2958732380000000000000
+         * rEth in usdc - 3252534505000000000000
+         * virtual - 1000000000000000000 -- No swaps yet, remains 1.
+         * sqrt value - 57030996002174115984
+         * Lp supply - 547722557505166113456
+         *
+         * Calculated price -      38459252246154413
+         * Safe price -            38550966209504974
+         * safe price before fix - 38550966209504896147450
+         */
+
+        // Checks for token ordering.
+        coins = factory.get_coins(newPoolAddress);
+        assertEq(coins[0], USDC_MAINNET);
+
+        // Register pool with v2 oracle.
+        curveCryptoOracle.registerPool(newPoolAddress, newPoolToken, false);
+
+        safePrice = curveCryptoOracle.getPriceInEth(newPoolToken);
+        calculatedPrice = uint256(38_459_252_246_154_413);
+
+        // Checks for calculated price vs safe price.
         (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
         assertGt(upperBound, safePrice);
         assertLt(lowerBound, safePrice);

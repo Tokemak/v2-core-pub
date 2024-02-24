@@ -179,19 +179,24 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
             cryptoPool.claim_admin_fees();
         }
 
-        uint256 virtualPrice = cryptoPool.get_virtual_price();
         // `getPriceInQuote` works for both eth pegged and non eth pegged assets.
         uint256 basePrice = systemRegistry.rootPriceOracle().getPriceInQuote(base, quote);
         uint256 ethInQuote =
             systemRegistry.rootPriceOracle().getPriceInQuote(LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER, quote);
 
-        return (2 * virtualPrice * sqrt(basePrice)) / ethInQuote;
+        uint256 quoteDecimals = IERC20Metadata(quote).decimals();
+        if (quoteDecimals < 18) {
+            basePrice = basePrice * 10 ** (18 - quoteDecimals);
+            ethInQuote = ethInQuote * 10 ** (18 - quoteDecimals);
+        }
+
+        return (2 * cryptoPool.get_virtual_price() * _sqrt(basePrice)) / ethInQuote;
     }
 
     // solhint-disable max-line-length
     // Adapted from CurveV2 pools, see here:
     // https://github.com/curvefi/curve-crypto-contract/blob/d7d04cd9ae038970e40be850df99de8c1ff7241b/contracts/two/CurveCryptoSwap2.vy#L1330
-    function sqrt(uint256 x) private pure returns (uint256) {
+    function _sqrt(uint256 x) private pure returns (uint256) {
         if (x == 0) return 0;
 
         uint256 z = (x + 10 ** 18) / 2;

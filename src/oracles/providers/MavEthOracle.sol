@@ -67,7 +67,6 @@ contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPrice
 
     /// @inheritdoc IPriceOracle
     function getPriceInEth(address _boostedPosition) external returns (uint256) {
-        // slither-disable-start similar-names
         Errors.verifyNotZero(_boostedPosition, "_boostedPosition");
 
         IPoolPositionDynamicSlim boostedPosition = IPoolPositionDynamicSlim(_boostedPosition);
@@ -95,7 +94,6 @@ contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPrice
 
         // Return price of lp token in boosted position.
         return (totalBoostedPositionValueTokenA + totalBoostedPositionValueTokenB) / boostedPositionTotalSupply;
-        // slither-disable-end similar-names
     }
 
     /// @inheritdoc ISpotPriceOracle

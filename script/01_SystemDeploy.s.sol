@@ -117,7 +117,7 @@ contract DeploySystem is BaseScript {
         console.log("LMP Vault Registry address: ", address(lmpRegistry));
 
         // Deploy LMP Template.
-        lmpVaultTemplate = new LMPVault(systemRegistry, wethAddress);
+        lmpVaultTemplate = new LMPVault(systemRegistry, wethAddress, false);
         console.log("LMP Template address: ", address(lmpVaultTemplate));
 
         // LMP Factory setup.

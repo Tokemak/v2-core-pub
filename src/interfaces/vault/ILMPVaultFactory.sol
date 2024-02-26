@@ -9,8 +9,6 @@ interface ILMPVaultFactory {
 
     /**
      * @notice Spin up a new LMPVault
-     * @param supplyLimit Total supply limit for the new vault
-     * @param walletLimit Wallet limit for the new vault
      * @param strategy Strategy template address
      * @param symbolSuffix Symbol suffix of the new token
      * @param descPrefix Description prefix of the new token
@@ -18,8 +16,6 @@ interface ILMPVaultFactory {
      * @param extraParams Any extra data needed for the vault
      */
     function createVault(
-        uint256 supplyLimit,
-        uint256 walletLimit,
         address strategy,
         string memory symbolSuffix,
         string memory descPrefix,

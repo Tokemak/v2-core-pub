@@ -78,7 +78,9 @@ contract RoleBasedAccessControlTests is ExtraRewarderTest {
     function test_RBAC_setTokeLockDuration() external {
         // Mock registry / accToke calls.
         address fakeAccToke = makeAddr("FAKE_ACCTOKE");
-        vm.mockCall(address(systemRegistry), abi.encodeWithSignature("accToke()"), abi.encode(fakeAccToke));
+        vm.mockCall(
+            address(systemRegistry), abi.encodeWithSelector(ISystemRegistry.gpToke.selector), abi.encode(fakeAccToke)
+        );
         vm.mockCall(fakeAccToke, abi.encodeWithSignature("minStakeDuration()"), abi.encode(0));
 
         // `address(this)` does not have `EXTRA_REWARD_MANAGER_ROLE`.

@@ -28,7 +28,7 @@ contract Lens is ILens, SystemComponent {
                 symbol: vault.symbol(),
                 vaultType: vault.vaultType(),
                 baseAsset: vault.asset(),
-                performanceFeeBps: vault.getFeeSettings().performanceFeeBps,
+                streamingFeeBps: vault.getFeeSettings().streamingFeeBps,
                 totalSupply: vault.totalSupply(),
                 totalAssets: vault.totalAssets(),
                 totalIdle: vault.getAssetBreakdown().totalIdle,

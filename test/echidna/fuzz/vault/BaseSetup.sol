@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-/* solhint-disable func-name-mixedcase,max-states-count,max-line-length */
+/* solhint-disable func-name-mixedcase,max-states-count,max-line-length,no-console */
 
 import { LMPVault } from "src/vault/LMPVault.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
@@ -120,7 +120,8 @@ contract BasePoolSetup {
         address[] memory additionalTrackedTokens = new address[](0);
 
         _destVault1Underlyer = new TestERC20("DV1", "DV1");
-        TestIncentiveCalculator dv1Calc = new TestIncentiveCalculator(address(_destVault1Underlyer));
+        TestIncentiveCalculator dv1Calc = new TestIncentiveCalculator();
+        dv1Calc.setLpToken(address(_destVault1Underlyer));
         _destVault1 = TestDestinationVault(
             destVaultFactory.create(
                 "template",
@@ -134,7 +135,8 @@ contract BasePoolSetup {
         );
 
         _destVault2Underlyer = new TestERC20("DV2", "DV2");
-        TestIncentiveCalculator dv2Calc = new TestIncentiveCalculator(address(_destVault2Underlyer));
+        TestIncentiveCalculator dv2Calc = new TestIncentiveCalculator();
+        dv2Calc.setLpToken(address(_destVault2Underlyer));
         _destVault2 = TestDestinationVault(
             destVaultFactory.create(
                 "template",
@@ -148,7 +150,8 @@ contract BasePoolSetup {
         );
 
         _destVault3Underlyer = new TestERC20("DV3", "DV3");
-        TestIncentiveCalculator dv3Calc = new TestIncentiveCalculator(address(_destVault3Underlyer));
+        TestIncentiveCalculator dv3Calc = new TestIncentiveCalculator();
+        dv3Calc.setLpToken(address(_destVault3Underlyer));
         _destVault3 = TestDestinationVault(
             destVaultFactory.create(
                 "template",
@@ -179,6 +182,14 @@ contract BasePoolSetup {
         _rootPriceOracle.setPrice(address(_destVault3Underlyer), 1e18);
 
         _solver = new TestSolver();
+
+        _pool.toggleAllowedUser(address(this));
+        _pool.toggleAllowedUser(_user1);
+        _pool.toggleAllowedUser(_user2);
+        _pool.toggleAllowedUser(_user3);
+        _pool.toggleAllowedUser(address(8));
+        _pool.toggleAllowedUser(address(9));
+        _pool.toggleAllowedUser(address(10));
     }
 }
 
@@ -190,6 +201,8 @@ contract TestDestinationVault is DestinationVault, Numbers {
     function setNextBurnSlippage(int16 slippage) public {
         _nextBurnSlippage = slippage;
     }
+
+    function _validateCalculator(address calculator) internal virtual override { }
 
     function exchangeName() external pure override returns (string memory) {
         return "test";
@@ -295,7 +308,7 @@ contract TestingPool is LMPVault, CryticIERC4626Internal {
         }
     }
 
-    constructor(ISystemRegistry sr, address va) LMPVault(sr, va) { }
+    constructor(ISystemRegistry sr, address va) LMPVault(sr, va, false) { }
 
     function setCryticFnsEnabled(bool val) public {
         _enableCryticFns = val;

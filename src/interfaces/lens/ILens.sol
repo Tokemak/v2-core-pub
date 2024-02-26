@@ -13,7 +13,7 @@ interface ILens {
         string symbol;
         bytes32 vaultType;
         address baseAsset;
-        uint256 performanceFeeBps;
+        uint256 streamingFeeBps;
         uint256 totalSupply;
         uint256 totalAssets;
         uint256 totalIdle;

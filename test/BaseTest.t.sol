@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
-pragma solidity >=0.8.17 <0.9.0;
+pragma solidity 0.8.17;
 
 // solhint-disable max-states-count
 
 import { Test } from "forge-std/Test.sol";
-import { ERC20Mock } from "openzeppelin-contracts/mocks/ERC20Mock.sol";
+import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { ISystemRegistry, SystemRegistry } from "src/SystemRegistry.sol";
@@ -115,7 +115,7 @@ contract BaseTest is Test {
         systemRegistry.addRewardToken(address(baseAsset));
         systemRegistry.addRewardToken(address(TOKE_MAINNET));
 
-        lmpVaultTemplate = address(new LMPVault(systemRegistry, address(baseAsset)));
+        lmpVaultTemplate = address(new LMPVault(systemRegistry, address(baseAsset), false));
 
         lmpVaultFactory = new LMPVaultFactory(systemRegistry, lmpVaultTemplate, 800, 100);
         // NOTE: deployer grants factory permission to update the registry
@@ -149,8 +149,8 @@ contract BaseTest is Test {
         assertEq(vm.activeFork(), mainnetFork, "forks don't match");
     }
 
-    function mockAsset(string memory name, string memory symbol, uint256 initialBalance) public returns (ERC20Mock) {
-        ERC20Mock newMock = new ERC20Mock(name, symbol, address(this), 0);
+    function mockAsset(string memory name, string memory symbol, uint256 initialBalance) public returns (MockERC20) {
+        MockERC20 newMock = new MockERC20(name, symbol, 18);
         if (initialBalance > 0) {
             deal(address(newMock), msg.sender, initialBalance);
         }

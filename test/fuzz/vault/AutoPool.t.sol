@@ -2,9 +2,9 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-// NOTE: should be put back in once the fuzzing constraints can be implemented
+// solhint-disable func-name-mixedcase,max-states-count
 
-import { ERC4626Test } from "erc4626-tests/ERC4626.test.sol";
+import { ERC4626Test } from "test/fuzz/vault/ERC4626Test.sol";
 
 import { ERC20Mock } from "openzeppelin-contracts/mocks/ERC20Mock.sol";
 import { ERC4626Mock, IERC20Metadata } from "openzeppelin-contracts/mocks/ERC4626Mock.sol";
@@ -32,14 +32,30 @@ contract LMPVaultTest is ERC4626Test, BaseTest {
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
-        uint256 limit = type(uint112).max;
-        LMPVault vault = LMPVault(
-            lmpVaultFactory.createVault(limit, limit, address(stratTemplate), "x", "y", keccak256("v8"), initData)
-        );
+        LMPVault vault =
+            LMPVault(lmpVaultFactory.createVault(address(stratTemplate), "x", "y", keccak256("v8"), initData));
 
         _vault_ = address(vault);
         _delta_ = 0;
         _vaultMayBeEmpty = true;
         _unlimitedAmount = false;
+    }
+
+    function test_redeem_Setup() public virtual {
+        address[4] memory user = [address(1), address(2), address(3), address(4)];
+        uint256[4] memory sharesAr = [uint256(1e18), 1e18, 1e18, 1e18];
+        uint256[4] memory asset = [uint256(1e18), 1e18, 1e18, 1e18];
+        uint256 shares = 1e18;
+        uint256 allowance = 1e18;
+
+        Init memory init = Init({ user: user, share: sharesAr, asset: asset, yield: 4 });
+
+        setUpVault(init);
+        address caller = init.user[0];
+        address receiver = init.user[1];
+        address owner = init.user[2];
+        shares = bound(shares, 0, _max_redeem(owner));
+        _approve(_vault_, owner, caller, allowance);
+        prop_redeem(caller, receiver, owner, shares);
     }
 }

@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-// solhint-disable func-name-mixedcase
+// solhint-disable func-name-mixedcase,max-line-length
 
 import { DestinationVaultMainRewarder } from "src/rewarders/DestinationVaultMainRewarder.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -30,7 +30,7 @@ contract DestinationVaultRewarderTest is Test {
         systemRegistry = makeAddr("SYSTEM_REGISTRY");
         accessController = makeAddr("ACCESS_CONTROLLER");
 
-        rewardToken = new MockERC20();
+        rewardToken = new MockERC20("X", "X", 18);
 
         // Mocks
         vm.mockCall(systemRegistry, abi.encodeWithSignature("accessController()"), abi.encode(accessController));
@@ -101,8 +101,10 @@ contract DVRewarderGetRewardTest is DestinationVaultRewarderTest {
 
         // Mock calls specifically for reward claiming.
         vm.mockCall(accessController, abi.encodeWithSignature("hasRole(bytes32,address)"), abi.encode(true));
-        vm.mockCall(systemRegistry, abi.encodeWithSignature("accToke()"), abi.encode(makeAddr("ACC_TOKE")));
-        vm.mockCall(systemRegistry, abi.encodeWithSignature("toke()"), abi.encode(makeAddr("TOKE")));
+        vm.mockCall(
+            systemRegistry, abi.encodeWithSelector(ISystemRegistry.gpToke.selector), abi.encode(makeAddr("ACC_TOKE"))
+        );
+        vm.mockCall(systemRegistry, abi.encodeWithSelector(ISystemRegistry.toke.selector), abi.encode(makeAddr("TOKE")));
 
         // Queue rewards.
         rewarder.queueNewRewards(stakeAmount);

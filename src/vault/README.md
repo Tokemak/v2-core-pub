@@ -31,7 +31,7 @@ An LMPVault can have multiple rewarders, however only one will be actively suppl
 
 Periodically, an automated process will trigger a reporting event for the destinations related to an Autopilot Vault. An Autopilot Vault will compare it’s last known debt that is attributed to a Destination to that Destinations current reporting of its assets and determine if we are sitting with a profit or a loss. If we are in a loss scenario, we decrease our debt value immediately. If we are sitting at a profit, we take a fee, and recalculate the value.
 
-## Performance Fee
+## Streaming Fee
 
 Any time a profit is reported, the protocol is minted shares of the Autopilot Vault to represent the fee they are taking. Autopilot Vaults can have unique fee %’s.
 

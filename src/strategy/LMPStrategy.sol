@@ -338,7 +338,9 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         if (!verifyLSTPriceGap(params, lstPriceGapTolerance)) revert LSTPriceGapToleranceExceeded();
 
         // ensure that we're not exceeding top-level max slippage
-        if (valueStats.slippage > maxNormalOperationSlippage) revert MaxSlippageExceeded();
+        if (valueStats.slippage > maxNormalOperationSlippage) {
+            revert MaxSlippageExceeded();
+        }
 
         IStrategy.SummaryStats memory inSummary = getRebalanceInSummaryStats(params);
 

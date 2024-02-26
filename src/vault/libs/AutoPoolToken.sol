@@ -16,7 +16,8 @@ library AutoPoolToken {
         /// @notice Account spender allowances
         /// @dev account => spender => allowance
         mapping(address => mapping(address => uint256)) allowances;
-        /// @notice Total supply of the pool
+        /// @notice Total supply of the pool. Be careful when using this directly from the struct. The pool itself
+        /// modifies this number based on unlocked profited shares
         uint256 totalSupply;
         /// @notice ERC20 Permit nonces
         /// @dev account -> nonce. Exposed via `nonces(owner)`

@@ -20,15 +20,31 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    /// =====================================================
+    /// Immutable Vars
+    /// =====================================================
+
+    /// @notice Strategy templates that can be used with this vault template
+    /// @dev Exposed via `getStrategyTemplates() and isStrategyTemplate()`
+    EnumerableSet.AddressSet internal _strategyTemplates;
+
     ILMPVaultRegistry public immutable vaultRegistry;
+
     address public immutable template;
+
+    /// =====================================================
+    /// Public Vars
+    /// =====================================================
 
     mapping(bytes32 => address) public vaultTypeToPrototype;
 
-    EnumerableSet.AddressSet private strategyTemplates;
-
     uint256 public defaultRewardRatio;
+
     uint256 public defaultRewardBlockDuration;
+
+    /// =====================================================
+    /// Modifiers
+    /// =====================================================
 
     modifier onlyVaultCreator() {
         if (!_hasRole(Roles.CREATE_POOL_ROLE, msg.sender)) {
@@ -37,12 +53,24 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
         _;
     }
 
+    /// =====================================================
+    /// Events
+    /// =====================================================
+
     event DefaultRewardRatioSet(uint256 rewardRatio);
     event DefaultBlockDurationSet(uint256 blockDuration);
     event StrategyTemplateAdded(address template);
     event StrategyTemplateRemoved(address template);
 
+    /// =====================================================
+    /// Errors
+    /// =====================================================
+
     error InvalidStrategy();
+
+    /// =====================================================
+    /// Functions - Constructor
+    /// =====================================================
 
     constructor(
         ISystemRegistry _systemRegistry,
@@ -61,8 +89,12 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
         _setDefaultRewardBlockDuration(_defaultRewardBlockDuration);
     }
 
+    /// =====================================================
+    /// Functions - External
+    /// =====================================================
+
     function addStrategyTemplate(address strategyTemplate) external onlyOwner {
-        if (!strategyTemplates.add(strategyTemplate)) {
+        if (!_strategyTemplates.add(strategyTemplate)) {
             revert Errors.ItemExists();
         }
 
@@ -70,7 +102,7 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
     }
 
     function removeStrategyTemplate(address strategyTemplate) external onlyOwner {
-        if (!strategyTemplates.remove(strategyTemplate)) {
+        if (!_strategyTemplates.remove(strategyTemplate)) {
             revert Errors.ItemNotFound();
         }
 
@@ -86,8 +118,6 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
     }
 
     function createVault(
-        uint256 supplyLimit,
-        uint256 walletLimit,
         address strategyTemplate,
         string memory symbolSuffix,
         string memory descPrefix,
@@ -97,7 +127,7 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
         // verify params
         Errors.verifyNotZero(salt, "salt");
 
-        if (!strategyTemplates.contains(strategyTemplate)) {
+        if (!_strategyTemplates.contains(strategyTemplate)) {
             revert InvalidStrategy();
         }
 
@@ -115,15 +145,25 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
 
         newVaultAddress = template.cloneDeterministic(salt);
 
-        LMPVault(newVaultAddress).initialize(
-            supplyLimit, walletLimit, newStrategy, symbolSuffix, descPrefix, extraParams
-        );
+        LMPVault(newVaultAddress).initialize(newStrategy, symbolSuffix, descPrefix, extraParams);
         LMPVault(newVaultAddress).setRewarder(address(mainRewarder));
         LMPStrategy(strategyTemplate.cloneDeterministic(salt)).initialize(newVaultAddress);
 
         // add to VaultRegistry
         vaultRegistry.addVault(newVaultAddress);
     }
+
+    function getStrategyTemplates() public view returns (address[] memory) {
+        return _strategyTemplates.values();
+    }
+
+    function isStrategyTemplate(address addr) public view returns (bool) {
+        return _strategyTemplates.contains(addr);
+    }
+
+    /// =====================================================
+    /// Functions - Private
+    /// =====================================================
 
     function _setDefaultRewardRatio(uint256 rewardRatio) private {
         defaultRewardRatio = rewardRatio;

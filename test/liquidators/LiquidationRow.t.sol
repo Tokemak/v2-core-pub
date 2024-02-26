@@ -1,7 +1,8 @@
-/* solhint-disable func-name-mixedcase,contract-name-camelcase */
 // SPDX-License-Identifier: UNLICENSED
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
+
+/* solhint-disable func-name-mixedcase,contract-name-camelcase,max-states-count */
 
 import { Test } from "forge-std/Test.sol";
 
@@ -103,7 +104,7 @@ contract LiquidationRowTest is Test {
         rewardToken5 = new TestERC20("rewardToken5", "rewardToken5");
 
         // Mock the target token using MockERC20 contract which allows us to mint tokens
-        targetToken = new MockERC20();
+        targetToken = new MockERC20("X", "X", 18);
 
         // Set up system registry with initial configuration
         systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);

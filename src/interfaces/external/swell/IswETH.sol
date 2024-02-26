@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import { IERC20Upgradeable } from "openzeppelin-contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 /**
@@ -9,7 +8,7 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
  * @author https://github.com/max-taylor
  * @dev This interface provides the methods to interact with the SwETH contract.
  */
-interface IswETH is IERC20Upgradeable {
+interface IswETH is IERC20 {
     // ***** Errors ******
 
     /**

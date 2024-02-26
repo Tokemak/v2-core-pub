@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
-pragma solidity >=0.8.17 <0.9.0;
+pragma solidity 0.8.17;
 
 // solhint-disable func-name-mixedcase,max-states-count
 
@@ -56,7 +56,7 @@ contract LMPVaultFactoryTest is Test {
         _systemRegistry.addRewardToken(address(_asset));
         vm.label(address(_asset), "asset");
 
-        _template = address(new LMPVault(_systemRegistry, address(_asset)));
+        _template = address(new LMPVault(_systemRegistry, address(_asset), false));
 
         _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, _template, 800, 100);
         _accessController.grantRole(Roles.REGISTRY_UPDATER, address(_lmpVaultFactory));
@@ -92,21 +92,19 @@ contract LMPVaultFactoryTest is Test {
     }
 
     function test_createVault_CreatesVaultAndAddsToRegistry() public {
-        address newVault =
-            _lmpVaultFactory.createVault(1e18, 1e18, _stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData);
+        address newVault = _lmpVaultFactory.createVault(_stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData);
         assertTrue(_lmpVaultRegistry.isVault(newVault));
     }
 
     function test_createVault_MustHaveVaultCreatorRole() public {
         vm.startPrank(address(34));
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        _lmpVaultFactory.createVault(1e18, 1e18, _stratTemplate, "x", "y", keccak256("v1"), "");
+        _lmpVaultFactory.createVault(_stratTemplate, "x", "y", keccak256("v1"), "");
         vm.stopPrank();
     }
 
     function test_createVault_FixesUpTokenFields() public {
-        address newVault =
-            _lmpVaultFactory.createVault(1e18, 1e18, _stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData);
+        address newVault = _lmpVaultFactory.createVault(_stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData);
         assertEq(IERC20(newVault).symbol(), "lmpx");
         assertEq(IERC20(newVault).name(), "y Pool Token");
     }

@@ -149,7 +149,7 @@ contract BalancerDestinationVault is DestinationVault {
     }
 
     /// @inheritdoc DestinationVault
-    function getPool() external view override returns (address) {
+    function getPool() public view override returns (address) {
         return balancerPool;
     }
 

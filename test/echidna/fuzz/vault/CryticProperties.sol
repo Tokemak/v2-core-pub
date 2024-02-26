@@ -13,7 +13,7 @@ contract CryticERC4626Harness is CryticERC4626PropertyTests, BasePoolSetup {
         TestERC20Token _asset = new TestERC20Token("Test Token", "TT", 18);
         initializeBaseSetup(address(_asset));
 
-        _pool.initialize(type(uint112).max, type(uint112).max, address(_strategy), "SYMBOL", "NAME", abi.encode(""));
+        _pool.initialize(address(_strategy), "SYMBOL", "NAME", abi.encode(""));
         _pool.setDisableNavDecreaseCheck(true);
         _pool.setCryticFnsEnabled(true);
 

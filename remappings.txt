@@ -3,7 +3,6 @@ ds-test/=lib/forge-std/lib/ds-test/src/
 src/=src/
 test/=test/
 openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/
-openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
 erc4626-tests/=lib/erc4626-tests/
 prb-math/=lib/prb-math
 crytic/properties/=lib/properties

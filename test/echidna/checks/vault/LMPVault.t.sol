@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity >=0.8.7;
 
-// solhint-disable func-name-mixedcase
+// solhint-disable func-name-mixedcase, no-console
 
 import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
 import { LMPVault } from "src/vault/LMPVault.sol";
@@ -284,19 +284,19 @@ contract LMPVaultTests is Test, LMPVaultUsage {
     function test_SetPeriodicFeeSink() public {
         setPeriodicFeeSink((address(8)));
 
-        assertEq(_pool.getFeeSettings().managementFeeSink, address(8));
+        assertEq(_pool.getFeeSettings().periodicFeeSink, address(8));
     }
 
     function test_SetStreamingFee() public {
         setStreamingFee(900);
 
-        assertEq(_pool.getFeeSettings().performanceFeeBps, 900);
+        assertEq(_pool.getFeeSettings().streamingFeeBps, 900);
     }
 
     function setPeriodicFee() public {
         setPeriodicFee((800));
 
-        assertEq(_pool.getFeeSettings().managementFeeBps, 800);
+        assertEq(_pool.getFeeSettings().periodicFeeBps, 800);
     }
 
     function _runLossScenario(uint256 lossSub) private {
@@ -334,27 +334,6 @@ contract Scenarios is Test, LMPVaultUsage {
         rebalance(201, 64, 13, 137);
 
         userWithdraw(0, 489_474_113_706_290_215_264_018_292);
-
-        assertEq(_navPerShareLastNonOpStart, _navPerShareLastNonOpEnd);
-    }
-
-    function test_NavPerShareChange_Scenario2() public {
-        userMint(0, 1240, false);
-
-        console.log("totalSupply", _pool.totalSupply());
-        console.log("totalAssets", _pool.totalAssets());
-        console.log("---------");
-
-        rebalance(192, 0, 23, 3051);
-
-        console.log("totalSupply", _pool.totalSupply());
-        console.log("totalAssets", _pool.totalAssets());
-        console.log("---------");
-
-        userDeposit(0, 20, false);
-
-        console.log("totalSupply", _pool.totalSupply());
-        console.log("totalAssets", _pool.totalAssets());
 
         assertEq(_navPerShareLastNonOpStart, _navPerShareLastNonOpEnd);
     }

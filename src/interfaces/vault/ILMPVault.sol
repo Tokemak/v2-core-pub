@@ -17,32 +17,49 @@ interface ILMPVault is IERC4626, IERC20Permit {
         Exploit
     }
 
+    /// @param unlockPeriodInSeconds Time it takes for profit to unlock in seconds
+    /// @param fullProfitUnlockTime Time at which all profit will have been unlocked
+    /// @param lastProfitUnlockTime Last time profits were unlocked
+    /// @param profitUnlockRate Per second rate at which profit shares unlocks. Rate when calculated is denominated in
+    /// MAX_BPS_PROFIT. TODO: Get into uint112
     struct ProfitUnlockSettings {
-        /// @notice Time it takes for profit to unlock in seconds
         uint48 unlockPeriodInSeconds;
-        /// @notice Time at which all profit will have been unlocked
         uint48 fullProfitUnlockTime;
-        /// @notice Last time profits were unlocked
         uint48 lastProfitUnlockTime;
-        /// @notice Per second rate at which profit shares unlocks
-        /// @dev Rate when calculated is denominated in MAX_BPS_PROFIT. TODO: Get into uint112
         uint256 profitUnlockRate;
     }
 
+    /// @param feeSink Where claimed fees are sent
+    /// @param totalAssetsHighMarkThe last totalAssets amount we took fees at
+    /// @param totalAssetsHighMarkTimestamp The last timestamp we updated the high water mark
+    /// @param nextPeriodicFeeTake Timestamp of next periodic fee to be taken.
+    /// @param periodicFeeSink Address that receives periodic fee.
+    /// @param periodicFeeBps Current periodic fee.  100% == 10000.
+    /// @param pendingPeriodicFeeBps Pending periodic fee. Used as placeholder for new `periodicFeeBps` within
+    /// range of fee take time.
+    /// @param streamingFeeBps Current streaming fee taken on profit. 100% == 10000
+    /// @param navPerShareLastFeeMark The last nav/share height we took fees at
+    /// @param navPerShareLastFeeMarkTimestamp The last timestamp we took fees at
+    /// @param rebalanceFeeHighWaterMarkEnabled Returns whether the nav/share high water mark is enabled for the
+    /// rebalance fee
     struct AutoPoolFeeSettings {
         address feeSink;
         uint256 totalAssetsHighMark;
         uint256 totalAssetsHighMarkTimestamp;
-        uint256 nextManagementFeeTake;
-        address managementFeeSink;
-        uint256 managementFeeBps;
-        uint256 pendingManagementFeeBps;
-        uint256 performanceFeeBps;
+        uint256 nextPeriodicFeeTake;
+        address periodicFeeSink;
+        uint256 periodicFeeBps;
+        uint256 pendingPeriodicFeeBps;
+        uint256 streamingFeeBps;
         uint256 navPerShareLastFeeMark;
         uint256 navPerShareLastFeeMarkTimestamp;
         bool rebalanceFeeHighWaterMarkEnabled;
     }
 
+    /// @param totalIdle The amount of baseAsset deposited into the contract pending deployment
+    /// @param totalDebt The current (though cached) value of assets we've deployed
+    /// @param totalDebtMin The current (though cached) value of assets we use for valuing during deposits
+    /// @param totalDebtMax The current (though cached) value of assets we use for valuing during withdrawals
     struct AssetBreakdown {
         uint256 totalIdle;
         uint256 totalDebt;
@@ -66,7 +83,7 @@ interface ILMPVault is IERC4626, IERC20Permit {
     event DestinationDebtReporting(address destination, uint256 debtValue, uint256 claimed, uint256 claimGasUsed);
     event RewarderSet(address rewarder);
     event FeeCollected(uint256 fees, address feeSink, uint256 mintedShares, uint256 profit, uint256 idle, uint256 debt);
-    event ManagementFeeCollected(uint256 fees, address feeSink, uint256 mintedShares);
+    event PeriodicFeeCollected(uint256 fees, address feeSink, uint256 mintedShares);
     event Shutdown(VaultShutdownStatus reason);
 
     /* ******************************** */

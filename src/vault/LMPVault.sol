@@ -14,6 +14,7 @@ import { SecurityBase } from "src/security/SecurityBase.sol";
 import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
 import { AutoPoolFees } from "src/vault/libs/AutoPoolFees.sol";
 import { AutoPoolToken } from "src/vault/libs/AutoPoolToken.sol";
+import { AutoPool4626 } from "src/vault/libs/AutoPool4626.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { WithdrawalQueue } from "src/strategy/WithdrawalQueue.sol";
@@ -39,26 +40,15 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     using WithdrawalQueue for StructuredLinkedList.List;
     using AutoPoolToken for AutoPoolToken.TokenData;
 
+    /// Be careful around the use of totalSupply and balanceOf. If you go directly to the _tokenData struct you may miss
+    /// out on the profit share unlock logic or the checking the balance of the pool itself
+
     /// =====================================================
     /// Constant Vars
     /// =====================================================
 
     /// @notice 100% == 10000
     uint256 public constant FEE_DIVISOR = 10_000;
-
-    uint256 public constant NAV_CHANGE_ROUNDING_BUFFER = 100;
-
-    /// @notice Max management fee, 10%.  100% = 10_000.
-    uint256 public constant MAX_MANAGEMENT_FEE_BPS = 1000;
-
-    /// @notice Time between management fee takes.  ~ half year.
-    uint256 public constant MANAGEMENT_FEE_TAKE_TIMEFRAME = 182 days;
-
-    /// @notice Time before a management fee is taken that the fee % can be changed.
-    uint256 public constant MANAGEMENT_FEE_CHANGE_CUTOFF = 45 days;
-
-    /// @notice Profit denomination
-    uint256 public constant MAX_BPS_PROFIT = 1_000_000_000;
 
     /// =====================================================
     /// Immutable Vars
@@ -78,6 +68,8 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// @notice Decimals of the base asset. Used as the decimals for the vault itself
     /// @dev Exposed via `decimals()`
     uint8 internal immutable _baseAssetDecimals;
+
+    bool public immutable _checkUsers;
 
     /// =====================================================
     /// Internal Vars
@@ -134,7 +126,8 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     ILMPVault.AssetBreakdown internal _assetBreakdown;
 
     /// @notice Rewarders that have been replaced.
-    EnumerableSet.AddressSet internal pastRewarders;
+    /// @dev Exposed via `getPastRewarders()`
+    EnumerableSet.AddressSet internal _pastRewarders;
 
     /// =====================================================
     /// Public Vars
@@ -143,93 +136,46 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// @notice Factory contract that created this vault
     address public factory;
 
-    // /// @notice The amount of baseAsset deposited into the contract pending deployment
-    // uint256 public totalIdle = 0;
-
-    // /// @notice The current (though cached) value of assets we've deployed
-    // uint256 public totalDebt = 0;
-
-    // /// @notice The current (though cached) value of assets we use for valuing during deposits
-    // uint256 public totalDebtMax = 0;
-
-    // /// @notice The current (though cached) value of assets we use for valuing during withdrawals
-    // uint256 public totalDebtMin = 0;
-
     /// @notice Main rewarder for this contract
     IMainRewarder public rewarder;
 
-    /// @notice Current performance fee taken on profit. 100% == 10000
-    //uint256 public performanceFeeBps;
-
-    /// @notice Where claimed fees are sent
-    //address public feeSink;
-
-    /// @notice The last nav/share height we took fees at
-    //uint256 public navPerShareLastFeeMark = FEE_DIVISOR;
-
-    /// @notice The last timestamp we took fees at
-    //uint256 public navPerShareLastFeeMarkTimestamp;
-
-    /// @notice The last totalAssets amount we took fees at
-    //uint256 public totalAssetsHighMark;
-
-    /// @notice The last timestamp we updated the high water mark
-    //uint256 public totalAssetsHighMarkTimestamp;
-
-    // TODO: update init/constructor to support this
     /// @notice The strategy logic for the LMP
-    // slither-disable-next-line uninitialized-state,constable-states
     ILMPStrategy public lmpStrategy;
 
-    /// @notice Address that receives management fee.
-    //address public managementFeeSink;
-
-    /// @notice Timestamp of next management fee to be taken.
-    //uint48 public nextManagementFeeTake;
-
-    /// @notice Current management fee.  100% == 10_000.
-    //uint16 public managementFeeBps;
-
-    /// @notice Pending management fee.  Used as placeholder for new `managementFeeBps` within range of fee take.
-    //uint16 public pendingManagementFeeBps;
-
-    /// @notice Returns whether the nav/share high water mark is enabled for the rebalance fee
-    //bool public rebalanceFeeHighWaterMarkEnabled;
+    /// @notice Temporary restriction of depositors
+    mapping(address => bool) public allowedUsers;
 
     /// =====================================================
     /// Events
     /// =====================================================
 
     event NewNavShareFeeMark(uint256 navPerShare, uint256 timestamp);
-    event NewTotalAssetsHighWatermark(uint256 assets, uint256 timestamp);
     event SymbolAndDescSet(string symbol, string desc);
-    event NextManagementFeeTakeSet(uint256 nextManagementFeeTake);
 
     /// =====================================================
     /// Errors
     /// =====================================================
 
-    error TooFewAssets(uint256 requested, uint256 actual);
     error WithdrawShareCalcInvalid(uint256 currentShares, uint256 cachedShares);
-    error InvalidFee(uint256 newFee);
     error RewarderAlreadySet();
     error RebalanceDestinationsMatch(address destinationVault);
     error InvalidDestination(address destination);
     error NavChanged(uint256 oldNav, uint256 newNav);
     error NavOpsInProgress();
-    error OverWalletLimit(address to);
     error VaultShutdown();
-    error TotalSupplyOverLimit();
-    error TotalSupplyUnderLimit();
-    error InvalidLimit();
-    error InvalidTotalAssetPurpose();
     error NavDecreased(uint256 oldNav, uint256 newNav);
-    error TooManyDeployedDestinations();
-    error AlreadySet();
+    error InvalidUser();
 
     /// =====================================================
     /// Modifiers
     /// =====================================================
+
+    modifier onlyAllowedUsers() {
+        if (_checkUsers && !allowedUsers[msg.sender]) {
+            revert InvalidUser();
+        }
+        _;
+    }
 
     /// @notice Reverts if nav/share decreases during a deposit/mint/withdraw/redeem
     /// @dev Increases are allowed. Ignored when supply is 0
@@ -253,6 +199,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     modifier trackNavOps() {
         _systemRegistry.systemSecurity().enterNavOperation();
         _;
+        // slither-disable-next-line reentrancy-no-eth
         _systemRegistry.systemSecurity().exitNavOperation();
     }
 
@@ -262,7 +209,8 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
     constructor(
         ISystemRegistry systemRegistry,
-        address _vaultAsset
+        address _vaultAsset,
+        bool checkUsers
     ) SecurityBase(address(systemRegistry.accessController())) Pausable(systemRegistry) {
         Errors.verifyNotZero(address(systemRegistry), "systemRegistry");
         _systemRegistry = systemRegistry;
@@ -274,6 +222,8 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         _symbol = string(abi.encodePacked("lmp", IERC20Metadata(_vaultAsset).symbol()));
         _name = string(abi.encodePacked(IERC20Metadata(_vaultAsset).name(), " Pool Token"));
 
+        _checkUsers = checkUsers;
+
         _disableInitializers();
     }
 
@@ -282,8 +232,6 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// =====================================================
 
     function initialize(
-        uint256,
-        uint256,
         address strategy,
         string memory symbolSuffix,
         string memory descPrefix,
@@ -298,10 +246,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         _symbol = string(abi.encodePacked("lmp", symbolSuffix));
         _name = string(abi.encodePacked(descPrefix, " Pool Token"));
 
-        _feeSettings.nextManagementFeeTake = uint48(block.timestamp + MANAGEMENT_FEE_TAKE_TIMEFRAME);
-        _feeSettings.navPerShareLastFeeMark = FEE_DIVISOR;
-        _feeSettings.navPerShareLastFeeMarkTimestamp = block.timestamp;
-        emit NextManagementFeeTakeSet(uint48(block.timestamp + MANAGEMENT_FEE_TAKE_TIMEFRAME));
+        AutoPoolFees.initializeFeeSettings(_feeSettings);
 
         lmpStrategy = ILMPStrategy(strategy);
     }
@@ -319,19 +264,19 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         nonReentrant
         noNavPerShareDecrease(TotalAssetPurpose.Deposit)
         ensureNoNavOps
+        onlyAllowedUsers
         returns (uint256 shares)
     {
         Errors.verifyNotZero(assets, "assets");
+
+        // Handles the vault being paused, returns 0
         if (assets > maxDeposit(receiver)) {
             revert ERC4626DepositExceedsMax(assets, maxDeposit(receiver));
         }
 
-        shares = convertToShares(
-            assets,
-            LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Deposit),
-            totalSupply(),
-            Math.Rounding.Down
-        );
+        uint256 ta = LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Deposit);
+        shares = convertToShares(assets, ta, totalSupply(), Math.Rounding.Down);
+
         Errors.verifyNotZero(shares, "shares");
 
         _transferAndMint(assets, shares, receiver);
@@ -348,18 +293,16 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         nonReentrant
         noNavPerShareDecrease(TotalAssetPurpose.Deposit)
         ensureNoNavOps
+        onlyAllowedUsers
         returns (uint256 assets)
     {
+        // Handles the vault being paused, returns 0
         if (shares > maxMint(receiver)) {
             revert ERC4626MintExceedsMax(shares, maxMint(receiver));
         }
 
-        assets = convertToAssets(
-            shares,
-            LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Deposit),
-            totalSupply(),
-            Math.Rounding.Up
-        );
+        uint256 ta = LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Deposit);
+        assets = convertToAssets(shares, ta, totalSupply(), Math.Rounding.Up);
 
         _transferAndMint(assets, shares, receiver);
     }
@@ -374,14 +317,16 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         virtual
         override
         nonReentrant
+        whenNotPaused
         noNavPerShareDecrease(TotalAssetPurpose.Withdraw)
         ensureNoNavOps
+        onlyAllowedUsers
         returns (uint256 shares)
     {
         Errors.verifyNotZero(assets, "assets");
 
         //slither-disable-next-line unused-return
-        (uint256 actualAssets, uint256 actualShares,) = LMPDebt._withdraw(
+        (uint256 actualAssets, uint256 actualShares,) = LMPDebt.withdraw(
             assets,
             LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Withdraw),
             _assetBreakdown,
@@ -390,10 +335,6 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         );
 
         shares = actualShares;
-
-        if (actualAssets < assets) {
-            revert TooFewAssets(assets, actualAssets);
-        }
 
         // TODO: Pretty sure we can just pass assets here instead of actualAssets.
         // We know it can't be less because of check above, and _withdraw will ensure
@@ -411,8 +352,10 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         virtual
         override
         nonReentrant
+        whenNotPaused
         noNavPerShareDecrease(TotalAssetPurpose.Withdraw)
         ensureNoNavOps
+        onlyAllowedUsers
         returns (uint256 assets)
     {
         uint256 maxShares = maxRedeem(owner);
@@ -420,14 +363,13 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
             revert ERC4626ExceededMaxRedeem(owner, shares, maxShares);
         }
 
-        uint256 applicableTotalAssets =
-            LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Withdraw);
-        uint256 possibleAssets = convertToAssets(shares, applicableTotalAssets, totalSupply(), Math.Rounding.Down);
+        uint256 ta = LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Withdraw);
+        uint256 possibleAssets = convertToAssets(shares, ta, totalSupply(), Math.Rounding.Down);
         Errors.verifyNotZero(possibleAssets, "possibleAssets");
 
-        (uint256 actualAssets, uint256 actualShares,) = LMPDebt._withdraw(
-            possibleAssets, applicableTotalAssets, _assetBreakdown, _withdrawalQueue, _destinationInfo
-        );
+        //slither-disable-next-line unused-return
+        (uint256 actualAssets, uint256 actualShares,) =
+            LMPDebt.redeem(possibleAssets, ta, _assetBreakdown, _withdrawalQueue, _destinationInfo);
 
         assets = actualAssets;
 
@@ -445,15 +387,15 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// @notice Set the fee that will be taken when profit is realized
     /// @dev Resets the high water to current value
     /// @param fee Percent. 100% == 10000
-    function setPerformanceFeeBps(uint256 fee) external nonReentrant hasRole(Roles.LMP_FEE_SETTER_ROLE) {
-        AutoPoolFees.setPerformanceFeeBps(_feeSettings, fee);
+    function setStreamingFeeBps(uint256 fee) external nonReentrant hasRole(Roles.LMP_FEE_SETTER_ROLE) {
+        AutoPoolFees.setStreamingFeeBps(_feeSettings, fee);
     }
 
-    /// @notice Set the management fee taken.
-    /// @dev Depending on time until next fee take, may update managementFeeBps directly or queue fee.
-    /// @param fee Fee to update management fee to.
-    function setManagementFeeBps(uint256 fee) external hasRole(Roles.LMP_MANAGEMENT_FEE_SETTER_ROLE) {
-        AutoPoolFees.setManagementFeeBps(_feeSettings, fee);
+    /// @notice Set the periodic fee taken.
+    /// @dev Depending on time until next fee take, may update periodicFeeBps directly or queue fee.
+    /// @param fee Fee to update periodic fee to.
+    function setPeriodicFeeBps(uint256 fee) external hasRole(Roles.LMP_PERIODIC_FEE_SETTER_ROLE) {
+        AutoPoolFees.setPeriodicFeeBps(_feeSettings, fee);
     }
 
     /// @notice Set the address that will receive fees
@@ -462,14 +404,19 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         AutoPoolFees.setFeeSink(_feeSettings, newFeeSink);
     }
 
-    /// @notice Sets the address that will receive management fees.
+    /// @notice Sets the address that will receive periodic fees.
     /// @dev Zero address allowable.  Disables fees.
-    /// @param newManagementFeeSink New management fee address.
-    function setManagementFeeSink(address newManagementFeeSink)
-        external
-        hasRole(Roles.LMP_MANAGEMENT_FEE_SETTER_ROLE)
-    {
-        AutoPoolFees.setManagementFeeSink(_feeSettings, newManagementFeeSink);
+    /// @param newPeriodicFeeSink New periodic fee address.
+    function setPeriodicFeeSink(address newPeriodicFeeSink) external hasRole(Roles.LMP_PERIODIC_FEE_SETTER_ROLE) {
+        AutoPoolFees.setPeriodicFeeSink(_feeSettings, newPeriodicFeeSink);
+    }
+
+    function setProfitUnlockPeriod(uint48 newUnlockPeriodSeconds) external hasRole(Roles.AUTO_POOL_ADMIN) {
+        AutoPoolFees.setProfitUnlockPeriod(_profitUnlockSettings, _tokenData, newUnlockPeriodSeconds);
+    }
+
+    function toggleAllowedUser(address user) external hasRole(Roles.AUTO_POOL_ADMIN) {
+        allowedUsers[user] = !allowedUsers[user];
     }
 
     /// @notice Set the rewarder contract used by the vault.
@@ -485,13 +432,13 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         address toBeReplaced = address(rewarder);
         // Check that the new rewarder has not been a rewarder before, and that the current rewarder and
         //      new rewarder addresses are not the same.
-        if (pastRewarders.contains(_rewarder) || toBeReplaced == _rewarder) {
+        if (_pastRewarders.contains(_rewarder) || toBeReplaced == _rewarder) {
             revert Errors.ItemExists();
         }
 
         if (toBeReplaced != address(0)) {
             // slither-disable-next-line unused-return
-            pastRewarders.add(toBeReplaced);
+            _pastRewarders.add(toBeReplaced);
         }
 
         rewarder = IMainRewarder(_rewarder);
@@ -500,12 +447,12 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
     /// @inheritdoc ILMPVault
     function getPastRewarders() external view returns (address[] memory) {
-        return pastRewarders.values();
+        return _pastRewarders.values();
     }
 
     /// @inheritdoc ILMPVault
     function isPastRewarder(address _pastRewarder) external view returns (bool) {
-        return pastRewarders.contains(_pastRewarder);
+        return _pastRewarders.contains(_pastRewarder);
     }
 
     /// @notice Allow the updating of symbol/desc for the vault (only AFTER shutdown)
@@ -571,7 +518,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// @notice Returns the total amount of the underlying asset that is “managed” by Vault.
     /// @dev Utilizes the "Global" purpose internally
     function totalAssets() public view override returns (uint256) {
-        return totalAssets(TotalAssetPurpose.Global);
+        return AutoPool4626.totalAssets(_assetBreakdown, TotalAssetPurpose.Global);
     }
 
     /// @notice Returns the total amount of the underlying asset that is “managed” by the Vault with respect to its
@@ -579,15 +526,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// @dev Value changes based on purpose. Global is an avg. Deposit is valued higher. Withdraw is valued lower.
     /// @param purpose The calculation the total assets will be used in
     function totalAssets(TotalAssetPurpose purpose) public view returns (uint256) {
-        if (purpose == TotalAssetPurpose.Global) {
-            return _assetBreakdown.totalIdle + _assetBreakdown.totalDebt;
-        } else if (purpose == TotalAssetPurpose.Deposit) {
-            return _assetBreakdown.totalIdle + _assetBreakdown.totalDebtMax;
-        } else if (purpose == TotalAssetPurpose.Withdraw) {
-            return _assetBreakdown.totalIdle + _assetBreakdown.totalDebtMin;
-        } else {
-            revert InvalidTotalAssetPurpose();
-        }
+        return AutoPool4626.totalAssets(_assetBreakdown, purpose);
     }
 
     function getAssetBreakdown() public view override returns (ILMPVault.AssetBreakdown memory) {
@@ -633,23 +572,20 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     }
 
     /// @notice Returns the amount of unlocked profit shares that will be burned
-    function unlockedShares() public view returns (uint256 shares) {
+    function unlockedShares() external view returns (uint256 shares) {
         shares = AutoPoolFees.unlockedShares(_profitUnlockSettings, _tokenData);
     }
 
     /// @notice Returns the amount of tokens in existence.
-    /// @dev Subtracts an unlocked profit shares that will be burned
+    /// @dev Subtracts any unlocked profit shares that will be burned
     function totalSupply() public view virtual override(IERC20) returns (uint256 shares) {
-        shares = _tokenData.totalSupply - unlockedShares();
+        shares = AutoPool4626.totalSupply(_tokenData, _profitUnlockSettings);
     }
 
     /// @notice Returns the amount of tokens owned by account.
     /// @dev Subtracts any unlocked profit shares that will be burned when account is the Vault itself
     function balanceOf(address account) public view override(IERC20) returns (uint256) {
-        if (account == address(this)) {
-            return _tokenData.balances[account] - unlockedShares();
-        }
-        return _tokenData.balances[account];
+        return AutoPool4626.balanceOf(_tokenData, _profitUnlockSettings, account);
     }
 
     /// @notice Returns the amount of tokens owned by wallet.
@@ -672,12 +608,12 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
     /// @notice Moves a `value` amount of tokens from `from` to `to` using the allowance mechanism.
     /// `value` is then deducted from the caller's allowance.
-    function transferFrom(address from, address to, uint256 value) public virtual returns (bool) {
+    function transferFrom(address from, address to, uint256 value) public virtual whenNotPaused returns (bool) {
         return _tokenData.transferFrom(from, to, value);
     }
 
     /// @notice Moves a `value` amount of tokens from the caller's account to `to`
-    function transfer(address to, uint256 value) public virtual returns (bool) {
+    function transfer(address to, uint256 value) public virtual whenNotPaused returns (bool) {
         return _tokenData.transfer(to, value);
     }
 
@@ -719,7 +655,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// deposited into the Vault for the receiver, through a deposit call
     function maxDeposit(address wallet) public view virtual override returns (uint256 maxAssets) {
         maxAssets =
-            convertToAssets(_maxMint(wallet), totalAssets(TotalAssetPurpose.Deposit), totalSupply(), Math.Rounding.Up);
+            convertToAssets(maxMint(wallet), totalAssets(TotalAssetPurpose.Deposit), totalSupply(), Math.Rounding.Up);
     }
 
     /// @notice Simulate the effects of the deposit at the current block, given current on-chain conditions.
@@ -730,7 +666,8 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// @notice Returns the maximum amount of the Vault shares that
     /// can be minted for the receiver, through a mint call.
     function maxMint(address wallet) public view virtual override returns (uint256 maxShares) {
-        maxShares = _maxMint(wallet);
+        maxShares =
+            AutoPool4626.maxMint(_assetBreakdown, _tokenData, _profitUnlockSettings, wallet, paused(), _shutdown);
     }
 
     /// @notice Returns the maximum amount of the underlying asset that can
@@ -760,14 +697,15 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         return convertToAssets(shares, totalAssets(TotalAssetPurpose.Withdraw), totalSupply(), Math.Rounding.Down);
     }
 
-    function _completeWithdrawal(uint256 assets, uint256 shares, address owner, address receiver) internal {
-        // do the actual withdrawal (going off of total # requested)
-        uint256 allowed = allowance(owner, msg.sender);
-        if (msg.sender != owner && allowed != type(uint256).max) {
-            if (shares > allowed) revert AmountExceedsAllowance(shares, allowed);
+    function _completeWithdrawal(uint256 assets, uint256 shares, address owner, address receiver) internal virtual {
+        if (msg.sender != owner) {
+            uint256 allowed = allowance(owner, msg.sender);
+            if (allowed != type(uint256).max) {
+                if (shares > allowed) revert AmountExceedsAllowance(shares, allowed);
 
-            unchecked {
-                _tokenData.approve(owner, msg.sender, allowed - shares);
+                unchecked {
+                    _tokenData.approve(owner, msg.sender, allowed - shares);
+                }
             }
         }
 
@@ -795,28 +733,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         uint256[] calldata amounts,
         address[] calldata destinations
     ) external virtual override hasRole(Roles.TOKEN_RECOVERY_ROLE) {
-        // Makes sure our params are valid
-        uint256 len = tokens.length;
-
-        Errors.verifyNotZero(len, "len");
-        Errors.verifyArrayLengths(len, amounts.length, "tokens+amounts");
-        Errors.verifyArrayLengths(len, destinations.length, "tokens+destinations");
-
-        emit TokensRecovered(tokens, amounts, destinations);
-
-        for (uint256 i = 0; i < len; ++i) {
-            (address tokenAddress, uint256 amount, address destination) = (tokens[i], amounts[i], destinations[i]);
-
-            // Ensure this isn't an asset we care about
-            if (
-                tokenAddress == address(this) || tokenAddress == address(_baseAsset)
-                    || _destinations.contains(tokenAddress)
-            ) {
-                revert Errors.AssetNotAllowed(tokenAddress);
-            }
-
-            IERC20Metadata(tokenAddress).safeTransfer(destination, amount);
-        }
+        AutoPool4626.recover(tokens, amounts, destinations);
     }
 
     /// @inheritdoc ILMPVault
@@ -836,25 +753,9 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     }
 
     function _transferAndMint(uint256 assets, uint256 shares, address receiver) internal virtual {
-        // From OZ documentation:
-        // ----------------------
-        // If _asset is ERC777, `transferFrom` can trigger a reentrancy BEFORE the transfer happens through the
-        // `tokensToSend` hook. On the other hand, the `tokenReceived` hook, that is triggered after the transfer,
-        // calls the vault, which is assumed not malicious.
-        //
-        // Conclusion: we need to do the transfer before we mint so that any reentrancy would happen before the
-        // assets are transferred and before the shares are minted, which is a valid state.
-        // slither-disable-next-line reentrancy-no-eth
-
-        _baseAsset.safeTransferFrom(msg.sender, address(this), assets);
-
-        _assetBreakdown.totalIdle += assets;
-
-        _tokenData.mint(receiver, shares);
-
-        emit Deposit(msg.sender, receiver, assets, shares);
-
-        emit Nav(_assetBreakdown.totalIdle, _assetBreakdown.totalDebt, totalSupply());
+        AutoPool4626.transferAndMint(
+            _baseAsset, _assetBreakdown, _tokenData, _profitUnlockSettings, assets, shares, receiver
+        );
     }
 
     function updateDebtReporting(uint256 numToProcess)
@@ -867,15 +768,9 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         uint256 startingIdle = _assetBreakdown.totalIdle;
         uint256 startingDebt = _assetBreakdown.totalDebt;
 
+        // slither-disable-next-line reentrancy-no-eth
         LMPDebt.IdleDebtUpdates memory result =
             LMPDebt._updateDebtReporting(_debtReportQueue, _destinations, _destinationInfo, numToProcess);
-
-        // console.log("startingIdle", startingIdle);
-        // console.log("result.totalIdleIncrease", result.totalIdleIncrease);
-        // console.log("result.totalMinDebtIncrease", result.totalMinDebtIncrease);
-        // console.log("result.totalMinDebtDecrease", result.totalMinDebtDecrease);
-        // console.log("result.totalMaxDebtIncrease", result.totalMaxDebtIncrease);
-        // console.log("result.totalMaxDebtDecrease", result.totalMaxDebtDecrease);
 
         uint256 newIdle = startingIdle + result.totalIdleIncrease;
         uint256 newDebt = startingDebt + result.totalDebtIncrease - result.totalDebtDecrease;
@@ -963,7 +858,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         IERC3156FlashBorrower receiver,
         RebalanceParams memory rebalanceParams,
         bytes calldata data
-    ) public nonReentrant hasRole(Roles.SOLVER_ROLE) trackNavOps {
+    ) public whenNotPaused nonReentrant hasRole(Roles.SOLVER_ROLE) trackNavOps {
         LMPDebt.IdleDebtUpdates memory result = _processRebalance(receiver, rebalanceParams, data);
 
         uint256 idle = _assetBreakdown.totalIdle;
@@ -1069,26 +964,5 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         if (newNav < oldNav) {
             revert NavDecreased(oldNav, newNav);
         }
-    }
-
-    function _maxMint(address) internal view virtual returns (uint256) {
-        // If we are temporarily paused, or in full shutdown mode,
-        // no new shares are able to be minted
-        if (paused() || _shutdown) {
-            return 0;
-        }
-
-        // First deposit
-        if (totalSupply() == 0) {
-            return type(uint112).max;
-        }
-
-        // We know totalSupply greater than zero now so if totalAssets is zero
-        // the vault is in an invalid state and users would be able to mint shares for free
-        if (totalAssets() == 0) {
-            return 0;
-        }
-
-        return type(uint112).max;
     }
 }

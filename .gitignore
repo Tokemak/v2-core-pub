@@ -21,3 +21,4 @@ crytic-export/
 
 dir
 tests
+cov

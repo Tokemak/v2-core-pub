@@ -1,7 +1,8 @@
-/* solhint-disable func-name-mixedcase,contract-name-camelcase */
 // SPDX-License-Identifier: UNLICENSED
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved
 pragma solidity 0.8.17;
+
+/* solhint-disable func-name-mixedcase,contract-name-camelcase,max-line-length */
 
 import { Test } from "forge-std/Test.sol";
 
@@ -271,7 +272,7 @@ contract Withdraw is MainRewarderTest {
         address user2 = makeAddr("USER2");
         address user3 = makeAddr("USER3");
 
-        // Devides the durationInBlock into 10 intervals (100,000 / 10,000)
+        // Divides the durationInBlock into 10 intervals (100,000 / 10,000)
         uint256 interval = 10_000;
 
         // Queue new rewards

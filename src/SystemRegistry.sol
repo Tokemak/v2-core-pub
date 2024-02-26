@@ -102,7 +102,7 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     /* ******************************** */
 
     /// @inheritdoc ISystemRegistry
-    function accToke() external view returns (IAccToke) {
+    function gpToke() external view returns (IAccToke) {
         return _accToke;
     }
 

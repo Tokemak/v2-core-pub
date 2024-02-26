@@ -92,7 +92,7 @@ contract LMPVaultUsage is BasePoolSetup, Numbers {
         _vaultAsset.setDecimals(18);
         initializeBaseSetup(address(_vaultAsset));
 
-        _pool.initialize(type(uint112).max, type(uint112).max, address(_strategy), "SYMBOL", "NAME", abi.encode(""));
+        _pool.initialize(address(_strategy), "SYMBOL", "NAME", abi.encode(""));
         _pool.setDisableNavDecreaseCheck(true);
         _pool.setCryticFnsEnabled(false);
     }
@@ -162,11 +162,11 @@ contract LMPVaultUsage is BasePoolSetup, Numbers {
     /// =====================================================
 
     function setStreamingFee(uint256 fee) public {
-        _pool.setPerformanceFeeBps(fee);
+        _pool.setStreamingFeeBps(fee);
     }
 
     function setPeriodicFee(uint256 fee) public {
-        _pool.setManagementFeeBps(fee);
+        _pool.setPeriodicFeeBps(fee);
     }
 
     function setStreamingFeeSink(address sink) public {
@@ -188,7 +188,7 @@ contract LMPVaultUsage is BasePoolSetup, Numbers {
             revert("invalid address");
         }
 
-        _pool.setManagementFeeSink(sink);
+        _pool.setPeriodicFeeSink(sink);
     }
 
     /// =====================================================

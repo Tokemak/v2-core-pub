@@ -352,9 +352,10 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
             return rawPrice;
         }
 
+        uint256 decimals = IERC20Metadata(actualQuoteToken).decimals();
+
         // If not, get the conversion rate from the actualQuoteToken to quoteToken and then derive the spot price
-        return
-            rawPrice * getPriceInQuote(actualQuoteToken, quoteToken) / 10 ** IERC20Metadata(actualQuoteToken).decimals();
+        return rawPrice * getPriceInQuote(actualQuoteToken, quoteToken) / 10 ** decimals;
     }
 
     ///@inheritdoc IRootPriceOracle

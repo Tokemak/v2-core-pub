@@ -52,15 +52,15 @@ contract PermitTests is Test {
         _systemRegistry.addRewardToken(address(_asset));
         vm.label(address(_asset), "asset");
 
-        address template = address(new LMPVault(_systemRegistry, address(_asset)));
+        address template = address(new LMPVault(_systemRegistry, address(_asset), false));
 
         _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, template, 800, 100);
         _accessController.grantRole(Roles.REGISTRY_UPDATER, address(_lmpVaultFactory));
 
         bytes memory initData = abi.encode("");
 
-        LMPStrategy stratTemplate = new LMPStrategy(_systemRegistry, stratHelpers.getDefaultConfig());
-        _lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
+        LMPStrategy strategyTemplate = new LMPStrategy(_systemRegistry, stratHelpers.getDefaultConfig());
+        _lmpVaultFactory.addStrategyTemplate(address(strategyTemplate));
 
         // Mock LMPVaultRouter call for LMPVault creation.
         vm.mockCall(
@@ -69,10 +69,8 @@ contract PermitTests is Test {
             abi.encode(makeAddr("LMP_VAULT_ROUTER"))
         );
 
-        uint256 limit = type(uint112).max;
-        _lmpVault = LMPVault(
-            _lmpVaultFactory.createVault(limit, limit, address(stratTemplate), "x", "y", keccak256("v1"), initData)
-        );
+        _lmpVault =
+            LMPVault(_lmpVaultFactory.createVault(address(strategyTemplate), "x", "y", keccak256("v1"), initData));
         vm.label(address(_lmpVault), "lmpVault");
     }
 

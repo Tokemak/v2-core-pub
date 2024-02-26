@@ -54,6 +54,7 @@ contract LMPVaultRouterTest is BaseTest {
 
         accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));
         accessController.grantRole(Roles.SET_WITHDRAWAL_QUEUE_ROLE, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
 
         // We use mock since this function is called not from owner and
         vm.mockCall(
@@ -68,18 +69,18 @@ contract LMPVaultRouterTest is BaseTest {
 
         // Set rewarder as rewarder set on LMP by factory.
         lmpRewarder = lmpVault.rewarder();
+
+        lmpVault.toggleAllowedUser(address(this));
+        lmpVault.toggleAllowedUser(vm.addr(1));
+        lmpVault.toggleAllowedUser(address(lmpVaultRouter));
     }
 
     function _setupVault(bytes memory salt) internal returns (LMPVault _lmpVault) {
-        uint256 limit = type(uint112).max;
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
-        _lmpVault = LMPVault(
-            lmpVaultFactory.createVault(
-                limit, limit, address(stratTemplate), "x", "y", keccak256(salt), lmpVaultInitData
-            )
-        );
+        _lmpVault =
+            LMPVault(lmpVaultFactory.createVault(address(stratTemplate), "x", "y", keccak256(salt), lmpVaultInitData));
         assert(systemRegistry.lmpVaultRegistry().isVault(address(_lmpVault)));
     }
 
@@ -214,6 +215,8 @@ contract LMPVaultRouterTest is BaseTest {
     function test_deposit_ETH() public {
         _changeVaultToWETH();
 
+        lmpVault.toggleAllowedUser(address(lmpVaultRouter));
+
         uint256 amount = depositAmount;
 
         vm.deal(address(this), amount);
@@ -242,6 +245,9 @@ contract LMPVaultRouterTest is BaseTest {
     }
 
     function test_mint() public {
+        //lmpVault.toggleAllowedUser(address(lmpVaultRouter));
+        //lmpVault.toggleAllowedUser(address(this));
+
         uint256 amount = depositAmount;
         // NOTE: allowance bumped up to make sure it's not what's triggering the revert (and explicitly amounts
         // returned)
@@ -261,6 +267,8 @@ contract LMPVaultRouterTest is BaseTest {
 
     function test_mint_ETH() public {
         _changeVaultToWETH();
+
+        lmpVault.toggleAllowedUser(address(lmpVaultRouter));
 
         uint256 amount = depositAmount;
 
@@ -333,6 +341,8 @@ contract LMPVaultRouterTest is BaseTest {
         uint256 amount = depositAmount;
         lmpVault2 = _setupVault("vault2");
 
+        lmpVault2.toggleAllowedUser(address(lmpVaultRouter));
+
         // do deposit to vault #1 first
         uint256 sharesReceived = _deposit(lmpVault, amount);
 
@@ -403,7 +413,9 @@ contract LMPVaultRouterTest is BaseTest {
 
         // Replace rewarder.
         address newRewarder = address(
-            new LMPVaultMainRewarder(systemRegistry, address(new MockERC20()), 1000, 1000, true, address(lmpVault))
+            new LMPVaultMainRewarder(
+                systemRegistry, address(new MockERC20("X", "X", 18)), 1000, 1000, true, address(lmpVault)
+            )
         );
         vm.mockCall(
             address(accessController),
@@ -536,8 +548,9 @@ contract LMPVaultRouterTest is BaseTest {
         vm.roll(block.number + 100);
 
         // Create new rewarder, set as rewarder on LMP vault.
-        LMPVaultMainRewarder newRewarder =
-            new LMPVaultMainRewarder(systemRegistry, address(new MockERC20()), 100, 100, false, address(lmpVault));
+        LMPVaultMainRewarder newRewarder = new LMPVaultMainRewarder(
+            systemRegistry, address(new MockERC20("X", "X", 18)), 100, 100, false, address(lmpVault)
+        );
         vm.mockCall(
             address(accessController),
             abi.encodeWithSignature("hasRole(bytes32,address)", Roles.LMP_REWARD_MANAGER_ROLE, address(this)),
@@ -736,7 +749,7 @@ contract LMPVaultRouterTest is BaseTest {
         //
         // Update factory to support WETH instead of regular mock (one time just for this test)
         //
-        lmpVaultTemplate = address(new LMPVault(systemRegistry, address(weth)));
+        lmpVaultTemplate = address(new LMPVault(systemRegistry, address(weth), false));
         lmpVaultFactory = new LMPVaultFactory(systemRegistry, lmpVaultTemplate, 800, 100);
         // NOTE: deployer grants factory permission to update the registry
         accessController.grantRole(Roles.REGISTRY_UPDATER, address(lmpVaultFactory));
@@ -744,12 +757,8 @@ contract LMPVaultRouterTest is BaseTest {
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
-        uint256 limit = type(uint112).max;
-        lmpVault = LMPVault(
-            lmpVaultFactory.createVault(
-                limit, limit, address(stratTemplate), "x", "y", keccak256("weth"), lmpVaultInitData
-            )
-        );
+        lmpVault =
+            LMPVault(lmpVaultFactory.createVault(address(stratTemplate), "x", "y", keccak256("weth"), lmpVaultInitData));
         assert(systemRegistry.lmpVaultRegistry().isVault(address(lmpVault)));
     }
 }

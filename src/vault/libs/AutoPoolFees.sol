@@ -17,27 +17,28 @@ library AutoPoolFees {
     /// @notice 100% == 10000
     uint256 public constant FEE_DIVISOR = 10_000;
 
-    /// @notice Time between management fee takes.  ~ half year.
-    uint256 public constant MANAGEMENT_FEE_TAKE_TIMEFRAME = 182 days;
+    /// @notice Time between periodic fee takes.  ~ half year.
+    uint256 public constant PERIODIC_FEE_TAKE_TIMEFRAME = 182 days;
 
-    /// @notice Max management fee, 10%.  100% = 10_000.
-    uint256 public constant MAX_MANAGEMENT_FEE_BPS = 1000;
+    /// @notice Max periodic fee, 10%.  100% = 10_000.
+    uint256 public constant MAX_PERIODIC_FEE_BPS = 1000;
 
-    /// @notice Time before a management fee is taken that the fee % can be changed.
-    uint256 public constant MANAGEMENT_FEE_CHANGE_CUTOFF = 45 days;
+    /// @notice Time before a periodic fee is taken that the fee % can be changed.
+    uint256 public constant PERIODIC_FEE_CHANGE_CUTOFF = 45 days;
 
     event FeeCollected(uint256 fees, address feeSink, uint256 mintedShares, uint256 profit, uint256 totalAssets);
-    event ManagementFeeCollected(uint256 fees, address feeSink, uint256 mintedShares);
+    event PeriodicFeeCollected(uint256 fees, address feeSink, uint256 mintedShares);
     event Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares);
-    event ManagementFeeSet(uint256 newFee);
-    event PendingManagementFeeSet(uint256 pendingManagementFeeBps);
-    event ManagementFeeSinkSet(address newManagementFeeSink);
-    event NextManagementFeeTakeSet(uint256 nextManagementFeeTake);
+    event PeriodicFeeSet(uint256 newFee);
+    event PendingPeriodicFeeSet(uint256 pendingPeriodicFeeBps);
+    event PeriodicFeeSinkSet(address newPeriodicFeeSink);
+    event NextPeriodicFeeTakeSet(uint256 nextPeriodicFeeTake);
     event RebalanceFeeHighWaterMarkEnabledSet(bool enabled);
     event NewNavShareFeeMark(uint256 navPerShare, uint256 timestamp);
     event NewTotalAssetsHighWatermark(uint256 assets, uint256 timestamp);
-    event PerformanceFeeSet(uint256 newFee);
+    event StreamingFeeSet(uint256 newFee);
     event FeeSinkSet(address newFeeSink);
+    event NewProfitUnlockTime(uint48 timeSeconds);
 
     error InvalidFee(uint256 newFee);
     error AlreadySet();
@@ -54,6 +55,14 @@ library AutoPoolFees {
         } else if (fullTime != 0) {
             shares = tokenData.balances[address(this)];
         }
+    }
+
+    function initializeFeeSettings(ILMPVault.AutoPoolFeeSettings storage settings) external {
+        uint256 nextFeeTimeframe = uint48(block.timestamp + PERIODIC_FEE_TAKE_TIMEFRAME);
+        settings.nextPeriodicFeeTake = nextFeeTimeframe;
+        settings.navPerShareLastFeeMark = FEE_DIVISOR;
+        settings.navPerShareLastFeeMarkTimestamp = block.timestamp;
+        emit NextPeriodicFeeTakeSet(nextFeeTimeframe);
     }
 
     function burnUnlockedShares(
@@ -150,31 +159,34 @@ library AutoPoolFees {
         }
 
         // slither-disable-start timestamp
-        // If current timestamp is greater than nextManagementFeeTake, operations need to happen for management fee.
-        if (block.timestamp > settings.nextManagementFeeTake) {
-            address managementSink = settings.managementFeeSink;
+        // If current timestamp is greater than nextPeriodicFeeTake, operations need to happen for periodic fee.
 
-            // If there is a management fee and fee sink set, take the fee.
-            if (settings.managementFeeBps > 0 && managementSink != address(0)) {
-                uint256 managementShares =
-                    _collectManagementFees(managementSink, settings.managementFeeBps, currentTotalSupply, totalAssets);
-                currentTotalSupply += managementShares;
-                tokenData.mint(managementSink, managementShares);
+        if (block.timestamp > settings.nextPeriodicFeeTake) {
+            address periodicSink = settings.periodicFeeSink;
+
+            // If there is a periodic fee and fee sink set, take the fee.
+            if (settings.periodicFeeBps > 0 && periodicSink != address(0)) {
+                uint256 periodicShares =
+                    _collectPeriodicFees(periodicSink, settings.periodicFeeBps, currentTotalSupply, totalAssets);
+
+                currentTotalSupply += periodicShares;
+                tokenData.mint(periodicSink, periodicShares);
             }
 
-            // If there is a pending management fee set, replace management fee with pending after fees already taken.
-            uint256 pendingMgmtFeeBps = settings.pendingManagementFeeBps;
+            // If there is a pending periodic fee set, replace periodic fee with pending after fees already taken.
+            uint256 pendingMgmtFeeBps = settings.pendingPeriodicFeeBps;
+
             if (pendingMgmtFeeBps > 0) {
-                emit ManagementFeeSet(pendingMgmtFeeBps);
-                emit PendingManagementFeeSet(0);
+                emit PeriodicFeeSet(pendingMgmtFeeBps);
+                emit PendingPeriodicFeeSet(0);
 
-                settings.managementFeeBps = pendingMgmtFeeBps;
-                settings.pendingManagementFeeBps = 0;
+                settings.periodicFeeBps = pendingMgmtFeeBps;
+                settings.pendingPeriodicFeeBps = 0;
             }
 
-            // Needs to be updated any time timestamp > `nextTakeManagementFee` to keep up to date.
-            settings.nextManagementFeeTake += uint48(MANAGEMENT_FEE_TAKE_TIMEFRAME);
-            emit NextManagementFeeTakeSet(settings.nextManagementFeeTake);
+            // Needs to be updated any time timestamp > `nextTakePeriodicFee` to keep up to date.
+            settings.nextPeriodicFeeTake += uint48(PERIODIC_FEE_TAKE_TIMEFRAME);
+            emit NextPeriodicFeeTakeSet(settings.nextPeriodicFeeTake);
         }
 
         // slither-disable-end timestamp
@@ -188,13 +200,13 @@ library AutoPoolFees {
         if (currentNavPerShare > effectiveNavPerShareLastFeeMark) {
             // Even if we aren't going to take the fee (haven't set a sink)
             // We still want to calculate so we can emit for off-chain analysis
-            uint256 performanceFeeBps = settings.performanceFeeBps;
+            uint256 streamingFeeBps = settings.streamingFeeBps;
             uint256 profit = (currentNavPerShare - effectiveNavPerShareLastFeeMark) * currentTotalSupply;
-            uint256 fees = profit.mulDiv(performanceFeeBps, (FEE_DIVISOR ** 2), Math.Rounding.Up);
+            uint256 fees = profit.mulDiv(streamingFeeBps, (FEE_DIVISOR ** 2), Math.Rounding.Up);
 
             if (fees > 0) {
-                currentTotalSupply = _mintPerformanceFee(
-                    tokenData, fees, performanceFeeBps, profit, currentTotalSupply, totalAssets, settings.feeSink
+                currentTotalSupply = _mintStreamingFee(
+                    tokenData, fees, streamingFeeBps, profit, currentTotalSupply, totalAssets, settings.feeSink
                 );
                 currentNavPerShare = (totalAssets * FEE_DIVISOR) / currentTotalSupply;
             }
@@ -222,10 +234,10 @@ library AutoPoolFees {
         return currentTotalSupply;
     }
 
-    function _mintPerformanceFee(
+    function _mintStreamingFee(
         AutoPoolToken.TokenData storage tokenData,
         uint256 fees,
-        uint256 performanceFeeBps,
+        uint256 streamingFeeBps,
         uint256 profit,
         uint256 currentTotalSupply,
         uint256 totalAssets,
@@ -239,45 +251,70 @@ library AutoPoolFees {
         // Note: We use Lido's formula: from https://docs.lido.fi/guides/lido-tokens-integration-guide/#fees
         // suggested by: https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/486-H/624-best.md
         // but we scale down `profit` by FEE_DIVISOR
-        uint256 performanceFeeShares = Math.mulDiv(
-            performanceFeeBps * profit / FEE_DIVISOR,
+        uint256 streamingFeeShares = Math.mulDiv(
+            streamingFeeBps * profit / FEE_DIVISOR,
             currentTotalSupply,
-            (totalAssets * FEE_DIVISOR) - (performanceFeeBps * profit / FEE_DIVISOR),
+            (totalAssets * FEE_DIVISOR) - (streamingFeeBps * profit / FEE_DIVISOR),
             Math.Rounding.Up
         );
-        tokenData.mint(sink, performanceFeeShares);
-        currentTotalSupply += performanceFeeShares;
+        tokenData.mint(sink, streamingFeeShares);
+        currentTotalSupply += streamingFeeShares;
 
-        emit Deposit(address(this), sink, 0, performanceFeeShares);
-        emit FeeCollected(fees, sink, performanceFeeShares, profit, totalAssets);
+        emit Deposit(address(this), sink, 0, streamingFeeShares);
+        emit FeeCollected(fees, sink, streamingFeeShares, profit, totalAssets);
 
         return currentTotalSupply;
     }
 
-    /// @dev Collects management fees.
-    function _collectManagementFees(
-        address managementSink,
-        uint256 managementFeeBps,
+    /// @dev Collects periodic fees.
+    function _collectPeriodicFees(
+        address periodicSink,
+        uint256 periodicFeeBps,
         uint256 currentTotalSupply,
         uint256 assets
     ) private returns (uint256 newShares) {
-        // Management fee * assets used multiple places below, gas savings when calc here.
-        uint256 managementFeeMultAssets = managementFeeBps * assets;
+        // Periodic fee * assets used multiple places below, gas savings when calc here.
+        uint256 periodicFeeMultAssets = periodicFeeBps * assets;
 
-        // We calculate the shares using the same formula as performance fees, without scaling down
-        uint256 shares = Math.mulDiv(
-            managementFeeMultAssets,
+        // We calculate the shares using the same formula as streaming fees, without scaling down
+        newShares = Math.mulDiv(
+            periodicFeeMultAssets,
             currentTotalSupply,
-            (assets * FEE_DIVISOR) - (managementFeeMultAssets),
+            (assets * FEE_DIVISOR) - (periodicFeeMultAssets),
             Math.Rounding.Up
         );
 
         // Fee in assets that we are taking.
-        uint256 fees = managementFeeMultAssets.ceilDiv(FEE_DIVISOR);
-        emit Deposit(address(this), managementSink, 0, shares);
-        emit ManagementFeeCollected(fees, managementSink, shares);
+        uint256 fees = periodicFeeMultAssets.ceilDiv(FEE_DIVISOR);
+        emit Deposit(address(this), periodicSink, 0, newShares);
+        emit PeriodicFeeCollected(fees, periodicSink, newShares);
 
         return newShares;
+    }
+
+    /// @dev If set to 0, existing shares will unlock immediately and increase nav/share. This is intentional
+    function setProfitUnlockPeriod(
+        ILMPVault.ProfitUnlockSettings storage settings,
+        AutoPoolToken.TokenData storage tokenData,
+        uint48 newUnlockPeriodInSeconds
+    ) external {
+        settings.unlockPeriodInSeconds = newUnlockPeriodInSeconds;
+
+        // If we are turning off the unlock, setting it to 0, then
+        // unlock all existing shares
+        if (newUnlockPeriodInSeconds == 0) {
+            uint256 currentShares = tokenData.balances[address(this)];
+            if (currentShares > 0) {
+                settings.lastProfitUnlockTime = uint48(block.timestamp);
+                tokenData.burn(address(this), currentShares);
+            }
+
+            // Reset vars so old values aren't used during a subsequent lockup
+            settings.fullProfitUnlockTime = 0;
+            settings.profitUnlockRate = 0;
+        }
+
+        emit NewProfitUnlockTime(newUnlockPeriodInSeconds);
     }
 
     function calculateProfitLocking(
@@ -403,12 +440,12 @@ library AutoPoolFees {
     /// @notice Set the fee that will be taken when profit is realized
     /// @dev Resets the high water to current value
     /// @param fee Percent. 100% == 10000
-    function setPerformanceFeeBps(ILMPVault.AutoPoolFeeSettings storage feeSettings, uint256 fee) external {
+    function setStreamingFeeBps(ILMPVault.AutoPoolFeeSettings storage feeSettings, uint256 fee) external {
         if (fee >= FEE_DIVISOR) {
             revert InvalidFee(fee);
         }
 
-        feeSettings.performanceFeeBps = fee;
+        feeSettings.streamingFeeBps = fee;
 
         ILMPVault vault = ILMPVault(address(this));
 
@@ -425,31 +462,31 @@ library AutoPoolFees {
             feeSettings.navPerShareLastFeeMark = FEE_DIVISOR;
         }
 
-        emit PerformanceFeeSet(fee);
+        emit StreamingFeeSet(fee);
     }
 
-    /// @notice Set the management fee taken.
-    /// @dev Depending on time until next fee take, may update managementFeeBps directly or queue fee.
-    /// @param fee Fee to update management fee to.
-    function setManagementFeeBps(ILMPVault.AutoPoolFeeSettings storage feeSettings, uint256 fee) external {
-        if (fee > MAX_MANAGEMENT_FEE_BPS) {
+    /// @notice Set the periodic fee taken.
+    /// @dev Depending on time until next fee take, may update periodicFeeBps directly or queue fee.
+    /// @param fee Fee to update periodic fee to.
+    function setPeriodicFeeBps(ILMPVault.AutoPoolFeeSettings storage feeSettings, uint256 fee) external {
+        if (fee > MAX_PERIODIC_FEE_BPS) {
             revert InvalidFee(fee);
         }
 
         /**
          * If the current timestamp is greater than the next fee take minus 45 days, we are withing the timeframe
-         *      that we do not want to be able to set a new management fee, so we set `pendingManagementFeeBps` instead.
-         *      This will be set as `managementFeeBps` when management fees are taken.
+         *      that we do not want to be able to set a new periodic fee, so we set `pendingPeriodicFeeBps` instead.
+         *      This will be set as `periodicFeeBps` when periodic fees are taken.
          *
          * Fee checked to fit into uint16 above, able to be wrapped without safe cast here.
          */
         // slither-disable-next-line timestamp
-        if (block.timestamp > feeSettings.nextManagementFeeTake - MANAGEMENT_FEE_CHANGE_CUTOFF) {
-            emit PendingManagementFeeSet(fee);
-            feeSettings.pendingManagementFeeBps = uint16(fee);
+        if (block.timestamp > feeSettings.nextPeriodicFeeTake - PERIODIC_FEE_CHANGE_CUTOFF) {
+            emit PendingPeriodicFeeSet(fee);
+            feeSettings.pendingPeriodicFeeBps = uint16(fee);
         } else {
-            emit ManagementFeeSet(fee);
-            feeSettings.managementFeeBps = uint16(fee);
+            emit PeriodicFeeSet(fee);
+            feeSettings.periodicFeeBps = uint16(fee);
         }
     }
 
@@ -463,16 +500,16 @@ library AutoPoolFees {
         feeSettings.feeSink = newFeeSink;
     }
 
-    /// @notice Sets the address that will receive management fees.
+    /// @notice Sets the address that will receive periodic fees.
     /// @dev Zero address allowable.  Disables fees.
-    /// @param newManagementFeeSink New management fee address.
-    function setManagementFeeSink(
+    /// @param newPeriodicFeeSink New periodic fee address.
+    function setPeriodicFeeSink(
         ILMPVault.AutoPoolFeeSettings storage feeSettings,
-        address newManagementFeeSink
+        address newPeriodicFeeSink
     ) external {
-        emit ManagementFeeSinkSet(newManagementFeeSink);
+        emit PeriodicFeeSinkSet(newPeriodicFeeSink);
 
         // slither-disable-next-line missing-zero-check
-        feeSettings.managementFeeSink = newManagementFeeSink;
+        feeSettings.periodicFeeSink = newPeriodicFeeSink;
     }
 }

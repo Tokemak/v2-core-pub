@@ -48,10 +48,8 @@ contract LensTest is BaseTest {
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
-        uint256 limit = type(uint112).max;
-        LMPVault lmpVault = LMPVault(
-            lmpVaultFactory.createVault(limit, limit, address(stratTemplate), "x", "y", keccak256("v8"), initData)
-        );
+        LMPVault lmpVault =
+            LMPVault(lmpVaultFactory.createVault(address(stratTemplate), "x", "y", keccak256("v8"), initData));
 
         accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));
         lmpVault.addDestinations(destinations);

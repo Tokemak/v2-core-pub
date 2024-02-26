@@ -2,6 +2,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity >=0.8.7;
 
+// solhint-disable func-name-mixedcase
+
 import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
 import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
@@ -152,6 +154,10 @@ contract CurveResolverMainnetTests is Test {
         et[0] = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
         et[1] = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC; //frax/usdc bp
         assertPool(0xBEc570d92AFB7fFc553bdD9d4B4638121000b10D, et, 2, 0x7F17A6C77C3938D235b014818092eb6305BdA110, f);
+    }
+
+    function test_getReservesInfo_ReturnsData() public view {
+        resolver.getReservesInfo(0x21E27a5E5513D6e65C4f830167390997aA84843a);
     }
 
     function assertPool(

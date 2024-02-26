@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-// Copyright (c) 2023 Tokemak Foundation. All rights reserved.
+// Copyright (c) 2023 Tokemak Ops Ltd. All rights reserved.
 pragma solidity 0.8.17;
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -25,6 +25,7 @@ library Constants {
         address cbEth;
         address rEth;
         address sfrxEth;
+        address aura;
     }
 
     struct System {
@@ -35,11 +36,29 @@ library Constants {
         address swapRouter;
         address customSetOracle;
         address lens;
+        address systemSecurity;
+        address statsCalcRegistry;
+        address statsCalcFactory;
+        address curveResolver;
+        address chainlinkOracle;
+        address rootPriceOracle;
+        SystemOracles subOracles;
+    }
+
+    struct SystemOracles {
+        address chainlink;
+        address ethPegged;
+        address curveV1;
+        address curveV2;
+        address balancerMeta;
+        address balancerComp;
+        address wstEth;
     }
 
     struct External {
         address curveMetaRegistry;
         address convexBooster;
+        address auraBooster;
         address zeroExProxy;
         address balancerComposableStableFactory;
         address balancerMetaStableFactor;
@@ -53,15 +72,20 @@ library Constants {
         address balMetaWethWsteth;
     }
 
+    struct StatCalculators {
+        address stEth;
+    }
+
     struct Values {
         Tokens tokens;
         System sys;
         External ext;
         Pools pools;
+        StatCalculators statCalcs;
         string privateKeyEnvVar;
     }
 
-    function get(Systems system) external view returns (Values memory) {
+    function get(Systems system) internal view returns (Values memory) {
         if (system == Systems.LST_GEN1_GOERLI) {
             return getLstGen1Goerli();
         } else if (system == Systems.LST_GEN1_MAINNET) {
@@ -85,7 +109,8 @@ library Constants {
                 stEth: address(1),
                 cbEth: address(1),
                 rEth: 0xf7bb4a608F8DFDc1a31A72bFa089c7f57545CeA9,
-                sfrxEth: 0x306C8Ca71f691f7Bb23c14B8fEA13320a35B70A6
+                sfrxEth: 0x306C8Ca71f691f7Bb23c14B8fEA13320a35B70A6,
+                aura: address(1)
             }),
             sys: System({
                 systemRegistry: address(registry),
@@ -94,11 +119,27 @@ library Constants {
                 destinationVaultFactory: address(registry.destinationVaultRegistry().factory()),
                 swapRouter: address(registry.swapRouter()),
                 customSetOracle: 0x8A1de606ceF7Df46E577e9e1C3c6B45712Ce65d1,
-                lens: 0xbE87fb643fF79B427C42baCf5D49DC743Cc8bF3a
+                lens: 0xbE87fb643fF79B427C42baCf5D49DC743Cc8bF3a,
+                systemSecurity: address(registry.systemSecurity()),
+                statsCalcRegistry: address(0),
+                statsCalcFactory: address(0),
+                curveResolver: address(0),
+                chainlinkOracle: address(0),
+                rootPriceOracle: address(0),
+                subOracles: SystemOracles({
+                    chainlink: address(0),
+                    ethPegged: address(0),
+                    curveV1: address(0),
+                    curveV2: address(0),
+                    balancerMeta: address(0),
+                    balancerComp: address(0),
+                    wstEth: address(0)
+                })
             }),
             ext: External({
                 curveMetaRegistry: address(0),
                 convexBooster: 0xF403C135812408BFbE8713b5A23a04b3D48AAE31,
+                auraBooster: address(0),
                 zeroExProxy: 0xF91bB752490473B8342a3E964E855b9f9a2A668e,
                 balancerComposableStableFactory: 0x4bdCc2fb18AEb9e2d281b0278D946445070EAda7,
                 balancerMetaStableFactor: 0xA55F73E2281c60206ba43A3590dB07B8955832Be,
@@ -110,6 +151,7 @@ library Constants {
                 balCompSfrxethWstethRethV1: 0x9d6d991f9dd88a93F31C1a61BccdbbC9abCF5657,
                 balMetaWethWsteth: 0x26B8Cf12405861e68230154674cE49253C3ee19b
             }),
+            statCalcs: StatCalculators({ stEth: address(0) }),
             privateKeyEnvVar: "GOERLI_PRIVATE_KEY"
         });
     }
@@ -126,19 +168,36 @@ library Constants {
                 stEth: 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84,
                 cbEth: 0xBe9895146f7AF43049ca1c1AE358B0541Ea49704,
                 rEth: 0xae78736Cd615f374D3085123A210448E74Fc6393,
-                sfrxEth: 0xac3E018457B222d93114458476f3E3416Abbe38F
+                sfrxEth: 0xac3E018457B222d93114458476f3E3416Abbe38F,
+                aura: 0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF
             }),
             sys: System({
-                systemRegistry: address(0),
-                accessController: address(0),
+                systemRegistry: 0x0406d2D96871f798fcf54d5969F69F55F803eEA4,
+                accessController: 0x7f3B9EEaF70bD5186E7e226b7f683b67eb3eD5Fd,
                 destinationTemplateRegistry: address(0),
                 destinationVaultFactory: address(0),
                 swapRouter: address(0),
                 customSetOracle: address(0),
-                lens: address(0)
+                lens: address(0),
+                systemSecurity: 0x5e72DE713a4782563E4E6bA39D28699F0E053d66,
+                statsCalcRegistry: 0x257b2A2179Cf0586da51d9856463fe5dF9E6e5F9,
+                statsCalcFactory: 0x6AF0984Ca9E707a4dc3F22266eCF37515E47ec3c,
+                curveResolver: 0x118871DA329cFC4b45219BE37dFc2a5C27e469DF,
+                chainlinkOracle: 0x70975337525D8D4Cae2deb3Ec896e7f4b9fAaB72,
+                rootPriceOracle: 0xcAC23b64ab47391646553e94399f4c35BAEa1a10,
+                subOracles: SystemOracles({
+                    chainlink: 0x70975337525D8D4Cae2deb3Ec896e7f4b9fAaB72,
+                    ethPegged: 0x58374B8fF79f4C40Fb66e7ca8B13A08992125821,
+                    curveV1: 0xc3fD8f8C544adc02aFF22C31a9aBAd0c3f79a672,
+                    curveV2: 0x075c80cd9E8455F94b7Ea6EDB91485F2D974FB9B,
+                    balancerMeta: 0xFC9c5417299851829FA512bDB7e0d18aC3b35184,
+                    balancerComp: 0x2BB64D96B0DCfaB7826D11707AAE3F55409d8E19,
+                    wstEth: address(0xA93F316ef40848AeaFCd23485b6044E7027b5890)
+                })
             }),
             ext: External({
                 convexBooster: 0xF403C135812408BFbE8713b5A23a04b3D48AAE31,
+                auraBooster: 0xA57b8d98dAE62B26Ec3bcC4a365338157060B234,
                 curveMetaRegistry: 0xF98B45FA17DE75FB1aD0e7aFD971b0ca00e379fC,
                 zeroExProxy: 0xDef1C0ded9bec7F1a1670819833240f027b25EfF,
                 balancerComposableStableFactory: address(0),
@@ -151,6 +210,7 @@ library Constants {
                 balCompSfrxethWstethRethV1: 0x42ED016F826165C2e5976fe5bC3df540C5aD0Af7,
                 balMetaWethWsteth: 0x32296969Ef14EB0c6d29669C550D4a0449130230
             }),
+            statCalcs: StatCalculators({ stEth: address(0x0C2248F38163Aa8C4Be5143B67B2B3a4DA50e3B7) }),
             privateKeyEnvVar: "MAINNET_PRIVATE_KEY"
         });
     }

@@ -10,7 +10,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
 import { Test } from "forge-std/Test.sol";
 
-// solhint-disable func-name-mixedcase
+// solhint-disable func-name-mixedcase,max-line-length
 
 contract LMPVaultMainRewarderTest is Test {
     address public systemRegistry;
@@ -29,8 +29,8 @@ contract LMPVaultMainRewarderTest is Test {
     function setUp() public virtual {
         systemRegistry = makeAddr("SYSTEM_REGISTRY");
         accessController = makeAddr("ACCESS_CONTROLLER");
-        rewardToken = new MockERC20();
-        stakingToken = new MockERC20();
+        rewardToken = new MockERC20("X", "X", 18);
+        stakingToken = new MockERC20("X", "X", 18);
         staker = makeAddr("STAKER");
         router = makeAddr("ROUTER");
 
@@ -57,8 +57,10 @@ contract WithdrawLMPRewarder is LMPVaultMainRewarderTest {
         super.setUp();
 
         // Mock GPToke and Toke calls.
-        vm.mockCall(systemRegistry, abi.encodeWithSignature("accToke()"), abi.encode(makeAddr("ACC_TOKE")));
-        vm.mockCall(systemRegistry, abi.encodeWithSignature("toke()"), abi.encode(makeAddr("TOKE")));
+        vm.mockCall(
+            systemRegistry, abi.encodeWithSelector(ISystemRegistry.gpToke.selector), abi.encode(makeAddr("ACC_TOKE"))
+        );
+        vm.mockCall(systemRegistry, abi.encodeWithSelector(ISystemRegistry.toke.selector), abi.encode(makeAddr("TOKE")));
 
         // Set up staker with some tokens.
         stakingToken.mint(address(this), stakeAmount);
@@ -145,10 +147,10 @@ contract StakeLMPRewarder is LMPVaultMainRewarderTest {
         stakingToken.mint(staker, stakeAmount);
 
         uint256 userRewarderBalanceBefore = rewarder.balanceOf(staker);
-        uint256 userStakingTokenBalancBefore = stakingToken.balanceOf(staker);
+        uint256 userStakingTokenBalanceBefore = stakingToken.balanceOf(staker);
 
         assertEq(userRewarderBalanceBefore, 0);
-        assertEq(userStakingTokenBalancBefore, stakeAmount);
+        assertEq(userStakingTokenBalanceBefore, stakeAmount);
 
         vm.startPrank(staker);
         stakingToken.approve(address(rewarder), stakeAmount);
@@ -180,8 +182,12 @@ contract GetRewardLMPRewarder is LMPVaultMainRewarderTest {
 
         // Mocks calls.
         vm.mockCall(accessController, abi.encodeWithSignature("hasRole(bytes32,address)"), abi.encode(true));
-        vm.mockCall(systemRegistry, abi.encodeWithSignature("accToke()"), abi.encode(makeAddr("GP_TOKE")));
-        vm.mockCall(systemRegistry, abi.encodeWithSignature("toke()"), abi.encode(makeAddr("toke()")));
+        vm.mockCall(
+            systemRegistry, abi.encodeWithSelector(ISystemRegistry.gpToke.selector), abi.encode(makeAddr("GP_TOKE"))
+        );
+        vm.mockCall(
+            systemRegistry, abi.encodeWithSelector(ISystemRegistry.toke.selector), abi.encode(makeAddr("toke()"))
+        );
 
         // Queue rewards.
         rewarder.queueNewRewards(stakeAmount);

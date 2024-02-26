@@ -412,7 +412,7 @@ contract GetSpotPriceInEth is RootPriceOracleTests {
         mockSystemComponent(_poolOracle, address(_systemRegistry));
         _rootPriceOracle.registerPoolMapping(pool, ISpotPriceOracle(_poolOracle));
 
-        address __actualToken = address(new MockERC20());
+        address __actualToken = address(new MockERC20("X", "X", 18));
 
         vm.mockCall(
             _poolOracle,
@@ -530,8 +530,7 @@ contract GetRangePricesLP is RootPriceOracleTests {
         );
 
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "reserves"));
-        (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) =
-            _rootPriceOracle.getRangePricesLP(_token, _pool, _actualToken);
+        _rootPriceOracle.getRangePricesLP(_token, _pool, _actualToken);
     }
 
     function test_getRangePricesLP_ReturnsZeroWhenZeroTotalSupply() public {
@@ -684,7 +683,6 @@ contract GetPriceInQuote is RootPriceOracleTests {
         _setGetPriceInEth(_token2, _token2Oracle, 0.00042001e18);
 
         // solhint-disable-next-line no-unused-vars
-        uint256 calculatedPrice = uint256(0.3571e24);
         uint256 safePrice = _rootPriceOracle.getPriceInQuote(_token2, _token1);
 
         // Roughly $1/$2.8 or 0.00042001 / 0.00116049

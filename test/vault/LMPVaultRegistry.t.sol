@@ -32,10 +32,7 @@ contract LMPVaultRegistryTest is BaseTest {
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
-        uint256 limit = type(uint112).max;
-        vault = LMPVault(
-            lmpVaultFactory.createVault(limit, limit, address(stratTemplate), "x", "y", keccak256("v8"), initData)
-        );
+        vault = LMPVault(lmpVaultFactory.createVault(address(stratTemplate), "x", "y", keccak256("v8"), initData));
     }
 
     function _contains(address[] memory arr, address value) internal pure returns (bool) {
@@ -71,10 +68,8 @@ contract AddVault is LMPVaultRegistryTest {
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
-        uint256 limit = type(uint112).max;
-        LMPVault anotherVault = LMPVault(
-            lmpVaultFactory.createVault(limit, limit, address(stratTemplate), "x", "y", keccak256("v9"), initData)
-        );
+        LMPVault anotherVault =
+            LMPVault(lmpVaultFactory.createVault(address(stratTemplate), "x", "y", keccak256("v9"), initData));
 
         vm.expectEmit(true, true, false, true);
         emit VaultAdded(anotherVault.asset(), address(anotherVault));

@@ -3,9 +3,8 @@
 
 pragma solidity 0.8.17;
 
-// solhint-disable func-name-mixedcase
-// solhint-disable var-name-mixedcase
-// solhint-disable max-states-count
+// solhint-disable func-name-mixedcase,max-states-count,var-name-mixedcase,max-line-length
+
 import { Test } from "forge-std/Test.sol";
 import {
     BAL_VAULT,

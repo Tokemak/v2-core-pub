@@ -40,6 +40,20 @@ Additional setup info:
     and a release will be created in GitHub with the change log.
 -   Slither will run automatically in CI. To run the `scan:slither` command locally you'll need to ensure you have Slither installed: https://github.com/crytic/slither#how-to-install. If slither reports any issue, your PR will not pass.
 
+## Running Tests
+
+Basic unit tests, integrations tests, and Foundry based fuzz tests with a low default run count can be execute via:
+
+```
+forge test
+```
+
+ERC4626 prop fuzz tests from a16z can be executed against the AutoPool with:
+
+```
+forge test --match-path test/fuzz/vault/AutoPool.t.sol --fuzz-runs 10000
+```
+
 ## Glossary
 
 Some common terms that are used in our documentation:

@@ -181,16 +181,15 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
 
         // `getPriceInQuote` works for both eth pegged and non eth pegged assets.
         uint256 basePrice = systemRegistry.rootPriceOracle().getPriceInQuote(base, quote);
-        uint256 ethInQuote =
-            systemRegistry.rootPriceOracle().getPriceInQuote(LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER, quote);
+        uint256 wethInQuote = systemRegistry.rootPriceOracle().getPriceInQuote(WETH, quote);
 
         uint256 quoteDecimals = IERC20Metadata(quote).decimals();
         if (quoteDecimals < 18) {
             basePrice = basePrice * 10 ** (18 - quoteDecimals);
-            ethInQuote = ethInQuote * 10 ** (18 - quoteDecimals);
+            wethInQuote = wethInQuote * 10 ** (18 - quoteDecimals);
         }
 
-        return (2 * cryptoPool.get_virtual_price() * _sqrt(basePrice)) / ethInQuote;
+        return (2 * cryptoPool.get_virtual_price() * _sqrt(basePrice)) / wethInQuote;
     }
 
     // solhint-disable max-line-length

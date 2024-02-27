@@ -2,6 +2,9 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
+import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
+
 /// @notice Queries the system to get the Vaults data in convenient representable way
 interface ILens {
     struct LMPVault {
@@ -27,6 +30,14 @@ interface ILens {
         string symbol;
     }
 
+    struct DestinationStats {
+        uint256 lastSnapshotTimestamp;
+        uint256 feeApr;
+        uint256[] reservesInEth;
+        ILSTStats.LSTStatsData[] lstStatsData;
+        IDexLSTStats.StakingIncentiveStats stakingIncentiveStats;
+    }
+
     /**
      * @notice Gets LMPVaults
      * @return lmpVaults an array of `LMPVault` data
@@ -46,10 +57,19 @@ interface ILens {
     /**
      * @notice Gets UnderlyingTokens and corresponding DestinationVault addresses
      * @return destinationVaults an array of addresses for corresponding tokens
-     * @return tokens a matrix of of ERC-20s wrapped to `UnderlyingToken`
+     * @return tokens a matrix of ERC-20s wrapped to `UnderlyingToken`
      */
     function getVaultDestinationTokens()
         external
         view
         returns (address[] memory destinationVaults, ILens.UnderlyingToken[][] memory tokens);
+
+    /**
+     * @notice Gets a combination current stats data and corresponding DestinationVault addresses
+     * @return destinationVaults an array of addresses for corresponding tokens
+     * @return stats an array containing `LSTStatsData`, `StakingIncentiveStats`, and other data
+     */
+    function getVaultDestinationStats()
+        external
+        returns (address[] memory destinationVaults, ILens.DestinationStats[] memory stats);
 }

@@ -12,6 +12,8 @@ import { LMPVault } from "src/vault/LMPVault.sol";
 import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
 import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
+import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
+import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 
 contract LensTest is BaseTest {
     Lens private lens;
@@ -63,15 +65,44 @@ contract LensTest is BaseTest {
         assertEq(lmpVaults[0].name, "y Pool Token");
         assertEq(lmpVaults[0].symbol, "lmpx");
 
+        // Destination Vaults
+
         (address[] memory lmpVaults2, ILens.DestinationVault[][] memory destinations) = lens.getVaultDestinations();
         assertEq(lmpVaults[0].vaultAddress, lmpVaults2[0]);
         assertEq(lmpVaults[0].symbol, "lmpx");
         assertFalse(destinations[0][0].vaultAddress == address(0));
         assertEq(destinations[0][0].exchangeName, "test");
 
+        // Destination Tokens
+
         (address[] memory destinations2, ILens.UnderlyingToken[][] memory tokens) = lens.getVaultDestinationTokens();
         assertEq(destinations2[0], destinations[0][0].vaultAddress);
         assertEq(tokens[0][0].symbol, "underlyer");
         assertFalse(tokens[0][0].tokenAddress == address(0));
+
+        // Destination Stats
+        // (Data defined in the mock TestDestinationVault.sol contract.)
+
+        (address[] memory destinations3, ILens.DestinationStats[] memory stats) = lens.getVaultDestinationStats();
+        assertEq(destinations3[0], destinations[0][0].vaultAddress);
+        assertEq(stats[0].lastSnapshotTimestamp, 1);
+        assertEq(stats[0].feeApr, 2);
+        assertEq(stats[0].reservesInEth[0], 3);
+
+        ILSTStats.LSTStatsData memory lstStatsData = stats[0].lstStatsData[0];
+        assertEq(lstStatsData.lastSnapshotTimestamp, 1);
+        assertEq(lstStatsData.baseApr, 2);
+        assertEq(lstStatsData.discount, 3);
+        assertEq(lstStatsData.discountHistory[0], 4);
+        assertEq(lstStatsData.discountTimestampByPercent[0], 5);
+        assertEq(lstStatsData.slashingCosts[0], 6);
+        assertEq(lstStatsData.slashingTimestamps[0], 7);
+
+        IDexLSTStats.StakingIncentiveStats memory incentiveStats = stats[0].stakingIncentiveStats;
+        assertEq(incentiveStats.safeTotalSupply, 1);
+        assertEq(incentiveStats.rewardTokens[0], address(2));
+        assertEq(incentiveStats.annualizedRewardAmounts[0], 3);
+        assertEq(incentiveStats.periodFinishForRewards[0], 4);
+        assertEq(incentiveStats.incentiveCredits, 5);
     }
 }

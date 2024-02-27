@@ -9,6 +9,7 @@ import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
 import { ILens } from "src/interfaces/lens/ILens.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 
 contract Lens is ILens, SystemComponent {
     constructor(ISystemRegistry _systemRegistry) SystemComponent(_systemRegistry) { }
@@ -66,6 +67,20 @@ contract Lens is ILens, SystemComponent {
         }
     }
 
+    /// @inheritdoc ILens
+    function getVaultDestinationStats()
+        external
+        override
+        returns (address[] memory destinationVaults, ILens.DestinationStats[] memory stats)
+    {
+        destinationVaults = systemRegistry.destinationVaultRegistry().listVaults();
+        stats = new ILens.DestinationStats[](destinationVaults.length);
+
+        for (uint256 i = 0; i < destinationVaults.length; ++i) {
+            stats[i] = _getStats(destinationVaults[i]);
+        }
+    }
+
     function _getDestinations(address lmpVault) private view returns (ILens.DestinationVault[] memory destinations) {
         address[] memory vaultDestinations = ILMPVault(lmpVault).getDestinations();
         destinations = new ILens.DestinationVault[](vaultDestinations.length);
@@ -83,5 +98,17 @@ contract Lens is ILens, SystemComponent {
             address tokenAddress = destinationTokens[i];
             tokens[i] = ILens.UnderlyingToken(tokenAddress, IERC20Metadata(tokenAddress).symbol());
         }
+    }
+
+    function _getStats(address destinationVault) private returns (ILens.DestinationStats memory stats) {
+        IDexLSTStats.DexLSTStatsData memory currentStats = IDestinationVault(destinationVault).getStats().current();
+
+        stats = ILens.DestinationStats(
+            currentStats.lastSnapshotTimestamp,
+            currentStats.feeApr,
+            currentStats.reservesInEth,
+            currentStats.lstStatsData,
+            currentStats.stakingIncentiveStats
+        );
     }
 }

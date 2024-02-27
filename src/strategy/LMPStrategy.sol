@@ -44,6 +44,9 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     /// @notice the number of days to pause rebalancing due to NAV decay
     uint16 public immutable pauseRebalancePeriodInDays;
 
+    /// @notice the number of seconds gap between consecutive rebalances
+    uint256 public immutable rebalanceTimeGapInSeconds;
+
     /// @notice destinations trading a premium above maxPremium will be blocked from new capital deployments
     int256 public immutable maxPremium; // 100% = 1e18
 
@@ -157,6 +160,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     /* ******************************** */
     error NotLMPVault();
     error StrategyPaused();
+    error RebalanceTimeGapNotMet();
     error RebalanceDestinationsMatch();
     error RebalanceDestinationUnderlyerMismatch(address destination, address trueUnderlyer, address providedUnderlyer);
     error LstStatsReservesMismatch();
@@ -216,6 +220,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
         LMPStrategyConfig.validate(conf);
 
+        rebalanceTimeGapInSeconds = conf.rebalanceTimeGapInSeconds;
         pauseRebalancePeriodInDays = conf.pauseRebalancePeriodInDays;
         maxPremium = conf.maxPremium;
         maxDiscount = conf.maxDiscount;
@@ -268,6 +273,12 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         // rebalances back to idle are allowed even when a strategy is paused
         // all other rebalances should be blocked in a paused state
         ensureNotPaused();
+
+        // Ensure enough time has passed between rebalances
+        if ((uint40(block.timestamp) - lastRebalanceTimestamp) < rebalanceTimeGapInSeconds) {
+            revert RebalanceTimeGapNotMet();
+        }
+
         // Verify spot & safe price for the individual tokens in the pool are not far apart.
         if (!verifyLSTPriceGap(params, lstPriceGapTolerance)) revert LSTPriceGapToleranceExceeded();
 

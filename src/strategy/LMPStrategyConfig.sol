@@ -16,6 +16,8 @@ library LMPStrategyConfig {
         ModelWeights modelWeights;
         // number of days to pause rebalancing if a long-term nav decay is detected
         uint16 pauseRebalancePeriodInDays;
+        // number of seconds before next rebalance can occur
+        uint256 rebalanceTimeGapInSeconds;
         // destinations trading a premium above maxPremium will be blocked from new capital deployments
         int256 maxPremium; // 100% = 1e18
         // destinations trading a discount above maxDiscount will be blocked from new capital deployments

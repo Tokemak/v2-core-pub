@@ -109,7 +109,7 @@ contract LMPStrategyTest is Test {
     /* verifyRebalance Tests                    */
     /* **************************************** */
     function test_verifyRebalance_success() public {
-        vm.warp(180 days);
+        vm.warp(181 days);
         defaultStrat._setLastRebalanceTimestamp(180 days);
 
         // ensure the vault has enough assets
@@ -142,6 +142,8 @@ contract LMPStrategyTest is Test {
     function test_verifyLSTPriceGap_Revert() public {
         // this test verifies that revert logic is followed based on tolerance
         // of safe-spot price for LST
+        vm.warp(10 hours);
+        defaultStrat._setLastRebalanceTimestamp(1 hours);
         setTokenSpotPrice(mockOutLSTToken, 99e16); // set spot OutToken price slightly lower than safe
         setTokenSpotPrice(mockInLSTToken, 101e16); // set spot OutToken price slightly higher than safe
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.LSTPriceGapToleranceExceeded.selector));
@@ -269,11 +271,23 @@ contract LMPStrategyTest is Test {
         defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
+    function test_verifyRebalance_RevertIf_TooSoon() public {
+        // rebalance gap is for 8 hours, so set block.timestamp - pauseTimestamp = 7 hours
+        vm.warp(8 hours);
+        defaultStrat._setLastRebalanceTimestamp(1 hours);
+
+        vm.expectRevert(abi.encodeWithSelector(LMPStrategy.RebalanceTimeGapNotMet.selector));
+        defaultStrat.verifyRebalance(defaultParams, destOut);
+    }
+
     function test_verifyRebalance_RevertIf_maxSlippageExceeded() public {
         // max slippage on a normal swap is 1%
         // token prices are set 1:1 with eth, so to get 1% slippage adjust the in/out values
         defaultParams.amountIn = 989e17; // 98.9
         defaultParams.amountOut = 100e18; // 100
+
+        vm.warp(9 hours);
+        defaultStrat._setLastRebalanceTimestamp(1 hours);
 
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.MaxSlippageExceeded.selector));
         defaultStrat.verifyRebalance(defaultParams, destOut);
@@ -310,7 +324,7 @@ contract LMPStrategyTest is Test {
     }
 
     function test_verifyRebalance_RevertIf_swapCostTooHigh() public {
-        vm.warp(180 days);
+        vm.warp(181 days);
         defaultStrat._setLastRebalanceTimestamp(180 days);
 
         // ensure the vault has enough assets
@@ -346,7 +360,7 @@ contract LMPStrategyTest is Test {
     }
 
     function test_verifyRebalance_RevertIf_swapCostTooHighSameToken() public {
-        vm.warp(180 days);
+        vm.warp(181 days);
         defaultStrat._setLastRebalanceTimestamp(180 days);
 
         // ensure the vault has enough assets

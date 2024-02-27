@@ -417,6 +417,7 @@ contract LMPStrategyInt is Test {
                 pricePremium: 1e6
             }),
             pauseRebalancePeriodInDays: 90,
+            rebalanceTimeGapInSeconds: 28_800, // 8 hours
             maxPremium: 0.01e18, // 1%
             maxDiscount: 0.02e18, // 2%
             staleDataToleranceInSeconds: 2 days,

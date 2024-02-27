@@ -118,6 +118,10 @@ library LMPStrategyConfig {
             revert InvalidConfig("maxPremium");
         }
 
+        if (config.rebalanceTimeGapInSeconds < 1 hours || config.rebalanceTimeGapInSeconds > 4 weeks) {
+            revert InvalidConfig("rebalanceTimeGapInSeconds");
+        }
+
         // TODO: these will revert with a different error, possibly confusing
         Errors.verifyNotZero(config.slippage.maxShutdownOperationSlippage, "maxShutdownOperationSlippage");
         Errors.verifyNotZero(config.slippage.maxEmergencyOperationSlippage, "maxEmergencyOperationSlippage");

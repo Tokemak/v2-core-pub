@@ -250,7 +250,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         lstPriceGapTolerance = conf.lstPriceGapTolerance;
 
         _swapCostOffsetPeriod = conf.swapCostOffset.initInDays;
-        lastRebalanceTimestamp = uint40(block.timestamp);
+        lastRebalanceTimestamp = uint40(block.timestamp) - uint40(conf.rebalanceTimeGapInSeconds);
     }
 
     /// @inheritdoc ILMPStrategy

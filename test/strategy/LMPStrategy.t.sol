@@ -53,7 +53,11 @@ contract LMPStrategyTest is Test {
     IStrategy.RebalanceParams private defaultParams;
     IStrategy.SummaryStats private destOut;
 
+    uint256 startBlockTime = 1000 days;
+
     function setUp() public {
+        vm.warp(startBlockTime);
+
         vm.label(mockLMPVault, "lmpVault");
         vm.label(mockBaseAsset, "baseAsset");
         vm.label(mockInDest, "inDest");
@@ -175,7 +179,7 @@ contract LMPStrategyTest is Test {
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
             currentDebt: 330e18, // implied price of 1.1
-            lastReport: 0, // unused
+            lastReport: startBlockTime,
             ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
             debtBasis: 0 // unused
          });
@@ -207,7 +211,7 @@ contract LMPStrategyTest is Test {
         uint256 startingBalance = 90e17;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
             currentDebt: 99e17, // implied price of 1.1
-            lastReport: 0, // unused
+            lastReport: startBlockTime,
             ownedShares: 90e17, // set higher than starting balance to handle withdraw scenario
             debtBasis: 0 // unused
          });
@@ -294,22 +298,22 @@ contract LMPStrategyTest is Test {
     }
 
     function test_verifyRebalance_RevertIf_maxDiscountOrPremiumExceeded() public {
-        vm.warp(180 days);
+        vm.warp(startBlockTime + 180 days);
 
         // setup for maxDiscount check
         IDexLSTStats.DexLSTStatsData memory inStats;
-        inStats.lastSnapshotTimestamp = 180 days;
+        inStats.lastSnapshotTimestamp = startBlockTime + 180 days;
         inStats.reservesInEth = new uint256[](1);
         inStats.reservesInEth[0] = 1e18;
         inStats.lstStatsData = new ILSTStats.LSTStatsData[](1);
         ILSTStats.LSTStatsData memory lstStat;
-        lstStat.lastSnapshotTimestamp = 180 days;
+        lstStat.lastSnapshotTimestamp = startBlockTime + 180 days;
         lstStat.discount = 0.021e18; // above 2% max discount
         inStats.lstStatsData[0] = lstStat;
         setStatsCurrent(mockInStats, inStats);
 
         IDexLSTStats.DexLSTStatsData memory outStats;
-        outStats.lastSnapshotTimestamp = 180 days;
+        outStats.lastSnapshotTimestamp = startBlockTime + 180 days;
         setStatsCurrent(mockOutStats, outStats);
 
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.MaxDiscountExceeded.selector));
@@ -685,7 +689,7 @@ contract LMPStrategyTest is Test {
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
             currentDebt: 330e18, // implied price of 1.1
-            lastReport: 0, // unused
+            lastReport: startBlockTime,
             ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
             debtBasis: 0 // unused
          });
@@ -721,7 +725,7 @@ contract LMPStrategyTest is Test {
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
             currentDebt: 330e18, // implied price of 1.1
-            lastReport: 0, // unused
+            lastReport: startBlockTime,
             ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
             debtBasis: 0 // unused
          });
@@ -756,7 +760,7 @@ contract LMPStrategyTest is Test {
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
             currentDebt: 330e18, // implied price of 1.1
-            lastReport: 0, // unused
+            lastReport: startBlockTime,
             ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
             debtBasis: 0 // unused
          });
@@ -788,7 +792,7 @@ contract LMPStrategyTest is Test {
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
             currentDebt: 330e18, // implied price of 1.1
-            lastReport: 0, // unused
+            lastReport: startBlockTime,
             ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
             debtBasis: 0 // unused
          });
@@ -820,7 +824,7 @@ contract LMPStrategyTest is Test {
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
             currentDebt: 330e18, // implied price of 1.1
-            lastReport: 0, // unused
+            lastReport: startBlockTime,
             ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
             debtBasis: 0 // unused
          });
@@ -854,7 +858,7 @@ contract LMPStrategyTest is Test {
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
             currentDebt: 330e18, // implied price of 1.1
-            lastReport: 0, // unused
+            lastReport: startBlockTime,
             ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
             debtBasis: 0 // unused
          });
@@ -970,7 +974,7 @@ contract LMPStrategyTest is Test {
         uint256 startingBalance = 250e18;
         LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
             currentDebt: 330e18, // implied price of 1.1
-            lastReport: 0, // unused
+            lastReport: startBlockTime,
             ownedShares: 300e18, // set higher than starting balance to handle withdraw scenario
             debtBasis: 0 // unused
          });
@@ -1225,6 +1229,7 @@ contract LMPStrategyTest is Test {
     /* calculatePriceReturns Tests              */
     /* **************************************** */
     function test_calculatePriceReturns_shouldCapDiscount() public {
+        vm.warp(1);
         IDexLSTStats.DexLSTStatsData memory dexStats;
         dexStats.lstStatsData = new ILSTStats.LSTStatsData[](1);
 
@@ -1486,18 +1491,18 @@ contract LMPStrategyTest is Test {
     function test_swapCostOffsetPeriodInDays_relaxesCorrectly() public {
         // verify that it starts out set to the init period
         assertEq(defaultStrat.swapCostOffsetPeriodInDays(), 28);
-        assertEq(defaultStrat.lastRebalanceTimestamp(), 1);
+        assertEq(defaultStrat.lastRebalanceTimestamp(), startBlockTime - defaultStrat.rebalanceTimeGapInSeconds());
 
         // swapOffset is relaxed every 20 days in the test config
         // we want 4 relaxes to occur 20 * 4 + 1 = 81, set to 90 to ensure truncation occurs
-        vm.warp(90 days);
+        vm.warp(startBlockTime + 90 days);
 
         // each relax step is 3 days, so the expectation is 4 * 3 = 12 days
         assertEq(defaultStrat.swapCostOffsetPeriodInDays(), 12 + 28);
 
         // init is 28 days and max is 60 days, to hit the max we need 10.67 relax periods = 213.33 days
         // exceed that to test that the swapOffset is limited to the max
-        vm.warp(300 days);
+        vm.warp(startBlockTime + 300 days);
         assertEq(defaultStrat.swapCostOffsetPeriodInDays(), 60);
     }
 
@@ -1649,7 +1654,7 @@ contract LMPStrategyTest is Test {
         // loosen the swapCostOffset to verify it gets picked up
         // lastRebalanceTimestamp = 1;
         // move forward 45 days = 2 relax steps -> 2 * 3 (relaxStep) + 28 (init) = 34
-        vm.warp(46 days);
+        vm.warp(startBlockTime + 46 days);
 
         vm.prank(mockLMPVault);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
@@ -1659,24 +1664,24 @@ contract LMPStrategyTest is Test {
 
     function test_rebalanceSuccessfullyExecuted_updatesLastRebalanceTimestamp() public {
         // verify it is at the initialized value
-        assertEq(defaultStrat.lastRebalanceTimestamp(), 1);
+        assertEq(defaultStrat.lastRebalanceTimestamp(), startBlockTime - defaultStrat.rebalanceTimeGapInSeconds());
 
-        vm.warp(23 days);
+        vm.warp(startBlockTime + 23 days);
         vm.prank(mockLMPVault);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
 
-        assertEq(defaultStrat.lastRebalanceTimestamp(), 23 days);
+        assertEq(defaultStrat.lastRebalanceTimestamp(), startBlockTime + 23 days);
     }
 
     function test_rebalanceSuccessfullyExecuted_updatesDestinationLastRebalanceTimestamp() public {
         // verify it is at the initialized value
         assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), 0);
 
-        vm.warp(23 days);
+        vm.warp(startBlockTime + 23 days);
         vm.prank(mockLMPVault);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
 
-        assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), 23 days);
+        assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), startBlockTime + 23 days);
     }
 
     function test_rebalanceSuccessfullyExecuted_updatesViolationTracking() public {
@@ -1844,7 +1849,7 @@ contract LMPStrategyTest is Test {
 
     function test_rebalanceSuccessfullyExecuted_ignoreRebalancesFromIdle() public {
         // advance so we can make sure that non-idle timestamp is updated
-        vm.warp(60 days);
+        vm.warp(startBlockTime + 60 days);
 
         ViolationTracking.State memory state = defaultStrat._getViolationTrackingState();
         assertEq(state.len, 0);
@@ -1872,7 +1877,7 @@ contract LMPStrategyTest is Test {
         assertEq(state.violationCount, 0);
 
         assertEq(defaultStrat.lastAddTimestampByDestination(mockLMPVault), 0);
-        assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), 60 days);
+        assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), startBlockTime + 60 days);
     }
 
     /* **************************************** */

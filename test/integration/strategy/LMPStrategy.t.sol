@@ -329,6 +329,57 @@ contract LMPStrategyInt is Test {
         assertEq(_vault.totalIdle(), inAmount, "vaultBal");
     }
 
+    // TODO: Finish and fix when with new LMPVault code, currently fails
+    // function test_LastRebalanceIsUpdatedExceptOnIdleIn() public {
+    //     uint256 inAmount = 400e18;
+    //     deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
+
+    //     IStrategy.RebalanceParams memory rebalanceParams = IStrategy.RebalanceParams({
+    //         destinationIn: address(_stEthOriginalDv),
+    //         tokenIn: _stEthOriginalDv.underlying(),
+    //         amountIn: inAmount,
+    //         destinationOut: address(_vault),
+    //         tokenOut: address(weth),
+    //         amountOut: 100e18
+    //     });
+
+    //     uint256 stage1Timestamp = LMPStrategy(address(_vault.lmpStrategy())).lastRebalanceTimestamp();
+
+    //     _vault.flashRebalance(
+    //         IERC3156FlashBorrower(_tokenReturnSolver),
+    //         rebalanceParams,
+    //         abi.encode(inAmount, address(_stEthOriginalDv.underlying()))
+    //     );
+
+    //     uint256 stage2Timestamp = LMPStrategy(address(_vault.lmpStrategy())).lastRebalanceTimestamp();
+
+    //     assertGt(stage2Timestamp, stage1Timestamp, "stage1-2");
+
+    //     deal(_stEthNgDv.underlying(), address(_tokenReturnSolver), inAmount);
+
+    //     address outUnderlying = _stEthOriginalDv.underlying();
+    //     uint256 outLpTokenPrice = _rootPriceOracle.getPriceInEth(outUnderlying);
+
+    //     uint256 snapshotId = vm.snapshot();
+
+    //     _strategy.setCheckOutLpPrice(outLpTokenPrice);
+
+    //     rebalanceParams = IStrategy.RebalanceParams({
+    //         destinationIn: address(_stEthNgDv),
+    //         tokenIn: _stEthNgDv.underlying(),
+    //         amountIn: inAmount,
+    //         destinationOut: address(_stEthOriginalDv),
+    //         tokenOut: outUnderlying,
+    //         amountOut: 100e18
+    //     });
+
+    //     _vault.flashRebalance(
+    //         IERC3156FlashBorrower(_tokenReturnSolver),
+    //         rebalanceParams,
+    //         abi.encode(inAmount, address(_stEthNgDv.underlying()))
+    //     );
+    // }
+
     function _deployCurveDestinationVault(
         string memory template,
         address calculator,

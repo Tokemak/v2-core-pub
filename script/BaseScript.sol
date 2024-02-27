@@ -13,7 +13,10 @@ import { console } from "forge-std/console.sol";
 import { Constants, Systems } from "./utils/Constants.sol";
 
 // Interfaces
-import { SystemRegistry } from "src/SystemRegistry.sol";
+import { SystemRegistry, IDestinationVaultRegistry } from "src/SystemRegistry.sol";
+import { IAccessController } from "src/security/AccessController.sol";
+import { IDestinationRegistry } from "src/destinations/DestinationRegistry.sol";
+import { IDestinationVaultFactory } from "src/interfaces/vault/IDestinationVaultFactory.sol";
 
 /**
  * @dev Base contract for scripting.  Sets env to either Goerli or Mainnet values.  As of
@@ -23,13 +26,15 @@ import { SystemRegistry } from "src/SystemRegistry.sol";
 contract BaseScript is Script {
     Constants.Values public constants;
     SystemRegistry public systemRegistry;
+    IAccessController public accessController;
+    IDestinationRegistry public destinationTemplateRegistry;
+    IDestinationVaultFactory public destinationVaultFactory;
+    IDestinationVaultRegistry public destinationVaultRegistry;
 
     // Set based on MAINNET flag.
     address public wethAddress;
     address public tokeAddress;
     address public curveMetaRegistryAddress;
-    address public accessControllerAddress;
-    address public destinationTemplateRegistry;
     uint256 public privateKey;
 
     function setUp(Systems system) internal {
@@ -40,7 +45,12 @@ contract BaseScript is Script {
         privateKey = vm.envUint(constants.privateKeyEnvVar);
 
         systemRegistry = SystemRegistry(constants.sys.systemRegistry);
-        accessControllerAddress = address(systemRegistry.accessController());
-        destinationTemplateRegistry = address(systemRegistry.destinationTemplateRegistry());
+        accessController = systemRegistry.accessController();
+        destinationTemplateRegistry = systemRegistry.destinationTemplateRegistry();
+        destinationVaultRegistry = systemRegistry.destinationVaultRegistry();
+
+        if (address(destinationVaultRegistry) != address(0)) {
+            destinationVaultFactory = destinationVaultRegistry.factory();
+        }
     }
 }

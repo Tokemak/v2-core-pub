@@ -72,7 +72,6 @@ contract DeploySystem is BaseScript {
     string public lmp2DescPrefix = "Emerging";
     bytes32 public lmp2Salt = keccak256("emerging");
 
-    AccessController public accessController;
     SystemSecurity public systemSecurity;
     LMPVaultRegistry public lmpRegistry;
     LMPVault public lmpVaultTemplate;

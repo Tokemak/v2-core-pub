@@ -165,8 +165,10 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
 
     event RebalanceToIdleReason(RebalanceToIdleReasonEnum reason, uint256 maxSlippage, uint256 slippage);
 
-    event TrimRebalanceDetails(uint256 assetIndex, uint256 numViolationsOne, uint256 numViolationsTwo, int256 discount);
-    event TrimOperationMaxTrimAmount(uint256 trimAmount);
+    event DestTrimRebalanceDetails(
+        uint256 assetIndex, uint256 numViolationsOne, uint256 numViolationsTwo, int256 discount
+    );
+    event DestViolationMaxTrimAmount(uint256 trimAmount);
     event RebalanceToIdle(
         RebalanceValueStats valueStats, IStrategy.SummaryStats outSummary, IStrategy.RebalanceParams params
     );
@@ -181,13 +183,17 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
     );
 
     event SuccessfulRebalanceBetweenDestinations(
-        address destinationOut, uint40 lastTimestampAddedToDestination, uint40 swapCostOffsetPeriod
+        address destinationOut,
+        uint40 lastRebalanceTimestamp,
+        uint40 lastTimestampAddedToDestination,
+        uint40 swapCostOffsetPeriod
     );
 
     event PauseStart(uint256 navPerShare, uint256 nav1, uint256 nav2, uint256 nav3);
     event PauseStop();
 
-    event LSTPriceGap(address token, uint256 priceSafe, uint256 priceSpot);
+    event InLSTPriceGap(address token, uint256 priceSafe, uint256 priceSpot);
+    event OutLSTPriceGap(address token, uint256 priceSafe, uint256 priceSpot);
 
     /* ******************************** */
     /* Errors                           */
@@ -350,7 +356,12 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         if (predictedGainAtOffsetEnd <= convertUintToInt(valueStats.swapCost)) revert SwapCostExceeded();
         // slither-disable-next-line reentrancy-events
         emit RebalanceBetweenDestinations(
-            valueStats, params, outSummary, inSummary, swapOffsetPeriod, predictedAnnualizedGain
+            valueStats,
+            params,
+            outSummary,
+            inSummary,
+            swapOffsetPeriod,
+            predictedAnnualizedGain
         );
 
         return (true, "");
@@ -480,7 +491,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
                 uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
                 uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], dvPoolAddress);
                 // slither-disable-next-line reentrancy-events
-                emit LSTPriceGap(lstTokens[i], priceSafe, priceSpot);
+                emit OutLSTPriceGap(lstTokens[i], priceSafe, priceSpot);
                 // For out destination, the pool tokens should not be lower than safe price by tolerance
                 if ((priceSafe == 0) || (priceSpot == 0)) {
                     return false;
@@ -501,7 +512,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
             uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
             uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], dvPoolAddress);
             // slither-disable-next-line reentrancy-events
-            emit LSTPriceGap(lstTokens[i], priceSafe, priceSpot);
+            emit InLSTPriceGap(lstTokens[i], priceSafe, priceSpot);
             // For in destination, the pool tokens should not be higher than safe price by tolerance
             if ((priceSafe == 0) || (priceSpot == 0)) {
                 return false;
@@ -554,7 +565,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
                 maxSlippage = maxTrimOperationSlippage;
             }
             // slither-disable-next-line reentrancy-events
-            emit TrimOperationMaxTrimAmount(trimAmount);
+            emit DestViolationMaxTrimAmount(trimAmount);
         }
         // slither-disable-next-line reentrancy-events
         emit RebalanceToIdleReason(reason, maxSlippage, slippage);
@@ -646,7 +657,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
                 getDiscountAboveThreshold(targetLst.discountHistory, discountThresholdOne, discountThresholdTwo);
 
             // slither-disable-next-line reentrancy-events
-            emit TrimRebalanceDetails(i, numViolationsOne, numViolationsTwo, targetLst.discount);
+            emit DestTrimRebalanceDetails(i, numViolationsOne, numViolationsTwo, targetLst.discount);
 
             if (targetLst.discount >= int256(discountThresholdTwo * 1e11) && numViolationsTwo >= discountDaysThreshold)
             {
@@ -1008,7 +1019,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
                 violationTrackingState.insert(false);
             }
             emit SuccessfulRebalanceBetweenDestinations(
-                params.destinationOut, lastAddForRemoveDestination, swapCostOffsetPeriod
+                params.destinationOut, lastRebalanceTimestamp, lastAddForRemoveDestination, swapCostOffsetPeriod
             );
         }
 

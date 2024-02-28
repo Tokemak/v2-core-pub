@@ -356,12 +356,7 @@ contract LMPStrategy is ILMPStrategy, SecurityBase {
         if (predictedGainAtOffsetEnd <= convertUintToInt(valueStats.swapCost)) revert SwapCostExceeded();
         // slither-disable-next-line reentrancy-events
         emit RebalanceBetweenDestinations(
-            valueStats,
-            params,
-            outSummary,
-            inSummary,
-            swapOffsetPeriod,
-            predictedAnnualizedGain
+            valueStats, params, outSummary, inSummary, swapOffsetPeriod, predictedAnnualizedGain
         );
 
         return (true, "");

@@ -852,47 +852,47 @@ contract GetPriceInEth is RootOracleIntegrationTest {
 
     // Ensuring that all tokens and being used for guarded launch work as expected.
     function test_GuardedLaunchCoverage_getPriceInEth() external {
-      vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19323090);
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19_323_090);
 
-      //
-      // Checking Chainlink price feeds.
-      //
+        //
+        // Checking Chainlink price feeds.
+        //
 
-      // Off chain -  1099100000000000000
-      // Safe price - 1099100000000000000
-      uint256 offChain = uint256(1099100000000000000);
-      uint256 safePrice = priceOracle.getPriceInEth(RETH_MAINNET);
-      (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(offChain);
-      assertGt(upperBound, safePrice);
-      assertLt(lowerBound, safePrice);
+        // Off chain -  1099100000000000000
+        // Safe price - 1099100000000000000
+        uint256 offChain = uint256(1_099_100_000_000_000_000);
+        uint256 safePrice = priceOracle.getPriceInEth(RETH_MAINNET);
+        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(offChain);
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
 
-      // Off chain -  999319481500000000
-      // Safe price - 999319481489392600
-      offChain = uint256(999319481500000000);
-      safePrice = priceOracle.getPriceInEth(STETH_MAINNET);
-      (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
-      assertGt(upperBound, safePrice);
-      assertLt(lowerBound, safePrice);
+        // Off chain -  999319481500000000
+        // Safe price - 999319481489392600
+        offChain = uint256(999_319_481_500_000_000);
+        safePrice = priceOracle.getPriceInEth(STETH_MAINNET);
+        (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
 
-      // Off chain -  1059015260299733800
-      // Safe price - 1059015260299733800
-      offChain = uint256(1059015260299733800);
-      safePrice = priceOracle.getPriceInEth(CBETH_MAINNET);
-      (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
-      assertGt(upperBound, safePrice);
-      assertLt(lowerBound, safePrice);
+        // Off chain -  1059015260299733800
+        // Safe price - 1059015260299733800
+        offChain = uint256(1_059_015_260_299_733_800);
+        safePrice = priceOracle.getPriceInEth(CBETH_MAINNET);
+        (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
 
-      //
-      // cbEth/Eth CurveV2 pool
-      //
+        //
+        // cbEth/Eth CurveV2 pool
+        //
 
-      // Calculated - 2084743277334819570
-      // Safe price - 2082478222376828813
-      offChain = uint256(2084743277334819570);
-      safePrice = priceOracle.getPriceInEth(CBETH_ETH_V2_POOL_LP);
-      (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
-      assertGt(upperBound, safePrice);
-      assertLt(lowerBound, safePrice);
+        // Calculated - 2084743277334819570
+        // Safe price - 2082478222376828813
+        offChain = uint256(2_084_743_277_334_819_570);
+        safePrice = priceOracle.getPriceInEth(CBETH_ETH_V2_POOL_LP);
+        (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
     }
 
     // Specifically test path when asset is priced in USD
@@ -1407,6 +1407,8 @@ contract GetFloorCeilingPrice is RootOracleIntegrationTest {
         priceOracle.registerPoolMapping(RETH_WSTETH_CURVE_POOL, ISpotPriceOracle(curveStableOracle));
         priceOracle.registerPoolMapping(STETH_WETH_CURVE_POOL_CONCENTRATED, ISpotPriceOracle(curveStableOracle));
         priceOracle.registerPoolMapping(CBETH_WSTETH_BAL_POOL, ISpotPriceOracle(balancerMetaOracle));
+        priceOracle.registerPoolMapping(CBETH_ETH_V2_POOL, ISpotPriceOracle(curveCryptoOracle));
+        priceOracle.registerPoolMapping(RETH_WETH_BAL_POOL, ISpotPriceOracle(balancerMetaOracle));
     }
 
     // ----------------
@@ -1736,4 +1738,50 @@ contract GetFloorCeilingPrice is RootOracleIntegrationTest {
 
     // TODO: Implement when mav issue is fixed.
     function test_MavWithFloorCeilingPrice() public { }
+
+    // ----------------
+    // Floor ceiling coverage for guarded launch pools
+    // ----------------
+
+    function test_GuardedLaunchCoverage_getFloorCeilingPrice() external {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19_327_652);
+
+        // Calculated floor - 2046011565273104385
+        // Returned floor -   2030948371758995775
+
+        // Calculated ceiling - 2148883232859786676
+        // Returned ceiling -   2148883232859786676
+        uint256 calculatedFloorPrice = uint256(2_046_011_565_273_104_385);
+        uint256 calculatedCeilingPrice = uint256(2_148_883_232_859_786_676);
+        uint256 floorPrice =
+            priceOracle.getFloorCeilingPrice(CBETH_ETH_V2_POOL, CBETH_ETH_V2_POOL_LP, WETH_MAINNET, false);
+        uint256 ceilingPrice =
+            priceOracle.getFloorCeilingPrice(CBETH_ETH_V2_POOL, CBETH_ETH_V2_POOL_LP, WETH_MAINNET, true);
+
+        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedFloorPrice);
+        assertGt(upperBound, floorPrice);
+        assertLt(lowerBound, floorPrice);
+
+        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedCeilingPrice);
+        assertGt(upperBound, ceilingPrice);
+        assertLt(lowerBound, ceilingPrice);
+
+        // Calculated floor - 982553208204218845
+        // Returned floor -   987907961189286400
+
+        // Calculated ceiling - 1081153457231268549
+        // Returned ceiling -   1062350055329237532
+        calculatedFloorPrice = uint256(982_553_208_204_218_845);
+        calculatedCeilingPrice = uint256(1_081_153_457_231_268_549);
+        floorPrice = priceOracle.getFloorCeilingPrice(RETH_WETH_BAL_POOL, RETH_WETH_BAL_POOL, WETH_MAINNET, false);
+        ceilingPrice = priceOracle.getFloorCeilingPrice(RETH_WETH_BAL_POOL, RETH_WETH_BAL_POOL, WETH_MAINNET, true);
+
+        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedFloorPrice);
+        assertGt(upperBound, floorPrice);
+        assertLt(lowerBound, floorPrice);
+
+        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedCeilingPrice);
+        assertGt(upperBound, ceilingPrice);
+        assertLt(lowerBound, ceilingPrice);
+    }
 }

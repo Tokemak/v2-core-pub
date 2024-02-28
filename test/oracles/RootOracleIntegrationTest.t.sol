@@ -91,7 +91,9 @@ import {
     CURVE_CRYPTO_FACTORY,
     USDC_WHALE,
     WETH_WHALE,
-    RETH_WHALE
+    RETH_WHALE,
+    CBETH_ETH_V2_POOL_LP,
+    CBETH_ETH_V2_POOL
 } from "../utils/Addresses.sol";
 
 import { SystemRegistry } from "src/SystemRegistry.sol";
@@ -249,6 +251,7 @@ contract RootOracleIntegrationTest is Test {
         priceOracle.registerMapping(LDO_ETH_CURVE_V2_LP, IPriceOracle(address(curveCryptoOracle)));
         priceOracle.registerMapping(STG_USDC_CURVE_V2_LP, IPriceOracle(address(curveCryptoOracle)));
         priceOracle.registerMapping(WBTC_BADGER_CURVE_V2_LP, IPriceOracle(address(curveCryptoOracle)));
+        priceOracle.registerMapping(CBETH_ETH_V2_POOL_LP, IPriceOracle(address(curveCryptoOracle)));
 
         // UniV2
         priceOracle.registerMapping(STETH_ETH_UNIV2, IPriceOracle(address(uniV2EthOracle)));
@@ -364,6 +367,7 @@ contract RootOracleIntegrationTest is Test {
         curveCryptoOracle.registerPool(LDO_ETH_CURVE_V2_POOL, LDO_ETH_CURVE_V2_LP, false);
         curveCryptoOracle.registerPool(STG_USDC_V2_POOL, STG_USDC_CURVE_V2_LP, false);
         curveCryptoOracle.registerPool(WBTC_BADGER_V2_POOL, WBTC_BADGER_CURVE_V2_LP, false);
+        curveCryptoOracle.registerPool(CBETH_ETH_V2_POOL, CBETH_ETH_V2_POOL_LP, false);
 
         // Uni pool setup
         uniV2EthOracle.register(STETH_ETH_UNIV2);
@@ -707,7 +711,7 @@ contract GetPriceInEth is RootOracleIntegrationTest {
     }
 
     /**
-     * Funtion tests path where quote token is < 18 decimals.  This was a bug that came about due to a change
+     * Funtion tests path where quote token is < 18 decimals CurveV2.  This was a bug that came about due to a change
      *    in the functionality of `getPriceInQuote()`.  The change was that getPriceInQuote went from returning
      *    18 decimals to returning decimals of the quote token.  This was resulting in safe prices being returned
      *    orders of magnitude off.
@@ -844,6 +848,51 @@ contract GetPriceInEth is RootOracleIntegrationTest {
         (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
         assertGt(upperBound, safePrice);
         assertLt(lowerBound, safePrice);
+    }
+
+    // Ensuring that all tokens and being used for guarded launch work as expected.
+    function test_GuardedLaunchCoverage_getPriceInEth() external {
+      vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19323090);
+
+      //
+      // Checking Chainlink price feeds.
+      //
+
+      // Off chain -  1099100000000000000
+      // Safe price - 1099100000000000000
+      uint256 offChain = uint256(1099100000000000000);
+      uint256 safePrice = priceOracle.getPriceInEth(RETH_MAINNET);
+      (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(offChain);
+      assertGt(upperBound, safePrice);
+      assertLt(lowerBound, safePrice);
+
+      // Off chain -  999319481500000000
+      // Safe price - 999319481489392600
+      offChain = uint256(999319481500000000);
+      safePrice = priceOracle.getPriceInEth(STETH_MAINNET);
+      (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
+      assertGt(upperBound, safePrice);
+      assertLt(lowerBound, safePrice);
+
+      // Off chain -  1059015260299733800
+      // Safe price - 1059015260299733800
+      offChain = uint256(1059015260299733800);
+      safePrice = priceOracle.getPriceInEth(CBETH_MAINNET);
+      (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
+      assertGt(upperBound, safePrice);
+      assertLt(lowerBound, safePrice);
+
+      //
+      // cbEth/Eth CurveV2 pool
+      //
+
+      // Calculated - 2084743277334819570
+      // Safe price - 2082478222376828813
+      offChain = uint256(2084743277334819570);
+      safePrice = priceOracle.getPriceInEth(CBETH_ETH_V2_POOL_LP);
+      (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
+      assertGt(upperBound, safePrice);
+      assertLt(lowerBound, safePrice);
     }
 
     // Specifically test path when asset is priced in USD

@@ -93,6 +93,14 @@ abstract contract IncentiveCalculatorBase is
         uint256 decayInitTimestamp
     );
 
+    event RewarderSafeTotalSupplySnapshot(
+        address rewarder,
+        uint256 rewardRate,
+        uint256 timeBetweenSnapshots,
+        uint256 rewardsAccruedPerToken,
+        uint256 safeTotalSupply
+    );
+
     constructor(ISystemRegistry _systemRegistry)
         SystemComponent(_systemRegistry)
         SecurityBase(address(_systemRegistry.accessController()))
@@ -413,6 +421,11 @@ abstract contract IncentiveCalculatorBase is
             }
             lastSnapshotRewardPerToken[_rewarder] = 0;
             lastSnapshotTimestamps[_rewarder] = block.timestamp;
+
+            // slither-disable-next-line reentrancy-events
+            emit RewarderSafeTotalSupplySnapshot(
+                _rewarder, rewardRate, timeBetweenSnapshots, diff, safeTotalSupplies[_rewarder]
+            );
 
             return;
         }

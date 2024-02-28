@@ -170,10 +170,8 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// Modifiers
     /// =====================================================
 
-    modifier onlyAllowedUsers() {
-        if (_checkUsers && !allowedUsers[msg.sender]) {
-            revert InvalidUser();
-        }
+    modifier onlyAllowedUsers(address receiver) {
+        _ensureAllowedUsers(receiver);
         _;
     }
 
@@ -264,7 +262,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         nonReentrant
         noNavPerShareDecrease(TotalAssetPurpose.Deposit)
         ensureNoNavOps
-        onlyAllowedUsers
+        onlyAllowedUsers(receiver)
         returns (uint256 shares)
     {
         Errors.verifyNotZero(assets, "assets");
@@ -293,7 +291,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         nonReentrant
         noNavPerShareDecrease(TotalAssetPurpose.Deposit)
         ensureNoNavOps
-        onlyAllowedUsers
+        onlyAllowedUsers(receiver)
         returns (uint256 assets)
     {
         // Handles the vault being paused, returns 0
@@ -320,7 +318,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         whenNotPaused
         noNavPerShareDecrease(TotalAssetPurpose.Withdraw)
         ensureNoNavOps
-        onlyAllowedUsers
+        onlyAllowedUsers(receiver)
         returns (uint256 shares)
     {
         Errors.verifyNotZero(assets, "assets");
@@ -355,7 +353,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         whenNotPaused
         noNavPerShareDecrease(TotalAssetPurpose.Withdraw)
         ensureNoNavOps
-        onlyAllowedUsers
+        onlyAllowedUsers(receiver)
         returns (uint256 assets)
     {
         uint256 maxShares = maxRedeem(owner);
@@ -784,6 +782,8 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
         uint256 newTotalSupply = _feeAndProfitHandling(newIdle + newDebt, startingIdle + startingDebt);
 
+        lmpStrategy.navUpdate((newIdle + newDebt) * 10 ** decimals() / totalSupply());
+
         emit Nav(newIdle, newDebt, newTotalSupply);
     }
 
@@ -889,6 +889,8 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         // and it can gather its final state/stats
         lmpStrategy.rebalanceSuccessfullyExecuted(rebalanceParams);
 
+        lmpStrategy.navUpdate((idle + debt) * 10 ** decimals() / totalSupply());
+
         emit Nav(idle, debt, newTotalSupply);
     }
 
@@ -933,6 +935,12 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     function oldestDebtReporting() public view returns (uint256) {
         address destVault = _debtReportQueue.peekHead();
         return _destinationInfo[destVault].lastReport;
+    }
+
+    function _ensureAllowedUsers(address receiver) internal view {
+        if (_checkUsers && (!allowedUsers[msg.sender] || !allowedUsers[receiver])) {
+            revert InvalidUser();
+        }
     }
 
     function _snapStartNav(TotalAssetPurpose purpose)

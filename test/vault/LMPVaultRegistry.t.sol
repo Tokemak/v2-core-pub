@@ -22,6 +22,8 @@ contract LMPVaultRegistryTest is BaseTest {
     event VaultRemoved(address indexed asset, address indexed vault);
 
     function setUp() public virtual override {
+        vm.warp(1000 days);
+
         super._setUp(false);
 
         lmpVaultRegistry = new LMPVaultRegistry(systemRegistry);

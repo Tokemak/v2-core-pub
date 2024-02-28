@@ -122,6 +122,8 @@ contract LMPVaultTests is
         lmpStrategy = makeAddr("lmpStrategy");
         bytes memory initData = abi.encode("");
 
+        _mockNavUpdate(lmpStrategy);
+
         FeeAndProfitTestVault tempVault = new FeeAndProfitTestVault(systemRegistry, address(vaultAsset));
         vault = FeeAndProfitTestVault(Clones.cloneDeterministic(address(tempVault), "salt1"));
         vault.initialize(lmpStrategy, "1", "1", initData);

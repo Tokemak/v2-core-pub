@@ -8,6 +8,8 @@ library NavTracking {
     error NavHistoryInsufficient();
     error InvalidNavTimestamp(uint40 current, uint40 provided);
 
+    event NavHistoryInsert(uint256 navPerShare, uint40 timestamp);
+
     struct State {
         uint8 len;
         uint8 currentIndex;
@@ -32,7 +34,7 @@ library NavTracking {
             self.len += 1;
         }
 
-        // TODO: emit an event -- allow us to see if there are frequently gaps in reporting
+        emit NavHistoryInsert(navPerShare, timestamp);
     }
 
     // the way this information is used, it is ok for it to not perfectly be daily

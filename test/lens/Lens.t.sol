@@ -21,6 +21,8 @@ contract LensTest is BaseTest {
     Lens private lens;
 
     function setUp() public virtual override {
+        vm.warp(1000 days);
+
         super._setUp(false);
 
         address underlyer = address(BaseTest.mockAsset("underlyer", "underlyer", 0));

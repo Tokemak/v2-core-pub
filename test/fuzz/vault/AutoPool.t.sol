@@ -21,6 +21,8 @@ contract LMPVaultTest is ERC4626Test, BaseTest {
     address private lmpStrategy = vm.addr(10_001);
 
     function setUp() public override(BaseTest, ERC4626Test) {
+        vm.warp(1000 days);
+
         // everything's mocked, so disable forking
         super._setUp(false);
 

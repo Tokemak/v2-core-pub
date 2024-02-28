@@ -29,6 +29,8 @@ contract PermitTests is Test {
     LMPVault private _lmpVault;
 
     function setUp() public {
+        vm.warp(1000 days);
+
         vm.label(address(this), "testContract");
 
         _toke = new TestERC20("test", "test");

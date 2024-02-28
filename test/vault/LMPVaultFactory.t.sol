@@ -33,6 +33,8 @@ contract LMPVaultFactoryTest is Test {
     bytes private lmpVaultInitData;
 
     function setUp() public {
+        vm.warp(1000 days);
+
         vm.label(address(this), "testContract");
 
         _toke = new TestERC20("test", "test");

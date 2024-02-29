@@ -1357,6 +1357,24 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
 
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
     }
+
+    // Pool coverage for guarded launch.
+    function test_GuardedLaunchCoverage_getRangePricesLp() public {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19_334_597);
+
+        // stEth / Eth
+        // Calculated - 1094195215365798428
+        uint256 calculatedPrice = uint256(1_094_195_215_365_798_428);
+        (uint256 spot, uint256 safe, bool isSafe) =
+            priceOracle.getRangePricesLP(ST_ETH_CURVE_LP_TOKEN_MAINNET, STETH_ETH_CURVE_POOL, WETH_MAINNET);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safe, spot, 2, isSafe);
+
+        // cbEth / Eth
+        // Calculated - 2082488694887636300
+        calculatedPrice = uint256(2_082_488_694_887_636_300);
+        (spot, safe, isSafe) = priceOracle.getRangePricesLP(CBETH_ETH_V2_POOL_LP, CBETH_ETH_V2_POOL, WETH_MAINNET);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safe, spot, 2, isSafe);
+    }
 }
 
 /**

@@ -388,6 +388,8 @@ contract RootOracleIntegrationTest is Test {
         // Set up for spot pricing used across multiple test contracts.  Rest can be found in individual contracts.
         priceOracle.registerPoolMapping(THREE_CURVE_MAINNET, curveStableOracle);
         priceOracle.registerPoolMapping(STETH_ETH_CURVE_POOL, curveStableOracle);
+        priceOracle.registerPoolMapping(CBETH_ETH_V2_POOL, ISpotPriceOracle(curveCryptoOracle));
+        priceOracle.registerPoolMapping(RETH_WETH_BAL_POOL, ISpotPriceOracle(balancerMetaOracle));
     }
 
     function _getTwoPercentTolerance(uint256 price) internal pure returns (uint256 upperBound, uint256 lowerBound) {
@@ -927,7 +929,6 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
         priceOracle.registerPoolMapping(USDC_DAI_USDT_BAL_POOL, balancerComposableOracle);
 
         priceOracle.registerPoolMapping(CBETH_WSTETH_BAL_POOL, balancerMetaOracle);
-        priceOracle.registerPoolMapping(RETH_WETH_BAL_POOL, balancerMetaOracle);
         priceOracle.registerPoolMapping(WSETH_WETH_BAL_POOL, balancerMetaOracle);
 
         priceOracle.registerPoolMapping(ST_ETH_CURVE_LP_TOKEN_MAINNET, curveStableOracle);
@@ -1407,8 +1408,6 @@ contract GetFloorCeilingPrice is RootOracleIntegrationTest {
         priceOracle.registerPoolMapping(RETH_WSTETH_CURVE_POOL, ISpotPriceOracle(curveStableOracle));
         priceOracle.registerPoolMapping(STETH_WETH_CURVE_POOL_CONCENTRATED, ISpotPriceOracle(curveStableOracle));
         priceOracle.registerPoolMapping(CBETH_WSTETH_BAL_POOL, ISpotPriceOracle(balancerMetaOracle));
-        priceOracle.registerPoolMapping(CBETH_ETH_V2_POOL, ISpotPriceOracle(curveCryptoOracle));
-        priceOracle.registerPoolMapping(RETH_WETH_BAL_POOL, ISpotPriceOracle(balancerMetaOracle));
     }
 
     // ----------------
@@ -1783,5 +1782,86 @@ contract GetFloorCeilingPrice is RootOracleIntegrationTest {
         (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedCeilingPrice);
         assertGt(upperBound, ceilingPrice);
         assertLt(lowerBound, ceilingPrice);
+    }
+}
+
+contract GetSpotPriceInEth is RootOracleIntegrationTest {
+    function setUp() public override {
+        super.setUp();
+
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19_328_511);
+    }
+
+    // stEth / Eth CurveV1 pool
+    function test_getSpotPriceInEth_StEthEthCurveV1Pool() public {
+        // Fee - 1000000
+        // Fee precision - 1e10
+
+        // stEth -> eth.
+        // dy - 999200642198174334
+        // Calculated - 999300572255399873
+        // Returned -   999300579110966650
+        uint256 calculatedSpot = uint256(999_300_572_255_399_873);
+        uint256 spotPrice = priceOracle.getSpotPriceInEth(STETH_MAINNET, STETH_ETH_CURVE_POOL);
+        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedSpot);
+        assertGt(upperBound, spotPrice);
+        assertLt(lowerBound, spotPrice);
+
+        // eth -> stEth, converted to weth
+        // dy - 1000598352626011108
+        // Calculated - 1000698422468257933
+        // Returned -   999828761519930401
+        calculatedSpot = uint256(1_000_698_422_468_257_933);
+        spotPrice = priceOracle.getSpotPriceInEth(CURVE_ETH, STETH_ETH_CURVE_POOL);
+        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedSpot);
+        assertGt(upperBound, spotPrice);
+        assertLt(lowerBound, spotPrice);
+    }
+
+    // cbEth / Eth CurveV2 pool
+    function test_getSpotPriceInEth_CbEthEthCurveV2Pool() public {
+        // Fee - 5156752
+        // Fee precision - 1e10
+
+        // cbEth -> eth.
+        // dy - 1057393336005537232
+        // Calculated - 1057938888853634607
+        // Returned -   1057938888853634607
+        uint256 calculatedSpot = uint256(1_057_938_888_853_634_607);
+        uint256 spotPrice = priceOracle.getSpotPriceInEth(CBETH_MAINNET, CBETH_ETH_V2_POOL);
+        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedSpot);
+        assertGt(upperBound, spotPrice);
+        assertLt(lowerBound, spotPrice);
+
+        // Eth -> cbEth.
+        // dy - 944617789553842169
+        // Calculated - 1000582829551398187
+        // Returned -   999877159857762504
+        calculatedSpot = uint256(1_000_582_829_551_398_187);
+        spotPrice = priceOracle.getSpotPriceInEth(CURVE_ETH, CBETH_ETH_V2_POOL);
+        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedSpot);
+        assertGt(upperBound, spotPrice);
+        assertLt(lowerBound, spotPrice);
+    }
+
+    // rEth / weth Bal pool
+    function test_getSpotPriceInEth_RethWethBalPool() public {
+        // rEth -> weth
+        // Calculated - 1099053184971559591
+        // Returned   - 1099053184971559591
+        uint256 calculated = uint256(1_099_053_184_971_559_591);
+        uint256 spotPrice = priceOracle.getSpotPriceInEth(RETH_MAINNET, RETH_WETH_BAL_POOL);
+        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculated);
+        assertGt(upperBound, spotPrice);
+        assertLt(lowerBound, spotPrice);
+
+        // weth -> rEth
+        // Calculated - 1000039728314864482
+        // Returned   - 1000255127611642698
+        calculated = uint256(1_000_039_728_314_864_482);
+        spotPrice = priceOracle.getSpotPriceInEth(WETH_MAINNET, RETH_WETH_BAL_POOL);
+        (upperBound, lowerBound) = _getTwoPercentTolerance(calculated);
+        assertGt(upperBound, spotPrice);
+        assertLt(lowerBound, spotPrice);
     }
 }

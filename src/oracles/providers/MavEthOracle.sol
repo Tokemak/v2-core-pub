@@ -123,15 +123,42 @@ contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPrice
 
     /// @inheritdoc ISpotPriceOracle
     function getSafeSpotPriceInfo(
-        // solhint-disable-next-line no-unused-vars
         address pool,
-        // solhint-disable-next-line no-unused-vars
         address _boostedPosition,
         address // we omit quoteToken as we get pricing info from the pool.
             // It's aligned with the requested quoteToken in RootPriceOracle.getRangePricesLP
-            // solhint-disable-next-line no-unused-vars
-    ) external pure returns (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) {
-        revert Errors.NotImplemented(); // Postponed until we have Maverick added to the system.
+    ) external returns (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) {
+        Errors.verifyNotZero(pool, "pool");
+        Errors.verifyNotZero(_boostedPosition, "_boostedPosition");
+
+        IPool mavPool = IPool(pool);
+        IPoolPositionDynamicSlim boostedPosition = IPoolPositionDynamicSlim(_boostedPosition);
+
+        _checkSafeWidth(mavPool, boostedPosition);
+
+        // Get total supply of lp tokens from boosted position
+        totalLPSupply = boostedPosition.totalSupply();
+
+        // Get tokens pool tokens
+        address tokenA = address(mavPool.tokenA());
+        address tokenB = address(mavPool.tokenB());
+
+        // Get reserves in boosted position
+        (uint256 reserveTokenA, uint256 reserveTokenB) = boostedPosition.getReserves();
+
+        reserves = new ISpotPriceOracle.ReserveItemInfo[](2);
+        reserves[0] = ISpotPriceOracle.ReserveItemInfo({
+            token: tokenA,
+            reserveAmount: reserveTokenA,
+            rawSpotPrice: _getSpotPrice(tokenA, mavPool, true),
+            actualQuoteToken: tokenB
+        });
+        reserves[1] = ISpotPriceOracle.ReserveItemInfo({
+            token: tokenB,
+            reserveAmount: reserveTokenB,
+            rawSpotPrice: _getSpotPrice(tokenB, mavPool, false),
+            actualQuoteToken: tokenA
+        });
     }
 
     /// @dev This function gets price using Maverick's `PoolInformation` contract

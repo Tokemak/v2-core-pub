@@ -36,7 +36,7 @@ contract CurveStEthEthOriginal is CurveDestinationVaultBase {
     {
         return (
             "curve-convex",
-            0x75177CC3f4A4724Fda3d5a0f28ab78c2654B53d1,
+            0x6171F028c1D06c4ceEDf41Ae61024931281f6DaC,
             0xDC24316b9AE028F1497c275EB9192a3Ea0f67022,
             0x06325440D014e39736583c165C2963BA99fAf14E,
             0x0A760466E1B4621579a82a39CB56Dda2F4E70f03,

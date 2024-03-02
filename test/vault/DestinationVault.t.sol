@@ -582,7 +582,7 @@ contract TestDestinationVault is DestinationVault {
         return _pool;
     }
 
-    function _validateCalculator(address incentiveCalculator) internal override {
+    function _validateCalculator(address incentiveCalculator) internal view override {
         if (IncentiveCalculatorBase(incentiveCalculator).resolveLpToken() != _underlying) {
             revert InvalidIncentiveCalculator();
         }

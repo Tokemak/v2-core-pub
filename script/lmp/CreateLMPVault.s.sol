@@ -2,25 +2,24 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+// solhint-disable no-console
+
 import { BaseScript, console } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
-
+import { Roles } from "src/libs/Roles.sol";
 import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
 
 /**
  * @dev This contract:
- *      1. Creates a new LMP Vault using the `weth-vault` LMP Vault Factory and the specified strategy template.
+ *      1. Creates a new LMP Vault using the `lst-guarded-r1` LMP Vault Factory and the specified strategy template.
  */
 contract CreateLMPVault is BaseScript {
     // 🚨 Manually set variables below. 🚨
-    uint256 public lmp1SupplyLimit = type(uint112).max;
-    uint256 public lmp1WalletLimit = type(uint112).max;
-    string public lmp1SymbolSuffix = "EST";
-    string public lmp1DescPrefix = "Established";
-    address public strategyTemplateAddress = 0xecE724EB3B0843E21239300479F310251C15851e
-    ;
+    string public lmp1SymbolSuffix = "autoETH_guarded";
+    string public lmp1DescPrefix = "Tokemak Guarded autoETH ";
+    address public strategyTemplateAddress = 0xe09122EBD0ae8BaDFe9399B709F31172eB913997;
 
-    bytes32 public lmpVaultType = keccak256("weth-vault");
+    bytes32 public lmpVaultType = keccak256("lst-guarded-r1");
 
     function run() external {
         setUp(Systems.LST_GEN1_MAINNET);
@@ -28,6 +27,8 @@ contract CreateLMPVault is BaseScript {
         vm.startBroadcast(privateKey);
 
         LMPVaultFactory lmpFactory = LMPVaultFactory(address(systemRegistry.getLMPVaultFactoryByType(lmpVaultType)));
+
+        accessController.setupRole(Roles.REGISTRY_UPDATER, address(lmpFactory));
 
         bool isTemplate = lmpFactory.isStrategyTemplate(strategyTemplateAddress);
 

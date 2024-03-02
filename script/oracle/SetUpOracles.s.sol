@@ -21,6 +21,8 @@ import { CurveV2CryptoEthOracle } from "src/oracles/providers/CurveV2CryptoEthOr
 import { CurveV1StableEthOracle } from "src/oracles/providers/CurveV1StableEthOracle.sol";
 import { BaseOracleDenominations } from "src/oracles/providers/base/BaseOracleDenominations.sol";
 
+// solhint-disable state-visibility,no-console
+
 contract CurveOracleBase is BaseScript {
     address constant STETH_MAINNET = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
     address constant RETH_MAINNET = 0xae78736Cd615f374D3085123A210448E74Fc6393;

@@ -7,6 +7,8 @@ import { Lens } from "src/lens/Lens.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ILens } from "src/interfaces/lens/ILens.sol";
 
+// solhint-disable func-name-mixedcase,max-states-count,state-visibility
+
 contract LensInt is Test {
     address public constant SYSTEM_REGISTRY = 0x0406d2D96871f798fcf54d5969F69F55F803eEA4;
 

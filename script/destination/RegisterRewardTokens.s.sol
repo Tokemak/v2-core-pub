@@ -2,6 +2,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+// solhint-disable no-console
+
 import { BaseScript, console } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
 

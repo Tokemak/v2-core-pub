@@ -2,6 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+import { Roles } from "src/libs/Roles.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
@@ -125,15 +126,22 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
     /// @notice model weight applied to an LST premium when entering or exiting the position
     int256 public immutable weightPricePremium;
 
-    /// @notice model weight applied to an LST premium when entering or exiting the position
-    uint256 public immutable lstPriceGapTolerance;
-
     /// @notice initial value of the swap cost offset to use
     uint16 public immutable swapCostOffsetInit;
+
+    uint256 public immutable defaultLstPriceGapTolerance;
 
     /* ******************************** */
     /* State Variables                  */
     /* ******************************** */
+
+    /// @notice model weight applied to an LST premium when entering or exiting the position
+    uint256 public lstPriceGapTolerance;
+
+    /// @notice Dust position portions
+    /// @dev Value is determined as 1/f then truncated to a integer value, where f is a fractional value < 1.0.
+    /// For ex. f = 0.02 means a position < 0.02 will be treated as a dust position
+    uint256 public dustPositionPortions;
 
     /// @notice The LMPVault that this strategy is associated with
     ILMPVault public lmpVault;
@@ -199,6 +207,9 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
 
     event InLSTPriceGap(address token, uint256 priceSafe, uint256 priceSpot);
     event OutLSTPriceGap(address token, uint256 priceSafe, uint256 priceSpot);
+
+    event LstPriceGapSet(uint256 newPriceGap);
+    event DustPositionPortionSet(uint256 newValue);
 
     /* ******************************** */
     /* Errors                           */
@@ -283,7 +294,7 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         weightPriceDiscountExit = conf.modelWeights.priceDiscountExit;
         weightPriceDiscountEnter = conf.modelWeights.priceDiscountEnter;
         weightPricePremium = conf.modelWeights.pricePremium;
-        lstPriceGapTolerance = conf.lstPriceGapTolerance;
+        defaultLstPriceGapTolerance = conf.lstPriceGapTolerance;
         swapCostOffsetInit = conf.swapCostOffset.initInDays;
 
         _disableInitializers();
@@ -304,6 +315,22 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
 
         lastRebalanceTimestamp = uint40(block.timestamp) - uint40(rebalanceTimeGapInSeconds);
         _swapCostOffsetPeriod = swapCostOffsetInit;
+        lstPriceGapTolerance = defaultLstPriceGapTolerance;
+        dustPositionPortions = 50;
+    }
+
+    /// @notice Sets the LST price gap tolerance to the provided value
+    function setLstPriceGapTolerance(uint256 priceGapTolerance) external hasRole(Roles.AUTO_POOL_ADMIN) {
+        lstPriceGapTolerance = priceGapTolerance;
+
+        emit LstPriceGapSet(priceGapTolerance);
+    }
+
+    /// @notice Sets the LST price gap tolerance to the provided value
+    function setDustPositionPortions(uint256 newValue) external hasRole(Roles.AUTO_POOL_ADMIN) {
+        dustPositionPortions = newValue;
+
+        emit DustPositionPortionSet(newValue);
     }
 
     /// @inheritdoc ILMPStrategy
@@ -599,9 +626,9 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         uint256 currentDebt =
             destInfo.ownedShares == 0 ? 0 : destInfo.cachedDebtValue * currentShares / destInfo.ownedShares;
 
-        // If the current position is < 2% of total assets, trim to idle is allowed
+        // If the current position is the minimum portion, trim to idle is allowed
         // slither-disable-next-line divide-before-multiply
-        if ((currentDebt * 1e18) < ((lmpVault.totalAssets() * 1e18) / 50)) {
+        if ((currentDebt * 1e18) < ((lmpVault.totalAssets() * 1e18) / dustPositionPortions)) {
             return true;
         }
 

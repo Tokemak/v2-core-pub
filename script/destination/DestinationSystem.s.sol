@@ -18,9 +18,9 @@ import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
  * - Deploys and registers the `DestinationRegistry` for managing destination templates.
  * - Deploys and registers the `DestinationVaultRegistry` for tracking destination vaults.
  * - Deploys and sets up the `DestinationVaultFactory` with specified reward configurations.
- * - Grants the `CREATE_DESTINATION_VAULT_ROLE` role to the deploying wallet, enabling the creation of new destination vaults.
+ * - Grants the `CREATE_DESTINATION_VAULT_ROLE` role to the deploying wallet, enabling the creation of new destination
+ * vaults.
  */
-
 contract DestinationSystem is BaseScript {
     // 🚨 Manually set variables below. 🚨
     uint256 public defaultRewardBlockDuration = 1000;

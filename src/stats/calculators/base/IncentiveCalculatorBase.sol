@@ -126,7 +126,7 @@ abstract contract IncentiveCalculatorBase is
 
         decayState = false;
 
-        _aprId = keccak256(abi.encode("incentive", platformToken, decodedInitData.rewarder));
+        _aprId = keccak256(abi.encode("incentive-v4-", platformToken, decodedInitData.rewarder));
     }
 
     /// @inheritdoc IStatsCalculator

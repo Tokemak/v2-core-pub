@@ -56,7 +56,7 @@ async function destination(systemRegistry, hre, provider) {
 }
 
 async function lmpVaults(systemRegistry, hre, provider) {
-	const lmpVaultType = hre.ethers.utils.keccak256(hre.ethers.utils.toUtf8Bytes("weth-vault"));
+	const lmpVaultType = hre.ethers.utils.keccak256(hre.ethers.utils.toUtf8Bytes("lst-guarded-r1"));
 
 	const lmpVaultArtifact = await hre.artifacts.readArtifact("ILMPVault");
 
@@ -75,7 +75,7 @@ async function lmpVaults(systemRegistry, hre, provider) {
 		console.log(`LMP Vault Factory: ${factory.address}`);
 		console.log(`- template: ${await factory.template()}`);
 	} catch (e) {
-		console.log("LMP Vault Factory: not found for the weth-vault type.");
+		console.log("LMP Vault Factory: not found for the lst-guarded-r1 type.");
 	}
 
 	console.log(`LMP Vault Registry: ${registry.address}`);
@@ -105,7 +105,6 @@ task("system", "Displays the system information")
 		const rpcUrl = taskArgs.rpcUrl;
 
 		const provider = new hre.ethers.providers.JsonRpcProvider(rpcUrl);
-
 
 		const blockNumber = await provider.getBlockNumber();
 		console.log(`Current Block Number: ${blockNumber}`);

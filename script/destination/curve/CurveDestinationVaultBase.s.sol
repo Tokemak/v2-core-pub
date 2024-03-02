@@ -2,6 +2,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+// solhint-disable no-console,reason-string
+
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { BaseScript, console } from "script/BaseScript.sol";

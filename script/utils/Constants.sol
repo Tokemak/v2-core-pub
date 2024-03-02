@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-// Copyright (c) 2023 Tokemak Ops Ltd. All rights reserved.
+// Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -174,8 +174,8 @@ library Constants {
             sys: System({
                 systemRegistry: 0x0406d2D96871f798fcf54d5969F69F55F803eEA4,
                 accessController: 0x7f3B9EEaF70bD5186E7e226b7f683b67eb3eD5Fd,
-                destinationTemplateRegistry: address(0),
-                destinationVaultFactory: address(0),
+                destinationTemplateRegistry: 0x44e02280bbc2A1a1214C4959747F2EC2D9cFf237,
+                destinationVaultFactory: 0xbefd2500435bC49107aE54Ac8ea0716b989313a1,
                 swapRouter: address(0),
                 customSetOracle: address(0),
                 lens: address(0),

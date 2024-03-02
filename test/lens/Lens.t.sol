@@ -67,14 +67,14 @@ contract LensTest is BaseTest {
     function testLens() public {
         (ILens.LMPVault[] memory lmpVaults) = lens.getVaults();
         assertFalse(lmpVaults[0].vaultAddress == address(0));
-        assertEq(lmpVaults[0].name, "y Pool Token");
-        assertEq(lmpVaults[0].symbol, "lmpx");
+        assertEq(lmpVaults[0].name, "y");
+        assertEq(lmpVaults[0].symbol, "x");
 
         // Destination Vaults
 
         (address[] memory lmpVaults2, ILens.DestinationVault[][] memory destinations) = lens.getVaultDestinations();
         assertEq(lmpVaults[0].vaultAddress, lmpVaults2[0]);
-        assertEq(lmpVaults[0].symbol, "lmpx");
+        assertEq(lmpVaults[0].symbol, "x");
         assertFalse(destinations[0][0].vaultAddress == address(0));
         assertEq(destinations[0][0].exchangeName, "test");
 

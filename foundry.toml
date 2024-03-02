@@ -7,6 +7,17 @@ solc = "0.8.17"
 evm_version = "shanghai"
 fs_permissions = [{ access = "read-write", path = "./" }]
 
+[profile.mainnet]
+libraries = [
+    "src/strategy/StructuredLinkedList.sol:StructuredLinkedList:0x6C566a67b34CFed9821FC7433750A1391fa97989",
+    "src/strategy/WithdrawalQueue.sol:WithdrawalQueue:0xC754773B0e8CaFbD17e978be3c31ef34869ba733",
+    "src/vault/libs/AutoPoolToken.sol:AutoPoolToken:0x9a64511219Fd5aE18ED06088dded100a3c579b26",
+    "src/vault/libs/LMPDebt.sol:LMPDebt:0x6e4FD2077df6754EC257C13D7A4dEbbe717f9d48",
+    "src/vault/libs/LMPDestinations.sol:LMPDestinations:0x5B6EAaC27CDeba310A335aFeC9d18f9b3137EFA5",
+    "src/vault/libs/AutoPool4626.sol:AutoPool4626:0xDf768df195eDE3172E971Cfc1968f703BF325109",
+    "src/vault/libs/AutoPoolFees.sol:AutoPoolFees:0x447536DF798693404686266ba4c8800aDE8372A3",
+]
+
 [fmt]
 bracket_spacing = true
 int_types = "long"

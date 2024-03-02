@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: UNLICENSED
+// Copyright (c) 2023 Tokemak Foundation. All rights reserved.
+pragma solidity 0.8.17;
+
+// solhint-disable no-console
+
+import { BaseScript, console } from "script/BaseScript.sol";
+
+contract Deposit is BaseScript {
+    address[] private ar = [
+        0x1Bb5f0B50F505934B5fc1821b24ecc1E1b287543,
+        0xaed4850Ce877C0e0b051EbfF9286074C9378205c,
+        0x1177b0C6eC38b6A79C06A35321c59C99392FBf57,
+        0xAbeEbFcf206717084f539344D873F7362c7288EA,
+        0x8918959139E369423F9dB7c27685D558C493308E,
+        0x9963282680a196a7366E8f7FdB5690A85475346b,
+        0x78790F3479f6f36815065C6B7772C8b4E26BB412,
+        0xCbF6B043eD8dcda3280cA422a440276c5166D8Da,
+        0x27165a224461ec7B62E9f9b58d4c42CB848e0D82,
+        0x177B9FB826F79a2c0d590F418AC9517E71eA4272,
+        0x04d92eD35804a5633Ec5074299103134454C782c,
+        0xDc80F417Fa7Ed9B277F743109CE1e3D25a561012,
+        0x3e097470a99100ED038688A7C548Fb7cB59b4086,
+        0x75177CC3f4A4724Fda3d5a0f28ab78c2654B53d1,
+        0x4352632007Ff6f3A54641D85911cCB7937064357,
+        0x79CEDe27000De4Cd5c7cC270BF6d26a9425ec1BB,
+        0x24186BD439297a53f49b14Aec51b63595a9D9A3F,
+        0xfDfA1529c13452A6b50C678be6972B44b133b55B,
+        0xe4b9411eC51FE2D674DE00cA1f44833320e8dEe4,
+        0x6171F028c1D06c4ceEDf41Ae61024931281f6DaC,
+        0x1406311f198A72CcA5F895141238E6043e4984B6
+    ];
+
+    function run() external {
+        bytes memory x = abi.encode(ar);
+        console.logBytes(x);
+    }
+}

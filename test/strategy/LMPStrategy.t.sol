@@ -2,6 +2,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+// solhint-disable func-name-mixedcase,max-states-count,state-visibility
+
 import { Test } from "forge-std/Test.sol";
 import { LMPStrategy, ISystemRegistry } from "src/strategy/LMPStrategy.sol";
 import { LMPStrategyConfig } from "src/strategy/LMPStrategyConfig.sol";
@@ -28,8 +30,6 @@ import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 
-// solhint-disable func-name-mixedcase
-
 contract LMPStrategyTest is Test {
     using NavTracking for NavTracking.State;
 
@@ -55,6 +55,9 @@ contract LMPStrategyTest is Test {
     IStrategy.SummaryStats private destOut;
 
     uint256 startBlockTime = 1000 days;
+
+    event LstPriceGapSet(uint256 newPriceGap);
+    event DustPositionPortionSet(uint256 newValue);
 
     function setUp() public {
         vm.warp(startBlockTime);
@@ -1927,8 +1930,73 @@ contract LMPStrategyTest is Test {
     }
 
     /* **************************************** */
+    /* setLstPriceGapTolerance Tests            */
+    /* **************************************** */
+
+    function test_setLstPriceGapTolerance_OnlyCallableByRole() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        defaultStrat.setLstPriceGapTolerance(100);
+
+        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+
+        defaultStrat.setLstPriceGapTolerance(100);
+    }
+
+    function test_setLstPriceGapTolerance_UpdatesValue() public {
+        uint256 originalValue = defaultStrat.lstPriceGapTolerance();
+
+        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+
+        defaultStrat.setLstPriceGapTolerance(100);
+
+        assertTrue(originalValue != 100, "originalValue");
+        assertEq(defaultStrat.lstPriceGapTolerance(), 100, "newValue");
+    }
+
+    function test_setLstPriceGapTolerance_EmitsEvent() public {
+        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+
+        vm.expectEmit(true, true, true, true);
+        emit LstPriceGapSet(100);
+        defaultStrat.setLstPriceGapTolerance(100);
+    }
+
+    /* **************************************** */
+    /* setDustPositionPortions Tests            */
+    /* **************************************** */
+
+    function test_setDustPositionPortions_OnlyCallableByRole() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        defaultStrat.setDustPositionPortions(100);
+
+        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+
+        defaultStrat.setDustPositionPortions(100);
+    }
+
+    function test_setDustPositionPortions_UpdatesValue() public {
+        uint256 originalValue = defaultStrat.dustPositionPortions();
+
+        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+
+        defaultStrat.setDustPositionPortions(100);
+
+        assertTrue(originalValue != 100, "originalValue");
+        assertEq(defaultStrat.dustPositionPortions(), 100, "newValue");
+    }
+
+    function test_setDustPositionPortions_EmitsEvent() public {
+        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+
+        vm.expectEmit(true, true, true, true);
+        emit DustPositionPortionSet(100);
+        defaultStrat.setDustPositionPortions(100);
+    }
+
+    /* **************************************** */
     /* Test Helpers                             */
     /* **************************************** */
+
     function deployStrategy(LMPStrategyConfig.StrategyConfig memory cfg) internal returns (LMPStrategyHarness strat) {
         LMPStrategyHarness stratHarness = new LMPStrategyHarness(ISystemRegistry(address(systemRegistry)), cfg);
         strat = LMPStrategyHarness(Clones.clone(address(stratHarness)));

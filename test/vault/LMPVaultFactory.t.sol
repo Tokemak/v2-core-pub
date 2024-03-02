@@ -107,7 +107,7 @@ contract LMPVaultFactoryTest is Test {
 
     function test_createVault_FixesUpTokenFields() public {
         address newVault = _lmpVaultFactory.createVault(_stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData);
-        assertEq(IERC20(newVault).symbol(), "lmpx");
-        assertEq(IERC20(newVault).name(), "y Pool Token");
+        assertEq(IERC20(newVault).symbol(), "x");
+        assertEq(IERC20(newVault).name(), "y");
     }
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-// Copyright (c) 2024 Tokemak Foundation. All rights reserved.
+// Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
@@ -25,7 +25,7 @@ contract TestIncentiveCalculator {
         _poolAddress = poolAddress_;
     }
 
-    function current() external returns (IDexLSTStats.DexLSTStatsData memory) {
+    function current() external pure returns (IDexLSTStats.DexLSTStatsData memory) {
         uint256 lastSnapshotTimestamp = 1;
         uint256 feeApr = 2;
         uint256[] memory reservesInEth = new uint256[](1);

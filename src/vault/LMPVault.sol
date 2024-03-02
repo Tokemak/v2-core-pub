@@ -186,9 +186,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// @notice Reverts if any nav/share changing operations are in progress across the system
     /// @dev Any rebalance or debtReporting on any pool
     modifier ensureNoNavOps() {
-        if (_systemRegistry.systemSecurity().navOpsInProgress() > 0) {
-            revert NavOpsInProgress();
-        }
+        _checkNoNavOps();
         _;
     }
 
@@ -241,8 +239,8 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
         factory = msg.sender;
 
-        _symbol = string(abi.encodePacked("lmp", symbolSuffix));
-        _name = string(abi.encodePacked(descPrefix, " Pool Token"));
+        _symbol = string(abi.encodePacked(symbolSuffix));
+        _name = string(abi.encodePacked(descPrefix));
 
         AutoPoolFees.initializeFeeSettings(_feeSettings);
 
@@ -940,6 +938,12 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     function _ensureAllowedUsers(address receiver) internal view {
         if (_checkUsers && (!allowedUsers[msg.sender] || !allowedUsers[receiver])) {
             revert InvalidUser();
+        }
+    }
+
+    function _checkNoNavOps() internal view {
+        if (_systemRegistry.systemSecurity().navOpsInProgress() > 0) {
+            revert NavOpsInProgress();
         }
     }
 

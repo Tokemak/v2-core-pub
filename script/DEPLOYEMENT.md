@@ -6,8 +6,6 @@
 npx hardhat system --rpc-url <fork-url> --system-registry-address 0x0406d2D96871f798fcf54d5969F69F55F803eEA4
 ```
 
-
-
 Outlined below are the necessary steps for deploying the system, using specific forge scripts.
 
 ## Register Reward Tokens
@@ -75,7 +73,7 @@ Facilitates the setup of the LMP Vault System and the creation of a strategy tai
 
 ## LMP System:
 
-Deploys and registers the `LMPVaultRegistry`, `LMPVaultFactory` with `weth-vault` type and `LMPVaultRouter`.
+Deploys and registers the `LMPVaultRegistry`, `LMPVaultFactory` with `lst-guarded-r1` type and `LMPVaultRouter`.
 Grants the `REGISTRY_UPDATER` role to the new lmp factory.
 
 ```shell
@@ -84,7 +82,7 @@ forge script script/lmp/LMPSystem.s.sol --rpc-url <fork-url> --broadcast --slow
 
 ## Create LMP Strategy:
 
-Deploys and registers a new LMP strategy template for type `weth-vault`.
+Deploys and registers a new LMP strategy template for type `lst-guarded-r1`.
 
 StrategyConfig must be set in the file.
 
@@ -94,14 +92,13 @@ forge script script/lmp/CreateLMPStrategy.s.sol --rpc-url <fork-url> --broadcast
 
 # Create a LMP Vault
 
-Creates a new LMP Vault using the `weth-vault` LMP Vault Factory and the specified strategy template.
+Creates a new LMP Vault using the `lst-guarded-r1` LMP Vault Factory and the specified strategy template.
 
 Strategy template must be set in the file.
 
 ```shell
 forge script script/lmp/CreateLMPVault.s.sol --rpc-url <fork-url> --broadcast --slow
 ```
-
 
 # Create the Root Oracle and oracles
 

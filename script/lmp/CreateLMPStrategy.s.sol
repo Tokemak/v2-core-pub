@@ -2,6 +2,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+// solhint-disable no-console,reason-string,state-visibility,max-line-length
+
 import { BaseScript, console } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
 
@@ -12,29 +14,25 @@ import { LMPStrategyConfig } from "src/strategy/LMPStrategyConfig.sol";
 /**
  * @dev This contract:
  *      1. Deploys a new LMP strategy template with the following configuration.
- *      2. Registers the new strategy template in the `weth-vault` LMP Vault Factory.
+ *      2. Registers the new strategy template in the `lst-guarded-r1` LMP Vault Factory.
  */
 contract CreateLMPStrategy is BaseScript {
     // 🚨 Manually set variables below. 🚨
-    uint256 public lmp1SupplyLimit = type(uint112).max;
-    uint256 public lmp1WalletLimit = type(uint112).max;
-    string public lmp1SymbolSuffix = "EST";
-    string public lmp1DescPrefix = "Established";
-    bytes32 public lmpVaultType = keccak256("weth-vault");
+    bytes32 public lmpVaultType = keccak256("lst-guarded-r1");
 
     LMPStrategyConfig.StrategyConfig config = LMPStrategyConfig.StrategyConfig({
         swapCostOffset: LMPStrategyConfig.SwapCostOffsetConfig({
-            initInDays: 28,
+            initInDays: 60,
             tightenThresholdInViolations: 5,
-            tightenStepInDays: 3,
-            relaxThresholdInDays: 20,
-            relaxStepInDays: 3,
+            tightenStepInDays: 2,
+            relaxThresholdInDays: 30,
+            relaxStepInDays: 1,
             maxInDays: 60,
-            minInDays: 10
+            minInDays: 7
         }),
         navLookback: LMPStrategyConfig.NavLookbackConfig({ lookback1InDays: 30, lookback2InDays: 60, lookback3InDays: 90 }),
         slippage: LMPStrategyConfig.SlippageConfig({
-            maxNormalOperationSlippage: 1e16, // 1%
+            maxNormalOperationSlippage: 5e15, // 0.5%
             maxTrimOperationSlippage: 2e16, // 2%
             maxEmergencyOperationSlippage: 0.025e18, // 2.5%
             maxShutdownOperationSlippage: 0.015e18 // 1.5%
@@ -49,11 +47,12 @@ contract CreateLMPStrategy is BaseScript {
             pricePremium: 1e6
         }),
         pauseRebalancePeriodInDays: 90,
+        rebalanceTimeGapInSeconds: 28_800, // 8 hours
         maxPremium: 0.01e18, // 1%
         maxDiscount: 0.02e18, // 2%
         staleDataToleranceInSeconds: 2 days,
-        maxAllowedDiscount: 0.05e18,
-        lstPriceGapTolerance: 10 // 10 bps
+        maxAllowedDiscount: 0.05e18, // 5%
+        lstPriceGapTolerance: 5 // 5 bps
      });
 
     function run() external {
@@ -65,7 +64,7 @@ contract CreateLMPStrategy is BaseScript {
         ILMPVaultFactory lmpFactory = systemRegistry.getLMPVaultFactoryByType(lmpVaultType);
 
         if (address(lmpFactory) == address(0)) {
-            revert("LMP Vault Factory not set for weth-vault type");
+            revert("LMP Vault Factory not set for lst-guarded-r1 type");
         }
 
         lmpFactory.addStrategyTemplate(address(stratTemplate));

@@ -20,11 +20,10 @@ import { CurveConvexDestinationVault } from "src/vault/CurveConvexDestinationVau
  * It uses the 'curve-convex' template to create the vault.
  */
 contract CurveStEthEthNg is CurveDestinationVaultBase {
-
     function _getData()
         internal
-        override
         pure
+        override
         returns (
             string memory template,
             address calculator,

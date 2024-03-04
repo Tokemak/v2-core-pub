@@ -17,7 +17,7 @@ contract CreateLMPVault is BaseScript {
     // 🚨 Manually set variables below. 🚨
     string public lmp1SymbolSuffix = "autoETH_guarded";
     string public lmp1DescPrefix = "Tokemak Guarded autoETH ";
-    address public strategyTemplateAddress = 0xe09122EBD0ae8BaDFe9399B709F31172eB913997;
+    address public strategyTemplateAddress = 0x86Bd762B375f5B17e6e3a964B01980a53536E3b2;
 
     bytes32 public lmpVaultType = keccak256("lst-guarded-r1");
 

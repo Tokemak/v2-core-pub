@@ -4,7 +4,6 @@
 pragma solidity 0.8.17;
 
 import { Test } from "forge-std/Test.sol";
-import "forge-std/console.sol";
 import {
     WETH9_ADDRESS,
     TOKE_MAINNET,
@@ -159,7 +158,6 @@ contract MavEthOracleTest is Test {
         (uint256 price,) =
             mavOracle.getSpotPrice(WETH_MAINNET, POOL_ADDRESS, 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
-        console.log(price);
         // assertEq(price, 1_146_037_501_992_223_339);
     }
 
@@ -170,7 +168,6 @@ contract MavEthOracleTest is Test {
         (uint256 price,) =
             mavOracle.getSpotPrice(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, POOL_ADDRESS, WETH_MAINNET);
 
-        console.log(price);
         // assertEq(price, 1_146_037_501_992_223_339);
     }
 

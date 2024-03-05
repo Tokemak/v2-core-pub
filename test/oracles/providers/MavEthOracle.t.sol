@@ -4,15 +4,19 @@
 pragma solidity 0.8.17;
 
 import { Test } from "forge-std/Test.sol";
-
+import "forge-std/console.sol";
 import {
     WETH9_ADDRESS,
     TOKE_MAINNET,
     WSTETH_MAINNET,
     MAV_WSTETH_WETH_BOOSTED_POS,
     MAV_WSTETH_WETH_POOL,
+    MAV_GHO_USDC_BOOSTED_POS,
+    MAV_GHO_USDC_POOL,
     MAV_POOL_INFORMATION,
-    WETH_MAINNET
+    WETH_MAINNET,
+    USDC_MAINNET,
+    GHO_MAINNET
 } from "test/utils/Addresses.sol";
 
 import { MavEthOracle } from "src/oracles/providers/MavEthOracle.sol";
@@ -22,6 +26,8 @@ import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { Errors } from "src/utils/Errors.sol";
+
+import { IPool } from "src/interfaces/external/maverick/IPool.sol";
 
 // solhint-disable func-name-mixedcase
 
@@ -37,7 +43,10 @@ contract MavEthOracleTest is Test {
     function setUp() external {
         uint256 mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), 18_579_296);
         vm.selectFork(mainnetFork);
+        _setUp();
+    }
 
+    function _setUp() internal {
         registry = new SystemRegistry(TOKE_MAINNET, WETH9_ADDRESS);
         accessControl = new AccessController(address(registry));
         registry.setAccessController(address(accessControl));
@@ -143,6 +152,28 @@ contract MavEthOracleTest is Test {
         assertEq(price, 1_146_037_501_992_223_339);
     }
 
+    function test_GetSpotPrice_USDCEth() external {
+        mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
+
+        address POOL_ADDRESS = 0x11A653DDFBb61E0Feff5484919F06d9d254bf65F;
+        (uint256 price,) =
+            mavOracle.getSpotPrice(WETH_MAINNET, POOL_ADDRESS, 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+
+        console.log(price);
+        // assertEq(price, 1_146_037_501_992_223_339);
+    }
+
+    function test_GetSpotPrice_EthUSDC() external {
+        mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
+
+        address POOL_ADDRESS = 0x11A653DDFBb61E0Feff5484919F06d9d254bf65F;
+        (uint256 price,) =
+            mavOracle.getSpotPrice(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, POOL_ADDRESS, WETH_MAINNET);
+
+        console.log(price);
+        // assertEq(price, 1_146_037_501_992_223_339);
+    }
+
     /// @dev Weth -> WestEth at block 18_579_296 is 0.872571401184986273
     function test_GetSpotPrice_WethWstEth() external {
         mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
@@ -185,5 +216,24 @@ contract GetSafeSpotPriceInfo is MavEthOracleTest {
         assertEq(reserves[1].reserveAmount, 649_912_488_471_763_583_072);
         assertEq(reserves[1].rawSpotPrice, 872_571_401_184_986_273);
         assertEq(reserves[1].actualQuoteToken, WSTETH_MAINNET);
+    }
+
+    function test_getSafeSpotPriceInfo_GHO_USDC() public {
+        uint256 anotherFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), 19_320_623);
+        vm.selectFork(anotherFork);
+
+        _setUp();
+
+        (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
+            mavOracle.getSafeSpotPriceInfo(MAV_GHO_USDC_POOL, MAV_GHO_USDC_BOOSTED_POS, USDC_MAINNET);
+
+        assertEq(reserves.length, 2);
+
+        assertEq(totalLPSupply, 227_572_117_208_808_237_777_026);
+        assertEq(reserves[0].token, GHO_MAINNET);
+        assertEq(reserves[0].reserveAmount, 844_656_614_858_709_786_752_942);
+
+        assertEq(reserves[1].token, USDC_MAINNET);
+        assertEq(reserves[1].reserveAmount, 1_535_259_704_184_092_811_945_619 / uint256(1e12));
     }
 }

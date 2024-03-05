@@ -31,7 +31,7 @@ contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPrice
     error InvalidToken();
 
     // 100 = 1% spacing, 10 = .1% spacing, 1 = .01% spacing etc.
-    uint256 public maxTotalBinWidth = 50;
+    uint256 public maxTotalBinWidth = 100;
 
     /// @notice The PoolInformation Maverick contract.
     IPoolInformation public poolInformation;
@@ -146,6 +146,12 @@ contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPrice
         // Get reserves in boosted position
         (uint256 reserveTokenA, uint256 reserveTokenB) = boostedPosition.getReserves();
 
+        //getReserves scales to 18, so we need to scale back to token decimals
+        (reserveTokenA, reserveTokenB) = (
+            _scaleDecimalsToOriginal(IERC20Metadata(tokenA), reserveTokenA),
+            _scaleDecimalsToOriginal(IERC20Metadata(tokenB), reserveTokenB)
+        );
+
         reserves = new ISpotPriceOracle.ReserveItemInfo[](2);
         reserves[0] = ISpotPriceOracle.ReserveItemInfo({
             token: tokenA,
@@ -181,6 +187,23 @@ contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPrice
         if (pool.tickSpacing() * boostedPosition.allBinIds().length > maxTotalBinWidth) {
             revert TotalBinWidthExceedsMax();
         }
+    }
+
+    ///@dev Scale decimals back to original value from 1e18
+    function _scaleDecimalsToOriginal(IERC20Metadata token, uint256 amount) internal view returns (uint256) {
+        uint256 decimals = IERC20Metadata(token).decimals();
+
+        if (decimals == 18) {
+            return amount;
+        } else if (decimals < 18) {
+            uint256 exponent = 18 - decimals;
+            amount = amount / (10 ** exponent);
+        } else {
+            uint256 exponent = decimals - 18;
+            amount = amount * (10 ** exponent);
+        }
+
+        return amount;
     }
 }
 //slither-disable-end similar-names

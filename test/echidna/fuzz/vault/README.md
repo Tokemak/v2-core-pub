@@ -50,3 +50,13 @@ Mimics interactions and environmental changes that would influence the AutoPool.
 ```
 echidna test/echidna/fuzz/vault/LMPVaultTests.sol --contract LMPVaultTest --config test/echidna/fuzz/vault/echidna.yaml
 ```
+
+## AutoPoolRouter Interactions and Externals
+
+This set of tests verifies scenarios when user mints & owns some shares obtained via interaction with the Router and ensures that no other user is possible to obtain their shares. This is verifiable by user balance change checks.
+
+### Running
+
+```
+echidna test/echidna/fuzz/vault/router/LMPVaultRouterTests.sol --contract LMPVaultRouterTest --config test/echidna/fuzz/vault/router/echidna.yaml
+```

@@ -19,6 +19,12 @@ interface ILiquidationRow {
     error SellAmountMismatch(uint256 totalBalanceToLiquidate, uint256 buyAmount);
     error AmountsMismatch(uint256 sellAmount, uint256 buyAmount);
 
+    /**
+     * @param fromToken The address of the token to be liquidated
+     * @param asyncSwapper The address of the async swapper
+     * @param vaultsToLiquidate An array of vault addresses to liquidate
+     * @param params Swap parameters for the async swapper
+     */
     struct LiquidationParams {
         address fromToken;
         address asyncSwapper;
@@ -92,8 +98,8 @@ interface ILiquidationRow {
     @notice Liquidate the specified vaults' balances for a specific token
     @param fromToken The address of the token to be liquidated
     @param asyncSwapper The address of the async swapper
-    @param params Swap parameters for the async swapper
     @param vaultsToLiquidate An array of vault addresses to liquidate
+    @param params Swap parameters for the async swapper
     */
     function liquidateVaultsForToken(
         address fromToken,
@@ -101,4 +107,10 @@ interface ILiquidationRow {
         IDestinationVault[] memory vaultsToLiquidate,
         SwapParams memory params
     ) external;
+
+    /*
+    @notice Liquidate the specified vaults' balances for given tokens
+    @param liquidationParams Liquidation parameters for the given tokens
+    */
+    function liquidateVaultsForTokens(LiquidationParams[] memory liquidationParams) external;
 }

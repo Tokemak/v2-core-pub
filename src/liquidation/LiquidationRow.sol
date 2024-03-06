@@ -155,6 +155,7 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
         return tokenVaults[tokenAddress].values();
     }
 
+    /// @inheritdoc ILiquidationRow
     function liquidateVaultsForTokens(LiquidationParams[] memory liquidationParams)
         external
         nonReentrant

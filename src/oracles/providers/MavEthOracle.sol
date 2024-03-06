@@ -31,7 +31,7 @@ contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPrice
     error InvalidToken();
 
     // 100 = 1% spacing, 10 = .1% spacing, 1 = .01% spacing etc.
-    uint256 public maxTotalBinWidth = 100;
+    uint256 public maxTotalBinWidth = 50;
 
     /// @notice The PoolInformation Maverick contract.
     IPoolInformation public poolInformation;

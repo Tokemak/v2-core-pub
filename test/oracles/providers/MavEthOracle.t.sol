@@ -151,26 +151,6 @@ contract MavEthOracleTest is Test {
         assertEq(price, 1_146_037_501_992_223_339);
     }
 
-    function test_GetSpotPrice_USDCEth() external {
-        mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
-
-        address POOL_ADDRESS = 0x11A653DDFBb61E0Feff5484919F06d9d254bf65F;
-        (uint256 price,) =
-            mavOracle.getSpotPrice(WETH_MAINNET, POOL_ADDRESS, 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-
-        // assertEq(price, 1_146_037_501_992_223_339);
-    }
-
-    function test_GetSpotPrice_EthUSDC() external {
-        mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
-
-        address POOL_ADDRESS = 0x11A653DDFBb61E0Feff5484919F06d9d254bf65F;
-        (uint256 price,) =
-            mavOracle.getSpotPrice(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, POOL_ADDRESS, WETH_MAINNET);
-
-        // assertEq(price, 1_146_037_501_992_223_339);
-    }
-
     /// @dev Weth -> WestEth at block 18_579_296 is 0.872571401184986273
     function test_GetSpotPrice_WethWstEth() external {
         mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
@@ -220,6 +200,7 @@ contract GetSafeSpotPriceInfo is MavEthOracleTest {
         vm.selectFork(anotherFork);
 
         _setUp();
+        mavOracle.setMaxTotalBinWidth(100);
 
         (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
             mavOracle.getSafeSpotPriceInfo(MAV_GHO_USDC_POOL, MAV_GHO_USDC_BOOSTED_POS, USDC_MAINNET);

@@ -19,6 +19,7 @@ import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { IAsyncSwapper } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 
 contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, SecurityBase {
     using Address for address;
@@ -69,14 +70,14 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
     }
 
     /// @inheritdoc ILiquidationRow
-    function addToWhitelist(address swapper) external hasRole(Roles.LIQUIDATOR_ROLE) {
+    function addToWhitelist(address swapper) external hasRole(Roles.REWARD_LIQUIDATION_MANAGER) {
         Errors.verifyNotZero(swapper, "swapper");
         if (!whitelistedSwappers.add(swapper)) revert Errors.ItemExists();
         emit SwapperAdded(swapper);
     }
 
     /// @inheritdoc ILiquidationRow
-    function removeFromWhitelist(address swapper) external hasRole(Roles.LIQUIDATOR_ROLE) {
+    function removeFromWhitelist(address swapper) external hasRole(Roles.REWARD_LIQUIDATION_MANAGER) {
         if (!whitelistedSwappers.remove(swapper)) revert Errors.ItemNotFound();
         emit SwapperRemoved(swapper);
     }
@@ -87,7 +88,10 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
     }
 
     /// @inheritdoc ILiquidationRow
-    function setFeeAndReceiver(address _feeReceiver, uint256 _feeBps) external hasRole(Roles.LIQUIDATOR_ROLE) {
+    function setFeeAndReceiver(
+        address _feeReceiver,
+        uint256 _feeBps
+    ) external hasRole(Roles.REWARD_LIQUIDATION_MANAGER) {
         // _feeBps should be less than or equal to 50%.  Want to limit the amount of received
         //      that can be taken as fee.
         if (_feeBps > MAX_PCT / 2) revert FeeTooHigh();
@@ -105,7 +109,7 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
     function claimsVaultRewards(IDestinationVault[] memory vaults)
         external
         nonReentrant
-        hasRole(Roles.LIQUIDATOR_ROLE)
+        hasRole(Roles.REWARD_LIQUIDATION_EXECUTOR)
     {
         if (vaults.length == 0) revert Errors.InvalidParam("vaults");
 
@@ -151,6 +155,47 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
         return tokenVaults[tokenAddress].values();
     }
 
+    function liquidateVaultsForTokens(LiquidationParams[] memory liquidationParams)
+        external
+        nonReentrant
+        hasRole(Roles.REWARD_LIQUIDATION_EXECUTOR)
+    {
+        uint256 len = liquidationParams.length;
+        Errors.verifyNotZero(len, "len");
+        for (uint256 i = 0; i < len;) {
+            _liquidateVaultsForToken(
+                liquidationParams[i].fromToken,
+                liquidationParams[i].asyncSwapper,
+                liquidationParams[i].vaultsToLiquidate,
+                liquidationParams[i].param
+            );
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /**
+     * @notice Conducts the liquidation process for a specific token across a list of vaults,
+     * performing the necessary balance adjustments, initiating the swap process via the asyncSwapper,
+     * taking a fee from the received amount, and queues the remaining swapped tokens in the MainRewarder associated
+     * with
+     * each vault.
+     * @param fromToken The token that needs to be liquidated
+     * @param asyncSwapper The address of the async swapper contract
+     * @param vaultsToLiquidate The list of vaults that need to be liquidated
+     * @param params Parameters for the async swap
+     */
+    function liquidateVaultsForToken(
+        address fromToken,
+        address asyncSwapper,
+        IDestinationVault[] memory vaultsToLiquidate,
+        SwapParams memory params
+    ) external nonReentrant hasRole(Roles.REWARD_LIQUIDATION_EXECUTOR) {
+        _liquidateVaultsForToken(fromToken, asyncSwapper, vaultsToLiquidate, params);
+    }
+
     /**
      * @notice Conducts the liquidation process for a specific token across a list of vaults,
      * performing the necessary balance adjustments, initiating the swap process via the asyncSwapper,
@@ -165,12 +210,12 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
      * @param vaultsToLiquidate The list of vaults that need to be liquidated
      * @param params Parameters for the async swap
      */
-    function liquidateVaultsForToken(
+    function _liquidateVaultsForToken(
         address fromToken,
         address asyncSwapper,
         IDestinationVault[] memory vaultsToLiquidate,
         SwapParams memory params
-    ) external nonReentrant hasRole(Roles.LIQUIDATOR_ROLE) onlyWhitelistedSwapper(asyncSwapper) {
+    ) private onlyWhitelistedSwapper(asyncSwapper) {
         uint256 gasBefore = gasleft();
 
         (uint256 totalBalanceToLiquidate, uint256[] memory vaultsBalances) =
@@ -230,7 +275,7 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
      * @dev This function is part of a workaround for the "stack too deep" error and is meant to be used with
      * _prepareForLiquidation. It's not designed to be used standalone, but as part of the liquidateVaultsForToken
      * function
-     * @param gasBefore Amount of gas when the liquidliquidateVaultsForToken function was called
+     * @param gasBefore Amount of gas when the liquidateVaultsForToken function was called
      * @param fromToken The token that needs to be liquidated
      * @param asyncSwapper The address of the async swapper contract
      * @param vaultsToLiquidate The list of vaults that need to be liquidated
@@ -260,7 +305,7 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
         if (fromToken != params.buyTokenAddress) {
             // the swapper checks that the amount received is greater or equal than the params.buyAmount
             bytes memory data = asyncSwapper.functionDelegateCall(
-                abi.encodeWithSignature("swap((address,uint256,address,uint256,bytes,bytes))", params), "SwapFailed"
+                abi.encodeWithSelector(IAsyncSwapper.swap.selector, params), "SwapFailed"
             );
 
             amountReceived = abi.decode(data, (uint256));
@@ -272,7 +317,7 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
         // if the fee feature is turned on, send the fee to the fee receiver
         if (feeReceiver != address(0) && feeBps > 0) {
             uint256 fee = calculateFee(amountReceived);
-            emit FeesTransfered(feeReceiver, amountReceived, fee);
+            emit FeesTransferred(feeReceiver, amountReceived, fee);
 
             // adjust the amount received after deducting the fee
             amountReceived -= fee;

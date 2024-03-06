@@ -11,13 +11,20 @@ interface ILiquidationRow {
     event BalanceUpdated(address indexed token, address indexed vault, uint256 balance);
     event VaultLiquidated(address indexed vault, address indexed fromToken, address indexed toToken, uint256 amount);
     event GasUsedForVault(address indexed vault, uint256 gasAmount, bytes32 action);
-    event FeesTransfered(address indexed receiver, uint256 amountReceived, uint256 fees);
+    event FeesTransferred(address indexed receiver, uint256 amountReceived, uint256 fees);
 
     error NothingToLiquidate();
     error InvalidRewardToken();
     error FeeTooHigh();
     error SellAmountMismatch(uint256 totalBalanceToLiquidate, uint256 buyAmount);
     error AmountsMismatch(uint256 sellAmount, uint256 buyAmount);
+
+    struct LiquidationParams {
+        address fromToken;
+        address asyncSwapper;
+        IDestinationVault[] vaultsToLiquidate;
+        SwapParams param;
+    }
 
     /**
      * @notice Claim rewards from a list of vaults

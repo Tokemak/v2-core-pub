@@ -44,4 +44,7 @@ library Roles {
     bytes32 public constant LMP_UPDATE_DEBT_REPORTING_ROLE = keccak256("LMP_UPDATE_DEBT_REPORTING_ROLE");
 
     bytes32 public constant AUTO_POOL_ADMIN = keccak256("AUTO_POOL_ADMIN");
+
+    bytes32 public constant REWARD_LIQUIDATION_MANAGER = keccak256("REWARD_LIQUIDATION_MANAGER");
+    bytes32 public constant REWARD_LIQUIDATION_EXECUTOR = keccak256("REWARD_LIQUIDATION_EXECUTOR");
 }

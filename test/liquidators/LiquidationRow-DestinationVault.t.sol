@@ -97,7 +97,8 @@ contract LiquidationRowTest is Test {
 
         liquidationRow = new LiquidationRow(systemRegistry);
 
-        accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
+        accessController.grantRole(Roles.REWARD_LIQUIDATION_MANAGER, address(this));
+        accessController.grantRole(Roles.REWARD_LIQUIDATION_EXECUTOR, address(this));
         accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(liquidationRow));
         accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
         accessController.grantRole(Roles.REGISTRY_UPDATER, address(this));

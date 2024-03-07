@@ -87,7 +87,7 @@ contract LMPVaultTests is
     event PeriodicFeeSet(uint256 newFee);
     event PendingPeriodicFeeSet(uint256 pendingPeriodicFeeBps);
     event PeriodicFeeSinkSet(address newPeriodicFeeSink);
-    event NextPeriodicFeeTakeSet(uint256 nextPeriodicFeeTake);
+    event LastPeriodicFeeTakeSet(uint256 lastPeriodicFeeTake);
     event RebalanceFeeHighWaterMarkEnabledSet(bool enabled);
     event TokensPulled(address[] tokens, uint256[] amounts, address[] destinations);
     event TokensRecovered(address[] tokens, uint256[] amounts, address[] destinations);
@@ -1674,119 +1674,7 @@ contract PeriodicFees is LMPVaultTests {
     }
 
     function test_IsSetOnInitialization() public {
-        assertGt(vault.getFeeSettings().nextPeriodicFeeTake, 0);
-    }
-
-    // Testing that `periodicFee` gets set outside of 45 day window before fee take.
-    function test_OutsideOfFeeTakeBufferNewValueIsSet() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
-
-        vm.warp(vault.getFeeSettings().nextPeriodicFeeTake - (AutoPoolFees.PERIODIC_FEE_CHANGE_CUTOFF + 1));
-
-        vm.expectEmit(false, false, false, true);
-        emit PeriodicFeeSet(500);
-
-        vault.setPeriodicFeeBps(500);
-
-        assertEq(vault.getFeeSettings().periodicFeeBps, 500);
-    }
-
-    function test_PeriodicFeeCanBeReplacedWhenOnlyPendingSet() public {
-        /**
-         * This test tests that in the situation that `periodicFeeBps == 0` and
-         *      `pendingPeriodicFeeBps > 0` that the pending periodic fee can
-         *      become the periodic fee.  This was a bug in the original implementation
-         *      of periodic fees, we could have gotten stuck in a state where
-         *      the periodic fee could not be set.
-         */
-
-        // Set roles
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, true);
-
-        // Set sink
-        address feeSink = makeAddr("feeSink");
-        vault.setPeriodicFeeSink(feeSink);
-
-        // Vault deposit, needed so that `_collectFees()` doesn't return on no supply.
-        vaultAsset.mint(address(this), 10);
-        vaultAsset.approve(address(vault), 10);
-        vault.deposit(10, address(this));
-
-        // Warp time so that pending is set.
-        vm.warp(block.timestamp + vault.getFeeSettings().nextPeriodicFeeTake);
-
-        // Set pending.
-        vault.setPeriodicFeeBps(1000);
-
-        assertEq(vault.getFeeSettings().periodicFeeBps, 0);
-        assertEq(vault.getFeeSettings().pendingPeriodicFeeBps, 1000);
-
-        /**
-         * Trigger `_collectFees()` through `updateDebtReporting`.  No periodic fee is set, so nothing
-         *      will be collected. However, a pending fee is set which will replace the periodic fee of 0.
-         */
-        vm.expectEmit(false, false, false, true);
-        emit PeriodicFeeSet(1000);
-        vm.expectEmit(false, false, false, true);
-        emit PendingPeriodicFeeSet(0);
-
-        vault.updateDebtReporting(0);
-
-        assertEq(vault.getFeeSettings().periodicFeeBps, 1000);
-        assertEq(vault.getFeeSettings().pendingPeriodicFeeBps, 0);
-    }
-
-    function test_NextFeeTakeTimeNotUpdatedPrematurely() public {
-        // Role setup.
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, true);
-
-        // Snapshot fee take timestamp before debt reporting update,
-        uint256 nextPeriodicFeeTakeBefore = vault.getFeeSettings().nextPeriodicFeeTake;
-
-        // Make sure that periodic fee takes line up properly,
-        assertLt(nextPeriodicFeeTakeBefore, nextPeriodicFeeTakeBefore + AutoPoolFees.PERIODIC_FEE_TAKE_TIMEFRAME);
-
-        // Give vault some supply so `_collectFees()` runs.
-        vaultAsset.mint(address(this), 1000);
-        vaultAsset.approve(address(vault), 1000);
-        vault.deposit(1000, address(this));
-
-        // Update debt reporting.
-        vault.updateDebtReporting(0);
-
-        assertEq(vault.getFeeSettings().nextPeriodicFeeTake, nextPeriodicFeeTakeBefore);
-    }
-
-    function test_NextFeeTakeTimeUpdatesWhenPastDue() public {
-        // Role setup.
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, true);
-
-        // Snapshot fee take timestamp before debt reporting update,
-        uint256 nextPeriodicFeeTakeBefore = vault.getFeeSettings().nextPeriodicFeeTake;
-        uint256 periodicFeeTakeTimeframe = AutoPoolFees.PERIODIC_FEE_TAKE_TIMEFRAME;
-        uint256 expectedNextPeriodicFeeTake = nextPeriodicFeeTakeBefore + periodicFeeTakeTimeframe;
-
-        // Give vault some supply so `_collectFees()` runs.
-        vaultAsset.mint(address(this), 1000);
-        vaultAsset.approve(address(vault), 1000);
-        vault.deposit(1000, address(this));
-
-        // Total supply snapshot to check that nothing else was minted post operation.
-        uint256 totalSupplyBefore = vault.totalSupply();
-
-        // Update timestamp to be > current `nextPeriodicFeeTake`.
-        vm.warp(nextPeriodicFeeTakeBefore + 1);
-
-        // Update debt reporting, check for event emitted.
-        vm.expectEmit(false, false, false, true);
-        emit NextPeriodicFeeTakeSet(expectedNextPeriodicFeeTake);
-        vault.updateDebtReporting(0);
-
-        // Check updated `nextPeriodicFeeTake` against expected.
-        assertEq(vault.getFeeSettings().nextPeriodicFeeTake, expectedNextPeriodicFeeTake);
-        // Check total supply to make sure nothing minted.
-        assertEq(vault.totalSupply(), totalSupplyBefore);
+        assertGt(vault.getFeeSettings().lastPeriodicFeeTake, 0);
     }
 
     function test_CollectedAsExpectedWhenConfiguredWithFeeAndSink() public {
@@ -1795,11 +1683,11 @@ contract PeriodicFees is LMPVaultTests {
         _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, true);
 
         // Local variables.
+        uint256 warpAmount = block.timestamp + 1 days;
         uint256 depositAmount = 3e20;
         uint256 periodicFeeBps = 500; // 5%
         address feeSink = makeAddr("periodicFeeSink");
-        uint256 expectedNextPeriodicFeeTakeAfterOperation =
-            vault.getFeeSettings().nextPeriodicFeeTake + AutoPoolFees.PERIODIC_FEE_TAKE_TIMEFRAME;
+        uint256 expectedLastPeriodicFeeTake = warpAmount;
 
         // Mint, approve, deposit to give supply.
         vaultAsset.mint(address(this), depositAmount);
@@ -1811,7 +1699,7 @@ contract PeriodicFees is LMPVaultTests {
         vault.setPeriodicFeeSink(feeSink);
 
         // Warp block.timestamp to allow for fees to be taken.
-        vm.warp(block.timestamp + AutoPoolFees.PERIODIC_FEE_TAKE_TIMEFRAME + 1);
+        vm.warp(warpAmount);
 
         // Get total shares before mint.
         uint256 totalSupplyBefore = vault.totalSupply();
@@ -1828,7 +1716,7 @@ contract PeriodicFees is LMPVaultTests {
         vm.expectEmit(false, false, false, true);
         emit PeriodicFeeCollected(expectedFees, feeSink, calculatedShares);
         vm.expectEmit(false, false, false, true);
-        emit NextPeriodicFeeTakeSet(expectedNextPeriodicFeeTakeAfterOperation);
+        emit LastPeriodicFeeTakeSet(expectedLastPeriodicFeeTake);
         vault.updateDebtReporting(0);
 
         /**
@@ -1841,22 +1729,22 @@ contract PeriodicFees is LMPVaultTests {
         assertEq(minted, calculatedShares, "shares");
         assertEq(totalSupplyBefore + minted, vault.totalSupply(), "totalSupply");
         assertEq(
-            vault.getFeeSettings().nextPeriodicFeeTake, expectedNextPeriodicFeeTakeAfterOperation, "nextFeeTakeTime"
+            vault.getFeeSettings().lastPeriodicFeeTake, expectedLastPeriodicFeeTake, "nextFeeTakeTime"
         );
     }
 
+    // TODO: Can update this one to make sure that fee updates properly or something.
     function test_StateUpdatesFeeTakenAndPendingUpdated() public {
         // Grant roles
         _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
         _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, true);
 
         // Local variables.
+        uint256 warpAmount = block.timestamp + 1 days;
         uint256 depositAmount = 3e20;
         uint256 periodicFeeBps = 500; // 5%
-        uint256 pendingPeriodicFeeBps = 750; // 7.5%
         address feeSink = makeAddr("periodicFeeSink");
-        uint256 expectedNextPeriodicFeeTakeAfterOperation =
-            vault.getFeeSettings().nextPeriodicFeeTake + AutoPoolFees.PERIODIC_FEE_TAKE_TIMEFRAME;
+        uint256 expectedLastPeriodicFeeTake = warpAmount;
 
         // Mint, approve, deposit to give supply.
         vaultAsset.mint(address(this), depositAmount);
@@ -1871,11 +1759,8 @@ contract PeriodicFees is LMPVaultTests {
         assertEq(vault.getFeeSettings().periodicFeeBps, periodicFeeBps);
         assertEq(vault.getFeeSettings().periodicFeeSink, feeSink);
 
-        // Set pending fee.  Includes warp.
-        vm.warp(expectedNextPeriodicFeeTakeAfterOperation + 1);
-        vm.expectEmit(false, false, false, true);
-        emit PendingPeriodicFeeSet(pendingPeriodicFeeBps);
-        vault.setPeriodicFeeBps(pendingPeriodicFeeBps);
+        // Warp
+        vm.warp(expectedLastPeriodicFeeTake);
 
         // Snapshot total supply.
         uint256 totalSupplyBefore = vault.totalSupply();
@@ -1892,11 +1777,7 @@ contract PeriodicFees is LMPVaultTests {
         vm.expectEmit(false, false, false, true);
         emit PeriodicFeeCollected(expectedFees, feeSink, calculatedShares);
         vm.expectEmit(false, false, false, true);
-        emit PeriodicFeeSet(pendingPeriodicFeeBps);
-        vm.expectEmit(false, false, false, true);
-        emit PendingPeriodicFeeSet(0);
-        vm.expectEmit(false, false, false, true);
-        emit NextPeriodicFeeTakeSet(expectedNextPeriodicFeeTakeAfterOperation);
+        emit LastPeriodicFeeTakeSet(expectedLastPeriodicFeeTake);
         vault.updateDebtReporting(0);
 
         /**
@@ -1908,50 +1789,39 @@ contract PeriodicFees is LMPVaultTests {
         // Post operation checks.
         assertEq(minted, calculatedShares);
         assertEq(totalSupplyBefore + minted, vault.totalSupply());
-        assertEq(vault.getFeeSettings().nextPeriodicFeeTake, expectedNextPeriodicFeeTakeAfterOperation);
-        assertEq(vault.getFeeSettings().periodicFeeBps, pendingPeriodicFeeBps);
-        assertEq(vault.getFeeSettings().pendingPeriodicFeeBps, 0);
+        assertEq(vault.getFeeSettings().lastPeriodicFeeTake, expectedLastPeriodicFeeTake);
+        assertEq(vault.getFeeSettings().periodicFeeBps, periodicFeeBps);
     }
 
+    // TODO: Was testing pending, may be able to be deleted.
+    // Maybe can test that time updates regardless of fee take?
     function test_PendingFeeBpsRolledEvenWhenFeesNotTaken() public {
         // Grant roles
         _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
         _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, true);
 
         // Local vars.
-        uint256 pendingFee = 500; // 5%
+        uint256 warpAmount = block.timestamp + 1 days;
         uint256 depositAmount = 1000;
-        uint256 expectedNextPeriodicFeeTake =
-            vault.getFeeSettings().nextPeriodicFeeTake + AutoPoolFees.PERIODIC_FEE_TAKE_TIMEFRAME;
+        uint256 expectedLastPeriodicFeeTake = warpAmount;
 
         // Mint, approve, deposit to give supply.
         vaultAsset.mint(address(this), depositAmount);
         vaultAsset.approve(address(vault), depositAmount);
         vault.deposit(depositAmount, address(this));
 
-        // Warp timestamp to a time that will allow pending to be set.  Okay to warp to beyond next fee take time,
-        // will still set pending.
-        vm.warp(vault.getFeeSettings().nextPeriodicFeeTake + 1);
-
-        // Set pending, ensure that it is set with event check.
-        vm.expectEmit(false, false, false, true);
-        emit PendingPeriodicFeeSet(pendingFee);
-        vault.setPeriodicFeeBps(pendingFee);
+        // Warp
+        vm.warp(warpAmount);
 
         // Call updateDebtReporting to actually his _collectFees, check events emitted, etc.
         vm.expectEmit(false, false, false, true);
-        emit PeriodicFeeSet(pendingFee);
-        vm.expectEmit(false, false, false, true);
-        emit PendingPeriodicFeeSet(0);
-        vm.expectEmit(false, false, false, true);
-        emit NextPeriodicFeeTakeSet(expectedNextPeriodicFeeTake);
+        emit LastPeriodicFeeTakeSet(expectedLastPeriodicFeeTake);
 
         vault.updateDebtReporting(0);
 
         // Post operation checks.
-        assertEq(vault.getFeeSettings().periodicFeeBps, pendingFee);
-        assertEq(vault.getFeeSettings().pendingPeriodicFeeBps, 0);
-        assertEq(vault.getFeeSettings().nextPeriodicFeeTake, expectedNextPeriodicFeeTake);
+        assertEq(vault.getFeeSettings().periodicFeeBps, 0);
+        assertEq(vault.getFeeSettings().lastPeriodicFeeTake, expectedLastPeriodicFeeTake);
     }
 
     function test_FeeNotTakenWhenItsNotTime() public {
@@ -1980,7 +1850,7 @@ contract PeriodicFees is LMPVaultTests {
          */
 
         // Checks both that periodic fees will not be collected and that mananagement fee can be set.
-        assertLt(block.timestamp, vault.getFeeSettings().nextPeriodicFeeTake - 45 days);
+        assertLt(block.timestamp, vault.getFeeSettings().lastPeriodicFeeTake - 45 days);
 
         // Set fee.
         vm.expectEmit(false, false, false, true);
@@ -2007,7 +1877,7 @@ contract PeriodicFees is LMPVaultTests {
          */
 
         // Make sure periodic fee can be set.
-        assertLt(block.timestamp, vault.getFeeSettings().nextPeriodicFeeTake - 45 days);
+        assertLt(block.timestamp, vault.getFeeSettings().lastPeriodicFeeTake - 45 days);
 
         // Set periodic fee.
         vm.expectEmit(false, false, false, true);
@@ -2016,7 +1886,7 @@ contract PeriodicFees is LMPVaultTests {
 
         // Roll block.timestamp to be valid for fee taking.
         vm.warp(block.timestamp + 200 days);
-        assertGt(block.timestamp, vault.getFeeSettings().nextPeriodicFeeTake);
+        assertGt(block.timestamp, vault.getFeeSettings().lastPeriodicFeeTake);
 
         // Make sure fee sink address is 0;
         assertEq(vault.getFeeSettings().periodicFeeSink, address(0));
@@ -4618,7 +4488,7 @@ contract FeeAndProfitTestVault is TestLMPVault {
     }
 
     function feesAndProfitHandling(uint256 newIdle, uint256 newDebt, uint256 startingTotalAssets) public {
-        _feeAndProfitHandling(newIdle + newDebt, startingTotalAssets);
+        _feeAndProfitHandling(newIdle + newDebt, startingTotalAssets, true);
     }
 
     function setUnlockPeriodInSeconds(uint48 unlockPeriod) public {
@@ -4649,9 +4519,9 @@ contract FeeAndProfitTestVault is TestLMPVault {
         _profitUnlockSettings.fullProfitUnlockTime = uint48(time);
     }
 
-    function _collectFees(uint256 x, uint256 currentTotalSupply) internal virtual override returns (uint256) {
+    function _collectFees(uint256 x, uint256 currentTotalSupply, bool collectPeriodicFees) internal virtual override returns (uint256) {
         if (_useRealCollectFees) {
-            return super._collectFees(x, currentTotalSupply);
+            return super._collectFees(x, currentTotalSupply, collectPeriodicFees);
         } else {
             uint256 shares = _feeSharesToBeCollected;
             _feeSharesToBeCollected = 0;

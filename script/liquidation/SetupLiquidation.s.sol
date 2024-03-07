@@ -37,6 +37,8 @@ contract SetupLiquidation is BaseScript {
         accessController.grantRole(Roles.REWARD_LIQUIDATION_MANAGER, owner);
         accessController.grantRole(Roles.REWARD_LIQUIDATION_EXECUTOR, owner);
 
+        lr.addToWhitelist(address(zeroExSwapper));
+
         vm.stopBroadcast();
     }
 }

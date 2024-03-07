@@ -778,7 +778,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         _assetBreakdown.totalDebtMax =
             _assetBreakdown.totalDebtMax + result.totalMaxDebtIncrease - result.totalMaxDebtDecrease;
 
-        uint256 newTotalSupply = _feeAndProfitHandling(newIdle + newDebt, startingIdle + startingDebt);
+        uint256 newTotalSupply = _feeAndProfitHandling(newIdle + newDebt, startingIdle + startingDebt, true);
 
         lmpStrategy.navUpdate((newIdle + newDebt) * 10 ** decimals() / totalSupply());
 
@@ -787,7 +787,8 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
     function _feeAndProfitHandling(
         uint256 newTotalAssets,
-        uint256 startingTotalAssets
+        uint256 startingTotalAssets,
+        bool collectPeriodicFees
     ) internal returns (uint256 newTotalSupply) {
         // Collect any fees and lock any profit if appropriate
         // idle+debt here represent the new totalAssets we just need them separate
@@ -796,7 +797,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
         uint256 startingTotalSupply = totalSupply();
 
-        newTotalSupply = _collectFees(newTotalAssets, startingTotalSupply);
+        newTotalSupply = _collectFees(newTotalAssets, startingTotalSupply, collectPeriodicFees);
 
         newTotalSupply = AutoPoolFees.calculateProfitLocking(
             _profitUnlockSettings,
@@ -809,8 +810,14 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         );
     }
 
-    function _collectFees(uint256 currentTotalAssets, uint256 currentTotalSupply) internal virtual returns (uint256) {
-        return AutoPoolFees.collectFees(currentTotalAssets, currentTotalSupply, _feeSettings, _tokenData);
+    function _collectFees(
+        uint256 currentTotalAssets,
+        uint256 currentTotalSupply,
+        bool collectPeriodicFees
+    ) internal virtual returns (uint256) {
+        return AutoPoolFees.collectFees(
+            currentTotalAssets, currentTotalSupply, _feeSettings, _tokenData, collectPeriodicFees
+        );
     }
 
     function getDestinations() public view override(ILMPVault, IStrategy) returns (address[] memory) {
@@ -873,7 +880,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         _assetBreakdown.totalDebtMax =
             _assetBreakdown.totalDebtMax + result.totalMaxDebtIncrease - result.totalMaxDebtDecrease;
 
-        uint256 newTotalSupply = _feeAndProfitHandling(idle + debt, startTotalAssets);
+        uint256 newTotalSupply = _feeAndProfitHandling(idle + debt, startTotalAssets, false);
 
         // Ensure the destinations are in the queues they should be
         LMPDestinations._manageQueuesForDestination(

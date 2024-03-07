@@ -339,7 +339,7 @@ contract TestingPool is LMPVault, CryticIERC4626Internal {
 
         TestERC20(address(_baseAsset)).mint(address(this), profit);
 
-        _feeAndProfitHandling(startingTotalAssets + profit, startingTotalAssets);
+        _feeAndProfitHandling(startingTotalAssets + profit, startingTotalAssets, false);
     }
 
     /// @notice Called by the Crytic property tests.
@@ -414,7 +414,7 @@ contract TestingPool is LMPVault, CryticIERC4626Internal {
 
         require(lossLeft == 0, "lossNotZero");
 
-        _feeAndProfitHandling(startingTotalAssets - loss, startingTotalAssets);
+        _feeAndProfitHandling(startingTotalAssets - loss, startingTotalAssets, false);
     }
 
     // function _processRebalance(

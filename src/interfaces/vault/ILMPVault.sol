@@ -30,13 +30,11 @@ interface ILMPVault is IERC4626, IERC20Permit {
     }
 
     /// @param feeSink Where claimed fees are sent
-    /// @param totalAssetsHighMarkThe last totalAssets amount we took fees at
+    /// @param totalAssetsHighMark The last totalAssets amount we took fees at
     /// @param totalAssetsHighMarkTimestamp The last timestamp we updated the high water mark
-    /// @param nextPeriodicFeeTake Timestamp of next periodic fee to be taken.
+    /// @param lastPeriodicFeeTake Timestamp of when the last periodic fee was taken.
     /// @param periodicFeeSink Address that receives periodic fee.
     /// @param periodicFeeBps Current periodic fee.  100% == 10000.
-    /// @param pendingPeriodicFeeBps Pending periodic fee. Used as placeholder for new `periodicFeeBps` within
-    /// range of fee take time.
     /// @param streamingFeeBps Current streaming fee taken on profit. 100% == 10000
     /// @param navPerShareLastFeeMark The last nav/share height we took fees at
     /// @param navPerShareLastFeeMarkTimestamp The last timestamp we took fees at
@@ -46,10 +44,9 @@ interface ILMPVault is IERC4626, IERC20Permit {
         address feeSink;
         uint256 totalAssetsHighMark;
         uint256 totalAssetsHighMarkTimestamp;
-        uint256 nextPeriodicFeeTake;
+        uint256 lastPeriodicFeeTake;
         address periodicFeeSink;
         uint256 periodicFeeBps;
-        uint256 pendingPeriodicFeeBps;
         uint256 streamingFeeBps;
         uint256 navPerShareLastFeeMark;
         uint256 navPerShareLastFeeMarkTimestamp;

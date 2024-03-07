@@ -17,22 +17,17 @@ library AutoPoolFees {
     /// @notice 100% == 10000
     uint256 public constant FEE_DIVISOR = 10_000;
 
-    /// @notice Time between periodic fee takes.  ~ half year.
-    uint256 public constant PERIODIC_FEE_TAKE_TIMEFRAME = 182 days;
-
     /// @notice Max periodic fee, 10%.  100% = 10_000.
     uint256 public constant MAX_PERIODIC_FEE_BPS = 1000;
 
-    /// @notice Time before a periodic fee is taken that the fee % can be changed.
-    uint256 public constant PERIODIC_FEE_CHANGE_CUTOFF = 45 days;
+    uint256 public constant SECONDS_IN_YEAR = 365 * 1 days;
 
     event FeeCollected(uint256 fees, address feeSink, uint256 mintedShares, uint256 profit, uint256 totalAssets);
     event PeriodicFeeCollected(uint256 fees, address feeSink, uint256 mintedShares);
     event Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares);
     event PeriodicFeeSet(uint256 newFee);
-    event PendingPeriodicFeeSet(uint256 pendingPeriodicFeeBps);
     event PeriodicFeeSinkSet(address newPeriodicFeeSink);
-    event NextPeriodicFeeTakeSet(uint256 nextPeriodicFeeTake);
+    event LastPeriodicFeeTakeSet(uint256 lasPeriodicFeeTake);
     event RebalanceFeeHighWaterMarkEnabledSet(bool enabled);
     event NewNavShareFeeMark(uint256 navPerShare, uint256 timestamp);
     event NewTotalAssetsHighWatermark(uint256 assets, uint256 timestamp);
@@ -58,11 +53,11 @@ library AutoPoolFees {
     }
 
     function initializeFeeSettings(ILMPVault.AutoPoolFeeSettings storage settings) external {
-        uint256 nextFeeTimeframe = uint48(block.timestamp + PERIODIC_FEE_TAKE_TIMEFRAME);
-        settings.nextPeriodicFeeTake = nextFeeTimeframe;
+        uint256 timestamp = block.timestamp;
+        settings.lastPeriodicFeeTake = timestamp; // Stops fees from being able to be taken in past.
         settings.navPerShareLastFeeMark = FEE_DIVISOR;
-        settings.navPerShareLastFeeMarkTimestamp = block.timestamp;
-        emit NextPeriodicFeeTakeSet(nextFeeTimeframe);
+        settings.navPerShareLastFeeMarkTimestamp = timestamp;
+        emit LastPeriodicFeeTakeSet(timestamp);
     }
 
     function burnUnlockedShares(
@@ -139,11 +134,39 @@ library AutoPoolFees {
         return workingHigh;
     }
 
+    // TODO: Put this function back where it came from.
+    /// @dev Collects periodic fees.
+    function _collectPeriodicFees(
+        address periodicSink,
+        uint256 periodicFeeBps,
+        uint256 currentTotalSupply,
+        uint256 totalAssets
+    ) private returns (uint256 newShares) {
+        // Periodic fee * assets used multiple places below, gas savings when calc here.
+        uint256 periodicFeeMultTotalAssets = periodicFeeBps * totalAssets / FEE_DIVISOR;
+
+        // We calculate the shares using the same formula as streaming fees, without scaling down.
+        newShares = Math.mulDiv(
+            periodicFeeMultTotalAssets,
+            currentTotalSupply,
+            (totalAssets * FEE_DIVISOR) - (periodicFeeMultTotalAssets),
+            Math.Rounding.Up
+        );
+
+        // Fee in assets that we are taking.
+        uint256 fees = periodicFeeMultTotalAssets.ceilDiv(FEE_DIVISOR);
+        emit Deposit(address(this), periodicSink, 0, newShares);
+        emit PeriodicFeeCollected(fees, periodicSink, newShares);
+
+        return newShares;
+    }
+
     function collectFees(
         uint256 totalAssets,
         uint256 currentTotalSupply,
         ILMPVault.AutoPoolFeeSettings storage settings,
-        AutoPoolToken.TokenData storage tokenData
+        AutoPoolToken.TokenData storage tokenData,
+        bool collectPeriodicFees
     ) external returns (uint256) {
         // If there's no supply then there should be no assets and so nothing
         // to actually take fees on
@@ -159,34 +182,26 @@ library AutoPoolFees {
         }
 
         // slither-disable-start timestamp
-        // If current timestamp is greater than nextPeriodicFeeTake, operations need to happen for periodic fee.
-
-        if (block.timestamp > settings.nextPeriodicFeeTake) {
-            address periodicSink = settings.periodicFeeSink;
-
+        if (collectPeriodicFees) {
+            address periodicFeeSink = settings.periodicFeeSink;
             // If there is a periodic fee and fee sink set, take the fee.
-            if (settings.periodicFeeBps > 0 && periodicSink != address(0)) {
+            if (settings.periodicFeeBps > 0 && periodicFeeSink != address(0)) {
+                uint256 durationSinceLastPeriodicFeeTake = block.timestamp - settings.lastPeriodicFeeTake;
+                uint256 timeAdjustedBps = durationSinceLastPeriodicFeeTake.mulDiv(
+                    settings.periodicFeeBps * FEE_DIVISOR, SECONDS_IN_YEAR, Math.Rounding.Up
+                );
+
                 uint256 periodicShares =
-                    _collectPeriodicFees(periodicSink, settings.periodicFeeBps, currentTotalSupply, totalAssets);
+                    _collectPeriodicFees(periodicFeeSink, timeAdjustedBps, currentTotalSupply, totalAssets);
 
                 currentTotalSupply += periodicShares;
-                tokenData.mint(periodicSink, periodicShares);
+                tokenData.mint(periodicFeeSink, periodicShares);
             }
 
-            // If there is a pending periodic fee set, replace periodic fee with pending after fees already taken.
-            uint256 pendingMgmtFeeBps = settings.pendingPeriodicFeeBps;
-
-            if (pendingMgmtFeeBps > 0) {
-                emit PeriodicFeeSet(pendingMgmtFeeBps);
-                emit PendingPeriodicFeeSet(0);
-
-                settings.periodicFeeBps = pendingMgmtFeeBps;
-                settings.pendingPeriodicFeeBps = 0;
-            }
-
-            // Needs to be updated any time timestamp > `nextTakePeriodicFee` to keep up to date.
-            settings.nextPeriodicFeeTake += uint48(PERIODIC_FEE_TAKE_TIMEFRAME);
-            emit NextPeriodicFeeTakeSet(settings.nextPeriodicFeeTake);
+            // Needs to be kept up to date so if a fee is suddenly turned on a large part of assets do not get
+            // claimed as fees.
+            settings.lastPeriodicFeeTake = block.timestamp;
+            emit LastPeriodicFeeTakeSet(block.timestamp);
         }
 
         // slither-disable-end timestamp
@@ -200,13 +215,12 @@ library AutoPoolFees {
         if (currentNavPerShare > effectiveNavPerShareLastFeeMark) {
             // Even if we aren't going to take the fee (haven't set a sink)
             // We still want to calculate so we can emit for off-chain analysis
-            uint256 streamingFeeBps = settings.streamingFeeBps;
             uint256 profit = (currentNavPerShare - effectiveNavPerShareLastFeeMark) * currentTotalSupply;
-            uint256 fees = profit.mulDiv(streamingFeeBps, (FEE_DIVISOR ** 2), Math.Rounding.Up);
+            uint256 fees = profit.mulDiv(settings.streamingFeeBps, (FEE_DIVISOR ** 2), Math.Rounding.Up);
 
             if (fees > 0) {
                 currentTotalSupply = _mintStreamingFee(
-                    tokenData, fees, streamingFeeBps, profit, currentTotalSupply, totalAssets, settings.feeSink
+                    tokenData, fees, settings.streamingFeeBps, profit, currentTotalSupply, totalAssets, settings.feeSink
                 );
                 currentNavPerShare = (totalAssets * FEE_DIVISOR) / currentTotalSupply;
             }
@@ -246,15 +260,21 @@ library AutoPoolFees {
         if (sink == address(0)) {
             return currentTotalSupply;
         }
+        /**
+         * TODO - NOTE - DELETE
+         *
+         *    Profit is scaled up by FEE_DIVISOR, which is why FEE_DIVISOR is taken out here.
+         */
+        uint256 streamingFeeMultProfit = streamingFeeBps * profit / FEE_DIVISOR;
 
         // Calculated separate from other mints as normal share mint is round down
         // Note: We use Lido's formula: from https://docs.lido.fi/guides/lido-tokens-integration-guide/#fees
         // suggested by: https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/486-H/624-best.md
         // but we scale down `profit` by FEE_DIVISOR
         uint256 streamingFeeShares = Math.mulDiv(
-            streamingFeeBps * profit / FEE_DIVISOR,
+            streamingFeeMultProfit,
             currentTotalSupply,
-            (totalAssets * FEE_DIVISOR) - (streamingFeeBps * profit / FEE_DIVISOR),
+            (totalAssets * FEE_DIVISOR) - (streamingFeeMultProfit),
             Math.Rounding.Up
         );
         tokenData.mint(sink, streamingFeeShares);
@@ -264,32 +284,6 @@ library AutoPoolFees {
         emit FeeCollected(fees, sink, streamingFeeShares, profit, totalAssets);
 
         return currentTotalSupply;
-    }
-
-    /// @dev Collects periodic fees.
-    function _collectPeriodicFees(
-        address periodicSink,
-        uint256 periodicFeeBps,
-        uint256 currentTotalSupply,
-        uint256 assets
-    ) private returns (uint256 newShares) {
-        // Periodic fee * assets used multiple places below, gas savings when calc here.
-        uint256 periodicFeeMultAssets = periodicFeeBps * assets;
-
-        // We calculate the shares using the same formula as streaming fees, without scaling down
-        newShares = Math.mulDiv(
-            periodicFeeMultAssets,
-            currentTotalSupply,
-            (assets * FEE_DIVISOR) - (periodicFeeMultAssets),
-            Math.Rounding.Up
-        );
-
-        // Fee in assets that we are taking.
-        uint256 fees = periodicFeeMultAssets.ceilDiv(FEE_DIVISOR);
-        emit Deposit(address(this), periodicSink, 0, newShares);
-        emit PeriodicFeeCollected(fees, periodicSink, newShares);
-
-        return newShares;
     }
 
     /// @dev If set to 0, existing shares will unlock immediately and increase nav/share. This is intentional
@@ -466,28 +460,16 @@ library AutoPoolFees {
     }
 
     /// @notice Set the periodic fee taken.
-    /// @dev Depending on time until next fee take, may update periodicFeeBps directly or queue fee.
     /// @param fee Fee to update periodic fee to.
     function setPeriodicFeeBps(ILMPVault.AutoPoolFeeSettings storage feeSettings, uint256 fee) external {
         if (fee > MAX_PERIODIC_FEE_BPS) {
             revert InvalidFee(fee);
         }
 
-        /**
-         * If the current timestamp is greater than the next fee take minus 45 days, we are withing the timeframe
-         *      that we do not want to be able to set a new periodic fee, so we set `pendingPeriodicFeeBps` instead.
-         *      This will be set as `periodicFeeBps` when periodic fees are taken.
-         *
-         * Fee checked to fit into uint16 above, able to be wrapped without safe cast here.
-         */
+        // Fee checked to fit into uint16 above, able to be wrapped without safe cast here.
         // slither-disable-next-line timestamp
-        if (block.timestamp > feeSettings.nextPeriodicFeeTake - PERIODIC_FEE_CHANGE_CUTOFF) {
-            emit PendingPeriodicFeeSet(fee);
-            feeSettings.pendingPeriodicFeeBps = uint16(fee);
-        } else {
-            emit PeriodicFeeSet(fee);
-            feeSettings.periodicFeeBps = uint16(fee);
-        }
+        emit PeriodicFeeSet(fee);
+        feeSettings.periodicFeeBps = uint16(fee);
     }
 
     /// @notice Set the address that will receive fees

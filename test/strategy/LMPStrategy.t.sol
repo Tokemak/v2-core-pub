@@ -175,11 +175,11 @@ contract LMPStrategyTest is Test {
         defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
-    function test_verifyRebalance_RevertIf_invalidParams() public {
+    function test_getRebalanceOutSummaryStats_RevertIf_invalidParams() public {
         // this test ensures that `validateRebalanceParams` is called. It is not exhaustive
         defaultParams.amountIn = 0;
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "amountIn"));
-        defaultStrat.verifyRebalance(defaultParams, destOut);
+        defaultStrat.getRebalanceOutSummaryStats(defaultParams);
     }
 
     function test_verifyRebalance_RevertIf_invalidRebalanceToIdle() public {

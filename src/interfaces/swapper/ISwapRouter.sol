@@ -13,7 +13,7 @@ interface ISwapRouter {
     }
 
     error MaxSlippageExceeded();
-    error SwapRouteLookupFailed();
+    error SwapRouteLookupFailed(address from, address to);
     error SwapFailed();
 
     event SwapRouteSet(address indexed token, SwapData[] routes);

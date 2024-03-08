@@ -66,6 +66,8 @@ contract BaseTest is Test {
     uint256 internal constant ONE_YEAR = 365 days;
     uint256 internal constant ONE_MONTH = 30 days;
 
+    bool public restrictPoolUsers = false;
+
     function setUp() public virtual {
         _setUp(true);
     }
@@ -115,7 +117,7 @@ contract BaseTest is Test {
         systemRegistry.addRewardToken(address(baseAsset));
         systemRegistry.addRewardToken(address(TOKE_MAINNET));
 
-        lmpVaultTemplate = address(new LMPVault(systemRegistry, address(baseAsset), false));
+        lmpVaultTemplate = address(new LMPVault(systemRegistry, address(baseAsset), restrictPoolUsers));
 
         lmpVaultFactory = new LMPVaultFactory(systemRegistry, lmpVaultTemplate, 800, 100);
         // NOTE: deployer grants factory permission to update the registry

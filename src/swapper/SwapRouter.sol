@@ -18,7 +18,7 @@ contract SwapRouter is SystemComponent, ISwapRouter, SecurityBase, ReentrancyGua
 
     // 5/16/2023: open issue https://github.com/crytic/slither/issues/456
     // slither-disable-next-line uninitialized-state
-    mapping(address => mapping(address => SwapData[])) private swapRoutes;
+    mapping(address => mapping(address => SwapData[])) public swapRoutes;
 
     modifier onlyDestinationVault(address vaultAddress) {
         IDestinationVaultRegistry destinationVaultRegistry = systemRegistry.destinationVaultRegistry();
@@ -78,7 +78,7 @@ contract SwapRouter is SystemComponent, ISwapRouter, SecurityBase, ReentrancyGua
         SwapData[] memory routes = swapRoutes[assetToken][quoteToken];
         uint256 length = routes.length;
 
-        if (length == 0) revert SwapRouteLookupFailed();
+        if (length == 0) revert SwapRouteLookupFailed(assetToken, quoteToken);
 
         IERC20(assetToken).safeTransferFrom(msg.sender, address(this), sellAmount);
         uint256 balanceBefore = IERC20(quoteToken).balanceOf(address(this));

@@ -70,7 +70,61 @@ contract CurveV2FactoryCryptoAdapterTest is Test {
         weth = IWETH9(WETH9_OPTIMISM);
     }
 
-    function testAddLiquidityWethStEth() public {
+    function testAddLiquidityEthStEth() public {
+        address poolAddress = 0xDC24316b9AE028F1497c275EB9192a3Ea0f67022;
+        IERC20 lpToken = IERC20(0x06325440D014e39736583c165C2963BA99fAf14E);
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 0.5 * 1e18;
+        amounts[1] = 0;
+
+        vm.deal(address(this), 2 * 1e18);
+
+        uint256 preBalance = payable(this).balance;
+        uint256 preLpBalance = lpToken.balanceOf(address(this));
+
+        uint256 minLpMintAmount = 1;
+
+        CurveV2FactoryCryptoAdapter.addLiquidity(amounts, minLpMintAmount, poolAddress, address(lpToken), weth, true);
+
+        uint256 afterBalance = payable(this).balance;
+        uint256 afterLpBalance = lpToken.balanceOf(address(this));
+
+        assertEq(afterBalance, preBalance - amounts[0]);
+        assert(afterLpBalance > preLpBalance);
+    }
+
+    function testRemoveLiquidityEthStEth() public {
+        address poolAddress = 0xDC24316b9AE028F1497c275EB9192a3Ea0f67022;
+        IERC20 lpToken = IERC20(0x06325440D014e39736583c165C2963BA99fAf14E);
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 1.5 * 1e18;
+        amounts[1] = 0;
+
+        vm.deal(address(this), 2 * 1e18);
+
+        uint256 minLpMintAmount = 1;
+
+        CurveV2FactoryCryptoAdapter.addLiquidity(amounts, minLpMintAmount, poolAddress, address(lpToken), weth, true);
+
+        uint256 preBalance = IERC20(WETH_MAINNET).balanceOf(address(this));
+        uint256 preLpBalance = lpToken.balanceOf(address(this));
+
+        uint256[] memory withdrawAmounts = new uint256[](2);
+        withdrawAmounts[0] = 0.5 * 1e18;
+        withdrawAmounts[1] = 0;
+
+        CurveV2FactoryCryptoAdapter.removeLiquidity(withdrawAmounts, preLpBalance, poolAddress, address(lpToken), weth);
+
+        uint256 afterBalance = IERC20(WETH_MAINNET).balanceOf(address(this));
+        uint256 afterLpBalance = lpToken.balanceOf(address(this));
+
+        assert(afterBalance > preBalance);
+        assert(afterLpBalance < preLpBalance);
+    }
+
+    function testAddLiquidityWethCbEth() public {
         address poolAddress = 0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A;
         ICryptoSwapPool pool = ICryptoSwapPool(poolAddress);
         IERC20 lpToken = IERC20(pool.token());
@@ -95,7 +149,7 @@ contract CurveV2FactoryCryptoAdapterTest is Test {
         assert(afterLpBalance > preLpBalance);
     }
 
-    function testRemoveLiquidityWethStEth() public {
+    function testRemoveLiquidityWethCbEth() public {
         address poolAddress = 0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A;
         ICryptoSwapPool pool = ICryptoSwapPool(poolAddress);
         IERC20 lpToken = IERC20(pool.token());
@@ -527,67 +581,4 @@ contract CurveV2FactoryCryptoAdapterTest is Test {
         assert(afterBalance2 > preBalance2);
         assert(afterLpBalance < preLpBalance);
     }
-
-    // TODO: figure out the testing approach with Adapter being now a library
-
-    /// @dev This is an integration test for the Solver project. More information is available in the README.
-    // function testAddLiquidityUsingSolver() public {
-    //     address poolAddress = 0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A;
-    //     ICryptoSwapPool pool = ICryptoSwapPool(poolAddress);
-    //     IERC20 lpToken = IERC20(pool.token());
-
-    //     uint256[] memory amounts = new uint256[](2);
-    //     amounts[0] = 0.5 * 1e18;
-    //     amounts[1] = 0;
-
-    //     deal(address(WETH_MAINNET), address(this), 2 * 1e18);
-
-    //     uint256 preBalance = IERC20(WETH_MAINNET).balanceOf(address(this));
-    //     uint256 preLpBalance = lpToken.balanceOf(address(this));
-
-    //     (bytes32[] memory commands, bytes[] memory elements) =
-    //         ReadPlan.getPayload(vm, "curvev2-add-liquidity.json", address(this));
-    //     CurveV2FactoryCryptoAdapter.execute(address(solver), commands, elements);
-
-    //     uint256 afterBalance = IERC20(WETH_MAINNET).balanceOf(address(this));
-    //     uint256 afterLpBalance = lpToken.balanceOf(address(this));
-
-    //     assertEq(afterBalance, preBalance - amounts[0]);
-    //     assert(afterLpBalance > preLpBalance);
-    // }
-
-    /// @dev This is an integration test for the Solver project. More information is available in the README.
-    // function testRemoveLiquidityUsingSolver() public {
-    //     address poolAddress = 0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A;
-    //     ICryptoSwapPool pool = ICryptoSwapPool(poolAddress);
-    //     IERC20 lpToken = IERC20(pool.token());
-
-    //     uint256[] memory amounts = new uint256[](2);
-    //     amounts[0] = 1.5 * 1e18;
-    //     amounts[1] = 0;
-
-    //     deal(address(WETH_MAINNET), address(this), 2 * 1e18);
-
-    //     uint256 minLpMintAmount = 1;
-
-    //     bytes memory extraParams = abi.encode(poolAddress, address(lpToken), false);
-    //     CurveV2FactoryCryptoAdapter.addLiquidity(amounts, minLpMintAmount, extraParams);
-
-    //     uint256 preBalance = IERC20(WETH_MAINNET).balanceOf(address(this));
-    //     uint256 preLpBalance = lpToken.balanceOf(address(this));
-
-    //     uint256[] memory withdrawAmounts = new uint256[](2);
-    //     withdrawAmounts[0] = 0.5 * 1e18;
-    //     withdrawAmounts[1] = 0;
-
-    //     (bytes32[] memory commands, bytes[] memory elements) =
-    //         ReadPlan.getPayload(vm, "curvev2-remove-liquidity.json", address(this));
-    //     CurveV2FactoryCryptoAdapter.execute(address(solver), commands, elements);
-
-    //     uint256 afterBalance = IERC20(WETH_MAINNET).balanceOf(address(this));
-    //     uint256 afterLpBalance = lpToken.balanceOf(address(this));
-
-    //     assert(afterBalance > preBalance);
-    //     assert(afterLpBalance < preLpBalance);
-    // }
 }

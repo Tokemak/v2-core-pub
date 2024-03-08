@@ -338,8 +338,6 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         IStrategy.RebalanceParams memory params,
         IStrategy.SummaryStats memory outSummary
     ) public returns (bool success, string memory message) {
-        validateRebalanceParams(params);
-
         RebalanceValueStats memory valueStats = getRebalanceValueStats(params);
 
         // moves from a destination back to eth only happen under specific scenarios
@@ -736,6 +734,7 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         external
         returns (IStrategy.SummaryStats memory outSummary)
     {
+        validateRebalanceParams(rebalanceParams);
         outSummary = _getRebalanceOutSummaryStats(rebalanceParams);
     }
 

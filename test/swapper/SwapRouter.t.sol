@@ -178,7 +178,13 @@ contract SwapRouterTest is Test {
         deal(WETH_MAINNET, address(this), 10 * 1e18);
         IERC20(WETH_MAINNET).approve(address(swapRouter), 10 * 1e18);
 
-        vm.expectRevert(ISwapRouter.SwapRouteLookupFailed.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISwapRouter.SwapRouteLookupFailed.selector,
+                0x86F65BF7298543655A913Edf463CcFC04691eF13,
+                0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84
+            )
+        );
         swapRouter.swapForQuote(asset, 1, quote, 1);
     }
 

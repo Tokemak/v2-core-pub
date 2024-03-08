@@ -21,13 +21,8 @@ contract SetupLiquidation is BaseScript {
 
         vm.startBroadcast(privateKey);
 
-        AsyncSwapperRegistry asyncSwapperRegistry = new AsyncSwapperRegistry(systemRegistry);
-        console.log("Async Swapper Registry: ", address(asyncSwapperRegistry));
-        systemRegistry.setAsyncSwapperRegistry(address(asyncSwapperRegistry));
-
         accessController.grantRole(Roles.REGISTRY_UPDATER, owner);
         BaseAsyncSwapper zeroExSwapper = new BaseAsyncSwapper(constants.ext.zeroExProxy);
-        asyncSwapperRegistry.register(address(zeroExSwapper));
         console.log("Base Async Swapper: ", address(zeroExSwapper));
 
         LiquidationRow lr = new LiquidationRow(systemRegistry);

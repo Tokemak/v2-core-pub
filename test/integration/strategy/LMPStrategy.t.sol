@@ -204,7 +204,7 @@ contract LMPStrategyInt is Test {
         assertEq(_vault.getAssetBreakdown().totalIdle, 100e18, "totalIdle");
     }
 
-    function test_IdleToCurveNg() public {
+    function test_FullIdleToCurveNg() public {
         uint256 inAmount = 400e18;
         deal(_stEthNgDv.underlying(), address(_tokenReturnSolver), inAmount);
 
@@ -226,7 +226,29 @@ contract LMPStrategyInt is Test {
         assertEq(_stEthNgDv.balanceOf(address(_vault)), inAmount, "dvBal");
     }
 
-    function test_IdleToCurveStEthOrig() public {
+    function test_PartialIdleToCurveNg() public {
+        uint256 inAmount = 400e18;
+        deal(_stEthNgDv.underlying(), address(_tokenReturnSolver), inAmount);
+
+        IStrategy.RebalanceParams memory rebalanceParams = IStrategy.RebalanceParams({
+            destinationIn: address(_stEthNgDv),
+            tokenIn: _stEthNgDv.underlying(),
+            amountIn: inAmount,
+            destinationOut: address(_vault),
+            tokenOut: address(weth),
+            amountOut: 50e18
+        });
+
+        _vault.flashRebalance(
+            IERC3156FlashBorrower(_tokenReturnSolver),
+            rebalanceParams,
+            abi.encode(inAmount, address(_stEthNgDv.underlying()))
+        );
+
+        assertEq(_stEthNgDv.balanceOf(address(_vault)), inAmount, "dvBal");
+    }
+
+    function test_FullIdleToCurveStEthOrig() public {
         uint256 inAmount = 400e18;
         deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
 
@@ -263,7 +285,44 @@ contract LMPStrategyInt is Test {
         );
     }
 
-    function test_IdleToCurveToCurve() public {
+    function test_PartialIdleToCurveStEthOrig() public {
+        uint256 inAmount = 400e18;
+        deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
+
+        address underlying = _stEthOriginalDv.underlying();
+
+        IStrategy.RebalanceParams memory rebalanceParams = IStrategy.RebalanceParams({
+            destinationIn: address(_stEthOriginalDv),
+            tokenIn: underlying,
+            amountIn: inAmount,
+            destinationOut: address(_vault),
+            tokenOut: address(weth),
+            amountOut: 50e18
+        });
+
+        uint256 snapshotId = vm.snapshot();
+
+        uint256 inLpTokenPrice = _rootPriceOracle.getPriceInEth(underlying);
+        _strategy.setCheckInLpPrice(inLpTokenPrice);
+
+        _vault.flashRebalance(
+            IERC3156FlashBorrower(_tokenReturnSolver), rebalanceParams, abi.encode(inAmount, underlying)
+        );
+
+        assertEq(_stEthOriginalDv.balanceOf(address(_vault)), inAmount, "dvBal");
+
+        // Just testing that the price check hook is working
+        vm.revertTo(snapshotId);
+
+        _strategy.setCheckInLpPrice(2);
+
+        vm.expectRevert(abi.encodeWithSelector(ValueCheckingStrategy.BadInPrice.selector));
+        _vault.flashRebalance(
+            IERC3156FlashBorrower(_tokenReturnSolver), rebalanceParams, abi.encode(inAmount, underlying)
+        );
+    }
+
+    function test_FullIdleToCurvePartialExitToCurve() public {
         uint256 inAmount = 400e18;
         deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
 
@@ -322,7 +381,101 @@ contract LMPStrategyInt is Test {
         );
     }
 
-    function test_IdleToCurveToIdle() public {
+    function test_PartialIdleToCurvePartialExitToCurve() public {
+        uint256 inAmount = 400e18;
+        deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
+
+        IStrategy.RebalanceParams memory rebalanceParams = IStrategy.RebalanceParams({
+            destinationIn: address(_stEthOriginalDv),
+            tokenIn: _stEthOriginalDv.underlying(),
+            amountIn: inAmount,
+            destinationOut: address(_vault),
+            tokenOut: address(weth),
+            amountOut: 50e18
+        });
+
+        _vault.flashRebalance(
+            IERC3156FlashBorrower(_tokenReturnSolver),
+            rebalanceParams,
+            abi.encode(inAmount, address(_stEthOriginalDv.underlying()))
+        );
+
+        deal(_stEthNgDv.underlying(), address(_tokenReturnSolver), inAmount);
+
+        address outUnderlying = _stEthOriginalDv.underlying();
+        uint256 outLpTokenPrice = _rootPriceOracle.getPriceInEth(outUnderlying);
+
+        vm.warp(block.timestamp + 1 hours);
+
+        _strategy.setCheckOutLpPrice(outLpTokenPrice);
+
+        rebalanceParams = IStrategy.RebalanceParams({
+            destinationIn: address(_stEthNgDv),
+            tokenIn: _stEthNgDv.underlying(),
+            amountIn: inAmount,
+            destinationOut: address(_stEthOriginalDv),
+            tokenOut: outUnderlying,
+            amountOut: 100e18
+        });
+
+        _vault.flashRebalance(
+            IERC3156FlashBorrower(_tokenReturnSolver),
+            rebalanceParams,
+            abi.encode(inAmount, address(_stEthNgDv.underlying()))
+        );
+
+        assertEq(_stEthNgDv.balanceOf(address(_vault)), inAmount, "dvBal");
+    }
+
+    function test_FullIdleToCurveFullExitToCurve() public {
+        uint256 inAmount = 400e18;
+        deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
+
+        IStrategy.RebalanceParams memory rebalanceParams = IStrategy.RebalanceParams({
+            destinationIn: address(_stEthOriginalDv),
+            tokenIn: _stEthOriginalDv.underlying(),
+            amountIn: inAmount,
+            destinationOut: address(_vault),
+            tokenOut: address(weth),
+            amountOut: 100e18
+        });
+
+        _vault.flashRebalance(
+            IERC3156FlashBorrower(_tokenReturnSolver),
+            rebalanceParams,
+            abi.encode(inAmount, address(_stEthOriginalDv.underlying()))
+        );
+
+        uint256 additionalLp = 27e18;
+
+        deal(_stEthNgDv.underlying(), address(_tokenReturnSolver), inAmount + additionalLp);
+
+        address outUnderlying = _stEthOriginalDv.underlying();
+        uint256 outLpTokenPrice = _rootPriceOracle.getPriceInEth(outUnderlying);
+
+        vm.warp(block.timestamp + 1 hours);
+
+        _strategy.setCheckOutLpPrice(outLpTokenPrice);
+
+        rebalanceParams = IStrategy.RebalanceParams({
+            destinationIn: address(_stEthNgDv),
+            tokenIn: _stEthNgDv.underlying(),
+            amountIn: inAmount + additionalLp,
+            destinationOut: address(_stEthOriginalDv),
+            tokenOut: outUnderlying,
+            amountOut: inAmount
+        });
+
+        _vault.flashRebalance(
+            IERC3156FlashBorrower(_tokenReturnSolver),
+            rebalanceParams,
+            abi.encode(inAmount + additionalLp, address(_stEthNgDv.underlying()))
+        );
+
+        assertEq(_stEthNgDv.balanceOf(address(_vault)), inAmount + additionalLp, "dvBal");
+    }
+
+    function test_FullIdleToCurvePartialExitToIdle() public {
         uint256 inAmount = 400e18;
         deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
 
@@ -352,6 +505,48 @@ contract LMPStrategyInt is Test {
             destinationOut: address(_stEthOriginalDv),
             tokenOut: _stEthOriginalDv.underlying(),
             amountOut: 100e18
+        });
+
+        vm.prank(V2_DEPLOYER);
+        _stEthOriginalDv.shutdown(IDestinationVault.VaultShutdownStatus.Deprecated);
+
+        _vault.flashRebalance(
+            IERC3156FlashBorrower(_tokenReturnSolver), rebalanceParams, abi.encode(inAmount, address(weth))
+        );
+
+        assertEq(_vault.getAssetBreakdown().totalIdle, inAmount, "vaultBal");
+    }
+
+    function test_FullIdleToCurveFullExitToIdle() public {
+        uint256 inAmount = 400e18;
+        deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
+
+        IStrategy.RebalanceParams memory rebalanceParams = IStrategy.RebalanceParams({
+            destinationIn: address(_stEthOriginalDv),
+            tokenIn: _stEthOriginalDv.underlying(),
+            amountIn: inAmount,
+            destinationOut: address(_vault),
+            tokenOut: address(weth),
+            amountOut: 100e18
+        });
+
+        _vault.flashRebalance(
+            IERC3156FlashBorrower(_tokenReturnSolver),
+            rebalanceParams,
+            abi.encode(inAmount, address(_stEthOriginalDv.underlying()))
+        );
+
+        inAmount = 4 * 107e18;
+
+        deal(address(weth), address(_tokenReturnSolver), inAmount);
+
+        rebalanceParams = IStrategy.RebalanceParams({
+            destinationIn: address(_vault),
+            tokenIn: address(weth),
+            amountIn: inAmount,
+            destinationOut: address(_stEthOriginalDv),
+            tokenOut: _stEthOriginalDv.underlying(),
+            amountOut: 400e18
         });
 
         vm.prank(V2_DEPLOYER);

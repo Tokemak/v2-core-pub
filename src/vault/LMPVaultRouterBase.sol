@@ -14,6 +14,7 @@ import { Errors } from "src/utils/Errors.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
+import { LMPVault } from "src/vault/LMPVault.sol";
 
 /// @title LMPVault Router Base Contract
 abstract contract LMPVaultRouterBase is
@@ -24,6 +25,15 @@ abstract contract LMPVaultRouterBase is
     SystemComponent
 {
     using SafeERC20 for IERC20;
+
+    error UserNotAllowed();
+
+    modifier onlyAllowedUsers(ILMPVault vault, address user) {
+        if (LMPVault(address(vault))._checkUsers() && !LMPVault(address(vault)).allowedUsers(user)) {
+            revert UserNotAllowed();
+        }
+        _;
+    }
 
     constructor(
         address _weth9,
@@ -36,7 +46,15 @@ abstract contract LMPVaultRouterBase is
         address to,
         uint256 shares,
         uint256 maxAmountIn
-    ) public payable virtual override returns (uint256 amountIn) {
+    )
+        public
+        payable
+        virtual
+        override
+        onlyAllowedUsers(vault, msg.sender)
+        onlyAllowedUsers(vault, to)
+        returns (uint256 amountIn)
+    {
         IERC20 vaultAsset = IERC20(vault.asset());
         uint256 assets = vault.previewMint(shares);
 
@@ -83,7 +101,7 @@ abstract contract LMPVaultRouterBase is
         address to,
         uint256 amount,
         uint256 minSharesOut
-    ) internal returns (uint256 sharesOut) {
+    ) internal onlyAllowedUsers(vault, msg.sender) onlyAllowedUsers(vault, to) returns (uint256 sharesOut) {
         approve(IERC20(vault.asset()), address(vault), amount);
         if ((sharesOut = vault.deposit(amount, to)) < minSharesOut) {
             revert MinSharesError();
@@ -97,7 +115,15 @@ abstract contract LMPVaultRouterBase is
         uint256 amount,
         uint256 maxSharesOut,
         bool unwrapWETH
-    ) public payable virtual override returns (uint256 sharesOut) {
+    )
+        public
+        payable
+        virtual
+        override
+        onlyAllowedUsers(vault, msg.sender)
+        onlyAllowedUsers(vault, to)
+        returns (uint256 sharesOut)
+    {
         address destination = unwrapWETH ? address(this) : to;
 
         sharesOut = vault.withdraw(amount, destination, msg.sender);
@@ -117,7 +143,15 @@ abstract contract LMPVaultRouterBase is
         uint256 shares,
         uint256 minAmountOut,
         bool unwrapWETH
-    ) public payable virtual override returns (uint256 amountOut) {
+    )
+        public
+        payable
+        virtual
+        override
+        onlyAllowedUsers(vault, msg.sender)
+        onlyAllowedUsers(vault, to)
+        returns (uint256 amountOut)
+    {
         address destination = unwrapWETH ? address(this) : to;
 
         if ((amountOut = vault.redeem(shares, destination, msg.sender)) < minAmountOut) {

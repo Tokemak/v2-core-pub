@@ -49,6 +49,8 @@ contract LMPVaultRouterTest is BaseTest {
     bytes private lmpVaultInitData;
 
     function setUp() public override {
+        restrictPoolUsers = true;
+
         forkBlock = 16_731_638;
         super.setUp();
 
@@ -69,6 +71,10 @@ contract LMPVaultRouterTest is BaseTest {
 
         // Set rewarder as rewarder set on LMP by factory.
         lmpRewarder = lmpVault.rewarder();
+
+        lmpVault.toggleAllowedUser(address(this));
+        lmpVault.toggleAllowedUser(vm.addr(1));
+        lmpVault.toggleAllowedUser(address(lmpVaultRouter));
     }
 
     function _setupVault(bytes memory salt) internal returns (LMPVault _lmpVault) {
@@ -101,6 +107,16 @@ contract LMPVaultRouterTest is BaseTest {
 
         vm.startPrank(user);
         lmpVaultRouter.selfPermit(address(lmpVault), amount, deadline, v, r, s);
+
+        assertEq(lmpVault.allowedUsers(receiver), false);
+        assertEq(lmpVault.allowedUsers(user), true);
+        vm.expectRevert();
+        lmpVaultRouter.redeem(lmpVault, receiver, amount, 0, false);
+        vm.stopPrank();
+
+        lmpVault.toggleAllowedUser(receiver);
+        assertEq(lmpVault.allowedUsers(receiver), true);
+        vm.startPrank(user);
         lmpVaultRouter.redeem(lmpVault, receiver, amount, 0, false);
         vm.stopPrank();
 
@@ -132,6 +148,17 @@ contract LMPVaultRouterTest is BaseTest {
         data[1] = abi.encodeWithSelector(lmpVaultRouter.redeem.selector, lmpVault, receiver, amount, 0, false);
 
         vm.startPrank(user);
+
+        assertEq(lmpVault.allowedUsers(user), true);
+        assertEq(lmpVault.allowedUsers(receiver), false);
+        vm.expectRevert();
+        lmpVaultRouter.multicall(data);
+        vm.stopPrank();
+
+        lmpVault.toggleAllowedUser(receiver);
+        assertEq(lmpVault.allowedUsers(receiver), true);
+
+        vm.startPrank(user);
         lmpVaultRouter.multicall(data);
         vm.stopPrank();
 
@@ -157,13 +184,33 @@ contract LMPVaultRouterTest is BaseTest {
         vm.mockCall(vaultAddress, abi.encodeWithSelector(IERC4626.asset.selector), abi.encode(WETH_MAINNET));
         vm.mockCall(vaultAddress, abi.encodeWithSelector(IERC4626.deposit.selector), abi.encode(100_000));
 
-        // TODO: Remove this at end of guarded launch
-        vm.mockCall(vaultAddress, abi.encodeWithSignature("_checkUsers()"), abi.encode(false));
+        vm.mockCall(vaultAddress, abi.encodeWithSignature("_checkUsers()"), abi.encode(true));
+
+        vm.mockCall(vaultAddress, abi.encodeWithSignature("allowedUsers(address)"), abi.encode(false));
 
         // same data as in the ZeroExAdapter test
         // solhint-disable max-line-length
         bytes memory data =
             hex"415565b00000000000000000000000004e3fbd56cd56c3e72c1403e103b45db9da5b9d2b000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000000000000000000000001954af4d2d99874cf0000000000000000000000000000000000000000000000000131f1a539c7e4a3cdf00000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000540000000000000000000000000000000000000000000000000000000000000001a000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000004a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004e3fbd56cd56c3e72c1403e103b45db9da5b9d2b000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000000000000000000000000000000000000000000140000000000000000000000000000000000000000000000000000000000000046000000000000000000000000000000000000000000000000000000000000004600000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000001954af4d2d99874cf000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004600000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000001600000000000000000000000000000000143757276650000000000000000000000000000000000000000000000000000000000000000001761dce4c7a1693f1080000000000000000000000000000000000000000000000011a9e8a52fa524243000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000080000000000000000000000000b576491f1e6e5e62f1d8f26062ee822b40b0e0d465b2489b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000012556e69737761705633000000000000000000000000000000000000000000000000000000000001f2d26865f81e0ddf800000000000000000000000000000000000000000000000017531ae6cd92618af000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000e592427a0aece92de3edee1f18e0157c058615640000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000002b4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001c000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000e00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000020000000000000000000000004e3fbd56cd56c3e72c1403e103b45db9da5b9d2b000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee0000000000000000000000000000000000000000000000000000000000000000869584cd00000000000000000000000010000000000000000000000000000000000000110000000000000000000000000000000000000000000000b39f68862c63935ade";
+
+        vm.expectRevert();
+        lmpVaultRouter.swapAndDepositToVault(
+            address(swapper),
+            SwapParams(
+                CVX_MAINNET,
+                119_621_320_376_600_000_000_000,
+                WETH_MAINNET,
+                356_292_255_653_182_345_276,
+                data,
+                new bytes(0)
+            ),
+            ILMPVault(vaultAddress),
+            address(this),
+            1
+        );
+
+        vm.mockCall(vaultAddress, abi.encodeWithSignature("allowedUsers(address)"), abi.encode(true));
+
         lmpVaultRouter.swapAndDepositToVault(
             address(swapper),
             SwapParams(
@@ -187,26 +234,17 @@ contract LMPVaultRouterTest is BaseTest {
         // -- try to fail slippage first -- //
         // set threshold for just over what's expected
         uint256 minSharesExpected = lmpVault.previewDeposit(amount) + 1;
+
+        lmpVault.toggleAllowedUser(address(this));
+        assertEq(lmpVault.allowedUsers(address(this)), false);
+        vm.expectRevert();
+        lmpVaultRouter.deposit(lmpVault, address(this), amount, minSharesExpected);
+
+        lmpVault.toggleAllowedUser(address(this));
+        assertEq(lmpVault.allowedUsers(address(this)), true);
         vm.expectRevert(abi.encodeWithSelector(ILMPVaultRouterBase.MinSharesError.selector));
         lmpVaultRouter.deposit(lmpVault, address(this), amount, minSharesExpected);
 
-        // -- now do a successful scenario -- //
-        _deposit(lmpVault, amount);
-    }
-
-    // Covering https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/346-M/346-best.md
-    function test_deposit_after_approve() public {
-        uint256 amount = depositAmount; // TODO: fuzz
-        baseAsset.approve(address(lmpVaultRouter), amount);
-
-        // -- try to fail slippage first -- //
-        // set threshold for just over what's expected
-        uint256 minSharesExpected = lmpVault.previewDeposit(amount) + 1;
-        vm.expectRevert(abi.encodeWithSelector(ILMPVaultRouterBase.MinSharesError.selector));
-        lmpVaultRouter.deposit(lmpVault, address(this), amount, minSharesExpected);
-
-        // -- pre-approve -- //
-        lmpVaultRouter.approve(baseAsset, address(lmpVault), amount);
         // -- now do a successful scenario -- //
         _deposit(lmpVault, amount);
     }
@@ -223,6 +261,13 @@ contract LMPVaultRouterTest is BaseTest {
         uint256 ethBefore = address(this).balance;
         uint256 wethBefore = weth.balanceOf(address(this));
         uint256 sharesBefore = lmpVault.balanceOf(address(this));
+
+        assertEq(lmpVault.allowedUsers(address(this)), false);
+        vm.expectRevert();
+        lmpVaultRouter.deposit{ value: amount }(lmpVault, address(this), amount, 1);
+
+        lmpVault.toggleAllowedUser(address(this));
+        assertEq(lmpVault.allowedUsers(address(this)), true);
         uint256 sharesReceived = lmpVaultRouter.deposit{ value: amount }(lmpVault, address(this), amount, 1);
 
         assertEq(address(this).balance, ethBefore - amount, "ETH not withdrawn as expected");
@@ -236,6 +281,15 @@ contract LMPVaultRouterTest is BaseTest {
         uint256 sharesBefore = lmpVault.balanceOf(address(this));
 
         baseAsset.approve(address(lmpVaultRouter), baseAssetBefore);
+
+        lmpVault.toggleAllowedUser(address(this));
+        assertEq(lmpVault.allowedUsers(address(this)), false);
+
+        vm.expectRevert();
+        lmpVaultRouter.depositMax(lmpVault, address(this), 1);
+
+        lmpVault.toggleAllowedUser(address(this));
+        assertEq(lmpVault.allowedUsers(address(this)), true);
         uint256 sharesReceived = lmpVaultRouter.depositMax(lmpVault, address(this), 1);
 
         assertGt(sharesReceived, 0);
@@ -256,7 +310,14 @@ contract LMPVaultRouterTest is BaseTest {
         // set threshold for just over what's expected
         uint256 maxAssets = lmpVault.previewMint(amount) - 1;
         baseAsset.approve(address(lmpVaultRouter), amount); // `amount` instead of `maxAssets` so that we don't
-            // allowance error
+
+        lmpVault.toggleAllowedUser(address(this));
+        assertEq(lmpVault.allowedUsers(address(this)), false);
+        vm.expectRevert();
+        lmpVaultRouter.mint(lmpVault, address(this), amount, maxAssets);
+
+        lmpVault.toggleAllowedUser(address(this));
+        assertEq(lmpVault.allowedUsers(address(this)), true);
         vm.expectRevert(abi.encodeWithSelector(ILMPVaultRouterBase.MaxAmountError.selector));
         lmpVaultRouter.mint(lmpVault, address(this), amount, maxAssets);
 
@@ -268,6 +329,7 @@ contract LMPVaultRouterTest is BaseTest {
         _changeVaultToWETH();
 
         lmpVault.toggleAllowedUser(address(lmpVaultRouter));
+        assertEq(lmpVault.allowedUsers(address(lmpVaultRouter)), true);
 
         uint256 amount = depositAmount;
 
@@ -279,6 +341,12 @@ contract LMPVaultRouterTest is BaseTest {
 
         uint256 assets = lmpVault.previewMint(amount);
 
+        assertEq(lmpVault.allowedUsers(address(this)), false);
+        vm.expectRevert();
+        lmpVaultRouter.mint{ value: amount }(lmpVault, address(this), amount, assets);
+
+        lmpVault.toggleAllowedUser(address(this));
+        assertEq(lmpVault.allowedUsers(address(this)), true);
         uint256 sharesReceived = lmpVaultRouter.mint{ value: amount }(lmpVault, address(this), amount, assets);
 
         assertEq(address(this).balance, ethBefore - amount, "ETH not withdrawn as expected");
@@ -286,6 +354,7 @@ contract LMPVaultRouterTest is BaseTest {
         assertEq(weth.balanceOf(address(this)), wethBefore, "WETH should not change");
     }
 
+    // made it here
     function test_withdraw() public {
         uint256 amount = depositAmount; // TODO: fuzz
 
@@ -302,8 +371,16 @@ contract LMPVaultRouterTest is BaseTest {
         uint256 baseAssetBefore = baseAsset.balanceOf(address(this));
         uint256 sharesBefore = lmpVault.balanceOf(address(this));
 
+        lmpVault.toggleAllowedUser(address(this));
+        assertEq(lmpVault.allowedUsers(address(this)), false);
         // TODO: test eth unwrap!!
         lmpVault.approve(address(lmpVaultRouter), sharesBefore);
+
+        vm.expectRevert();
+        lmpVaultRouter.withdraw(lmpVault, address(this), amount, amount, false);
+
+        lmpVault.toggleAllowedUser(address(this));
+        assertEq(lmpVault.allowedUsers(address(this)), true);
         uint256 sharesOut = lmpVaultRouter.withdraw(lmpVault, address(this), amount, amount, false);
 
         assertEq(sharesOut, amount);
@@ -327,8 +404,16 @@ contract LMPVaultRouterTest is BaseTest {
         uint256 baseAssetBefore = baseAsset.balanceOf(address(this));
         uint256 sharesBefore = lmpVault.balanceOf(address(this));
 
+        lmpVault.toggleAllowedUser(address(this));
+        assertEq(lmpVault.allowedUsers(address(this)), false);
         // TODO: test eth unwrap!!
         lmpVault.approve(address(lmpVaultRouter), sharesBefore);
+
+        vm.expectRevert();
+        lmpVaultRouter.redeem(lmpVault, address(this), amount, amount, false);
+
+        lmpVault.toggleAllowedUser(address(this));
+        assertEq(lmpVault.allowedUsers(address(this)), true);
         uint256 assetsReceived = lmpVaultRouter.redeem(lmpVault, address(this), amount, amount, false);
 
         assertEq(assetsReceived, amount);
@@ -349,6 +434,12 @@ contract LMPVaultRouterTest is BaseTest {
 
         // -- try to fail slippage first -- //
         lmpVault.approve(address(lmpVaultRouter), amount);
+        assertEq(lmpVault2.allowedUsers(address(this)), false);
+        vm.expectRevert(abi.encodeWithSignature("UserNotAllowed()"));
+        lmpVaultRouter.redeemToDeposit(lmpVault, lmpVault2, address(this), amount, amount + 1);
+
+        lmpVault2.toggleAllowedUser(address(this));
+        assertEq(lmpVault2.allowedUsers(address(this)), true);
         vm.expectRevert(abi.encodeWithSelector(ILMPVaultRouterBase.MinSharesError.selector));
         lmpVaultRouter.redeemToDeposit(lmpVault, lmpVault2, address(this), amount, amount + 1);
 
@@ -363,249 +454,6 @@ contract LMPVaultRouterTest is BaseTest {
         assertEq(baseAsset.balanceOf(address(this)), baseAssetBefore, "Base asset amount should not change");
         assertEq(lmpVault.balanceOf(address(this)), 0, "Shares in vault #1 should be 0 after the move");
         assertEq(lmpVault2.balanceOf(address(this)), newSharesReceived, "Shares in vault #2 should be increased");
-    }
-
-    // All three rewarder based functions use same path to check for valid vault, use stake to test all.
-    function test_RevertsOnInvalidVault() public {
-        // No need to approve, deposit to vault, etc, revert will happen before transfer.
-        vm.expectRevert(Errors.ItemNotFound.selector);
-        lmpVaultRouter.stakeVaultToken(IERC20(makeAddr("NOT_LMP_VAULT")), depositAmount);
-    }
-
-    function test_stakeVaultToken_Router() public {
-        // Get reward and vault balances of `address(this)` before.
-        uint256 shareBalanceBefore = _deposit(lmpVault, depositAmount);
-        uint256 stakedBalanceBefore = lmpRewarder.balanceOf(address(this));
-        uint256 rewarderShareBalanceBefore = lmpVault.balanceOf(address(lmpRewarder));
-
-        // Checks pre stake.
-        assertEq(shareBalanceBefore, depositAmount); // First deposit, no supply yet, mints 1:1.
-        assertEq(stakedBalanceBefore, 0); // User has not staked yet.
-        assertEq(rewarderShareBalanceBefore, 0); // Nothing in rewarder yet.
-
-        // Approve rewarder and stake via router.
-        lmpVault.approve(address(lmpVaultRouter), shareBalanceBefore);
-        lmpVaultRouter.stakeVaultToken(IERC20(address(lmpVault)), shareBalanceBefore);
-
-        // Reward and balances of `address(this)` after stake.
-        uint256 shareBalanceAfter = lmpVault.balanceOf(address(this));
-        uint256 stakedBalanceAfter = lmpRewarder.balanceOf(address(this));
-        uint256 rewarderShareBalanceAfter = lmpVault.balanceOf(address(lmpRewarder));
-
-        // Post stake checks.
-        assertEq(shareBalanceAfter, 0); // All shares should be staked.
-        assertEq(stakedBalanceAfter, shareBalanceBefore); // Staked balance should be 1:1 shares.
-        assertEq(rewarderShareBalanceAfter, shareBalanceBefore); // Should own all shares.
-    }
-
-    function test_RevertRewarderDoesNotExist_withdraw() public {
-        // Doesn't need to stake first, checks before actual withdrawal
-        vm.expectRevert(Errors.ItemNotFound.selector);
-        lmpVaultRouter.withdrawVaultToken(lmpVault, IMainRewarder(makeAddr("FAKE_REWARDER")), 1, false);
-    }
-
-    function test_WithdrawFromPastRewarder() public {
-        // Deposit, approve, stake.
-        uint256 shareBalanceBefore = _deposit(lmpVault, depositAmount);
-        lmpVault.approve(address(lmpVaultRouter), shareBalanceBefore);
-        lmpVaultRouter.stakeVaultToken(lmpVault, shareBalanceBefore);
-
-        // Replace rewarder.
-        address newRewarder = address(
-            new LMPVaultMainRewarder(
-                systemRegistry, address(new MockERC20("X", "X", 18)), 1000, 1000, true, address(lmpVault)
-            )
-        );
-        vm.mockCall(
-            address(accessController),
-            abi.encodeWithSignature("hasRole(bytes32,address)", Roles.LMP_REWARD_MANAGER_ROLE, address(this)),
-            abi.encode(true)
-        );
-        lmpVault.setRewarder(newRewarder);
-
-        // Make sure correct rewarder set.
-        assertEq(address(lmpVault.rewarder()), newRewarder);
-        assertTrue(lmpVault.isPastRewarder(address(lmpRewarder)));
-
-        uint256 userBalanceInPastRewarderBefore = lmpRewarder.balanceOf(address(this));
-        uint256 userBalanceLMPTokenBefore = lmpVault.balanceOf(address(this));
-
-        assertEq(userBalanceInPastRewarderBefore, shareBalanceBefore);
-        assertEq(userBalanceLMPTokenBefore, 0);
-
-        // Fake rewarder - 0x002C41f924b4f3c0EE3B65749c4481f7cc9Dea03
-        // Real rewarder - 0xc1A7C52ED8c7671a56e8626e7ae362334480f599
-
-        lmpVaultRouter.withdrawVaultToken(lmpVault, lmpRewarder, shareBalanceBefore, false);
-
-        uint256 userBalanceInPastRewarderAfter = lmpRewarder.balanceOf(address(this));
-        uint256 userBalanceLMPTokenAfter = lmpVault.balanceOf(address(this));
-
-        assertEq(userBalanceInPastRewarderAfter, 0);
-        assertEq(userBalanceLMPTokenAfter, shareBalanceBefore);
-    }
-
-    function test_withdrawVaultToken_NoClaim_Router() public {
-        // Stake first.
-        uint256 shareBalanceBefore = _deposit(lmpVault, depositAmount);
-        lmpVault.approve(address(lmpVaultRouter), shareBalanceBefore);
-        lmpVaultRouter.stakeVaultToken(IERC20(address(lmpVault)), shareBalanceBefore);
-
-        // Make sure balances match expected.
-        assertEq(lmpVault.balanceOf(address(this)), 0); // All shares transferred out.
-        assertEq(lmpVault.balanceOf(address(lmpRewarder)), shareBalanceBefore); // All shares owned by rewarder.
-        assertEq(lmpRewarder.balanceOf(address(this)), shareBalanceBefore); // Should mint 1:1 for shares.
-
-        // Withdraw half of shares.
-        lmpVaultRouter.withdrawVaultToken(lmpVault, lmpRewarder, shareBalanceBefore, false);
-
-        assertEq(lmpVault.balanceOf(address(this)), shareBalanceBefore); // All shares should be returned to user.
-        assertEq(lmpVault.balanceOf(address(lmpRewarder)), 0); // All shares transferred out.
-        assertEq(lmpRewarder.balanceOf(address(this)), 0); // Balance should be properly adjusted.
-    }
-
-    function test_withdrawVaultToken_Claim_Router() public {
-        uint256 localStakeAmount = 1000;
-
-        // Grant liquidator role to treasury to allow queueing of Toke rewards.
-        // Neccessary because rewarder uses Toke as reward token.
-        accessController.grantRole(Roles.LIQUIDATOR_ROLE, TREASURY);
-
-        // Make sure Toke is not going to be sent to GPToke contract.
-        assertEq(lmpRewarder.tokeLockDuration(), 0);
-
-        // Prank treasury to approve rewarder and queue toke rewards.
-        vm.startPrank(TREASURY);
-        toke.approve(address(lmpRewarder), localStakeAmount);
-        lmpRewarder.queueNewRewards(localStakeAmount);
-        vm.stopPrank();
-
-        // Deposit to LMP.
-        uint256 sharesReceived = _deposit(lmpVault, depositAmount);
-
-        // Stake LMP
-        lmpVault.approve(address(lmpVaultRouter), sharesReceived);
-        lmpVaultRouter.stakeVaultToken(IERC20(address(lmpVault)), sharesReceived);
-
-        // Snapshot values before withdraw.
-        uint256 stakeBalanceBefore = lmpRewarder.balanceOf(address(this));
-        uint256 shareBalanceBefore = lmpVault.balanceOf(address(this));
-        uint256 rewarderBalanceRewardTokenBefore = toke.balanceOf(address(lmpRewarder));
-        uint256 userBalanceRewardTokenBefore = toke.balanceOf(address(this));
-
-        assertEq(stakeBalanceBefore, sharesReceived); // Amount staked should be total shares minted.
-        assertEq(shareBalanceBefore, 0); // User should have transferred all assets out.
-        assertEq(rewarderBalanceRewardTokenBefore, localStakeAmount); // All reward should still be in rewarder.
-        assertEq(userBalanceRewardTokenBefore, 0); // User should have no reward token before withdrawal.
-
-        // Roll for entire reward duration, gives all rewards to user.  100 is reward duration.
-        vm.roll(block.number + 100);
-
-        // Unstake.
-        lmpVaultRouter.withdrawVaultToken(lmpVault, lmpRewarder, depositAmount, true);
-
-        // Snapshot balances after withdrawal.
-        uint256 stakeBalanceAfter = lmpRewarder.balanceOf(address(this));
-        uint256 shareBalanceAfter = lmpVault.balanceOf(address(this));
-        uint256 rewarderBalanceRewardTokenAfter = toke.balanceOf(address(lmpRewarder));
-        uint256 userBalanceRewardTokenAfter = toke.balanceOf(address(this));
-
-        assertEq(stakeBalanceAfter, 0); // All should be unstaked for user.
-        assertEq(shareBalanceAfter, depositAmount); // All shares should be returned to user.
-        assertEq(rewarderBalanceRewardTokenAfter, 0); // All should be transferred to user.
-        assertEq(userBalanceRewardTokenAfter, localStakeAmount); // User should now own all reward tokens.
-    }
-
-    function test_RevertRewarderDoesNotExist_claim() public {
-        vm.expectRevert(Errors.ItemNotFound.selector);
-        lmpVaultRouter.claimRewards(lmpVault, IMainRewarder(makeAddr("FAKE_REWARDER")));
-    }
-
-    function test_ClaimFromPastRewarder() public {
-        uint256 localStakeAmount = 1000;
-
-        // Grant treasury liquidator role, allows queueing of rewards.
-        accessController.grantRole(Roles.LIQUIDATOR_ROLE, TREASURY);
-
-        // Check Toke lock duration.
-        assertEq(lmpRewarder.tokeLockDuration(), 0);
-
-        // Prank treasury, queue rewards.
-        vm.startPrank(TREASURY);
-        toke.approve(address(lmpRewarder), localStakeAmount);
-        lmpRewarder.queueNewRewards(localStakeAmount);
-        vm.stopPrank();
-
-        // Deposit to vault.
-        uint256 sharesReceived = _deposit(lmpVault, depositAmount);
-
-        // Stake to rewarder.
-        lmpVault.approve(address(lmpVaultRouter), sharesReceived);
-        lmpVaultRouter.stakeVaultToken(lmpVault, sharesReceived);
-
-        // Roll block for reward claiming.
-        vm.roll(block.number + 100);
-
-        // Create new rewarder, set as rewarder on LMP vault.
-        LMPVaultMainRewarder newRewarder = new LMPVaultMainRewarder(
-            systemRegistry, address(new MockERC20("X", "X", 18)), 100, 100, false, address(lmpVault)
-        );
-        vm.mockCall(
-            address(accessController),
-            abi.encodeWithSignature("hasRole(bytes32,address)", Roles.LMP_REWARD_MANAGER_ROLE, address(this)),
-            abi.encode(true)
-        );
-        lmpVault.setRewarder(address(newRewarder));
-
-        // Make sure rewarder set as past.
-        assertTrue(lmpVault.isPastRewarder(address(lmpRewarder)));
-
-        // Snapshot and checks.
-        uint256 userRewardsPastRewarderBefore = lmpRewarder.earned(address(this));
-        uint256 userRewardTokenBalanceBefore = toke.balanceOf(address(this));
-        assertEq(userRewardsPastRewarderBefore, localStakeAmount);
-
-        // Claim rewards.
-        lmpVaultRouter.claimRewards(lmpVault, lmpRewarder);
-
-        // Snapshot and checks.
-        uint256 userClaimedRewards = toke.balanceOf(address(this));
-        assertEq(userRewardTokenBalanceBefore + userClaimedRewards, localStakeAmount);
-    }
-
-    function test_claimRewards_Router() public {
-        uint256 localStakeAmount = 1000;
-
-        // Grant liquidator role to treasury to allow queueing of Toke rewards.
-        // Neccessary because rewarder uses Toke as reward token.
-        accessController.grantRole(Roles.LIQUIDATOR_ROLE, TREASURY);
-
-        // Make sure Toke is not going to be sent to GPToke contract.
-        assertEq(lmpRewarder.tokeLockDuration(), 0);
-
-        // Prank treasury to approve rewarder and queue toke rewards.
-        vm.startPrank(TREASURY);
-        toke.approve(address(lmpRewarder), localStakeAmount);
-        lmpRewarder.queueNewRewards(localStakeAmount);
-        vm.stopPrank();
-
-        // Deposit to LMP.
-        uint256 sharesReceived = _deposit(lmpVault, depositAmount);
-
-        // Stake LMP
-        lmpVault.approve(address(lmpVaultRouter), sharesReceived);
-        lmpVaultRouter.stakeVaultToken(IERC20(address(lmpVault)), sharesReceived);
-
-        assertEq(toke.balanceOf(address(this)), 0); // Make sure no Toke for user before claim.
-        assertEq(toke.balanceOf(address(lmpRewarder)), localStakeAmount); // Rewarder has proper amount before claim.
-
-        // Roll for entire reward duration, gives all rewards to user.  100 is reward duration.
-        vm.roll(block.number + 100);
-
-        lmpVaultRouter.claimRewards(lmpVault, lmpRewarder);
-
-        assertEq(toke.balanceOf(address(this)), localStakeAmount); // Make sure all toke transferred to user.
-        assertEq(toke.balanceOf(address(lmpRewarder)), 0); // Rewarder should have no toke left.
     }
 
     function test_DepositAndStakeMulticall() public {
@@ -635,6 +483,14 @@ contract LMPVaultRouterTest is BaseTest {
         assertEq(rewardBalanceBefore, 0); // No rewards yet, should be zero.
 
         // Execute multicall.
+
+        lmpVault.toggleAllowedUser(address(this));
+        assertEq(lmpVault.allowedUsers(address(this)), false);
+        vm.expectRevert();
+        lmpVaultRouter.multicall(data);
+
+        lmpVault.toggleAllowedUser(address(this));
+        assertEq(lmpVault.allowedUsers(address(this)), true);
         lmpVaultRouter.multicall(data);
 
         // Snapshot balances after.
@@ -645,73 +501,6 @@ contract LMPVaultRouterTest is BaseTest {
         assertEq(baseAssetBalanceBefore - depositAmount, baseAssetBalanceAfter); // Only `depositAmount` taken out.
         assertEq(shareBalanceAfter, 0); // Still zero, all shares should have been moved.
         assertEq(rewardBalanceAfter, expectedShares); // Should transfer 1:1.
-    }
-
-    function test_withdrawStakeAndWithdrawMulticall() public {
-        // Deposit and stake normally.
-        baseAsset.approve(address(lmpVaultRouter), depositAmount);
-        uint256 shares = lmpVaultRouter.deposit(lmpVault, address(this), depositAmount, 1);
-        lmpVault.approve(address(lmpVaultRouter), shares);
-        lmpVaultRouter.stakeVaultToken(IERC20(address(lmpVault)), shares);
-
-        // Need array of bytes with two members, one for unstaking from rewarder, other for withdrawing from LMP.
-        bytes[] memory data = new bytes[](2);
-
-        // Approve router to burn share tokens.
-        lmpVault.approve(address(lmpVaultRouter), shares);
-
-        // Generate data.
-        uint256 rewardBalanceBefore = lmpRewarder.balanceOf(address(this));
-        data[0] = abi.encodeWithSelector(
-            lmpVaultRouter.withdrawVaultToken.selector, lmpVault, lmpRewarder, rewardBalanceBefore, false
-        );
-        data[1] = abi.encodeWithSelector(
-            lmpVaultRouter.redeem.selector, lmpVault, address(this), rewardBalanceBefore, 1, false
-        );
-
-        // Snapshot balances for `address(this)` before call.
-        uint256 baseAssetBalanceBefore = baseAsset.balanceOf(address(this));
-        uint256 sharesBalanceBefore = lmpVault.balanceOf(address(this));
-
-        // Check snapshots.  Don't check baseAsset balance here, check after multicall to make sure correct amount
-        // comes back.
-        assertEq(rewardBalanceBefore, shares); // All shares minted should be in rewarder.
-        assertEq(sharesBalanceBefore, 0); // User should own no shares.
-
-        // Execute multicall.
-        lmpVaultRouter.multicall(data);
-
-        // Post multicall snapshot.
-        uint256 rewardBalanceAfter = lmpRewarder.balanceOf(address(this));
-        uint256 baseAssetBalanceAfter = baseAsset.balanceOf(address(this));
-        uint256 sharesBalanceAfter = lmpVault.balanceOf(address(this));
-
-        assertEq(rewardBalanceAfter, 0); // All rewards removed.
-        assertEq(baseAssetBalanceAfter, baseAssetBalanceBefore + depositAmount); // Should have all base asset back.
-        assertEq(sharesBalanceAfter, 0); // All shares burned.
-    }
-
-    function test_stakeWorksWith_MaxAmountGreaterThanUserBalance() public {
-        baseAsset.approve(address(lmpVaultRouter), depositAmount);
-        uint256 shares = lmpVaultRouter.deposit(lmpVault, address(this), depositAmount, 1);
-
-        lmpVault.approve(address(lmpVaultRouter), type(uint256).max);
-        lmpVaultRouter.stakeVaultToken(lmpVault, type(uint256).max);
-
-        // Should only deposit amount of shares user has.
-        assertEq(lmpRewarder.balanceOf(address(this)), shares);
-    }
-
-    function test_withdrawWorksWith_MaxAmountGreaterThanUsersBalance() public {
-        baseAsset.approve(address(lmpVaultRouter), depositAmount);
-        uint256 shares = lmpVaultRouter.deposit(lmpVault, address(this), depositAmount, 1);
-
-        lmpVault.approve(address(lmpVaultRouter), shares);
-        lmpVaultRouter.stakeVaultToken(lmpVault, shares);
-
-        lmpVaultRouter.withdrawVaultToken(lmpVault, lmpRewarder, type(uint256).max, false);
-
-        assertEq(lmpVault.balanceOf(address(this)), shares);
     }
 
     /* **************************************************************************** */
@@ -748,7 +537,7 @@ contract LMPVaultRouterTest is BaseTest {
         //
         // Update factory to support WETH instead of regular mock (one time just for this test)
         //
-        lmpVaultTemplate = address(new LMPVault(systemRegistry, address(weth), false));
+        lmpVaultTemplate = address(new LMPVault(systemRegistry, address(weth), true));
         lmpVaultFactory = new LMPVaultFactory(systemRegistry, lmpVaultTemplate, 800, 100);
         // NOTE: deployer grants factory permission to update the registry
         accessController.grantRole(Roles.REGISTRY_UPDATER, address(lmpVaultFactory));

@@ -27,15 +27,7 @@ contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard 
         uint256 amount,
         uint256 maxSharesIn,
         uint256 minSharesOut
-    )
-        external
-        override
-        onlyAllowedUsers(fromVault, msg.sender)
-        onlyAllowedUsers(fromVault, to)
-        onlyAllowedUsers(toVault, msg.sender)
-        onlyAllowedUsers(toVault, to)
-        returns (uint256 sharesOut)
-    {
+    ) external override returns (uint256 sharesOut) {
         withdraw(fromVault, address(this), amount, maxSharesIn, false);
         return _deposit(toVault, to, amount, minSharesOut);
     }
@@ -47,13 +39,7 @@ contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard 
         ILMPVault vault,
         address to,
         uint256 minSharesOut
-    )
-        external
-        nonReentrant
-        onlyAllowedUsers(vault, msg.sender)
-        onlyAllowedUsers(vault, to)
-        returns (uint256 sharesOut)
-    {
+    ) external nonReentrant returns (uint256 sharesOut) {
         systemRegistry.asyncSwapperRegistry().verifyIsRegistered(swapper);
         pullToken(IERC20(swapParams.sellTokenAddress), swapParams.sellAmount, address(this));
 
@@ -76,15 +62,7 @@ contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard 
         address to,
         uint256 shares,
         uint256 minSharesOut
-    )
-        external
-        override
-        onlyAllowedUsers(fromVault, msg.sender)
-        onlyAllowedUsers(fromVault, to)
-        onlyAllowedUsers(toVault, msg.sender)
-        onlyAllowedUsers(toVault, to)
-        returns (uint256 sharesOut)
-    {
+    ) external override returns (uint256 sharesOut) {
         // amount out passes through so only one slippage check is needed
         uint256 amount = redeem(fromVault, address(this), shares, 0, false);
         return _deposit(toVault, to, amount, minSharesOut);
@@ -95,7 +73,7 @@ contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard 
         ILMPVault vault,
         address to,
         uint256 minSharesOut
-    ) public override onlyAllowedUsers(vault, msg.sender) onlyAllowedUsers(vault, to) returns (uint256 sharesOut) {
+    ) public override returns (uint256 sharesOut) {
         IERC20 asset = IERC20(vault.asset());
         uint256 assetBalance = asset.balanceOf(msg.sender);
         uint256 maxDeposit = vault.maxDeposit(to);
@@ -105,11 +83,7 @@ contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard 
     }
 
     /// @inheritdoc ILMPVaultRouter
-    function redeemMax(
-        ILMPVault vault,
-        address to,
-        uint256 minAmountOut
-    ) public override onlyAllowedUsers(vault, to) onlyAllowedUsers(vault, to) returns (uint256 amountOut) {
+    function redeemMax(ILMPVault vault, address to, uint256 minAmountOut) public override returns (uint256 amountOut) {
         uint256 shareBalance = vault.balanceOf(msg.sender);
         uint256 maxRedeem = vault.maxRedeem(msg.sender);
         uint256 amountShares = maxRedeem < shareBalance ? maxRedeem : shareBalance;

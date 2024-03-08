@@ -158,6 +158,7 @@ library AutoPool4626 {
             if (tokenAddress != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
                 IERC20Metadata(tokenAddress).safeTransfer(destination, amount);
             } else {
+                // solhint-disable-next-line avoid-low-level-calls
                 payable(destination).call{ value: amount };
             }
         }

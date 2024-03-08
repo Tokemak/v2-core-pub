@@ -1677,22 +1677,43 @@ contract PeriodicFees is LMPVaultTests {
         assertGt(vault.getFeeSettings().lastPeriodicFeeTake, 0);
     }
 
-    function test_CollectedAsExpectedWhenConfiguredWithFeeAndSink() public {
+    function test_CannotSetPeriodicFee_OverMax() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
+        vm.expectRevert(abi.encodeWithSignature("InvalidFee(uint256)", 1e18));
+
+        vault.setPeriodicFeeBps(1e18);
+    }
+
+    function test_ProperlySetsFee_EmitsEvent() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
+
+        vm.expectEmit(false, false, false, true);
+        emit PeriodicFeeSet(500);
+
+        vault.setPeriodicFeeBps(500);
+    }
+
+    function test_CollectsPeriodicFeeCorrectly() public {
         // Grant roles
         _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
         _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, true);
 
+        //
+        // First fee take set up, execution, and checks.
+        //
+
         // Local variables.
-        uint256 warpAmount = block.timestamp + 1 days;
+        uint256 warpAmount = block.timestamp + 1 days; // Calc fee for one day passing btwn debt reportings.
         uint256 depositAmount = 3e20;
         uint256 periodicFeeBps = 500; // 5%
         address feeSink = makeAddr("periodicFeeSink");
         uint256 expectedLastPeriodicFeeTake = warpAmount;
 
-        // Mint, approve, deposit to give supply.
-        vaultAsset.mint(address(this), depositAmount);
-        vaultAsset.approve(address(vault), depositAmount);
+        // Mint, approve, deposit to give supply, record supply.
+        vaultAsset.mint(address(this), type(uint256).max);
+        vaultAsset.approve(address(vault), type(uint256).max);
         vault.deposit(depositAmount, address(this));
+        uint256 vaultTotalSupplyFirstDeposit = vault.totalSupply();
 
         // Set fee and sink.
         vault.setPeriodicFeeBps(periodicFeeBps);
@@ -1701,14 +1722,11 @@ contract PeriodicFees is LMPVaultTests {
         // Warp block.timestamp to allow for fees to be taken.
         vm.warp(warpAmount);
 
-        // Get total shares before mint.
-        uint256 totalSupplyBefore = vault.totalSupply();
-
-        // Calculate 'fees' amount for PeriodicFeeCollected event.
-        uint256 expectedFees = vault.getFeeSettings().periodicFeeBps * vault.totalAssets() / AutoPoolFees.FEE_DIVISOR;
+        // Externally calculated fees in asset
+        uint256 expectedFees = 41_097_000_000_000_000;
 
         // Externally calculated shares
-        uint256 calculatedShares = 15_789_473_684_210_526_316;
+        uint256 calculatedShares = 41_102_630_649_372_658;
 
         // Update debt, check events.
         vm.expectEmit(true, true, false, true);
@@ -1719,57 +1737,33 @@ contract PeriodicFees is LMPVaultTests {
         emit LastPeriodicFeeTakeSet(expectedLastPeriodicFeeTake);
         vault.updateDebtReporting(0);
 
-        /**
-         * Number of shares minted to feeSink address.  Can use this to check totalSupply because these are
-         *      the only shares that should have been minted.
-         */
         uint256 minted = vault.balanceOf(feeSink);
 
         // Check that correct numbers have been minted.
         assertEq(minted, calculatedShares, "shares");
-        assertEq(totalSupplyBefore + minted, vault.totalSupply(), "totalSupply");
-        assertEq(
-            vault.getFeeSettings().lastPeriodicFeeTake, expectedLastPeriodicFeeTake, "nextFeeTakeTime"
-        );
-    }
+        assertEq(vaultTotalSupplyFirstDeposit + minted, vault.totalSupply(), "totalSupply");
+        assertEq(vault.getFeeSettings().lastPeriodicFeeTake, expectedLastPeriodicFeeTake, "lastFeeTakeTime");
 
-    // TODO: Can update this one to make sure that fee updates properly or something.
-    function test_StateUpdatesFeeTakenAndPendingUpdated() public {
-        // Grant roles
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, true);
+        //
+        // Second fee take.
+        //
 
-        // Local variables.
-        uint256 warpAmount = block.timestamp + 1 days;
-        uint256 depositAmount = 3e20;
-        uint256 periodicFeeBps = 500; // 5%
-        address feeSink = makeAddr("periodicFeeSink");
-        uint256 expectedLastPeriodicFeeTake = warpAmount;
-
-        // Mint, approve, deposit to give supply.
-        vaultAsset.mint(address(this), depositAmount);
-        vaultAsset.approve(address(vault), depositAmount);
+        // Increase deposits, longer time between fee takes.
+        warpAmount = block.timestamp + 25 days;
+        depositAmount = 1500e18;
+        expectedLastPeriodicFeeTake = warpAmount;
         vault.deposit(depositAmount, address(this));
 
-        // Set fee and sink.
-        vault.setPeriodicFeeBps(periodicFeeBps);
-        vault.setPeriodicFeeSink(feeSink);
+        // Snapshot vault supply after second deposit
+        uint256 vaultSupplySecondDeposit = vault.totalSupply();
 
-        // Checks for fee and sink
-        assertEq(vault.getFeeSettings().periodicFeeBps, periodicFeeBps);
-        assertEq(vault.getFeeSettings().periodicFeeSink, feeSink);
+        vm.warp(warpAmount);
 
-        // Warp
-        vm.warp(expectedLastPeriodicFeeTake);
-
-        // Snapshot total supply.
-        uint256 totalSupplyBefore = vault.totalSupply();
-
-        // Calculate 'fees' amount for PeriodicFeeCollected event.
-        uint256 expectedFees = vault.getFeeSettings().periodicFeeBps * vault.totalAssets() / vault.FEE_DIVISOR();
+        // Externally calculated fees in asset
+        expectedFees = 6_164_388_000_000_000_000;
 
         // Externally calculated shares
-        uint256 calculatedShares = 15_789_473_684_210_526_316;
+        calculatedShares = 6_186_418_956_754_918_383;
 
         // Update debt, check events.
         vm.expectEmit(true, true, false, true);
@@ -1780,35 +1774,70 @@ contract PeriodicFees is LMPVaultTests {
         emit LastPeriodicFeeTakeSet(expectedLastPeriodicFeeTake);
         vault.updateDebtReporting(0);
 
-        /**
-         * Number of shares minted to feeSink address.  Can use this to check totalSupply because these are
-         *      the only shares that should have been minted.
-         */
-        uint256 minted = vault.balanceOf(feeSink);
+        // Fee sink balance minus balance from first mint.
+        uint256 mintedSecondClaim = vault.balanceOf(feeSink) - minted;
 
-        // Post operation checks.
-        assertEq(minted, calculatedShares);
-        assertEq(totalSupplyBefore + minted, vault.totalSupply());
-        assertEq(vault.getFeeSettings().lastPeriodicFeeTake, expectedLastPeriodicFeeTake);
-        assertEq(vault.getFeeSettings().periodicFeeBps, periodicFeeBps);
+        assertEq(mintedSecondClaim, calculatedShares, "shares");
+        assertEq(vaultSupplySecondDeposit + mintedSecondClaim, vault.totalSupply(), "totalSupply");
+        assertEq(vault.getFeeSettings().lastPeriodicFeeTake, expectedLastPeriodicFeeTake, "lastFeeTakeTime");
+
+        //
+        // Third fee take.
+        //
+
+        // No new deposit, change up fee, much longer time between fee takes.
+        warpAmount = block.timestamp + 545 days;
+        periodicFeeBps = 150; // 1.5%
+        expectedLastPeriodicFeeTake = warpAmount;
+
+        // Set new fee.
+        vault.setPeriodicFeeBps(periodicFeeBps);
+
+        // Vault supply pre third fee take, no update from deposit for this one.
+        uint256 vaultSupplyThirdFeeTake = vault.totalSupply();
+
+        vm.warp(warpAmount);
+
+        // Externally calculated fees in asset
+        expectedFees = 40_315_086_000_000_000_000;
+
+        // Externally calculated shares
+        calculatedShares = 41_386_104_165_242_811_750;
+
+        // Update debt, check events.
+        vm.expectEmit(true, true, false, true);
+        emit Deposit(address(vault), feeSink, 0, calculatedShares);
+        vm.expectEmit(false, false, false, true);
+        emit PeriodicFeeCollected(expectedFees, feeSink, calculatedShares);
+        vm.expectEmit(false, false, false, true);
+        emit LastPeriodicFeeTakeSet(expectedLastPeriodicFeeTake);
+        vault.updateDebtReporting(0);
+
+        // Third mint to fee sink address.
+        uint256 mintedThirdClaim = vault.balanceOf(feeSink) - mintedSecondClaim - minted;
+
+        // Check that correct numbers have been minted.
+        assertEq(mintedThirdClaim, calculatedShares, "shares");
+        assertEq(vaultSupplyThirdFeeTake + mintedThirdClaim, vault.totalSupply(), "totalSupply");
+        assertEq(vault.getFeeSettings().lastPeriodicFeeTake, expectedLastPeriodicFeeTake, "lastFeeTakeTime");
     }
 
-    // TODO: Was testing pending, may be able to be deleted.
-    // Maybe can test that time updates regardless of fee take?
-    function test_PendingFeeBpsRolledEvenWhenFeesNotTaken() public {
+    function test_LastPeriodicFeeTake_StillUpdatedWhen_FeeNotTaken() public {
         // Grant roles
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
         _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, true);
 
         // Local vars.
-        uint256 warpAmount = block.timestamp + 1 days;
-        uint256 depositAmount = 1000;
+        uint256 warpAmount = block.timestamp + 10 days;
+        uint256 depositAmount = 1e18;
         uint256 expectedLastPeriodicFeeTake = warpAmount;
 
         // Mint, approve, deposit to give supply.
         vaultAsset.mint(address(this), depositAmount);
         vaultAsset.approve(address(vault), depositAmount);
         vault.deposit(depositAmount, address(this));
+
+        assertEq(vault.getFeeSettings().periodicFeeSink, address(0));
+        assertEq(vault.getFeeSettings().periodicFeeBps, 0);
 
         // Warp
         vm.warp(warpAmount);
@@ -1816,84 +1845,10 @@ contract PeriodicFees is LMPVaultTests {
         // Call updateDebtReporting to actually his _collectFees, check events emitted, etc.
         vm.expectEmit(false, false, false, true);
         emit LastPeriodicFeeTakeSet(expectedLastPeriodicFeeTake);
-
         vault.updateDebtReporting(0);
 
         // Post operation checks.
-        assertEq(vault.getFeeSettings().periodicFeeBps, 0);
         assertEq(vault.getFeeSettings().lastPeriodicFeeTake, expectedLastPeriodicFeeTake);
-    }
-
-    function test_FeeNotTakenWhenItsNotTime() public {
-        // Setup roles.
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, true);
-
-        // Fee sink address.
-        address periodicFeeSink = makeAddr("periodicFeeSink");
-
-        // Deposit amount.
-        uint256 depositAmount = 1000;
-
-        // Mint some asset, approve lmp, deposit.
-        vaultAsset.mint(address(this), depositAmount);
-        vaultAsset.approve(address(vault), depositAmount);
-        vault.deposit(depositAmount, address(this));
-
-        // Running two different scenarios, will revert to this to reset lmp state partially.
-        uint256 snapshot = vm.snapshot();
-
-        /**
-         * First check, make sure that fees are not taken when time is not appropriate.
-         * Set fee sink, periodic fee, make sure periodic fee is set and not pending.
-         * Then update debt, make sure fees not sent to sink.
-         */
-
-        // Checks both that periodic fees will not be collected and that mananagement fee can be set.
-        assertLt(block.timestamp, vault.getFeeSettings().lastPeriodicFeeTake - 45 days);
-
-        // Set fee.
-        vm.expectEmit(false, false, false, true);
-        emit PeriodicFeeSet(depositAmount);
-        vault.setPeriodicFeeBps(depositAmount); // Set 10% fee.
-
-        // Set sink.
-        vm.expectEmit(false, false, false, true);
-        emit PeriodicFeeSinkSet(periodicFeeSink);
-        vault.setPeriodicFeeSink(periodicFeeSink);
-
-        // Call updateDebtReporting to trigger fee collection.
-        vault.updateDebtReporting(0);
-
-        // Check that no shares minted or moved.
-        assertEq(vault.totalSupply(), depositAmount);
-        assertEq(vault.balanceOf(periodicFeeSink), 0);
-
-        // Reset for next scenario.
-        vm.revertTo(snapshot);
-
-        /**
-         * Second check, make sure fees are not taken when sink address is 0.
-         */
-
-        // Make sure periodic fee can be set.
-        assertLt(block.timestamp, vault.getFeeSettings().lastPeriodicFeeTake - 45 days);
-
-        // Set periodic fee.
-        vm.expectEmit(false, false, false, true);
-        emit PeriodicFeeSet(depositAmount);
-        vault.setPeriodicFeeBps(depositAmount); // 10%
-
-        // Roll block.timestamp to be valid for fee taking.
-        vm.warp(block.timestamp + 200 days);
-        assertGt(block.timestamp, vault.getFeeSettings().lastPeriodicFeeTake);
-
-        // Make sure fee sink address is 0;
-        assertEq(vault.getFeeSettings().periodicFeeSink, address(0));
-
-        // Make sure no shares minted.
-        assertEq(vault.totalSupply(), depositAmount);
-        assertEq(vault.balanceOf(address(0)), 0);
     }
 }
 
@@ -4519,7 +4474,11 @@ contract FeeAndProfitTestVault is TestLMPVault {
         _profitUnlockSettings.fullProfitUnlockTime = uint48(time);
     }
 
-    function _collectFees(uint256 x, uint256 currentTotalSupply, bool collectPeriodicFees) internal virtual override returns (uint256) {
+    function _collectFees(
+        uint256 x,
+        uint256 currentTotalSupply,
+        bool collectPeriodicFees
+    ) internal virtual override returns (uint256) {
         if (_useRealCollectFees) {
             return super._collectFees(x, currentTotalSupply, collectPeriodicFees);
         } else {

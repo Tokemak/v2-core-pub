@@ -27,7 +27,7 @@ library AutoPoolFees {
     event Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares);
     event PeriodicFeeSet(uint256 newFee);
     event PeriodicFeeSinkSet(address newPeriodicFeeSink);
-    event LastPeriodicFeeTakeSet(uint256 lasPeriodicFeeTake);
+    event LastPeriodicFeeTakeSet(uint256 lastPeriodicFeeTake);
     event RebalanceFeeHighWaterMarkEnabledSet(bool enabled);
     event NewNavShareFeeMark(uint256 navPerShare, uint256 timestamp);
     event NewTotalAssetsHighWatermark(uint256 assets, uint256 timestamp);
@@ -54,7 +54,7 @@ library AutoPoolFees {
 
     function initializeFeeSettings(ILMPVault.AutoPoolFeeSettings storage settings) external {
         uint256 timestamp = block.timestamp;
-        settings.lastPeriodicFeeTake = timestamp; // Stops fees from being able to be taken in past.
+        settings.lastPeriodicFeeTake = timestamp; // Stops fees from being able to be claimed before init timestamp.
         settings.navPerShareLastFeeMark = FEE_DIVISOR;
         settings.navPerShareLastFeeMarkTimestamp = timestamp;
         emit LastPeriodicFeeTakeSet(timestamp);
@@ -132,33 +132,6 @@ library AutoPoolFees {
             }
         }
         return workingHigh;
-    }
-
-    // TODO: Put this function back where it came from.
-    /// @dev Collects periodic fees.
-    function _collectPeriodicFees(
-        address periodicSink,
-        uint256 periodicFeeBps,
-        uint256 currentTotalSupply,
-        uint256 totalAssets
-    ) private returns (uint256 newShares) {
-        // Periodic fee * assets used multiple places below, gas savings when calc here.
-        uint256 periodicFeeMultTotalAssets = periodicFeeBps * totalAssets / FEE_DIVISOR;
-
-        // We calculate the shares using the same formula as streaming fees, without scaling down.
-        newShares = Math.mulDiv(
-            periodicFeeMultTotalAssets,
-            currentTotalSupply,
-            (totalAssets * FEE_DIVISOR) - (periodicFeeMultTotalAssets),
-            Math.Rounding.Up
-        );
-
-        // Fee in assets that we are taking.
-        uint256 fees = periodicFeeMultTotalAssets.ceilDiv(FEE_DIVISOR);
-        emit Deposit(address(this), periodicSink, 0, newShares);
-        emit PeriodicFeeCollected(fees, periodicSink, newShares);
-
-        return newShares;
     }
 
     function collectFees(
@@ -260,11 +233,6 @@ library AutoPoolFees {
         if (sink == address(0)) {
             return currentTotalSupply;
         }
-        /**
-         * TODO - NOTE - DELETE
-         *
-         *    Profit is scaled up by FEE_DIVISOR, which is why FEE_DIVISOR is taken out here.
-         */
         uint256 streamingFeeMultProfit = streamingFeeBps * profit / FEE_DIVISOR;
 
         // Calculated separate from other mints as normal share mint is round down
@@ -284,6 +252,32 @@ library AutoPoolFees {
         emit FeeCollected(fees, sink, streamingFeeShares, profit, totalAssets);
 
         return currentTotalSupply;
+    }
+
+    /// @dev Collects periodic fees.
+    function _collectPeriodicFees(
+        address periodicSink,
+        uint256 timeAdjustedFeeBps,
+        uint256 currentTotalSupply,
+        uint256 totalAssets
+    ) private returns (uint256 newShares) {
+        // Periodic fee * assets used multiple places below, gas savings when calc here.
+        uint256 periodicFeeMultTotalAssets = timeAdjustedFeeBps * totalAssets / FEE_DIVISOR;
+
+        // We calculate the shares using the same formula as streaming fees.
+        newShares = Math.mulDiv(
+            periodicFeeMultTotalAssets,
+            currentTotalSupply,
+            (totalAssets * FEE_DIVISOR) - (periodicFeeMultTotalAssets),
+            Math.Rounding.Up
+        );
+
+        // Fee in assets that we are taking.
+        uint256 fees = periodicFeeMultTotalAssets.ceilDiv(FEE_DIVISOR);
+        emit Deposit(address(this), periodicSink, 0, newShares);
+        emit PeriodicFeeCollected(fees, periodicSink, newShares);
+
+        return newShares;
     }
 
     /// @dev If set to 0, existing shares will unlock immediately and increase nav/share. This is intentional
@@ -460,6 +454,7 @@ library AutoPoolFees {
     }
 
     /// @notice Set the periodic fee taken.
+    /// @dev Zero is allowed, no fee taken.
     /// @param fee Fee to update periodic fee to.
     function setPeriodicFeeBps(ILMPVault.AutoPoolFeeSettings storage feeSettings, uint256 fee) external {
         if (fee > MAX_PERIODIC_FEE_BPS) {

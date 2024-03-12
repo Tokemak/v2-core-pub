@@ -5,6 +5,8 @@ pragma solidity >=0.8.7;
 import { IERC20, ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC4626 } from "openzeppelin-contracts/interfaces/IERC4626.sol";
 
+import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+
 import { AccessController } from "src/security/AccessController.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AsyncSwapperRegistry } from "src/liquidation/AsyncSwapperRegistry.sol";
@@ -30,6 +32,22 @@ import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { ERC2612 } from "test/utils/ERC2612.sol";
 import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
+
+contract LMPVaultRouterWrapper is LMPVaultRouter {
+    error SomethingWentWrong();
+
+    event SomethingHappened();
+
+    constructor(ISystemRegistry _systemRegistry, address _weth9) LMPVaultRouter(_systemRegistry, _weth9) { }
+
+    function doSomethingWrong() public pure {
+        revert SomethingWentWrong();
+    }
+
+    function doSomethingRight() public {
+        emit SomethingHappened();
+    }
+}
 
 // solhint-disable func-name-mixedcase
 contract LMPVaultRouterTest is BaseTest {
@@ -689,6 +707,17 @@ contract LMPVaultRouterTest is BaseTest {
         assertEq(rewardBalanceAfter, 0); // All rewards removed.
         assertEq(baseAssetBalanceAfter, baseAssetBalanceBefore + depositAmount); // Should have all base asset back.
         assertEq(sharesBalanceAfter, 0); // All shares burned.
+    }
+
+    function test_catchCustomErrors() public {
+        LMPVaultRouterWrapper router = new LMPVaultRouterWrapper(systemRegistry, WETH_MAINNET);
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSelector(LMPVaultRouterWrapper.doSomethingRight.selector);
+        data[1] = abi.encodeWithSelector(LMPVaultRouterWrapper.doSomethingWrong.selector);
+
+        vm.expectRevert(LMPVaultRouterWrapper.SomethingWentWrong.selector);
+        router.multicall(data);
     }
 
     function test_stakeWorksWith_MaxAmountGreaterThanUserBalance() public {

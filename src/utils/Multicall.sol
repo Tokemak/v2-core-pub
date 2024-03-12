@@ -8,6 +8,8 @@ import { IMulticall } from "src/interfaces/utils/IMulticall.sol";
 /// @title Multicall
 /// @notice Enables calling multiple methods in a single call to the contract
 abstract contract Multicall is IMulticall {
+    error MulticallFailed();
+
     /// @inheritdoc IMulticall
     function multicall(bytes[] calldata data) public payable override returns (bytes[] memory results) {
         results = new bytes[](data.length);
@@ -18,13 +20,14 @@ abstract contract Multicall is IMulticall {
             (bool success, bytes memory result) = address(this).delegatecall(data[i]);
 
             if (!success) {
-                // Next 5 lines from https://ethereum.stackexchange.com/a/83577
-                if (result.length < 68) revert();
-                // slither-disable-next-line assembly
-                assembly {
-                    result := add(result, 0x04)
+                if (result.length > 0) {
+                    //slither-disable-next-line assembly
+                    assembly {
+                        revert(add(32, result), mload(result))
+                    }
+                } else {
+                    revert MulticallFailed();
                 }
-                revert(abi.decode(result, (string)));
             }
 
             results[i] = result;

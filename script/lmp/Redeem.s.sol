@@ -10,6 +10,7 @@ import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IE
 import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 
+//solhint-disable no-unused-vars
 contract Deposit is BaseScript {
     // 🚨 Manually set variables below. 🚨
     address public constant VAULT_ADDRESS = 0x21eB47113E148839c30E1A9CA2b00Ea1317b50ed;

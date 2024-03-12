@@ -198,7 +198,7 @@ contract ChainlinkOracleTest is Test {
         _oracle.getPriceInEth(RETH_MAINNET);
     }
 
-    function test_ReturnsProperPrice() external {
+    function test_ReturnsProperPriceCL() external {
         _oracle.registerChainlinkOracle(
             RETH_MAINNET,
             IAggregatorV3Interface(RETH_CL_FEED_MAINNET),

@@ -93,7 +93,17 @@ import {
     WETH_WHALE,
     RETH_WHALE,
     CBETH_ETH_V2_POOL_LP,
-    CBETH_ETH_V2_POOL
+    CBETH_ETH_V2_POOL,
+    WEETH_MAINNET,
+    WEETH_RS_FEED_MAINNET,
+    OSETH_MAINNET,
+    EZETH_MAINNET,
+    RSETH_MAINNET,
+    SWETH_MAINNET,
+    OSETH_RS_FEED_MAINNET,
+    EZETH_RS_FEED_MAINNET,
+    SWETH_RS_FEED_MAINNET,
+    RSETH_RS_FEED_MAINNET
 } from "../utils/Addresses.sol";
 
 import { SystemRegistry } from "src/SystemRegistry.sol";
@@ -116,6 +126,7 @@ import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVaul
 import { CurveResolverMainnet, ICurveResolver, ICurveMetaRegistry } from "src/utils/CurveResolverMainnet.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
 
+import { RedstoneOracle } from "src/oracles/providers/RedstoneOracle.sol";
 import { ICurveFactoryV2 } from "src/interfaces/external/curve/ICurveFactoryV2.sol";
 import { ICryptoSwapPool } from "src/interfaces/external/curve/ICryptoSwapPool.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
@@ -153,6 +164,7 @@ contract RootOracleIntegrationTest is Test {
     CurveV2CryptoEthOracle public curveCryptoOracle;
     CustomSetOracle public customSetOracle;
     CrvUsdOracle public crvUsdOracle;
+    RedstoneOracle public redstoneOracle;
 
     function setUp() public virtual {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_474_729);
@@ -184,6 +196,7 @@ contract RootOracleIntegrationTest is Test {
             IAggregatorV3Interface(USDT_IN_USD_CL_FEED_MAINNET),
             IAggregatorV3Interface(ETH_CL_FEED_MAINNET)
         );
+        redstoneOracle = new RedstoneOracle(systemRegistry);
 
         //
         // Make persistent for multiple forks
@@ -203,6 +216,7 @@ contract RootOracleIntegrationTest is Test {
         vm.makePersistent(address(curveCryptoOracle));
         vm.makePersistent(address(customSetOracle));
         vm.makePersistent(address(crvUsdOracle));
+        vm.makePersistent(address(redstoneOracle));
 
         //
         // Root price oracle setup
@@ -224,6 +238,15 @@ contract RootOracleIntegrationTest is Test {
         priceOracle.registerMapping(BADGER_MAINNET, IPriceOracle(address(chainlinkOracle)));
         priceOracle.registerMapping(WBTC_MAINNET, IPriceOracle(address(chainlinkOracle)));
         priceOracle.registerMapping(ETH_IN_USD, IPriceOracle(address(chainlinkOracle)));
+
+        //
+        // Root price oracle setup for RedStone
+        //
+        priceOracle.registerMapping(WEETH_MAINNET, IPriceOracle((address(redstoneOracle))));
+        priceOracle.registerMapping(OSETH_MAINNET, IPriceOracle((address(redstoneOracle))));
+        priceOracle.registerMapping(EZETH_MAINNET, IPriceOracle((address(redstoneOracle))));
+        priceOracle.registerMapping(RSETH_MAINNET, IPriceOracle((address(redstoneOracle))));
+        priceOracle.registerMapping(SWETH_MAINNET, IPriceOracle((address(redstoneOracle))));
 
         // Balancer composable stable pool
         priceOracle.registerMapping(USDC_DAI_USDT_BAL_POOL, IPriceOracle(address(balancerComposableOracle)));
@@ -893,6 +916,70 @@ contract GetPriceInEth is RootOracleIntegrationTest {
         offChain = uint256(2_084_743_277_334_819_570);
         safePrice = priceOracle.getPriceInEth(CBETH_ETH_V2_POOL_LP);
         (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
+    }
+
+    function test_RedStoneOracle_getPriceInEth() external {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19_419_462);
+
+        //Redstone Oracle setup
+        redstoneOracle.registerRedstoneOracle(
+            WEETH_MAINNET, IAggregatorV3Interface(WEETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
+        );
+
+        uint256 offChain = uint256(1_029_434_540_200_000_000);
+        uint256 safePrice = priceOracle.getPriceInEth(WEETH_MAINNET);
+        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(offChain);
+
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
+
+        //OSETH
+        redstoneOracle.registerRedstoneOracle(
+            OSETH_MAINNET, IAggregatorV3Interface(OSETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
+        );
+
+        offChain = uint256(997_282_538_160_000_000);
+        safePrice = priceOracle.getPriceInEth(OSETH_MAINNET);
+        (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
+
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
+
+        //SWETH
+        redstoneOracle.registerRedstoneOracle(
+            SWETH_MAINNET, IAggregatorV3Interface(SWETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
+        );
+
+        offChain = uint256(1_045_404_656_580_000_000);
+        safePrice = priceOracle.getPriceInEth(SWETH_MAINNET);
+        (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
+
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
+
+        //EZETH
+        redstoneOracle.registerRedstoneOracle(
+            EZETH_MAINNET, IAggregatorV3Interface(EZETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
+        );
+
+        offChain = uint256(1_005_658_115_676_000_000);
+        safePrice = priceOracle.getPriceInEth(EZETH_MAINNET);
+        (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
+
+        assertGt(upperBound, safePrice);
+        assertLt(lowerBound, safePrice);
+
+        //RSETH
+        redstoneOracle.registerRedstoneOracle(
+            RSETH_MAINNET, IAggregatorV3Interface(RSETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
+        );
+
+        offChain = uint256(990_768_676_250_000_000);
+        safePrice = priceOracle.getPriceInEth(RSETH_MAINNET);
+        (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
+
         assertGt(upperBound, safePrice);
         assertLt(lowerBound, safePrice);
     }

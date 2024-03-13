@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-/* solhint-disable func-name-mixedcase,contract-name-camelcase,max-states-count */
+/* solhint-disable func-name-mixedcase,contract-name-camelcase,max-states-count,max-line-length */
 
 import { Test } from "forge-std/Test.sol";
 

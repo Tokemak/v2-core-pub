@@ -27,6 +27,7 @@ contract LMPVaultRouterUsage is BasePoolSetup {
     ///@dev The user shares balance at the end of the last operation that shouldn't have changed
     uint256 internal _userSharesAtEnd;
 
+    ///@dev modifier to help track User 1 shares on
     modifier updateUser1Balance() {
         _userSharesAtStart = _pool.balanceOf(_user1);
         _;
@@ -51,30 +52,48 @@ contract LMPVaultRouterUsage is BasePoolSetup {
         _pool.toggleAllowedUser(address(lmpVaultRouter));
     }
 
-    ////@dev Shares can be only minted to User1
-    function mint(
-        ILMPVault vault,
-        address to,
-        uint256 shares,
-        uint256 maxAmountIn
-    ) public payable updateUser1Balance returns (uint256 amountIn) {
-        if (to != _user1 || address(vault) == to) {
+    ///@dev Only mint for Users
+    function mintAssetForUser(address user, uint256 assets, uint256 approveAmount, uint256 shares) public {
+        if (user != _user1 || user != _user2 || user != _user3) {
             revert("invalid params");
         }
+        _vaultAsset.mint(address(this), assets);
+        _vaultAsset.approve(address(_pool), approveAmount);
+        _pool.mint(uint256(shares), user);
+    }
+
+    ///@dev Shares can be only minted to User1
+    function mint(
+        ILMPVault vault,
+        uint256 shares,
+        uint256 maxAmountIn
+    ) public updateUser1Balance returns (uint256 amountIn) {
+        address to = _user1;
         return lmpVaultRouter.mint(vault, to, shares, maxAmountIn);
     }
 
-    ////@dev Only User1 can deposit
+    ///@dev Only User1 can deposit
     function deposit(
         ILMPVault vault,
-        address to,
         uint256 amount,
         uint256 minSharesOut
-    ) public payable updateUser1Balance returns (uint256 sharesOut) {
-        if (to != _user1 || address(vault) == to) {
-            revert("invalid params");
-        }
+    ) public updateUser1Balance returns (uint256 sharesOut) {
+        address to = _user1;
         return lmpVaultRouter.deposit(vault, to, amount, minSharesOut);
+    }
+
+    ///@dev Anyone can permit
+    function permit(address user, uint256 amount, address receiver) public {
+        uint256 signerKey = 1;
+
+        // Setup for the Spender to spend the Users tokens
+        uint256 deadline = block.timestamp + 100;
+        (uint8 v, bytes32 r, bytes32 s) = ERC2612.getPermitSignature(
+            _pool.DOMAIN_SEPARATOR(), signerKey, user, address(lmpVaultRouter), amount, 0, deadline
+        );
+
+        hevm.prank(user);
+        lmpVaultRouter.selfPermit(address(_pool), amount, deadline, v, r, s);
     }
 
     ///@dev Anyone but User1 can try withdraw
@@ -84,7 +103,7 @@ contract LMPVaultRouterUsage is BasePoolSetup {
         uint256 amount,
         uint256 maxSharesOut,
         bool unwrapWETH
-    ) public payable updateUser1Balance returns (uint256 sharesOut) {
+    ) public updateUser1Balance returns (uint256 sharesOut) {
         if (to == _user1 || address(vault) == to) {
             revert("invalid params");
         }
@@ -98,7 +117,7 @@ contract LMPVaultRouterUsage is BasePoolSetup {
         uint256 shares,
         uint256 minAmountOut,
         bool unwrapWETH
-    ) public payable updateUser1Balance returns (uint256 amountOut) {
+    ) public updateUser1Balance returns (uint256 amountOut) {
         if (to == _user1 || address(vault) == to) {
             revert("invalid params");
         }
@@ -136,24 +155,16 @@ contract LMPVaultRouterUsage is BasePoolSetup {
         address swapper,
         SwapParams memory swapParams,
         ILMPVault vault,
-        address to,
         uint256 minSharesOut
     ) public updateUser1Balance returns (uint256 sharesOut) {
-        if (to != _user1 || address(vault) == to || address(vault) == address(swapper) || address(swapper) == to) {
-            revert("invalid params");
-        }
+        address to = _user1;
         return lmpVaultRouter.swapAndDepositToVault(swapper, swapParams, vault, to, minSharesOut);
     }
 
     ///@dev Only User1 can deposit
-    function depositMax(
-        ILMPVault vault,
-        address to,
-        uint256 minSharesOut
-    ) public updateUser1Balance returns (uint256 sharesOut) {
-        if (to != _user1 || address(vault) == to) {
-            revert("invalid params");
-        }
+    function depositMax(ILMPVault vault, uint256 minSharesOut) public updateUser1Balance returns (uint256 sharesOut) {
+        //Only User1 can deposit
+        address to = _user1;
         return lmpVaultRouter.depositMax(vault, to, minSharesOut);
     }
 
@@ -206,6 +217,7 @@ contract LMPVaultRouterUsage is BasePoolSetup {
 contract LMPVaultRouterTest is LMPVaultRouterUsage {
     constructor() LMPVaultRouterUsage() { }
 
+    // Check that User 1 shares didn't change
     function echidna_no_other_user_can_redeem_through_router_using_permit() public view returns (bool) {
         return _userSharesAtEnd == _userSharesAtStart;
     }

@@ -3,7 +3,6 @@
 pragma solidity 0.8.17;
 
 import { Test } from "forge-std/Test.sol";
-import { stdStorage, StdStorage } from "forge-std/StdStorage.sol";
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
@@ -11,13 +10,8 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { BalancerBeethovenAdapter } from "src/destinations/adapters/BalancerBeethovenAdapter.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
-import { TestableVM } from "src/solver/test/TestableVM.sol";
-import { SolverCaller } from "src/solver/test/SolverCaller.sol";
 import { Errors } from "src/utils/Errors.sol";
-import { ReadPlan } from "test/utils/ReadPlan.sol";
 import {
-    PRANK_ADDRESS,
-    RANDOM,
     WETH_MAINNET,
     RETH_MAINNET,
     WSTETH_MAINNET,
@@ -29,7 +23,6 @@ import {
 
 contract BalancerAdapterTest is Test {
     uint256 public mainnetFork;
-    TestableVM public solver;
 
     IVault private vault;
 
@@ -39,7 +32,6 @@ contract BalancerAdapterTest is Test {
         assertEq(vm.activeFork(), mainnetFork);
 
         vault = IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
-        solver = new TestableVM();
     }
 
     function forkArbitrum() private {

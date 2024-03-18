@@ -3,7 +3,6 @@
 pragma solidity 0.8.17;
 
 import { Test } from "forge-std/Test.sol";
-import { stdStorage, StdStorage } from "forge-std/StdStorage.sol";
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IERC721Receiver } from "openzeppelin-contracts/token/ERC721/ERC721.sol";
@@ -16,15 +15,10 @@ import {
     WSTETH_MAINNET,
     MAV_ROUTER,
     CBETH_MAINNET,
-    STETH_MAINNET,
-    SWETH_MAINNET,
     WETH_MAINNET,
-    MAV_WSTETH_WETH_POOL
+    MAV_WSTETH_WETH_POOL,
+    SWETH_MAINNET
 } from "test/utils/Addresses.sol";
-
-import { TestableVM } from "src/solver/test/TestableVM.sol";
-import { SolverCaller } from "src/solver/test/SolverCaller.sol";
-import { ReadPlan } from "test/utils/ReadPlan.sol";
 
 contract MaverickAdapterTest is Test {
     struct MaverickDeploymentExtraParams {
@@ -47,7 +41,6 @@ contract MaverickAdapterTest is Test {
     uint256 private mainnetFork;
     IRouter private router;
     IPosition private position;
-    TestableVM public solver;
 
     ///@dev Implementing this function to receive Maverick Position NFT on deposit
     function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
@@ -61,7 +54,6 @@ contract MaverickAdapterTest is Test {
 
         router = IRouter(MAV_ROUTER);
         position = router.position();
-        solver = new TestableVM();
     }
 
     // wstETH/WETH

@@ -1,11 +1,5 @@
 # How to Deploy the System
 
-ℹ️ To get a picture of the system at any moment, use the following hardhat task:
-
-```shell
-npx hardhat system --rpc-url <fork-url> --system-registry-address 0x0406d2D96871f798fcf54d5969F69F55F803eEA4
-```
-
 Outlined below are the necessary steps for deploying the system, using specific forge scripts.
 
 ## Register Reward Tokens

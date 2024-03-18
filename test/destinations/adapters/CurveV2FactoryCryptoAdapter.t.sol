@@ -10,17 +10,12 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { CurveV2FactoryCryptoAdapter } from "src/destinations/adapters/CurveV2FactoryCryptoAdapter.sol";
-import { IDestinationRegistry } from "src/interfaces/destinations/IDestinationRegistry.sol";
-import { IDestinationAdapter } from "src/interfaces/destinations/IDestinationAdapter.sol";
-import { ICryptoSwapPool, IPool } from "src/interfaces/external/curve/ICryptoSwapPool.sol";
+import { ICryptoSwapPool } from "src/interfaces/external/curve/ICryptoSwapPool.sol";
 import {
-    PRANK_ADDRESS,
-    RANDOM,
     WETH_MAINNET,
     RETH_MAINNET,
     SETH_MAINNET,
     FRXETH_MAINNET,
-    STETH_MAINNET,
     WETH9_OPTIMISM,
     SETH_OPTIMISM,
     WSTETH_OPTIMISM,
@@ -28,13 +23,8 @@ import {
     WETH_ARBITRUM
 } from "test/utils/Addresses.sol";
 
-import { TestableVM } from "src/solver/test/TestableVM.sol";
-import { SolverCaller } from "src/solver/test/SolverCaller.sol";
-import { ReadPlan } from "test/utils/ReadPlan.sol";
-
 contract CurveV2FactoryCryptoAdapterTest is Test {
     uint256 public mainnetFork;
-    TestableVM public solver;
 
     IWETH9 private weth;
 
@@ -48,7 +38,6 @@ contract CurveV2FactoryCryptoAdapterTest is Test {
         vm.selectFork(mainnetFork);
         assertEq(vm.activeFork(), mainnetFork);
 
-        solver = new TestableVM();
         weth = IWETH9(WETH_MAINNET);
     }
 

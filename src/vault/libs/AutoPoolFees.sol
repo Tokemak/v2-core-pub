@@ -234,18 +234,9 @@ library AutoPoolFees {
         if (sink == address(0)) {
             return currentTotalSupply;
         }
-        uint256 streamingFeeMultProfit = streamingFeeBps * profit / FEE_DIVISOR;
 
-        // Calculated separate from other mints as normal share mint is round down
-        // Note: We use Lido's formula: from https://docs.lido.fi/guides/lido-tokens-integration-guide/#fees
-        // suggested by: https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/486-H/624-best.md
-        // but we scale down `profit` by FEE_DIVISOR
-        uint256 streamingFeeShares = Math.mulDiv(
-            streamingFeeMultProfit,
-            currentTotalSupply,
-            (totalAssets * FEE_DIVISOR) - (streamingFeeMultProfit),
-            Math.Rounding.Up
-        );
+        uint256 streamingFeeShares =
+            _calculateSharesToMintFeeCollection(streamingFeeBps, totalAssets, currentTotalSupply);
         tokenData.mint(sink, streamingFeeShares);
         currentTotalSupply += streamingFeeShares;
 
@@ -262,23 +253,30 @@ library AutoPoolFees {
         uint256 currentTotalSupply,
         uint256 totalAssets
     ) private returns (uint256 newShares) {
-        // Periodic fee * assets used multiple places below, gas savings when calc here.
-        uint256 periodicFeeMultTotalAssets = timeAdjustedFeeBps * totalAssets / FEE_DIVISOR;
-
-        // We calculate the shares using the same formula as streaming fees.
-        newShares = Math.mulDiv(
-            periodicFeeMultTotalAssets,
-            currentTotalSupply,
-            (totalAssets * FEE_DIVISOR) - (periodicFeeMultTotalAssets),
-            Math.Rounding.Up
-        );
+        newShares = _calculateSharesToMintFeeCollection(timeAdjustedFeeBps, totalAssets, currentTotalSupply);
 
         // Fee in assets that we are taking.
-        uint256 fees = periodicFeeMultTotalAssets.ceilDiv(FEE_DIVISOR);
+        uint256 fees = (timeAdjustedFeeBps * totalAssets / FEE_DIVISOR).ceilDiv(FEE_DIVISOR);
         emit Deposit(address(this), periodicSink, 0, newShares);
         emit PeriodicFeeCollected(fees, periodicSink, newShares);
 
         return newShares;
+    }
+
+    function _calculateSharesToMintFeeCollection(
+        uint256 feeBps,
+        uint256 totalAssets,
+        uint256 totalSupply
+    ) private pure returns (uint256 toMint) {
+        // Gas savings, this is used twice.
+        uint256 feeTotalAssets = feeBps * totalAssets / FEE_DIVISOR;
+
+        // Calculated separate from other mints as normal share mint is round down
+        // Note: We use Lido's formula: from https://docs.lido.fi/guides/lido-tokens-integration-guide/#fees
+        // suggested by: https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/486-H/624-best.md
+        // but we scale down `profit` by FEE_DIVISOR
+        toMint =
+            Math.mulDiv(feeTotalAssets, totalSupply, (totalAssets * FEE_DIVISOR) - (feeTotalAssets), Math.Rounding.Up);
     }
 
     /// @dev If set to 0, existing shares will unlock immediately and increase nav/share. This is intentional

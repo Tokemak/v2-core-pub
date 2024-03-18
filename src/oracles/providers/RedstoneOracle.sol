@@ -3,7 +3,10 @@
 
 pragma solidity 0.8.17;
 
-import { BaseOracleDenominations, ISystemRegistry } from "src/oracles/providers/base/BaseOracleDenominations.sol";
+import {
+    BaseAggregatorV3OracleInformation,
+    ISystemRegistry
+} from "src/oracles/providers/base/BaseAggregatorV3OracleInformation.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
 import { Errors } from "src/utils/Errors.sol";
 
@@ -12,26 +15,7 @@ import { Errors } from "src/utils/Errors.sol";
  * @dev Many Redstone feeds price in USD, this contract converts all pricing to Eth.
  * @dev Returns 18 decimals of precision.
  */
-contract RedstoneOracle is BaseOracleDenominations {
-    /**
-     * @notice Used to store info on token's RedStone feed.
-     * @param oracle Address of Redstone oracle for token mapped.
-     * @param pricingTimeout Custom timeout for asset pricing.  If 0, contract will use
-     *      default defined in `BaseOracleDenominations.sol`.
-     * @param denomination Enum representing what token mapped is denominated in.
-     * @param decimals Number of decimal precision that oracle returns.  Can differ from
-     *      token decimals in some cases.
-     */
-    struct RedstoneInfo {
-        IAggregatorV3Interface oracle;
-        uint32 pricingTimeout;
-        Denomination denomination;
-        uint8 decimals;
-    }
-
-    /// @dev Mapping of token to RedstoneInfo struct.  Private to enforce zero address checks.
-    mapping(address => RedstoneInfo) private redstoneOracleInfo;
-
+contract RedstoneOracle is BaseAggregatorV3OracleInformation {
     /**
      * @notice Emitted when a token has an oracle address set.
      * @param token Address of token.
@@ -48,7 +32,7 @@ contract RedstoneOracle is BaseOracleDenominations {
      */
     event RedstoneRegistrationRemoved(address token, address redstoneOracle);
 
-    constructor(ISystemRegistry _systemRegistry) BaseOracleDenominations(_systemRegistry) { }
+    constructor(ISystemRegistry _systemRegistry) BaseAggregatorV3OracleInformation(_systemRegistry) { }
 
     /**
      * @notice Allows oracle address and denominations to be set for token.
@@ -64,17 +48,8 @@ contract RedstoneOracle is BaseOracleDenominations {
         Denomination denomination,
         uint32 pricingTimeout
     ) external onlyOwner {
-        Errors.verifyNotZero(token, "tokenToAddOracle");
-        Errors.verifyNotZero(address(redstoneOracle), "oracle");
-        if (address(redstoneOracleInfo[token].oracle) != address(0)) revert Errors.MustBeZero();
-
+        BaseAggregatorV3OracleInformation.registerOracle(token, redstoneOracle, denomination, pricingTimeout);
         uint8 oracleDecimals = redstoneOracle.decimals();
-        redstoneOracleInfo[token] = RedstoneInfo({
-            oracle: redstoneOracle,
-            denomination: denomination,
-            decimals: oracleDecimals,
-            pricingTimeout: pricingTimeout
-        });
 
         emit RedstoneRegistrationAdded(token, address(redstoneOracle), denomination, oracleDecimals);
     }
@@ -84,10 +59,7 @@ contract RedstoneOracle is BaseOracleDenominations {
      * @param token Address of token to remove registration for.
      */
     function removeRedstoneRegistration(address token) external onlyOwner {
-        Errors.verifyNotZero(token, "tokenToRemoveOracle");
-        address oracleBeforeDeletion = address(redstoneOracleInfo[token].oracle);
-        if (oracleBeforeDeletion == address(0)) revert Errors.MustBeSet();
-        delete redstoneOracleInfo[token];
+        address oracleBeforeDeletion = BaseAggregatorV3OracleInformation.removeOracleRegistration(token);
         emit RedstoneRegistrationRemoved(token, oracleBeforeDeletion);
     }
 
@@ -95,39 +67,18 @@ contract RedstoneOracle is BaseOracleDenominations {
      * @notice Returns `RedStoneInfo` struct with information on `address token`.
      * @dev Will return empty structs for tokens that are not registered.
      * @param token Address of token to get info for.
+     * @return RedstoneInfo struct with pricing information and oracle on token.
      */
-    function getRedstoneInfo(address token) external view returns (RedstoneInfo memory) {
-        return redstoneOracleInfo[token];
+    function getRedstoneInfo(address token) external view returns (OracleInfo memory) {
+        return BaseAggregatorV3OracleInformation.getOracleInfo(token);
     }
 
-    // slither-disable-start timestamp
-    function getPriceInEth(address token) external returns (uint256) {
-        RedstoneInfo memory redstoneOracle = _getRedstoneInfo(token);
-
-        // Partial return values are intentionally ignored. This call provides the most efficient way to get the data.
-        // slither-disable-next-line unused-return
-        (, int256 price,, uint256 updatedAt,) = redstoneOracle.oracle.latestRoundData();
-        uint256 timestamp = block.timestamp;
-        uint256 oracleStoredTimeout = uint256(redstoneOracle.pricingTimeout);
-        uint256 tokenPricingTimeout = oracleStoredTimeout == 0 ? DEFAULT_PRICING_TIMEOUT : oracleStoredTimeout;
-
-        if (price <= 0) revert InvalidDataReturned(); // Check before conversion from int to uint.
-        uint256 priceUint = uint256(price);
-
-        if (updatedAt == 0 || updatedAt > timestamp || updatedAt < timestamp - tokenPricingTimeout) {
-            revert InvalidDataReturned();
-        }
-        uint256 decimals = redstoneOracle.decimals;
-        // Redstone feeds have certain decimal precisions, does not neccessarily conform to underlying asset.
-        uint256 normalizedPrice = decimals == 18 ? priceUint : priceUint * 10 ** (18 - decimals);
-
-        return _denominationPricing(redstoneOracle.denomination, normalizedPrice, token);
-    }
-    // slither-disable-end timestamp
-
-    /// @dev internal getter to access `tokenToRedstoneOracle` mapping, enforces address(0) check.
-    function _getRedstoneInfo(address token) internal view returns (RedstoneInfo memory redstoneInfo) {
-        redstoneInfo = redstoneOracleInfo[token];
-        Errors.verifyNotZero(address(redstoneInfo.oracle), "redStoneOracle");
+    /**
+     * @notice Fetches the price of a token in ETH denomination.
+     * @param token Address of token.
+     * @return price Price of token in ETH.
+     */
+    function getPriceInEth(address token) external returns (uint256 price) {
+        price = BaseAggregatorV3OracleInformation._getPriceInEth(token);
     }
 }

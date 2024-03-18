@@ -80,7 +80,7 @@ contract RedstoneOracleTest is Test {
             WEETH_MAINNET, IAggregatorV3Interface(WEETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
-        vm.expectRevert(Errors.MustBeZero.selector);
+        vm.expectRevert(abi.encodeWithSelector(Errors.AlreadyRegistered.selector, WEETH_MAINNET));
 
         _oracle.registerRedstoneOracle(
             WEETH_MAINNET, IAggregatorV3Interface(WEETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
@@ -97,7 +97,7 @@ contract RedstoneOracleTest is Test {
             WEETH_MAINNET, IAggregatorV3Interface(WEETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
-        RedstoneOracle.RedstoneInfo memory clInfo = _oracle.getRedstoneInfo(WEETH_MAINNET);
+        RedstoneOracle.OracleInfo memory clInfo = _oracle.getRedstoneInfo(WEETH_MAINNET);
         assertEq(address(clInfo.oracle), WEETH_RS_FEED_MAINNET);
         assertEq(uint8(clInfo.denomination), uint8(BaseOracleDenominations.Denomination.ETH));
         assertEq(clInfo.decimals, IAggregatorV3Interface(WEETH_RS_FEED_MAINNET).decimals());
@@ -141,7 +141,7 @@ contract RedstoneOracleTest is Test {
 
     // Test `getPriceInEth()`
     function test_RevertOracleNotRegistered() external {
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "redStoneOracle"));
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "Oracle"));
 
         _oracle.getPriceInEth(address(1));
     }

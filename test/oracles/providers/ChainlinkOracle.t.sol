@@ -80,7 +80,7 @@ contract ChainlinkOracleTest is Test {
             RETH_MAINNET, IAggregatorV3Interface(RETH_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
-        vm.expectRevert(Errors.MustBeZero.selector);
+        vm.expectRevert(abi.encodeWithSelector(Errors.AlreadyRegistered.selector, RETH_MAINNET));
 
         _oracle.registerChainlinkOracle(
             RETH_MAINNET, IAggregatorV3Interface(RETH_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
@@ -97,7 +97,7 @@ contract ChainlinkOracleTest is Test {
             RETH_MAINNET, IAggregatorV3Interface(RETH_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
-        ChainlinkOracle.ChainlinkInfo memory clInfo = _oracle.getChainlinkInfo(RETH_MAINNET);
+        ChainlinkOracle.OracleInfo memory clInfo = _oracle.getChainlinkInfo(RETH_MAINNET);
         assertEq(address(clInfo.oracle), RETH_CL_FEED_MAINNET);
         assertEq(uint8(clInfo.denomination), uint8(BaseOracleDenominations.Denomination.ETH));
         assertEq(clInfo.decimals, IAggregatorV3Interface(RETH_CL_FEED_MAINNET).decimals());
@@ -140,8 +140,8 @@ contract ChainlinkOracleTest is Test {
     }
 
     // Test `getPriceInEth()`
-    function test_RevertOracleNotRegistered() external {
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "chainlinkOracle"));
+    function test_RevertChainLinkOracleNotRegistered() external {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "Oracle"));
 
         _oracle.getPriceInEth(address(1));
     }

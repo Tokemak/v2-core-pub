@@ -157,11 +157,12 @@ library AutoPoolFees {
         // slither-disable-start timestamp
         if (collectPeriodicFees) {
             address periodicFeeSink = settings.periodicFeeSink;
+            uint256 periodicFeeBps = settings.periodicFeeBps;
             // If there is a periodic fee and fee sink set, take the fee.
-            if (settings.periodicFeeBps > 0 && periodicFeeSink != address(0)) {
+            if (periodicFeeBps > 0 && periodicFeeSink != address(0)) {
                 uint256 durationSinceLastPeriodicFeeTake = block.timestamp - settings.lastPeriodicFeeTake;
                 uint256 timeAdjustedBps = durationSinceLastPeriodicFeeTake.mulDiv(
-                    settings.periodicFeeBps * FEE_DIVISOR, SECONDS_IN_YEAR, Math.Rounding.Up
+                    periodicFeeBps * FEE_DIVISOR, SECONDS_IN_YEAR, Math.Rounding.Up
                 );
 
                 uint256 periodicShares =
@@ -462,7 +463,6 @@ library AutoPoolFees {
         }
 
         // Fee checked to fit into uint16 above, able to be wrapped without safe cast here.
-        // slither-disable-next-line timestamp
         emit PeriodicFeeSet(fee);
         feeSettings.periodicFeeBps = uint16(fee);
     }

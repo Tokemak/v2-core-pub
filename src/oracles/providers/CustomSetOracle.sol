@@ -42,6 +42,7 @@ contract CustomSetOracle is SystemComponent, SecurityBase, IPriceOracle {
     error AlreadyRegistered(address token);
     error TokenNotRegistered(address token);
     error TimestampOlderThanCurrent(address token, uint256 current, uint256 newest);
+    error StalePriceDataError(uint256 timestamp, uint256 maxAge, uint256 current);
 
     constructor(
         ISystemRegistry _systemRegistry,
@@ -135,6 +136,11 @@ contract CustomSetOracle is SystemComponent, SecurityBase, IPriceOracle {
             // one we have currently
             if (timestamp < data.timestamp) {
                 revert TimestampOlderThanCurrent(token, data.timestamp, timestamp);
+            }
+
+            // Check to prevent writing stale prices if a tx is delayed in the mempool.
+            if (data.timestamp + data.maxAge >= uint32(block.timestamp)) {
+                revert StalePriceDataError(data.timestamp, data.maxAge, uint32(block.timestamp));
             }
 
             // Save the data

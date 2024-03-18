@@ -497,6 +497,34 @@ contract CustomSetOracleTest is Test {
         _oracle.setPrices(tokens, prices, timestamps);
     }
 
+    function test_setPrices_RevertsIf_DataIsStale() public {
+        uint256 baseTimestamp = 1_583_280_000;
+        vm.warp(baseTimestamp);
+
+        address[] memory tokens = new address[](1);
+        uint256[] memory ages = new uint256[](1);
+        uint256[] memory prices = new uint256[](1);
+        uint256[] memory timestamps = new uint256[](1);
+
+        tokens[0] = address(1);
+        ages[0] = 1000;
+        prices[0] = 1e18;
+
+        _oracle.registerTokens(tokens, ages);
+
+        timestamps[0] = block.timestamp - 100;
+
+        // Setting initial price data
+        _oracle.setPrices(tokens, prices, timestamps);
+
+        // Going back in time
+        vm.warp(baseTimestamp);
+        vm.expectRevert(
+            abi.encodeWithSelector(CustomSetOracle.StalePriceDataError.selector, timestamps[0], maxAge, baseTimestamp)
+        );
+        _oracle.setPrices(tokens, prices, timestamps);
+    }
+
     function test_setPrices_RevertsIf_TokenIsntRegistered() public {
         address[] memory tokens = new address[](1);
         uint256[] memory ages = new uint256[](1);

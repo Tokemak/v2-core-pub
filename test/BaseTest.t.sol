@@ -14,7 +14,6 @@ import { ILMPVaultRouter, LMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
 import { ILMPVaultFactory, LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
 import { IDestinationVaultRegistry, DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
 import { IDestinationVaultFactory, DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
-import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
 import { StakeTrackingMock } from "test/mocks/StakeTrackingMock.sol";
@@ -45,7 +44,6 @@ contract BaseTest is Test {
     DestinationVaultFactory public destinationVaultFactory;
 
     TestIncentiveCalculator public testIncentiveCalculator;
-    TestDestinationVault public defaultDestinationVault;
 
     IAccessController public accessController;
 

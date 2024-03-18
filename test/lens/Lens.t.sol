@@ -11,6 +11,7 @@ import { ILens } from "src/interfaces/lens/ILens.sol";
 import { LMPVault } from "src/vault/LMPVault.sol";
 import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
 import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
+import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
@@ -20,6 +21,8 @@ import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 contract LensTest is BaseTest {
     Lens private lens;
 
+    TestDestinationVault private defaultDestinationVault;
+
     function setUp() public virtual override {
         vm.warp(1000 days);
 
@@ -28,23 +31,43 @@ contract LensTest is BaseTest {
         address underlyer = address(BaseTest.mockAsset("underlyer", "underlyer", 0));
         testIncentiveCalculator = new TestIncentiveCalculator();
         testIncentiveCalculator.setLpToken(underlyer);
-        defaultDestinationVault = new TestDestinationVault(
-            systemRegistry, vm.addr(3434), address(baseAsset), underlyer, address(testIncentiveCalculator)
-        );
-        address[] memory destinations = new address[](1);
-        destinations[0] = address(defaultDestinationVault);
 
+        // Destination Template Registry
+        bytes32 dvType = keccak256(abi.encode("test"));
+        bytes32[] memory dvTypes = new bytes32[](1);
+        dvTypes[0] = dvType;
+
+        TestDestinationVault dv = new TestDestinationVault(systemRegistry);
+        address[] memory dvs = new address[](1);
+        dvs[0] = address(dv);
+
+        DestinationRegistry destinationTemplateRegistry = new DestinationRegistry(systemRegistry);
+        destinationTemplateRegistry.addToWhitelist(dvTypes);
+        destinationTemplateRegistry.register(dvTypes, dvs);
+        systemRegistry.setDestinationTemplateRegistry(address(destinationTemplateRegistry));
+
+        // Destination Vault Registry
         destinationVaultRegistry = new DestinationVaultRegistry(systemRegistry);
-
-        systemRegistry.setDestinationTemplateRegistry(address(destinationVaultRegistry));
         systemRegistry.setDestinationVaultRegistry(address(destinationVaultRegistry));
 
+        // Destination Vault Factory
         destinationVaultFactory = new DestinationVaultFactory(systemRegistry, 1, 1000);
-
         destinationVaultRegistry.setVaultFactory(address(destinationVaultFactory));
 
-        vm.prank(address(destinationVaultFactory));
-        destinationVaultRegistry.register(destinations[0]);
+        accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
+
+        // Default destination
+        defaultDestinationVault = TestDestinationVault(
+            destinationVaultFactory.create(
+                "test",
+                address(baseAsset),
+                underlyer,
+                address(testIncentiveCalculator),
+                new address[](0),
+                keccak256("salt1"),
+                abi.encode("")
+            )
+        );
 
         bytes memory initData = abi.encode("");
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
@@ -54,6 +77,9 @@ contract LensTest is BaseTest {
             LMPVault(lmpVaultFactory.createVault(address(stratTemplate), "x", "y", keccak256("v8"), initData));
 
         accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));
+
+        address[] memory destinations = new address[](1);
+        destinations[0] = address(defaultDestinationVault);
         lmpVault.addDestinations(destinations);
 
         lmpVaultRegistry = new LMPVaultRegistry(systemRegistry);

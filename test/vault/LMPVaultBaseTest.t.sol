@@ -4,16 +4,13 @@ pragma solidity 0.8.17;
 
 /* solhint-disable func-name-mixedcase */
 
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import { AccessController } from "src/security/AccessController.sol";
-import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { IDestinationVault, DestinationVault } from "src/vault/DestinationVault.sol";
-import { ILMPVaultRegistry, LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
 import { ILMPVaultFactory, LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
-import { ILMPVaultRouter, LMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
 import { ILMPVault, LMPVault } from "src/vault/LMPVault.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
@@ -23,16 +20,18 @@ import { BaseTest } from "test/BaseTest.t.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
 import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
+import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
-import { WETH9_ADDRESS } from "test/utils/Addresses.sol";
 
 contract LMPVaultBaseTest is BaseTest {
     using SafeERC20 for IERC20;
+    using Clones for address;
 
     IDestinationVault public destinationVault;
     IDestinationVault public destinationVault2;
     LMPVault public lmpVault;
+    TestDestinationVault public vaultTemplate;
 
     address private lmpStrategy = vm.addr(100_001);
     address private unauthorizedUser = address(0x33);
@@ -55,8 +54,10 @@ contract LMPVaultBaseTest is BaseTest {
         //
 
         // create destination vault mocks
-        destinationVault = _createDestinationVault(address(baseAsset));
-        destinationVault2 = _createDestinationVault(address(baseAsset));
+        vaultTemplate = new TestDestinationVault(systemRegistry);
+
+        destinationVault = _createDestinationVault(address(baseAsset), keccak256("salt1"));
+        destinationVault2 = _createDestinationVault(address(baseAsset), keccak256("salt2"));
 
         accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));
         accessController.grantRole(Roles.SET_WITHDRAWAL_QUEUE_ROLE, address(this));
@@ -84,15 +85,21 @@ contract LMPVaultBaseTest is BaseTest {
         assert(systemRegistry.lmpVaultRegistry().isVault(address(lmpVault)));
     }
 
-    function _createDestinationVault(address asset) internal returns (IDestinationVault) {
-        // create vault (no need to initialize since working with mock)
-
+    function _createDestinationVault(address asset, bytes32 salt) internal returns (IDestinationVault) {
         address underlyer = address(new TestERC20("underlyer", "underlyer"));
         TestIncentiveCalculator testIncentiveCalculator = new TestIncentiveCalculator();
         testIncentiveCalculator.setLpToken(underlyer);
-        IDestinationVault vault = new TestDestinationVault(
-            systemRegistry, vm.addr(34_343), asset, underlyer, address(testIncentiveCalculator)
+
+        IDestinationVault vault = IDestinationVault(address(vaultTemplate).cloneDeterministic(salt));
+        vault.initialize(
+            IERC20(asset),
+            IERC20(underlyer),
+            IMainRewarder(makeAddr("rewarder")),
+            address(testIncentiveCalculator),
+            new address[](0),
+            abi.encode("")
         );
+
         // mock "isRegistered" call
         vm.mockCall(
             address(systemRegistry.destinationVaultRegistry()),

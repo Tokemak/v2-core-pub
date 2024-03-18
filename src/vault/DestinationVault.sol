@@ -66,6 +66,8 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
 
     constructor(ISystemRegistry sysRegistry) SecurityBase(address(sysRegistry.accessController())) ERC20("", "") {
         _systemRegistry = sysRegistry;
+
+        _disableInitializers();
     }
 
     modifier onlyLMPVault() {

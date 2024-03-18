@@ -4,9 +4,10 @@ pragma solidity >=0.8.7;
 
 /* solhint-disable func-name-mixedcase */
 
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { Errors } from "src/utils/Errors.sol";
-import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { IDestinationVault, DestinationVault } from "src/vault/DestinationVault.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
@@ -24,8 +25,11 @@ import { Roles } from "src/libs/Roles.sol";
 import { MainRewarder } from "src/rewarders/MainRewarder.sol";
 import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
+import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
 
 contract DestinationVaultBaseTests is Test {
+    using Clones for address;
+
     address private testUser1;
     address private testUser2;
 
@@ -37,6 +41,8 @@ contract DestinationVaultBaseTests is Test {
     TestERC20 private baseAsset;
     TestERC20 private underlyer;
     TestIncentiveCalculator private testIncentiveCalculator;
+
+    address private testVaultTemplate;
     TestDestinationVault private testVault;
 
     address private pool;
@@ -45,7 +51,6 @@ contract DestinationVaultBaseTests is Test {
 
     address private _weth;
 
-    event OnDepositCalled();
     event Shutdown(IDestinationVault.VaultShutdownStatus reason);
     event UnderlyerRecovered(address destination, uint256 amount);
 
@@ -72,16 +77,15 @@ contract DestinationVaultBaseTests is Test {
 
         testIncentiveCalculator = new TestIncentiveCalculator();
         testIncentiveCalculator.setLpToken(address(underlyer));
-        testVault = new TestDestinationVault(
-            systemRegistry,
-            baseAsset,
-            underlyer,
-            mainRewarder,
-            address(testIncentiveCalculator),
-            new address[](0),
-            abi.encode(""),
-            pool
+        testVaultTemplate = address(new TestDestinationVault(systemRegistry));
+
+        testVault = TestDestinationVault(testVaultTemplate.cloneDeterministic(bytes32(0)));
+
+        testVault.initialize(
+            baseAsset, underlyer, mainRewarder, address(testIncentiveCalculator), new address[](0), abi.encode("")
         );
+
+        testVault.setPool(pool);
 
         _rootPriceOracle = IRootPriceOracle(vm.addr(34_399));
         vm.label(address(_rootPriceOracle), "rootPriceOracle");
@@ -105,17 +109,13 @@ contract DestinationVaultBaseTests is Test {
     }
 
     function test_debtValue_PriceInTermsOfBaseAssetWhenWeth() public {
-        bytes memory d = abi.encode("");
-        TestDestinationVault bav = new TestDestinationVault(
-            systemRegistry,
-            IERC20(_weth),
-            underlyer,
-            mainRewarder,
-            address(testIncentiveCalculator),
-            new address[](0),
-            d,
-            pool
+        TestDestinationVault bav = TestDestinationVault(testVaultTemplate.cloneDeterministic(bytes32("2")));
+        bav.setPool(pool);
+
+        bav.initialize(
+            IERC20(_weth), underlyer, mainRewarder, address(testIncentiveCalculator), new address[](0), abi.encode("")
         );
+
         _mockRootPrice(address(underlyer), 2 ether);
         _mockRootPriceGetRangesPriceLP(address(underlyer), pool, _weth, 1 ether, 2 ether, true);
         assertEq(bav.debtValue(10e6), 20 ether);
@@ -124,17 +124,12 @@ contract DestinationVaultBaseTests is Test {
     function testIncentiveCalculatorHasSameUnderlying() public {
         testIncentiveCalculator = new TestIncentiveCalculator();
         testIncentiveCalculator.setLpToken(address(0));
-        bytes memory d = abi.encode("");
+
+        TestDestinationVault wethVault = TestDestinationVault(testVaultTemplate.cloneDeterministic(bytes32("1")));
+
         vm.expectRevert(DestinationVault.InvalidIncentiveCalculator.selector);
-        new TestDestinationVault(
-            systemRegistry,
-            IERC20(_weth),
-            underlyer,
-            mainRewarder,
-            address(testIncentiveCalculator),
-            new address[](0),
-            d,
-            pool
+        wethVault.initialize(
+            IERC20(_weth), underlyer, mainRewarder, address(testIncentiveCalculator), new address[](0), abi.encode("")
         );
     }
 
@@ -246,17 +241,6 @@ contract DestinationVaultBaseTests is Test {
         uint256 afterBalance = underlyer.balanceOf(address(this));
 
         assertEq(originalBalance - afterBalance, depositAmount);
-    }
-
-    function testUnderlyingDepositCallsOnDeposit() public {
-        uint256 depositAmount = 10;
-
-        mockIsLmpVault(address(this), true);
-        underlyer.approve(address(testVault), depositAmount);
-
-        vm.expectEmit(true, true, true, true);
-        emit OnDepositCalled();
-        testVault.depositUnderlying(depositAmount);
     }
 
     function testOnlyLmpVaultCanWithdrawUnderlying() public {
@@ -464,127 +448,5 @@ contract DestinationVaultBaseTests is Test {
             abi.encodeWithSelector(IRootPriceOracle.getRangePricesLP.selector, underlyer_, pool_, baseAsset_),
             abi.encode(spotPrice, safePrice, isSafe)
         );
-    }
-}
-
-contract TestDestinationVault is DestinationVault {
-    using EnumerableSet for EnumerableSet.AddressSet;
-
-    uint256 private _debtVault;
-    uint256 private _claimVested;
-    uint256 private _reclaimDebtAmount;
-    uint256 private _reclaimDebtLoss;
-    address private _pool;
-
-    event OnDepositCalled();
-
-    constructor(
-        ISystemRegistry systemRegistry,
-        IERC20 baseAsset_,
-        IERC20 underlyer_,
-        IMainRewarder rewarder_,
-        address incentiveCalculator_,
-        address[] memory additionalTrackedTokens_,
-        bytes memory params_,
-        address pool_
-    ) DestinationVault(systemRegistry) {
-        DestinationVault.initialize(
-            baseAsset_, underlyer_, rewarder_, incentiveCalculator_, additionalTrackedTokens_, params_
-        );
-        _pool = pool_;
-    }
-
-    function mint(address to, uint256 amount) public {
-        _mint(to, amount);
-    }
-
-    function debtValue() public view override returns (uint256 value) {
-        return _debtVault;
-    }
-
-    function exchangeName() external pure override returns (string memory) {
-        return "test";
-    }
-
-    function underlyingTokens() external pure override returns (address[] memory) {
-        return new address[](0);
-    }
-
-    function setDebtValue(uint256 val) public {
-        _debtVault = val;
-    }
-
-    function setClaimVested(uint256 val) public {
-        _claimVested = val;
-    }
-
-    function setReclaimDebtAmount(uint256 val) public {
-        _reclaimDebtAmount = val;
-    }
-
-    function setReclaimDebtLoss(uint256 val) public {
-        _reclaimDebtLoss = val;
-    }
-
-    function setDebt(uint256 val) public {
-        //debt = val;
-    }
-
-    function _burnUnderlyer(uint256)
-        internal
-        virtual
-        override
-        returns (address[] memory tokens, uint256[] memory amounts)
-    {
-        tokens = new address[](1);
-        tokens[0] = address(0);
-
-        amounts = new uint256[](1);
-        amounts[0] = 0;
-    }
-
-    function _ensureLocalUnderlyingBalance(uint256 amount) internal virtual override { }
-
-    function _onDeposit(uint256) internal virtual override {
-        emit OnDepositCalled();
-    }
-
-    function balanceOfUnderlyingDebt() public pure override returns (uint256) {
-        return 0;
-    }
-
-    function _collectRewards() internal override returns (uint256[] memory amounts, address[] memory tokens) { }
-
-    function reset() external { }
-
-    function externalDebtBalance() public pure override returns (uint256) {
-        return 0;
-    }
-
-    function internalDebtBalance() public pure override returns (uint256) {
-        return 0;
-    }
-
-    function externalQueriedBalance() public pure override returns (uint256) {
-        return 0;
-    }
-
-    function getMarketplaceRewards()
-        external
-        pure
-        override
-        returns (uint256[] memory rewardTokens, uint256[] memory rewardRates)
-    {
-        return (new uint256[](0), new uint256[](0));
-    }
-
-    function getPool() public view override returns (address poolAddress) {
-        return _pool;
-    }
-
-    function _validateCalculator(address incentiveCalculator) internal view override {
-        if (IncentiveCalculatorBase(incentiveCalculator).resolveLpToken() != _underlying) {
-            revert InvalidIncentiveCalculator();
-        }
     }
 }

@@ -10,6 +10,7 @@ pragma solidity 0.8.17;
 // solhint-disable avoid-low-level-calls
 // solhint-disable const-name-snakecase
 
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
@@ -495,13 +496,17 @@ contract Constructor is CurveConvexDestinationVaultTests {
 }
 
 contract Initialize is CurveConvexDestinationVaultTests {
+    using Clones for address;
+
     CurveConvexDestinationVault internal vault;
     TestIncentiveCalculator internal _testIncentiveCalculator;
     bytes internal defaultInitParamBytes;
 
     function setUp() public override {
         super.setUp();
-        vault = new CurveConvexDestinationVault(_systemRegistry, CVX_MAINNET, CONVEX_BOOSTER);
+
+        address vaultTemplate = address(new CurveConvexDestinationVault(_systemRegistry, CVX_MAINNET, CONVEX_BOOSTER));
+
         _rewarder = MainRewarder(makeAddr("REWARDER"));
         CurveConvexDestinationVault.InitParams memory defaultInitParams = CurveConvexDestinationVault.InitParams({
             curvePool: STETH_ETH_CURVE_POOL,
@@ -511,6 +516,8 @@ contract Initialize is CurveConvexDestinationVaultTests {
         });
 
         defaultInitParamBytes = abi.encode(defaultInitParams);
+
+        vault = CurveConvexDestinationVault(payable(vaultTemplate.cloneDeterministic(bytes32(block.number))));
 
         _testIncentiveCalculator = new TestIncentiveCalculator();
         _testIncentiveCalculator.setLpToken(address(_underlyer));
@@ -620,6 +627,7 @@ contract Initialize is CurveConvexDestinationVaultTests {
             abi.encode(0x06325440D014e39736583c165C2963BA99fAf14E, zero, zero, zero, zero, false)
         );
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "crvRewards"));
+
         vault.initialize(
             IERC20(address(_asset)),
             _underlyer,

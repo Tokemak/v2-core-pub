@@ -2,11 +2,9 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { DestinationVault } from "src/vault/DestinationVault.sol";
-import { IERC20, ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 
@@ -17,44 +15,24 @@ contract TestDestinationVault is DestinationVault {
     uint256 private _claimVested;
     uint256 private _reclaimDebtAmount;
     uint256 private _reclaimDebtLoss;
+    address private _pool;
 
-    constructor(
-        ISystemRegistry systemRegistry,
-        address rewarder,
-        address token,
-        address underlyer,
-        address incentiveCalculator
-    ) DestinationVault(systemRegistry) {
-        initialize(
-            IERC20Metadata(token),
-            IERC20Metadata(underlyer),
-            IMainRewarder(rewarder),
-            incentiveCalculator,
-            new address[](0),
-            abi.encode("")
-        );
-    }
+    constructor(ISystemRegistry systemRegistry) DestinationVault(systemRegistry) { }
 
-    function underlying() public view override returns (address) {
-        // just return the test baseasset for now (ignore extra level of wrapping)
-        return address(_baseAsset);
+    /*//////////////////////////////////////////////////////////////
+                            TEST HELPERS
+    //////////////////////////////////////////////////////////////*/
+
+    function setPool(address pool) public {
+        _pool = pool;
     }
 
     function mint(address to, uint256 amount) public {
         _mint(to, amount);
     }
 
-    function debtValue() public view override returns (uint256 value) {
-        return _debtVault;
-    }
-
-    function exchangeName() external pure override returns (string memory) {
-        return "test";
-    }
-
-    function underlyingTokens() external view override returns (address[] memory tokens) {
-        tokens = new address[](1);
-        tokens[0] = _underlying;
+    function burn(address account, uint256 amount) public {
+        _burn(account, amount);
     }
 
     function setDebtValue(uint256 val) public {
@@ -77,6 +55,28 @@ contract TestDestinationVault is DestinationVault {
         //debt = val;
     }
 
+    /*//////////////////////////////////////////////////////////////
+                            OVERRIDE FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    function underlying() public view override returns (address) {
+        // just return the test baseasset for now (ignore extra level of wrapping)
+        return address(_baseAsset);
+    }
+
+    function debtValue() public view override returns (uint256 value) {
+        return _debtVault;
+    }
+
+    function exchangeName() external pure override returns (string memory) {
+        return "test";
+    }
+
+    function underlyingTokens() external view override returns (address[] memory tokens) {
+        tokens = new address[](1);
+        tokens[0] = _underlying;
+    }
+
     function _burnUnderlyer(uint256)
         internal
         virtual
@@ -94,10 +94,6 @@ contract TestDestinationVault is DestinationVault {
 
     function _onDeposit(uint256 amount) internal virtual override { }
 
-    function balanceOfUnderlyingDebt() public pure override returns (uint256) {
-        return 0;
-    }
-
     function _collectRewards() internal override returns (uint256[] memory amounts, address[] memory tokens) { }
 
     function reset() external { }
@@ -114,8 +110,8 @@ contract TestDestinationVault is DestinationVault {
         return 0;
     }
 
-    function getPool() public pure override returns (address poolAddress) {
-        return address(0);
+    function getPool() public view override returns (address poolAddress) {
+        return _pool;
     }
 
     function _validateCalculator(address incentiveCalculator) internal view override {

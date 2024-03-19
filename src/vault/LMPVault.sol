@@ -697,8 +697,8 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// @notice Simulate the effects of their redemption at the current block, given current on-chain conditions.
     function previewRedeem(uint256 shares) public virtual override returns (uint256 assets) {
         // These values are not needed until the recursive call, gas savings.
-        uint256 applicableTotalAssets;
-        uint256 convertedAssets;
+        uint256 applicableTotalAssets = 0;
+        uint256 convertedAssets = 0;
         if (msg.sender == address(this)) {
             applicableTotalAssets =
                 LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Withdraw);

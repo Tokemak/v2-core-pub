@@ -4216,6 +4216,104 @@ contract UpdateDebtReportingTests is LMPVaultTests {
         return dv1;
     }
 }
+
+// Testing previewWithdraw / previewRedeem
+contract PreviewTests is FlashRebalanceTests {
+    function setUp() public virtual override {
+        super.setUp();
+    }
+
+    function test_previewWithdraw() public {
+        address user = makeAddr("user1");
+        uint256 depositAmount = 9e18;
+        uint256 sharesMinted = _depositFor(user, depositAmount);
+
+        uint256 previewShares = vault.previewWithdraw(depositAmount);
+
+        // Comparing shares minted to shares expected to be burned when withdrawing full deposit amount.  Should be
+        //    equal to mint with no other actions happening in the vault at this point.
+        assertEq(sharesMinted, previewShares);
+
+        previewShares = vault.previewWithdraw(6e18);
+
+        // 1:1 right now, asset amount of 6e18 should yield same number of shares.
+        assertEq(6e18, previewShares);
+    }
+
+    // Just testing this functionality in a situation where shares are not minting 1:1
+    function test_previewWithdraw_NavChange() public {
+        _flashRebalance();
+
+        // Check to make sure that assets and shares are no longer 1:1
+        assertEq(vault.convertToShares(1e9), 0.5e9, "immediateAfterNavShare");
+
+        uint256 previewShares = vault.previewWithdraw(45e9);
+
+        // Nav / share currently 2
+        assertEq(previewShares, 45e9 / 2);
+    }
+
+    function test_previewRedeem() public {
+        address user = makeAddr("user1");
+        uint256 depositAmount = 9e18;
+        uint256 sharesMinted = _depositFor(user, depositAmount);
+
+        uint256 previewAssets = vault.previewRedeem(sharesMinted);
+
+        // Comparing amount deposited to amount expected to be returned.
+        assertEq(depositAmount, previewAssets);
+
+        previewAssets = vault.previewRedeem(4e9);
+
+        // 1:1 right now, 4e9 shares should yield same in assets.
+        assertEq(4e9, previewAssets);
+    }
+
+    // Just testing this functionality in a situation where shares are not minting 1:1
+    function test_previewRedeem_NavChange() public {
+        _flashRebalance();
+
+        // Check to make sure that assets and shares are no longer 1:1
+        assertEq(vault.convertToShares(1e9), 0.5e9, "immediateAfterNavShare");
+
+        uint256 previewAssets = vault.previewRedeem(20e9);
+
+        // Nav / share currently 2
+        assertEq(previewAssets, 20e9 * 2);
+    }
+
+    function _flashRebalance() private {
+        address user = makeAddr("user");
+        uint256 depositAmount = 100e9;
+
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockSucessfulRebalance();
+
+        _depositFor(user, depositAmount);
+
+        vault.setProfitUnlockPeriod(0);
+
+        // Check that assets and shares 1:1
+        assertEq(vault.convertToShares(1e9), 1e9, "originalNavShare");
+
+        // We swap 50 idle for 150 assets at 1:1 value
+        bytes memory data = solver.buildDataForDvIn(dv1, 150e9);
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
+        vault.flashRebalance(
+            solver,
+            IStrategy.RebalanceParams({
+                destinationIn: address(dv1),
+                tokenIn: address(dv1.underlyer()),
+                amountIn: 150e9,
+                destinationOut: address(vault),
+                tokenOut: vault.asset(),
+                amountOut: 50e9
+            }),
+            data
+        );
+    }
+}
 /// =====================================================
 /// Mock Contracts
 /// =====================================================

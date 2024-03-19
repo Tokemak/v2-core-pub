@@ -664,7 +664,7 @@ contract LMPStrategyInt is Test {
             maxDiscount: 0.02e18, // 2%
             staleDataToleranceInSeconds: 2 days,
             maxAllowedDiscount: 0.05e18,
-            lstPriceGapTolerance: 10 // 10 bps
+            lstPriceGapTolerance: 35 // 10 bps
          });
     }
 

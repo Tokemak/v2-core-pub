@@ -167,12 +167,12 @@ contract LMPStrategyTest is Test {
         setTokenSpotPrice(mockOutLSTToken, 99e16); // set spot OutToken price slightly lower than safe
         setTokenSpotPrice(mockInLSTToken, 101e16); // set spot OutToken price slightly higher than safe
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.LSTPriceGapToleranceExceeded.selector));
-        defaultStrat.verifyRebalance(defaultParams, destOut);
+        defaultStrat.getRebalanceOutSummaryStats(defaultParams);
 
         setTokenSpotPrice(mockOutLSTToken, 99.89e16); // set spot price slightly lower than safe near tolerance
         setTokenSpotPrice(mockInLSTToken, 100e16); // set spot = safe
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.LSTPriceGapToleranceExceeded.selector));
-        defaultStrat.verifyRebalance(defaultParams, destOut);
+        defaultStrat.getRebalanceOutSummaryStats(defaultParams);
     }
 
     function test_getRebalanceOutSummaryStats_RevertIf_invalidParams() public {

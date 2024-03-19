@@ -359,9 +359,6 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
             revert RebalanceTimeGapNotMet();
         }
 
-        // Verify spot & safe price for the individual tokens in the pool are not far apart.
-        if (!verifyLSTPriceGap(params, lstPriceGapTolerance)) revert LSTPriceGapToleranceExceeded();
-
         // ensure that we're not exceeding top-level max slippage
         if (valueStats.slippage > maxNormalOperationSlippage) {
             revert MaxSlippageExceeded();
@@ -735,6 +732,12 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         returns (IStrategy.SummaryStats memory outSummary)
     {
         validateRebalanceParams(rebalanceParams);
+        // Verify spot & safe price for the individual tokens in the pool are not far apart.
+        // Call to verify before remove/add liquidity to the dest in the rebalance txn
+        // if the in dest is not LMPVault i.e. this is not a rebalance to idle txn, verify price tolerance
+        if (rebalanceParams.destinationIn != address(lmpVault)) {
+            if (!verifyLSTPriceGap(rebalanceParams, lstPriceGapTolerance)) revert LSTPriceGapToleranceExceeded();
+        }
         outSummary = _getRebalanceOutSummaryStats(rebalanceParams);
     }
 

@@ -38,6 +38,7 @@ library LMPDebt {
     error InvalidTotalAssetPurpose();
     error InvalidDestination(address destination);
     error TooFewAssets(uint256 requested, uint256 actual);
+    error ShareOrAssetAmountReceived(uint256 amount);
 
     event DestinationDebtReporting(
         address destination, LMPDebt.IdleDebtUpdates debtInfo, uint256 claimed, uint256 claimGasUsed
@@ -534,7 +535,7 @@ library LMPDebt {
         ILMPVault.AssetBreakdown storage assetBreakdown,
         StructuredLinkedList.List storage withdrawalQueue,
         mapping(address => LMPDebt.DestinationInfo) storage destinationInfo
-    ) external returns (uint256 actualAssets, uint256 actualShares, uint256 debtBurned) {
+    ) public returns (uint256 actualAssets, uint256 actualShares, uint256 debtBurned) {
         WithdrawInfo memory info = _initiateWithdrawInfo(assets, assetBreakdown);
 
         // If not enough funds in idle, then pull what we need from the destinations in
@@ -722,7 +723,7 @@ library LMPDebt {
         ILMPVault.AssetBreakdown storage assetBreakdown,
         StructuredLinkedList.List storage withdrawalQueue,
         mapping(address => LMPDebt.DestinationInfo) storage destinationInfo
-    ) external returns (uint256 actualAssets, uint256 actualShares, uint256 debtBurned) {
+    ) public returns (uint256 actualAssets, uint256 actualShares, uint256 debtBurned) {
         WithdrawInfo memory info = _initiateWithdrawInfo(assets, assetBreakdown);
 
         // If not enough funds in idle, then pull what we need from destinations
@@ -836,6 +837,70 @@ library LMPDebt {
             assetBreakdown.totalDebtMax = 0;
         } else {
             assetBreakdown.totalDebtMax -= info.debtMaxDecrease;
+        }
+    }
+
+    function preview(
+        bool previewWithdraw,
+        uint256 assets,
+        uint256 applicableTotalAssets,
+        bytes memory functionCallEncoded,
+        ILMPVault.AssetBreakdown storage assetBreakdown,
+        StructuredLinkedList.List storage withdrawalQueue,
+        mapping(address => LMPDebt.DestinationInfo) storage destinationInfo
+    ) external returns (uint256) {
+        if (msg.sender != address(this)) {
+            // Perform a recursive call to this function. The intention is to reach the "else" block.
+            // solhint-disable avoid-low-level-calls
+            // slither-disable-next-line missing-zero-check,low-level-calls
+            (bool success, bytes memory returnData) = address(this).call(functionCallEncoded);
+            // solhint-enable avoid-low-level-calls
+
+            // If the recursive call is successful, it means an unintended code path was taken.
+            if (success) {
+                revert Errors.UnreachableError();
+            }
+
+            bytes4 sharesAmountSig = bytes4(keccak256("ShareOrAssetAmountReceived(uint256)"));
+
+            // Extract the error signature (first 4 bytes) from the revert reason.
+            bytes4 errorSignature;
+            // solhint-disable no-inline-assembly
+            assembly {
+                errorSignature := mload(add(returnData, 0x20))
+            }
+
+            // If the error matches the expected signature, extract the amount from the revert reason and return.
+            if (errorSignature == sharesAmountSig) {
+                // Extract subsequent 32 bytes for uint256
+                uint256 amount;
+                assembly {
+                    amount := mload(add(returnData, 0x24))
+                }
+                return amount;
+            } else {
+                // If the error is not the expected one, forward the original revert reason.
+                assembly {
+                    revert(add(32, returnData), mload(returnData))
+                }
+            }
+            // solhint-enable no-inline-assembly
+        }
+        // This branch is taken during the recursive call.
+        else {
+            // Perform the actual withdrawal or redeem logic to compute the amount. This will be reverted to
+            // simulate the action.
+            uint256 shareOrAssetAmount;
+            if (previewWithdraw) {
+                (, shareOrAssetAmount,) =
+                    withdraw(assets, applicableTotalAssets, assetBreakdown, withdrawalQueue, destinationInfo);
+            } else {
+                (shareOrAssetAmount,,) =
+                    redeem(assets, applicableTotalAssets, assetBreakdown, withdrawalQueue, destinationInfo);
+            }
+
+            // Revert with the computed amount as an error.
+            revert ShareOrAssetAmountReceived(shareOrAssetAmount);
         }
     }
 }

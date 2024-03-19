@@ -2,15 +2,14 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { IERC4626 } from "openzeppelin-contracts/interfaces/IERC4626.sol";
-import { IERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
+import { IERC4626 } from "src/interfaces/vault/IERC4626.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 
-interface ILMPVault is IERC4626, IERC20Permit {
+interface ILMPVault is IERC4626 {
     enum VaultShutdownStatus {
         Active,
         Deprecated,
@@ -78,7 +77,6 @@ interface ILMPVault is IERC4626, IERC20Permit {
     event Nav(uint256 idle, uint256 debt, uint256 totalSupply);
     event RewarderSet(address newRewarder, address oldRewarder);
     event DestinationDebtReporting(address destination, uint256 debtValue, uint256 claimed, uint256 claimGasUsed);
-    event RewarderSet(address rewarder);
     event FeeCollected(uint256 fees, address feeSink, uint256 mintedShares, uint256 profit, uint256 idle, uint256 debt);
     event PeriodicFeeCollected(uint256 fees, address feeSink, uint256 mintedShares);
     event Shutdown(VaultShutdownStatus reason);

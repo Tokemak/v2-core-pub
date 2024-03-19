@@ -305,7 +305,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
 
             // If the recursive call is successful, it means an unintended code path was taken.
             if (success) {
-                revert UnreachableError();
+                revert Errors.UnreachableError();
             }
 
             // Extract the error signature (first 4 bytes) from the revert reason.
@@ -393,7 +393,6 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     function recoverUnderlying(address destination) external override hasRole(Roles.TOKEN_RECOVERY_ROLE) {
         Errors.verifyNotZero(destination, "destination");
 
-        // TODO: Is there a situation where we would expect debt on the vault to be > queried balance on the vault?
         uint256 externalAmount = externalQueriedBalance() - externalDebtBalance();
         uint256 totalAmount = externalAmount + internalQueriedBalance() - internalDebtBalance();
         if (totalAmount > 0) {

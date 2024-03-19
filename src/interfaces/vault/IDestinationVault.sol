@@ -17,7 +17,6 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     }
 
     error LogicDefect();
-    error UnreachableError();
     error BaseAmountReceived(uint256 amount);
 
     /* ******************************** */

@@ -23,10 +23,8 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
-import { IERC4626 } from "openzeppelin-contracts/interfaces/IERC4626.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { StructuredLinkedList } from "src/strategy/StructuredLinkedList.sol";
-import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
@@ -668,7 +666,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
     /// @notice Returns the maximum amount of the underlying asset that can
     /// be withdrawn from the owner balance in the Vault, through a withdraw call
-    function maxWithdraw(address owner) public view virtual returns (uint256 maxAssets) {
+    function maxWithdraw(address owner) public virtual returns (uint256 maxAssets) {
         maxAssets = paused() ? 0 : previewRedeem(balanceOf(owner));
     }
 
@@ -684,13 +682,38 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     }
 
     /// @notice Simulate the effects of their withdrawal at the current block, given current on-chain conditions.
-    function previewWithdraw(uint256 assets) public view virtual returns (uint256 shares) {
-        shares = convertToShares(assets, totalAssets(TotalAssetPurpose.Withdraw), totalSupply(), Math.Rounding.Up);
+    function previewWithdraw(uint256 assets) public virtual returns (uint256 shares) {
+        shares = LMPDebt.preview(
+            true,
+            assets,
+            LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Withdraw),
+            abi.encodeWithSelector(this.previewWithdraw.selector, assets),
+            _assetBreakdown,
+            _withdrawalQueue,
+            _destinationInfo
+        );
     }
 
     /// @notice Simulate the effects of their redemption at the current block, given current on-chain conditions.
-    function previewRedeem(uint256 shares) public view virtual override returns (uint256) {
-        return convertToAssets(shares, totalAssets(TotalAssetPurpose.Withdraw), totalSupply(), Math.Rounding.Down);
+    function previewRedeem(uint256 shares) public virtual override returns (uint256 assets) {
+        // These values are not needed until the recursive call, gas savings.
+        uint256 applicableTotalAssets;
+        uint256 convertedAssets;
+        if (msg.sender == address(this)) {
+            applicableTotalAssets =
+                LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Withdraw);
+            convertedAssets = convertToAssets(shares, applicableTotalAssets, totalSupply(), Math.Rounding.Down);
+        }
+
+        assets = LMPDebt.preview(
+            false,
+            convertedAssets,
+            applicableTotalAssets,
+            abi.encodeWithSelector(this.previewRedeem.selector, shares),
+            _assetBreakdown,
+            _withdrawalQueue,
+            _destinationInfo
+        );
     }
 
     function _completeWithdrawal(uint256 assets, uint256 shares, address owner, address receiver) internal virtual {

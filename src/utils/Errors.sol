@@ -40,6 +40,7 @@ library Errors {
     error SystemMismatch(address source1, address source2);
 
     error InvalidToken(address token);
+    error UnreachableError();
 
     function verifyNotZero(address addr, string memory paramName) internal pure {
         if (addr == address(0)) {

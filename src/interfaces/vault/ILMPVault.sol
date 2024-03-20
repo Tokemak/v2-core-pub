@@ -8,8 +8,9 @@ import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
+import { IERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 
-interface ILMPVault is IERC4626 {
+interface ILMPVault is IERC4626, IERC20Permit {
     enum VaultShutdownStatus {
         Active,
         Deprecated,

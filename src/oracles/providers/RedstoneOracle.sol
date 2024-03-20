@@ -80,6 +80,7 @@ contract RedstoneOracle is BaseAggregatorV3OracleInformation {
      */
     function getPriceInEth(address token) external returns (uint256 priceInEth) {
         OracleInfo memory oracleInfo = _getOracleInfo(token);
+        // slither-disable-next-line unused-return
         (, int256 price,, uint256 updatedAt,) = oracleInfo.oracle.latestRoundData();
         priceInEth = BaseAggregatorV3OracleInformation._getPriceInEth(token, oracleInfo, price, updatedAt);
     }

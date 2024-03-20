@@ -26,7 +26,7 @@ abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
     }
 
     /// @dev Mapping of token to OracleInfo struct.  Private to enforce zero address checks.
-    mapping(address => OracleInfo) private tokentoOracle;
+    mapping(address => OracleInfo) private tokenToOracle;
 
     constructor(ISystemRegistry _systemRegistry) BaseOracleDenominations(_systemRegistry) { }
 
@@ -46,10 +46,10 @@ abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
     ) public onlyOwner {
         Errors.verifyNotZero(token, "tokenToAddOracle");
         Errors.verifyNotZero(address(oracle), "oracle");
-        if (address(tokentoOracle[token].oracle) != address(0)) revert Errors.AlreadyRegistered(token);
+        if (address(tokenToOracle[token].oracle) != address(0)) revert Errors.AlreadyRegistered(token);
 
         uint8 oracleDecimals = oracle.decimals();
-        tokentoOracle[token] = OracleInfo({
+        tokenToOracle[token] = OracleInfo({
             oracle: oracle,
             denomination: denomination,
             decimals: oracleDecimals,
@@ -64,9 +64,9 @@ abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
      */
     function removeOracleRegistration(address token) public onlyOwner returns (address oracleBeforeDeletion) {
         Errors.verifyNotZero(token, "tokenToRemoveOracle");
-        oracleBeforeDeletion = address(tokentoOracle[token].oracle);
+        oracleBeforeDeletion = address(tokenToOracle[token].oracle);
         if (oracleBeforeDeletion == address(0)) revert Errors.MustBeSet();
-        delete tokentoOracle[token];
+        delete tokenToOracle[token];
     }
 
     /**
@@ -76,37 +76,19 @@ abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
      * @return OracleInfo struct with information on `address token`.
      */
     function getOracleInfo(address token) public view returns (OracleInfo memory) {
-        return tokentoOracle[token];
-    }
-
-    /**
-     * @notice Validates the price returned by oracle.
-     * @dev This function only needs to be invoked for oracles which implement IOffchainAggregator.
-     * @param token Address of token to get info for.
-     */
-    function _validateOffchainAggregator(address token) internal view {
-        Errors.verifyNotZero(token, "token");
-        OracleInfo memory oracleInfo = _getOracleInfo(token);
-        // slither-disable-next-line unused-return
-        (, int256 price,,,) = oracleInfo.oracle.latestRoundData();
-
-        if (price <= 0) revert InvalidDataReturned(); // Check before conversion from int to uint.
-        uint256 priceUint = uint256(price);
-
-        IOffchainAggregator aggregator = IOffchainAggregator(oracleInfo.oracle.aggregator());
-
-        if (
-            priceUint == uint256(int256(aggregator.maxAnswer())) || priceUint == uint256(int256(aggregator.minAnswer()))
-        ) revert InvalidDataReturned();
+        return tokenToOracle[token];
     }
 
     // slither-disable-start timestamp
-    function _getPriceInEth(address token) internal returns (uint256) {
-        OracleInfo memory oracleInfo = _getOracleInfo(token);
-
+    function _getPriceInEth(
+        address token,
+        OracleInfo memory oracleInfo,
+        int256 price,
+        uint256 updatedAt
+    ) internal returns (uint256) {
         // Partial return values are intentionally ignored. This call provides the most efficient way to get the data.
         // slither-disable-next-line unused-return
-        (, int256 price,, uint256 updatedAt,) = oracleInfo.oracle.latestRoundData();
+
         uint256 timestamp = block.timestamp;
         uint256 oracleStoredTimeout = uint256(oracleInfo.pricingTimeout);
         uint256 tokenPricingTimeout = oracleStoredTimeout == 0 ? DEFAULT_PRICING_TIMEOUT : oracleStoredTimeout;
@@ -127,7 +109,7 @@ abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
 
     /// @dev internal getter to access `tokenToOracle` mapping, enforces address(0) check.
     function _getOracleInfo(address token) internal view returns (OracleInfo memory oracleInfo) {
-        oracleInfo = tokentoOracle[token];
+        oracleInfo = tokenToOracle[token];
         Errors.verifyNotZero(address(oracleInfo.oracle), "Oracle");
     }
 }

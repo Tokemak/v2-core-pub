@@ -65,13 +65,35 @@ contract ChainlinkOracle is BaseAggregatorV3OracleInformation {
     }
 
     /**
+     * @notice Validates the price returned by oracle.
+     * @dev This function only needs to be invoked for oracles which implement IOffchainAggregator.
+     * @param oracleInfo OracleInfo of the token being validated.
+     * @param roundId Round ID of the price obtained from oracle.
+     * @param price Price obtained from oracle.
+     */
+    function _validateOffchainAggregator(OracleInfo memory oracleInfo, uint80 roundId, int256 price) internal view {
+        if (price <= 0) revert InvalidDataReturned(); // Check before conversion from int to uint.
+        uint256 priceUint = uint256(price);
+
+        IOffchainAggregator aggregator = IOffchainAggregator(oracleInfo.oracle.aggregator());
+
+        if (
+            roundId == 0 || priceUint == uint256(int256(aggregator.maxAnswer()))
+                || priceUint == uint256(int256(aggregator.minAnswer()))
+        ) revert InvalidDataReturned();
+    }
+
+    /**
      * @notice Fetches the price of a token in ETH denomination.
      * @param token Address of token.
-     * @return price Price of token in ETH.
+     * @return priceInEth Price of token in ETH.
      */
-    function getPriceInEth(address token) external returns (uint256 price) {
-        BaseAggregatorV3OracleInformation._validateOffchainAggregator(token);
-        price = BaseAggregatorV3OracleInformation._getPriceInEth(token);
+    function getPriceInEth(address token) external returns (uint256 priceInEth) {
+        OracleInfo memory oracleInfo = _getOracleInfo(token);
+        // slither-disable-next-line unused-return
+        (uint80 roundId, int256 price,, uint256 updatedAt,) = oracleInfo.oracle.latestRoundData();
+        _validateOffchainAggregator(oracleInfo, roundId, price);
+        priceInEth = BaseAggregatorV3OracleInformation._getPriceInEth(token, oracleInfo, price, updatedAt);
     }
 
     /**

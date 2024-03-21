@@ -200,80 +200,80 @@ contract CurveOracleBase is BaseScript {
 
     function _registerChainlinkOracles(ChainlinkOracle chainlinkOracle) internal {
         // Chainlink setup
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             STETH_MAINNET,
             IAggregatorV3Interface(STETH_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             RETH_MAINNET,
             IAggregatorV3Interface(RETH_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             CRV_MAINNET, IAggregatorV3Interface(CRV_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             CVX_MAINNET, IAggregatorV3Interface(CVX_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             ETH_IN_USD, IAggregatorV3Interface(ETH_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.USD, 0
         );
 
         // Following might not be needed for guarded launch
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             DAI_MAINNET, IAggregatorV3Interface(DAI_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             USDC_MAINNET,
             IAggregatorV3Interface(USDC_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             USDT_MAINNET,
             IAggregatorV3Interface(USDT_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
 
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             FRAX_MAINNET,
             IAggregatorV3Interface(FRAX_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             USDP_MAINNET,
             IAggregatorV3Interface(USDP_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             TUSD_MAINNET,
             IAggregatorV3Interface(TUSD_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             SUSD_MAINNET,
             IAggregatorV3Interface(SUSD_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
 
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             LDO_MAINNET, IAggregatorV3Interface(LDO_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             BADGER_MAINNET,
             IAggregatorV3Interface(BADGER_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             2 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             WBTC_MAINNET,
             IAggregatorV3Interface(BTC_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,

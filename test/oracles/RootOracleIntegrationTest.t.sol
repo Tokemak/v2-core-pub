@@ -294,82 +294,82 @@ contract RootOracleIntegrationTest is Test {
         priceOracle.registerMapping(FRXETH_MAINNET, IPriceOracle(address(customSetOracle)));
 
         // Chainlink setup
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             STETH_MAINNET,
             IAggregatorV3Interface(STETH_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             RETH_MAINNET,
             IAggregatorV3Interface(RETH_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             DAI_MAINNET, IAggregatorV3Interface(DAI_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             USDC_MAINNET,
             IAggregatorV3Interface(USDC_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             USDT_MAINNET,
             IAggregatorV3Interface(USDT_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             CBETH_MAINNET,
             IAggregatorV3Interface(CBETH_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             FRAX_MAINNET,
             IAggregatorV3Interface(FRAX_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             USDP_MAINNET,
             IAggregatorV3Interface(USDP_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             TUSD_MAINNET,
             IAggregatorV3Interface(TUSD_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             SUSD_MAINNET,
             IAggregatorV3Interface(SUSD_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             CRV_MAINNET, IAggregatorV3Interface(CRV_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             LDO_MAINNET, IAggregatorV3Interface(LDO_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             BADGER_MAINNET,
             IAggregatorV3Interface(BADGER_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             2 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             WBTC_MAINNET,
             IAggregatorV3Interface(BTC_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             ETH_IN_USD, IAggregatorV3Interface(ETH_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.USD, 0
         );
 
@@ -704,7 +704,7 @@ contract GetPriceInEth is RootOracleIntegrationTest {
         //
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_914_103);
         // Set up here, does not exist at block forked for `setUp()`.
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             STG_MAINNET, IAggregatorV3Interface(STG_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.USD, 24 hours
         );
 
@@ -924,7 +924,7 @@ contract GetPriceInEth is RootOracleIntegrationTest {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19_419_462);
 
         //Redstone Oracle setup
-        redstoneOracle.registerRedstoneOracle(
+        redstoneOracle.registerOracle(
             WEETH_MAINNET, IAggregatorV3Interface(WEETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
@@ -936,7 +936,7 @@ contract GetPriceInEth is RootOracleIntegrationTest {
         assertLt(lowerBound, safePrice);
 
         //OSETH
-        redstoneOracle.registerRedstoneOracle(
+        redstoneOracle.registerOracle(
             OSETH_MAINNET, IAggregatorV3Interface(OSETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
@@ -948,7 +948,7 @@ contract GetPriceInEth is RootOracleIntegrationTest {
         assertLt(lowerBound, safePrice);
 
         //SWETH
-        redstoneOracle.registerRedstoneOracle(
+        redstoneOracle.registerOracle(
             SWETH_MAINNET, IAggregatorV3Interface(SWETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
@@ -960,7 +960,7 @@ contract GetPriceInEth is RootOracleIntegrationTest {
         assertLt(lowerBound, safePrice);
 
         //EZETH
-        redstoneOracle.registerRedstoneOracle(
+        redstoneOracle.registerOracle(
             EZETH_MAINNET, IAggregatorV3Interface(EZETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
@@ -972,7 +972,7 @@ contract GetPriceInEth is RootOracleIntegrationTest {
         assertLt(lowerBound, safePrice);
 
         //RSETH
-        redstoneOracle.registerRedstoneOracle(
+        redstoneOracle.registerOracle(
             RSETH_MAINNET, IAggregatorV3Interface(RSETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
@@ -990,8 +990,8 @@ contract GetPriceInEth is RootOracleIntegrationTest {
 
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_475_310);
 
-        chainlinkOracle.removeChainlinkRegistration(USDC_MAINNET);
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.removeOracleRegistration(USDC_MAINNET);
+        chainlinkOracle.registerOracle(
             USDC_MAINNET,
             IAggregatorV3Interface(USDC_IN_USD_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.USD,
@@ -1373,7 +1373,7 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
         //
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_914_103);
 
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.registerOracle(
             STG_MAINNET, IAggregatorV3Interface(STG_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.USD, 24 hours
         );
 
@@ -1422,8 +1422,8 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
     function test_EthInUsdPath() external {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_475_310);
 
-        chainlinkOracle.removeChainlinkRegistration(USDC_MAINNET);
-        chainlinkOracle.registerChainlinkOracle(
+        chainlinkOracle.removeOracleRegistration(USDC_MAINNET);
+        chainlinkOracle.registerOracle(
             USDC_MAINNET,
             IAggregatorV3Interface(USDC_IN_USD_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.USD,

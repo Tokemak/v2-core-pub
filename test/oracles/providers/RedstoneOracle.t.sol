@@ -23,10 +23,8 @@ contract RedstoneOracleTest is Test {
     error AccessDenied();
     error InvalidDataReturned();
 
-    event RedstoneRegistrationAdded(
-        address token, address redstoneOracle, BaseOracleDenominations.Denomination, uint8 decimals
-    );
-    event RedstoneRegistrationRemoved(address token, address redstoneOracle);
+    event OracleRegistrationAdded(address token, address oracle, BaseOracleDenominations.Denomination, uint8 decimals);
+    event OracleRegistrationRemoved(address token, address oracle);
 
     function setUp() external {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19_419_462);
@@ -38,12 +36,12 @@ contract RedstoneOracleTest is Test {
         _oracle = new RedstoneOracle(registry);
     }
 
-    // Test `registerRedStoneOracle()`
+    // Test `registerOracle()`
     function test_RevertNonOwner() external {
         vm.prank(PRANK_ADDRESS);
         vm.expectRevert(AccessDenied.selector);
 
-        _oracle.registerRedstoneOracle(
+        _oracle.registerOracle(
             WEETH_MAINNET, IAggregatorV3Interface(WEETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
     }
@@ -51,7 +49,7 @@ contract RedstoneOracleTest is Test {
     function test_enum() external {
         vm.expectRevert();
 
-        _oracle.registerRedstoneOracle(
+        _oracle.registerOracle(
             WEETH_MAINNET,
             IAggregatorV3Interface(WEETH_RS_FEED_MAINNET),
             BaseOracleDenominations.Denomination(uint8(3)),
@@ -62,7 +60,7 @@ contract RedstoneOracleTest is Test {
     function test_RevertZeroAddress() external {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "tokenToAddOracle"));
 
-        _oracle.registerRedstoneOracle(
+        _oracle.registerOracle(
             address(0), IAggregatorV3Interface(WEETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
     }
@@ -70,30 +68,28 @@ contract RedstoneOracleTest is Test {
     function test_RevertZeroAddressOracle() external {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "oracle"));
 
-        _oracle.registerRedstoneOracle(
+        _oracle.registerOracle(
             WEETH_MAINNET, IAggregatorV3Interface(address(0)), BaseOracleDenominations.Denomination.ETH, 0
         );
     }
 
     function test_RevertOracleAlreadySet() external {
-        _oracle.registerRedstoneOracle(
+        _oracle.registerOracle(
             WEETH_MAINNET, IAggregatorV3Interface(WEETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AlreadyRegistered.selector, WEETH_MAINNET));
 
-        _oracle.registerRedstoneOracle(
+        _oracle.registerOracle(
             WEETH_MAINNET, IAggregatorV3Interface(WEETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
     }
 
     function test_ProperAddOracle() external {
         vm.expectEmit(false, false, false, true);
-        emit RedstoneRegistrationAdded(
-            WEETH_MAINNET, WEETH_RS_FEED_MAINNET, BaseOracleDenominations.Denomination.ETH, 8
-        );
+        emit OracleRegistrationAdded(WEETH_MAINNET, WEETH_RS_FEED_MAINNET, BaseOracleDenominations.Denomination.ETH, 8);
 
-        _oracle.registerRedstoneOracle(
+        _oracle.registerOracle(
             WEETH_MAINNET, IAggregatorV3Interface(WEETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
@@ -109,32 +105,32 @@ contract RedstoneOracleTest is Test {
         vm.prank(PRANK_ADDRESS);
         vm.expectRevert(AccessDenied.selector);
 
-        _oracle.removeRedstoneRegistration(address(1));
+        _oracle.removeOracleRegistration(address(1));
     }
 
     function test_RevertZeroAddressToken() external {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "tokenToRemoveOracle"));
 
-        _oracle.removeRedstoneRegistration(address(0));
+        _oracle.removeOracleRegistration(address(0));
     }
 
     function test_RevertOracleNotSet() external {
         vm.expectRevert(Errors.MustBeSet.selector);
 
-        _oracle.removeRedstoneRegistration(WEETH_MAINNET);
+        _oracle.removeOracleRegistration(WEETH_MAINNET);
     }
 
     function test_ProperRemoveOracle() external {
-        _oracle.registerRedstoneOracle(
+        _oracle.registerOracle(
             WEETH_MAINNET, IAggregatorV3Interface(WEETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
         assertEq(address(_oracle.getRedstoneInfo(WEETH_MAINNET).oracle), WEETH_RS_FEED_MAINNET);
 
         vm.expectEmit(false, false, false, true);
-        emit RedstoneRegistrationRemoved(WEETH_MAINNET, WEETH_RS_FEED_MAINNET);
+        emit OracleRegistrationRemoved(WEETH_MAINNET, WEETH_RS_FEED_MAINNET);
 
-        _oracle.removeRedstoneRegistration(WEETH_MAINNET);
+        _oracle.removeOracleRegistration(WEETH_MAINNET);
 
         assertEq(address(_oracle.getRedstoneInfo(WEETH_MAINNET).oracle), address(0));
     }
@@ -147,7 +143,7 @@ contract RedstoneOracleTest is Test {
     }
 
     function test_ReturnsProperPriceRS() external {
-        _oracle.registerRedstoneOracle(
+        _oracle.registerOracle(
             WEETH_MAINNET,
             IAggregatorV3Interface(WEETH_RS_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,

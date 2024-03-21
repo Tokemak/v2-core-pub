@@ -23,10 +23,8 @@ contract ChainlinkOracleTest is Test {
     error AccessDenied();
     error InvalidDataReturned();
 
-    event ChainlinkRegistrationAdded(
-        address token, address chainlinkOracle, BaseOracleDenominations.Denomination, uint8 decimals
-    );
-    event ChainlinkRegistrationRemoved(address token, address chainlinkOracle);
+    event OracleRegistrationAdded(address token, address oracle, BaseOracleDenominations.Denomination, uint8 decimals);
+    event OracleRegistrationRemoved(address token, address oracle);
 
     function setUp() external {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_000_000);
@@ -43,7 +41,7 @@ contract ChainlinkOracleTest is Test {
         vm.prank(PRANK_ADDRESS);
         vm.expectRevert(AccessDenied.selector);
 
-        _oracle.registerChainlinkOracle(
+        _oracle.registerOracle(
             RETH_MAINNET, IAggregatorV3Interface(RETH_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
     }
@@ -51,7 +49,7 @@ contract ChainlinkOracleTest is Test {
     function test_enum() external {
         vm.expectRevert();
 
-        _oracle.registerChainlinkOracle(
+        _oracle.registerOracle(
             RETH_MAINNET,
             IAggregatorV3Interface(RETH_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination(uint8(3)),
@@ -62,7 +60,7 @@ contract ChainlinkOracleTest is Test {
     function test_RevertZeroAddress() external {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "tokenToAddOracle"));
 
-        _oracle.registerChainlinkOracle(
+        _oracle.registerOracle(
             address(0), IAggregatorV3Interface(RETH_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
     }
@@ -70,30 +68,28 @@ contract ChainlinkOracleTest is Test {
     function test_RevertZeroAddressOracle() external {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "oracle"));
 
-        _oracle.registerChainlinkOracle(
+        _oracle.registerOracle(
             RETH_MAINNET, IAggregatorV3Interface(address(0)), BaseOracleDenominations.Denomination.ETH, 0
         );
     }
 
     function test_RevertOracleAlreadySet() external {
-        _oracle.registerChainlinkOracle(
+        _oracle.registerOracle(
             RETH_MAINNET, IAggregatorV3Interface(RETH_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AlreadyRegistered.selector, RETH_MAINNET));
 
-        _oracle.registerChainlinkOracle(
+        _oracle.registerOracle(
             RETH_MAINNET, IAggregatorV3Interface(RETH_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
     }
 
     function test_ProperAddOracle() external {
         vm.expectEmit(false, false, false, true);
-        emit ChainlinkRegistrationAdded(
-            RETH_MAINNET, RETH_CL_FEED_MAINNET, BaseOracleDenominations.Denomination.ETH, 18
-        );
+        emit OracleRegistrationAdded(RETH_MAINNET, RETH_CL_FEED_MAINNET, BaseOracleDenominations.Denomination.ETH, 18);
 
-        _oracle.registerChainlinkOracle(
+        _oracle.registerOracle(
             RETH_MAINNET, IAggregatorV3Interface(RETH_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
@@ -109,32 +105,32 @@ contract ChainlinkOracleTest is Test {
         vm.prank(PRANK_ADDRESS);
         vm.expectRevert(AccessDenied.selector);
 
-        _oracle.removeChainlinkRegistration(address(1));
+        _oracle.removeOracleRegistration(address(1));
     }
 
     function test_RevertZeroAddressToken() external {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "tokenToRemoveOracle"));
 
-        _oracle.removeChainlinkRegistration(address(0));
+        _oracle.removeOracleRegistration(address(0));
     }
 
     function test_RevertOracleNotSet() external {
         vm.expectRevert(Errors.MustBeSet.selector);
 
-        _oracle.removeChainlinkRegistration(RETH_MAINNET);
+        _oracle.removeOracleRegistration(RETH_MAINNET);
     }
 
     function test_ProperRemoveOracle() external {
-        _oracle.registerChainlinkOracle(
+        _oracle.registerOracle(
             RETH_MAINNET, IAggregatorV3Interface(RETH_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
         assertEq(address(_oracle.getChainlinkInfo(RETH_MAINNET).oracle), RETH_CL_FEED_MAINNET);
 
         vm.expectEmit(false, false, false, true);
-        emit ChainlinkRegistrationRemoved(RETH_MAINNET, RETH_CL_FEED_MAINNET);
+        emit OracleRegistrationRemoved(RETH_MAINNET, RETH_CL_FEED_MAINNET);
 
-        _oracle.removeChainlinkRegistration(RETH_MAINNET);
+        _oracle.removeOracleRegistration(RETH_MAINNET);
 
         assertEq(address(_oracle.getChainlinkInfo(RETH_MAINNET).oracle), address(0));
     }
@@ -147,7 +143,7 @@ contract ChainlinkOracleTest is Test {
     }
 
     function test_OracleRevertsMinPrice() external {
-        _oracle.registerChainlinkOracle(
+        _oracle.registerOracle(
             RETH_MAINNET,
             IAggregatorV3Interface(RETH_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
@@ -170,7 +166,7 @@ contract ChainlinkOracleTest is Test {
     }
 
     function test_OracleRevertsMaxPrice() external {
-        _oracle.registerChainlinkOracle(
+        _oracle.registerOracle(
             RETH_MAINNET,
             IAggregatorV3Interface(RETH_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
@@ -199,7 +195,7 @@ contract ChainlinkOracleTest is Test {
     }
 
     function test_ReturnsProperPriceCL() external {
-        _oracle.registerChainlinkOracle(
+        _oracle.registerOracle(
             RETH_MAINNET,
             IAggregatorV3Interface(RETH_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,

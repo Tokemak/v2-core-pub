@@ -40,7 +40,7 @@ contract AuraCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
         super.setUp(18_817_911);
 
         // Setup rETH Oracle
-        _chainlinkOracle.registerChainlinkOracle(
+        _chainlinkOracle.registerOracle(
             RETH_MAINNET,
             IAggregatorV3Interface(RETH_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
@@ -49,7 +49,7 @@ contract AuraCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
         _rootPriceOracle.registerMapping(RETH_MAINNET, _chainlinkOracle);
 
         // Setup BAL Oracle
-        _chainlinkOracle.registerChainlinkOracle(
+        _chainlinkOracle.registerOracle(
             BAL_MAINNET, IAggregatorV3Interface(BAL_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 24 hours
         );
         _rootPriceOracle.registerMapping(BAL_MAINNET, _chainlinkOracle);
@@ -71,7 +71,7 @@ contract AuraCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
         );
         vm.mockCall(auraAggregator, abi.encodeWithSelector(IOffchainAggregator.minAnswer.selector), abi.encode(0));
         vm.mockCall(auraAggregator, abi.encodeWithSelector(IOffchainAggregator.maxAnswer.selector), abi.encode(10e18));
-        _chainlinkOracle.registerChainlinkOracle(
+        _chainlinkOracle.registerOracle(
             AURA_MAINNET, IAggregatorV3Interface(_auraFeed), BaseOracleDenominations.Denomination.ETH, 24 hours
         );
         _rootPriceOracle.registerMapping(AURA_MAINNET, _chainlinkOracle);

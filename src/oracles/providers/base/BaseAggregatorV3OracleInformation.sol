@@ -28,6 +28,22 @@ abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
     /// @dev Mapping of token to OracleInfo struct.  Private to enforce zero address checks.
     mapping(address => OracleInfo) private tokenToOracle;
 
+    /**
+     * @notice Emitted when a token has an oracle address set.
+     * @param token Address of token.
+     * @param oracle Address of oracle contract.
+     * @param denomination Enum representing denomination.
+     * @param decimals Number of decimals precision that oracle returns.
+     */
+    event OracleRegistrationAdded(address token, address oracle, Denomination denomination, uint8 decimals);
+
+    /**
+     * @notice Emitted when token to oracle mapping deleted.
+     * @param token Address of token.
+     * @param oracle Address of oracle.
+     */
+    event OracleRegistrationRemoved(address token, address oracle);
+
     constructor(ISystemRegistry _systemRegistry) BaseOracleDenominations(_systemRegistry) { }
 
     /**
@@ -55,6 +71,8 @@ abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
             decimals: oracleDecimals,
             pricingTimeout: pricingTimeout
         });
+
+        emit OracleRegistrationAdded(token, address(oracle), denomination, oracleDecimals);
     }
 
     /**
@@ -67,6 +85,8 @@ abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
         oracleBeforeDeletion = address(tokenToOracle[token].oracle);
         if (oracleBeforeDeletion == address(0)) revert Errors.MustBeSet();
         delete tokenToOracle[token];
+
+        emit OracleRegistrationRemoved(token, oracleBeforeDeletion);
     }
 
     /**

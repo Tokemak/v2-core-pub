@@ -42,7 +42,7 @@ contract ConvexCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
         super.setUp(18_817_911);
 
         // Setup stETH Oracle
-        _chainlinkOracle.registerChainlinkOracle(
+        _chainlinkOracle.registerOracle(
             STETH_MAINNET,
             IAggregatorV3Interface(STETH_CL_FEED_MAINNET),
             BaseOracleDenominations.Denomination.ETH,
@@ -52,21 +52,21 @@ contract ConvexCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
 
         _chainlinkOracle
             // Setup CRV Oracle
-            .registerChainlinkOracle(
+            .registerOracle(
             CRV_MAINNET, IAggregatorV3Interface(CRV_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 24 hours
         );
         _rootPriceOracle.registerMapping(CRV_MAINNET, _chainlinkOracle);
         _incentivePricing.setRegisteredToken(CRV_MAINNET);
 
         // Setup CVX Oracle
-        _chainlinkOracle.registerChainlinkOracle(
+        _chainlinkOracle.registerOracle(
             CVX_MAINNET, IAggregatorV3Interface(CVX_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 24 hours
         );
         _rootPriceOracle.registerMapping(CVX_MAINNET, _chainlinkOracle);
         _incentivePricing.setRegisteredToken(CVX_MAINNET);
 
         // Setup LDO Oracle
-        _chainlinkOracle.registerChainlinkOracle(
+        _chainlinkOracle.registerOracle(
             LDO_MAINNET, IAggregatorV3Interface(LDO_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 24 hours
         );
         _rootPriceOracle.registerMapping(LDO_MAINNET, _chainlinkOracle);

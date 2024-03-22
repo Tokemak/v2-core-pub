@@ -10,6 +10,7 @@ testLimit: 1000000
 quiet: false
 codeSize: 0xffffff
 allowFFI: true
+coverage: false
 deployContracts:
     - ["0x1f", "LMPDebt"]
     - ["0x2f", "LMPDestinations"]

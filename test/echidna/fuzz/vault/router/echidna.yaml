@@ -5,11 +5,23 @@ cryticArgs:
         "--compile-libraries",
         "(LMPDebt,0x1f),(LMPDestinations,0x2f),(StructuredLinkedList,0x3f),(WithdrawalQueue,0x4f),(AutoPoolToken,0x5f),(AutoPoolFees,0x6f),(AutoPool4626,0x7f),(ERC2612,0x8f)",
     ]
-workers: 3
+workers: 10
 testLimit: 1000000
 quiet: false
 codeSize: 0xffffff
+coverage: false
+filterFunctions:
+    [
+        "LMPVaultRouterTest.pullTokenFromAsset(uint256,uint256,uint256)",
+        "LMPVaultRouterTest.queuePullTokenFromAsset(uint256,uint256,uint256)",
+    ]
+filterBlacklist: true
 allowFFI: true
+sender: [
+        "0xc36846871EA9e4fb0C6eDE4961Ff5531d41Da053",
+        "0xbf56cdF1477215Ac338D4768ECa0C78b38D7E694",
+        "0x73C689aa3121E38B15B0C9d46Fd9147214214c56",
+    ] ## _user1/2/3
 deployContracts:
     - ["0x1f", "LMPDebt"]
     - ["0x2f", "LMPDestinations"]

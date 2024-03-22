@@ -28,6 +28,7 @@ paths = [
     '''solver/test/Adapters.test.ts''',
     '''solver/test/payloads/adapters/(.*?)''',
     '''solver/README.md''',
+    '''test/echidna/fuzz/vault/BaseSetup.sol''',
 ]
 
 regexTarget = "match"

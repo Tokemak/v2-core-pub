@@ -54,9 +54,14 @@ contract BasePoolSetup {
     address[] internal _destinations;
     address[] internal _users;
 
-    address internal _user1 = address(111);
-    address internal _user2 = address(222);
-    address internal _user3 = address(333);
+    uint256 internal _user1PrivateKey = 0x99e68c2e298699c8ce941a8fd1086fe4e19beeaa92a5dbcd35d3f47bb26e2894;
+    address internal _user1 = address(0xc36846871EA9e4fb0C6eDE4961Ff5531d41Da053);
+
+    uint256 internal _user2PrivateKey = 0x04dde89c5bb25286e5b5d5bee9ee1a136544b67d63b67d2fa181fa4c936442ff;
+    address internal _user2 = address(0xbf56cdF1477215Ac338D4768ECa0C78b38D7E694);
+
+    uint256 internal _user3PrivateKey = 0x986937dcc86261d55711604ed8600925a1d45224ad089c6cf3c3ab7ea1a3f362;
+    address internal _user3 = address(0x73C689aa3121E38B15B0C9d46Fd9147214214c56);
 
     constructor() {
         _users = new address[](3);

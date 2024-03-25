@@ -138,9 +138,10 @@ contract CustomSetOracle is SystemComponent, SecurityBase, IPriceOracle {
                 revert TimestampOlderThanCurrent(token, data.timestamp, timestamp);
             }
 
+            // Can't set a price if its queriedTimestamp + maxAge is before the current block
             // Check to prevent writing stale prices if a tx is delayed in the mempool.
-            if (data.timestamp + data.maxAge >= uint32(block.timestamp)) {
-                revert StalePriceDataError(data.timestamp, data.maxAge, uint32(block.timestamp));
+            if (timestamp + data.maxAge <= uint32(block.timestamp)) {
+                revert StalePriceDataError(timestamp, data.maxAge, uint32(block.timestamp));
             }
 
             // Save the data

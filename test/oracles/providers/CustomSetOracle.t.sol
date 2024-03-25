@@ -512,13 +512,11 @@ contract CustomSetOracleTest is Test {
 
         _oracle.registerTokens(tokens, ages);
 
-        timestamps[0] = block.timestamp - 100;
+        timestamps[0] = block.timestamp - 2000;
 
-        // Setting initial price data
-        _oracle.setPrices(tokens, prices, timestamps);
-
-        // Going back in time
-        vm.warp(baseTimestamp);
+        // queriedTimestamp is 2000 seconds ago
+        // maxAge is 1000 seconds
+        // queriedTimestamp + maxAge is 1000 in the PAST
         vm.expectRevert(
             abi.encodeWithSelector(CustomSetOracle.StalePriceDataError.selector, timestamps[0], maxAge, baseTimestamp)
         );

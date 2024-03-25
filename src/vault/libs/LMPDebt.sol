@@ -840,6 +840,18 @@ library LMPDebt {
         }
     }
 
+    /**
+     * @notice A helper function to get estimates of what would happen on a withdraw or redeem.
+     * @dev Reverts all changing state.
+     * @param previewWithdraw Bool denoting whether to preview a redeem or withdrawal.
+     * @param assets Assets to be withdrawn or redeemed.
+     * @param applicableTotalAssets Operation dependent assets in the vault.
+     * @param functionCallEncoded Abi encoded function signature for recursive call.
+     * @param assetBreakdown Breakdown of vault assets from LMPVault storage.
+     * @param withdrawalQueue Destination vault withdrawal queue from LMPVault storage.
+     * @param destinationInfo Mapping of information for destinations.
+     * @return Either shares burned or assets returned based on what operation is previewed.
+     */
     function preview(
         bool previewWithdraw,
         uint256 assets,
@@ -850,7 +862,8 @@ library LMPDebt {
         mapping(address => LMPDebt.DestinationInfo) storage destinationInfo
     ) external returns (uint256) {
         if (msg.sender != address(this)) {
-            // Perform a recursive call to this function. The intention is to reach the "else" block.
+            // Perform a recursive call the function in `funcCallEncoded`.  This will result in a call back to
+            // the AutoPool, and then this function. The intention is to reach the "else" block in this function.
             // solhint-disable avoid-low-level-calls
             // slither-disable-next-line missing-zero-check,low-level-calls
             (bool success, bytes memory returnData) = address(this).call(functionCallEncoded);

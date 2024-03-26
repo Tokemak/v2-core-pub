@@ -11,7 +11,11 @@ import { IERC20PermitAllowed } from "src/interfaces/utils/IERC20PermitAllowed.so
 /// @title Self Permit
 /// @notice Functionality to call permit on any EIP-2612-compliant token for use in the route
 /// @dev These functions are expected to be embedded in multicalls to allow EOAs to approve a
-//  contract and call a function that requires an approval in a single transaction.
+///      contract and call a function that requires an approval in a single transaction.
+///      It implements a "trustless" permit scheme where the contract will attempt to call
+///      permit() first and if it fails, it will check the allowance and revert if it's insufficient.
+///      This is to prevent frontrunning attacks where the allowance is set to 0 after the permit call
+///      by the third party. Ref: https://www.trust-security.xyz/post/permission-denied
 abstract contract SelfPermit is ISelfPermit {
     /// @inheritdoc ISelfPermit
     function selfPermit(
@@ -22,44 +26,15 @@ abstract contract SelfPermit is ISelfPermit {
         bytes32 r,
         bytes32 s
     ) public payable override {
-        IERC20Permit(token).permit(msg.sender, address(this), value, deadline, v, r, s);
-    }
-
-    /// @inheritdoc ISelfPermit
-    function selfPermitIfNecessary(
-        address token,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external payable override {
-        if (IERC20(token).allowance(msg.sender, address(this)) < value) selfPermit(token, value, deadline, v, r, s);
-    }
-
-    /// @inheritdoc ISelfPermit
-    function selfPermitAllowed(
-        address token,
-        uint256 nonce,
-        uint256 expiry,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) public payable override {
-        IERC20PermitAllowed(token).permit(msg.sender, address(this), nonce, expiry, true, v, r, s);
-    }
-
-    /// @inheritdoc ISelfPermit
-    function selfPermitAllowedIfNecessary(
-        address token,
-        uint256 nonce,
-        uint256 expiry,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external payable override {
-        if (IERC20(token).allowance(msg.sender, address(this)) < type(uint256).max) {
-            selfPermitAllowed(token, nonce, expiry, v, r, s);
+        // Run permit() without allowance check to advance nonce if possible
+        try IERC20Permit(token).permit(msg.sender, address(this), value, deadline, v, r, s) {
+            return;
+        } catch {
+            // Permit potentially got frontrun. Continue anyways if allowance is sufficient
+            if (IERC20(token).allowance(msg.sender, address(this)) >= value) {
+                return;
+            }
         }
+        revert PermitFailed();
     }
 }

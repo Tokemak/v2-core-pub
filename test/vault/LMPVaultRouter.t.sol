@@ -2,10 +2,12 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity >=0.8.7;
 
-import { IERC20, ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC4626 } from "openzeppelin-contracts/interfaces/IERC4626.sol";
+import { IERC20, ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
+import { IERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { ISelfPermit } from "src/interfaces/utils/ISelfPermit.sol";
 
 import { AccessController } from "src/security/AccessController.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
@@ -123,6 +125,77 @@ contract LMPVaultRouterTest is BaseTest {
         vm.stopPrank();
 
         assertEq(baseAsset.balanceOf(receiver), amount);
+    }
+
+    function test_CanRedeemThroughRouterUsingPermitWhenFrontRun() public {
+        uint256 signerKey = 1;
+        address user = vm.addr(signerKey);
+        vm.label(user, "user");
+        address frontRunner = vm.addr(2);
+        vm.label(frontRunner, "frontRunner");
+        uint256 amount = 40e18;
+        address receiver = address(3);
+
+        // Mints to the test contract, shares to go User
+        deal(address(baseAsset), address(this), amount);
+        baseAsset.approve(address(lmpVaultRouter), amount);
+        uint256 sharesReceived = lmpVaultRouter.deposit(lmpVault, user, amount, 0);
+        assertEq(sharesReceived, lmpVault.balanceOf(user));
+
+        // Setup for the Spender to spend the Users tokens
+        uint256 deadline = block.timestamp + 100;
+        (uint8 v, bytes32 r, bytes32 s) = ERC2612.getPermitSignature(
+            lmpVault.DOMAIN_SEPARATOR(), signerKey, user, address(lmpVaultRouter), amount, 0, deadline
+        );
+
+        // Front run the user
+        vm.prank(frontRunner);
+        IERC20Permit(address(lmpVault)).permit(user, address(lmpVaultRouter), amount, deadline, v, r, s);
+
+        vm.startPrank(user);
+        lmpVaultRouter.selfPermit(address(lmpVault), amount, deadline, v, r, s);
+        lmpVaultRouter.redeem(lmpVault, receiver, amount, 0, false);
+        vm.stopPrank();
+
+        assertEq(baseAsset.balanceOf(receiver), amount);
+    }
+
+    function test_CannotRedeemThroughRouterUsingPermitWhenAllowanceExceeded() public {
+        uint256 signerKey = 1;
+        address user = vm.addr(signerKey);
+        vm.label(user, "user");
+        address frontRunner = vm.addr(2);
+        vm.label(frontRunner, "frontRunner");
+        uint256 amount = 40e18;
+        address receiver = address(3);
+
+        // Mints to the test contract, shares to go User
+        deal(address(baseAsset), address(this), amount);
+        baseAsset.approve(address(lmpVaultRouter), amount);
+        uint256 sharesReceived = lmpVaultRouter.deposit(lmpVault, user, amount, 0);
+        assertEq(sharesReceived, lmpVault.balanceOf(user));
+
+        // Setup for the Spender to spend the Users tokens
+        uint256 deadline = block.timestamp + 100;
+        (uint8 v, bytes32 r, bytes32 s) = ERC2612.getPermitSignature(
+            lmpVault.DOMAIN_SEPARATOR(), signerKey, user, address(lmpVaultRouter), amount, 0, deadline
+        );
+
+        // Front run the user
+        vm.prank(frontRunner);
+        IERC20Permit(address(lmpVault)).permit(user, address(lmpVaultRouter), amount, deadline, v, r, s);
+
+        // And then spend the some user tokens (reduce allowance)
+        IERC20(address(lmpVault)).approve(address(lmpVaultRouter), amount / 2);
+
+        vm.startPrank(user);
+        lmpVaultRouter.selfPermit(address(lmpVault), amount, deadline, v, r, s);
+        lmpVaultRouter.redeem(lmpVault, receiver, amount, 0, false);
+
+        // Should revert because allowance is insufficient
+        vm.expectRevert(abi.encodeWithSelector(ISelfPermit.PermitFailed.selector));
+        lmpVaultRouter.selfPermit(address(lmpVault), amount, deadline, v, r, s);
+        vm.stopPrank();
     }
 
     function test_CanRedeemThroughRouterUsingPermitForApprovalViaMulticall() public {

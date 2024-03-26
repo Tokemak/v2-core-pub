@@ -31,10 +31,9 @@ contract ChainlinkOracle is BaseAggregatorV3OracleInformation {
 
         IOffchainAggregator aggregator = IOffchainAggregator(oracleInfo.oracle.aggregator());
 
-        if (
-            roundId == 0 || price == (int256(aggregator.maxAnswer()))
-                || price == (int256(aggregator.minAnswer()))
-        ) revert InvalidDataReturned();
+        if (roundId == 0 || price == (int256(aggregator.maxAnswer())) || price == (int256(aggregator.minAnswer()))) {
+            revert InvalidDataReturned();
+        }
     }
 
     /**
@@ -49,5 +48,4 @@ contract ChainlinkOracle is BaseAggregatorV3OracleInformation {
         _validateOffchainAggregator(oracleInfo, roundId, price);
         priceInEth = BaseAggregatorV3OracleInformation._getPriceInEth(token, oracleInfo, price, updatedAt);
     }
-
 }

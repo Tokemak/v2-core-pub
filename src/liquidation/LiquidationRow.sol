@@ -177,24 +177,18 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
         }
     }
 
-    /**
-     * @notice Conducts the liquidation process for a specific token across a list of vaults,
-     * performing the necessary balance adjustments, initiating the swap process via the asyncSwapper,
-     * taking a fee from the received amount, and queues the remaining swapped tokens in the MainRewarder associated
-     * with
-     * each vault.
-     * @param fromToken The token that needs to be liquidated
-     * @param asyncSwapper The address of the async swapper contract
-     * @param vaultsToLiquidate The list of vaults that need to be liquidated
-     * @param params Parameters for the async swap
-     */
-    function liquidateVaultsForToken(
-        address fromToken,
-        address asyncSwapper,
-        IDestinationVault[] memory vaultsToLiquidate,
-        SwapParams memory params
-    ) external nonReentrant hasRole(Roles.REWARD_LIQUIDATION_EXECUTOR) {
-        _liquidateVaultsForToken(fromToken, asyncSwapper, vaultsToLiquidate, params);
+    /// @inheritdoc ILiquidationRow
+    function liquidateVaultsForToken(LiquidationParams memory liquidationParams)
+        external
+        nonReentrant
+        hasRole(Roles.REWARD_LIQUIDATION_EXECUTOR)
+    {
+        _liquidateVaultsForToken(
+            liquidationParams.fromToken,
+            liquidationParams.asyncSwapper,
+            liquidationParams.vaultsToLiquidate,
+            liquidationParams.param
+        );
     }
 
     /**

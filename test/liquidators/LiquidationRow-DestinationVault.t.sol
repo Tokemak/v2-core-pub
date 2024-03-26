@@ -10,7 +10,7 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
-import { LiquidationRow } from "src/liquidation/LiquidationRow.sol";
+import { LiquidationRow, ILiquidationRow } from "src/liquidation/LiquidationRow.sol";
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 import { ILMPVaultRegistry, LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
 import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
@@ -218,7 +218,9 @@ contract CurveIntegrationTest is LiquidationRowTest {
         );
 
         // @comment Liquidate the rewards
-        liquidationRow.liquidateVaultsForToken(CVX_MAINNET, address(swapper), vaults, swapParams);
+        liquidationRow.liquidateVaultsForToken(
+            ILiquidationRow.LiquidationParams(CVX_MAINNET, address(swapper), vaults, swapParams)
+        );
     }
 
     function test_SupportCurveStethEthOriginal() public {
@@ -428,7 +430,9 @@ contract BalancerAuraDestinationVaultIntegrationTest is LiquidationRowTest {
             BAL_MAINNET, poolInfo.sellAmount, WETH_MAINNET, poolInfo.buyAmount, poolInfo.swapperData, new bytes(0)
         );
 
-        liquidationRow.liquidateVaultsForToken(BAL_MAINNET, address(swapper), vaults, swapParams);
+        liquidationRow.liquidateVaultsForToken(
+            ILiquidationRow.LiquidationParams(BAL_MAINNET, address(swapper), vaults, swapParams)
+        );
     }
 
     function test_SupportBalWstEthweth() public {

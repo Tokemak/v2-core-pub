@@ -94,23 +94,19 @@ interface ILiquidationRow {
      */
     function getVaultsForToken(address tokenAddress) external view returns (address[] memory);
 
-    /*
-    @notice Liquidate the specified vaults' balances for a specific token
-    @param fromToken The address of the token to be liquidated
-    @param asyncSwapper The address of the async swapper
-    @param vaultsToLiquidate An array of vault addresses to liquidate
-    @param params Swap parameters for the async swapper
-    */
-    function liquidateVaultsForToken(
-        address fromToken,
-        address asyncSwapper,
-        IDestinationVault[] memory vaultsToLiquidate,
-        SwapParams memory params
-    ) external;
+    /**
+     * @notice Liquidate the specified vaults' balances for a specific token
+     * @param liquidationParams A LiquidationParams struct containing the necessary parameters for liquidation
+     */
+    function liquidateVaultsForToken(LiquidationParams memory liquidationParams) external;
 
-    /*
-    @notice Liquidate the specified vaults' balances for given tokens
-    @param liquidationParams Liquidation parameters for the given tokens
-    */
+    /**
+     * @notice Conducts the liquidation process for a specific token across a list of vaults,
+     * performing the necessary balance adjustments, initiating the swap process via the asyncSwapper,
+     * taking a fee from the received amount, and queues the remaining swapped tokens in the MainRewarder associated
+     * with each vault.
+     * @param liquidationParams An array of LiquidationParams structs containing the necessary parameters for
+     * liquidation
+     */
     function liquidateVaultsForTokens(LiquidationParams[] memory liquidationParams) external;
 }

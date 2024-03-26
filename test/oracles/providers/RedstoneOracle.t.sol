@@ -93,7 +93,7 @@ contract RedstoneOracleTest is Test {
             WEETH_MAINNET, IAggregatorV3Interface(WEETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
-        RedstoneOracle.OracleInfo memory clInfo = _oracle.getRedstoneInfo(WEETH_MAINNET);
+        RedstoneOracle.OracleInfo memory clInfo = _oracle.getOracleInfo(WEETH_MAINNET);
         assertEq(address(clInfo.oracle), WEETH_RS_FEED_MAINNET);
         assertEq(uint8(clInfo.denomination), uint8(BaseOracleDenominations.Denomination.ETH));
         assertEq(clInfo.decimals, IAggregatorV3Interface(WEETH_RS_FEED_MAINNET).decimals());
@@ -125,14 +125,14 @@ contract RedstoneOracleTest is Test {
             WEETH_MAINNET, IAggregatorV3Interface(WEETH_RS_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
-        assertEq(address(_oracle.getRedstoneInfo(WEETH_MAINNET).oracle), WEETH_RS_FEED_MAINNET);
+        assertEq(address(_oracle.getOracleInfo(WEETH_MAINNET).oracle), WEETH_RS_FEED_MAINNET);
 
         vm.expectEmit(false, false, false, true);
         emit OracleRegistrationRemoved(WEETH_MAINNET, WEETH_RS_FEED_MAINNET);
 
         _oracle.removeOracleRegistration(WEETH_MAINNET);
 
-        assertEq(address(_oracle.getRedstoneInfo(WEETH_MAINNET).oracle), address(0));
+        assertEq(address(_oracle.getOracleInfo(WEETH_MAINNET).oracle), address(0));
     }
 
     // Test `getPriceInEth()`

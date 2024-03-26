@@ -19,22 +19,12 @@ contract RedstoneOracle is BaseAggregatorV3OracleInformation {
     constructor(ISystemRegistry _systemRegistry) BaseAggregatorV3OracleInformation(_systemRegistry) { }
 
     /**
-     * @notice Returns `RedStoneInfo` struct with information on `address token`.
-     * @dev Will return empty structs for tokens that are not registered.
-     * @param token Address of token to get info for.
-     * @return RedstoneInfo struct with pricing information and oracle on token.
-     */
-    function getRedstoneInfo(address token) external view returns (OracleInfo memory) {
-        return BaseAggregatorV3OracleInformation.getOracleInfo(token);
-    }
-
-    /**
      * @notice Fetches the price of a token in ETH denomination.
      * @param token Address of token.
      * @return priceInEth Price of token in ETH.
      */
     function getPriceInEth(address token) external returns (uint256 priceInEth) {
-        OracleInfo memory oracleInfo = _getOracleInfo(token);
+        OracleInfo memory oracleInfo = BaseAggregatorV3OracleInformation._getOracleInfo(token);
         // slither-disable-next-line unused-return
         (, int256 price,, uint256 updatedAt,) = oracleInfo.oracle.latestRoundData();
         priceInEth = BaseAggregatorV3OracleInformation._getPriceInEth(token, oracleInfo, price, updatedAt);

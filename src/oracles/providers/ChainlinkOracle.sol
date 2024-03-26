@@ -28,13 +28,12 @@ contract ChainlinkOracle is BaseAggregatorV3OracleInformation {
      */
     function _validateOffchainAggregator(OracleInfo memory oracleInfo, uint80 roundId, int256 price) internal view {
         if (price <= 0) revert InvalidDataReturned(); // Check before conversion from int to uint.
-        uint256 priceUint = uint256(price);
 
         IOffchainAggregator aggregator = IOffchainAggregator(oracleInfo.oracle.aggregator());
 
         if (
-            roundId == 0 || priceUint == uint256(int256(aggregator.maxAnswer()))
-                || priceUint == uint256(int256(aggregator.minAnswer()))
+            roundId == 0 || price == (int256(aggregator.maxAnswer()))
+                || price == (int256(aggregator.minAnswer()))
         ) revert InvalidDataReturned();
     }
 
@@ -51,13 +50,4 @@ contract ChainlinkOracle is BaseAggregatorV3OracleInformation {
         priceInEth = BaseAggregatorV3OracleInformation._getPriceInEth(token, oracleInfo, price, updatedAt);
     }
 
-    /**
-     * @notice Returns `OracleInfo` struct with information on `address token`.
-     * @dev Will return empty structs for tokens that are not registered.
-     * @param token Address of token to get info for.
-     * @return OracleInfo struct with pricing information and oracle on token.
-     */
-    function getChainlinkInfo(address token) external view returns (OracleInfo memory) {
-        return BaseAggregatorV3OracleInformation.getOracleInfo(token);
-    }
 }

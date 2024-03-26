@@ -95,7 +95,7 @@ abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
      * @param token Address of token to get info for.
      * @return OracleInfo struct with information on `address token`.
      */
-    function getOracleInfo(address token) public view returns (OracleInfo memory) {
+    function getOracleInfo(address token) external view returns (OracleInfo memory) {
         return tokenToOracle[token];
     }
 
@@ -106,9 +106,6 @@ abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
         int256 price,
         uint256 updatedAt
     ) internal returns (uint256) {
-        // Partial return values are intentionally ignored. This call provides the most efficient way to get the data.
-        // slither-disable-next-line unused-return
-
         uint256 timestamp = block.timestamp;
         uint256 oracleStoredTimeout = uint256(oracleInfo.pricingTimeout);
         uint256 tokenPricingTimeout = oracleStoredTimeout == 0 ? DEFAULT_PRICING_TIMEOUT : oracleStoredTimeout;
@@ -120,7 +117,7 @@ abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
             revert InvalidDataReturned();
         }
         uint256 decimals = oracleInfo.decimals;
-        // Redstone feeds have certain decimal precisions, does not neccessarily conform to underlying asset.
+        // Oracle feeds have certain decimal precisions, does not necessarily conform to underlying asset.
         uint256 normalizedPrice = decimals <= 18 ? priceUint * 10 ** (18 - decimals) : priceUint / 10 ** (decimals - 18);
 
         return _denominationPricing(oracleInfo.denomination, normalizedPrice, token);

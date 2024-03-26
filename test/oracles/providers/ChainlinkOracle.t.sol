@@ -93,7 +93,7 @@ contract ChainlinkOracleTest is Test {
             RETH_MAINNET, IAggregatorV3Interface(RETH_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
-        ChainlinkOracle.OracleInfo memory clInfo = _oracle.getChainlinkInfo(RETH_MAINNET);
+        ChainlinkOracle.OracleInfo memory clInfo = _oracle.getOracleInfo(RETH_MAINNET);
         assertEq(address(clInfo.oracle), RETH_CL_FEED_MAINNET);
         assertEq(uint8(clInfo.denomination), uint8(BaseOracleDenominations.Denomination.ETH));
         assertEq(clInfo.decimals, IAggregatorV3Interface(RETH_CL_FEED_MAINNET).decimals());
@@ -125,14 +125,14 @@ contract ChainlinkOracleTest is Test {
             RETH_MAINNET, IAggregatorV3Interface(RETH_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.ETH, 0
         );
 
-        assertEq(address(_oracle.getChainlinkInfo(RETH_MAINNET).oracle), RETH_CL_FEED_MAINNET);
+        assertEq(address(_oracle.getOracleInfo(RETH_MAINNET).oracle), RETH_CL_FEED_MAINNET);
 
         vm.expectEmit(false, false, false, true);
         emit OracleRegistrationRemoved(RETH_MAINNET, RETH_CL_FEED_MAINNET);
 
         _oracle.removeOracleRegistration(RETH_MAINNET);
 
-        assertEq(address(_oracle.getChainlinkInfo(RETH_MAINNET).oracle), address(0));
+        assertEq(address(_oracle.getOracleInfo(RETH_MAINNET).oracle), address(0));
     }
 
     // Test `getPriceInEth()`

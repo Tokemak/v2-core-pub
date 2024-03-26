@@ -98,15 +98,8 @@ contract CurveConvexDestinationVault is DestinationVault {
         address[] memory additionalTrackedTokens_,
         bytes memory params_
     ) public virtual override {
-        // Base class has the initializer() modifier to prevent double-setup
-        // If you don't call the base initialize, make sure you protect this call
-        super.initialize(baseAsset_, underlyer_, rewarder_, incentiveCalculator_, additionalTrackedTokens_, params_);
-
-        // We must configure a the curve resolver to setup the vault
-        ICurveResolver curveResolver = systemRegistry.curveResolver();
-        Errors.verifyNotZero(address(curveResolver), "curveResolver");
-
         // Decode the init params, validate, and save off
+        // Run before the base initialize as _validateCalculator() relies on them being set
         InitParams memory initParams = abi.decode(params_, (InitParams));
         Errors.verifyNotZero(initParams.curvePool, "curvePool");
         Errors.verifyNotZero(initParams.convexStaking, "convexStaking");
@@ -115,6 +108,14 @@ contract CurveConvexDestinationVault is DestinationVault {
         convexStaking = initParams.convexStaking;
         convexPoolId = initParams.convexPoolId;
         baseAssetBurnTokenIndex = initParams.baseAssetBurnTokenIndex;
+
+        // Base class has the initializer() modifier to prevent double-setup
+        // If you don't call the base initialize, make sure you protect this call
+        super.initialize(baseAsset_, underlyer_, rewarder_, incentiveCalculator_, additionalTrackedTokens_, params_);
+
+        // We must configure a the curve resolver to setup the vault
+        ICurveResolver curveResolver = systemRegistry.curveResolver();
+        Errors.verifyNotZero(address(curveResolver), "curveResolver");
 
         // Setup pool tokens as tracked. If we want to handle meta pools and their tokens
         // we will pass them in as additional, not currently a use case
@@ -234,8 +235,14 @@ contract CurveConvexDestinationVault is DestinationVault {
     }
 
     function _validateCalculator(address incentiveCalculator) internal view override {
-        if (IncentiveCalculatorBase(incentiveCalculator).resolveLpToken() != _underlying) {
-            revert InvalidIncentiveCalculator();
+        address calcLp = IncentiveCalculatorBase(incentiveCalculator).lpToken();
+        address calcPool = IncentiveCalculatorBase(incentiveCalculator).pool();
+
+        if (calcLp != _underlying) {
+            revert InvalidIncentiveCalculator(calcLp, _underlying, "lp");
+        }
+        if (calcPool != curvePool) {
+            revert InvalidIncentiveCalculator(calcPool, curvePool, "pool");
         }
     }
 }

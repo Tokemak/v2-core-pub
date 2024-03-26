@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
-/* solhint-disable func-name-mixedcase,contract-name-camelcase */
 pragma solidity >=0.8.7;
+
+/* solhint-disable func-name-mixedcase,contract-name-camelcase,max-states-count */
 
 import { Test } from "forge-std/Test.sol";
 
@@ -19,6 +20,7 @@ import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 import { LDO_MAINNET, CNC_MAINNET } from "test/utils/Addresses.sol";
+import { Errors } from "src/utils/Errors.sol";
 
 contract ConvexCalculatorTest is Test {
     address internal underlyerStats;
@@ -34,6 +36,9 @@ contract ConvexCalculatorTest is Test {
     address internal platformRewarder;
     address internal extraRewarderRewardToken;
     address internal booster;
+    address internal lpToken;
+    address internal pool;
+    address internal weth;
 
     ConvexCalculator internal calculator;
 
@@ -64,6 +69,9 @@ contract ConvexCalculatorTest is Test {
         platformRewarder = vm.addr(104);
         extraRewarderRewardToken = vm.addr(105);
         booster = vm.addr(106);
+        lpToken = vm.addr(107);
+        pool = vm.addr(108);
+        weth = vm.addr(109);
 
         vm.label(underlyerStats, "underlyerStats");
         vm.label(pricingStats, "pricingStats");
@@ -76,6 +84,9 @@ contract ConvexCalculatorTest is Test {
         vm.label(platformRewarder, "platformRewarder");
         vm.label(extraRewarderRewardToken, "extraRewarderRewardToken");
         vm.label(booster, "booster");
+        vm.label(lpToken, "lpToken");
+        vm.label(pool, "pool");
+        vm.label(weth, "weth");
 
         // mock system registry
         vm.mockCall(
@@ -90,11 +101,14 @@ contract ConvexCalculatorTest is Test {
         vm.mockCall(
             systemRegistry, abi.encodeWithSelector(ISystemRegistry.incentivePricing.selector), abi.encode(pricingStats)
         );
+        vm.mockCall(systemRegistry, abi.encodeWithSelector(ISystemRegistry.weth.selector), abi.encode(weth));
 
         // mock all prices to be 1
         vm.mockCall(rootPriceOracle, abi.encodeWithSelector(IRootPriceOracle.getPriceInEth.selector), abi.encode(1));
         vm.mockCall(pricingStats, abi.encodeWithSelector(IIncentivesPricingStats.getPrice.selector), abi.encode(1, 1));
-
+        vm.mockCall(
+            rootPriceOracle, abi.encodeWithSelector(IRootPriceOracle.getRangePricesLP.selector), abi.encode(1, 1, true)
+        );
         // set platform reward token (CVX) total supply
         vm.mockCall(platformRewarder, abi.encodeWithSelector(IERC20.totalSupply.selector), abi.encode(TOTAL_SUPPLY));
 
@@ -114,7 +128,7 @@ contract ConvexCalculatorTest is Test {
 
         vm.mockCall(underlyerStats, abi.encodeWithSelector(IDexLSTStats.current.selector), abi.encode(data));
 
-        mockAsset(mainRewarder, vm.addr(5847), 363);
+        mockAsset(mainRewarder, lpToken, 363);
 
         calculator = new ConvexCalculator(ISystemRegistry(systemRegistry), booster);
 
@@ -122,7 +136,9 @@ contract ConvexCalculatorTest is Test {
         IncentiveCalculatorBase.InitData memory initData = IncentiveCalculatorBase.InitData({
             rewarder: mainRewarder,
             underlyerStats: underlyerStats,
-            platformToken: platformRewarder
+            platformToken: platformRewarder,
+            lpToken: lpToken,
+            pool: pool
         });
         bytes memory encodedInitData = abi.encode(initData);
 
@@ -374,6 +390,17 @@ contract Snapshot is ConvexCalculatorTest {
         assertTrue(calculator.safeTotalSupplies(mainRewarder) == 0);
     }
 
+    function test_RevertIf_PriceIsntSafe() public {
+        vm.mockCall(
+            rootPriceOracle, abi.encodeWithSelector(IRootPriceOracle.getRangePricesLP.selector), abi.encode(1, 1, false)
+        );
+
+        mockSimpleMainRewarder();
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.UnsafePrice.selector, lpToken, 1, 1));
+        calculator.snapshot();
+    }
+
     function test_FinalizesSnapshotProcess() public {
         mockSimpleMainRewarder();
 
@@ -402,7 +429,24 @@ contract Current is ConvexCalculatorTest {
         vm.warp(block.timestamp + 5 hours);
 
         calculator.snapshot();
+    }
 
+    function test_RevertIf_PriceIsntSafe() public {
+        mockSimpleMainRewarder();
+
+        // start the snapshot process
+        calculator.snapshot();
+
+        // move forward in time
+        vm.warp(block.timestamp + 5 hours);
+
+        calculator.snapshot();
+
+        vm.mockCall(
+            rootPriceOracle, abi.encodeWithSelector(IRootPriceOracle.getRangePricesLP.selector), abi.encode(1, 1, false)
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.UnsafePrice.selector, lpToken, 1, 1));
         calculator.current();
     }
 
@@ -634,5 +678,26 @@ contract ResolveRewardToken is ConvexCalculatorTest {
 
         // Unwrap the reward token
         assertEq(rewardToken, address(0));
+    }
+}
+
+contract Initialize is ConvexCalculatorTest {
+    function test_RevertIf_RewarderLpTokenDoesntMatchProvided() public {
+        address invalidLpToken = makeAddr("invalidLpToken");
+
+        ConvexCalculator calc = new ConvexCalculator(ISystemRegistry(systemRegistry), booster);
+
+        bytes32[] memory dependantAprs = new bytes32[](0);
+        IncentiveCalculatorBase.InitData memory initData = IncentiveCalculatorBase.InitData({
+            rewarder: mainRewarder,
+            underlyerStats: underlyerStats,
+            platformToken: platformRewarder,
+            lpToken: invalidLpToken,
+            pool: pool
+        });
+        bytes memory encodedInitData = abi.encode(initData);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "convexResolvedLpToken"));
+        calc.initialize(dependantAprs, encodedInitData);
     }
 }

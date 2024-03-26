@@ -177,6 +177,11 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @return price Value of 1 unit of the underlying LP token in terms of the base asset
     function getValidatedSpotPrice() external returns (uint256 price);
 
+    /// @notice Gets the safe price of the underlying LP token
+    /// @dev Price validated to be inside our tolerance against spot price. Will revert if outside.
+    /// @return price Value of 1 unit of the underlying LP token in terms of the base asset
+    function getValidatedSafePrice() external returns (uint256 price);
+
     /// @notice Get the lowest price we can get for the LP token
     /// @dev This price can be attacked is not validate to be in any range
     /// @return price Value of 1 unit of the underlying LP token in terms of the base asset

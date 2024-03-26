@@ -6,6 +6,7 @@ pragma solidity >=0.8.7;
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ConvexCalculator } from "src/stats/calculators/ConvexCalculator.sol";
+import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IBaseRewardPool } from "src/interfaces/external/convex/IBaseRewardPool.sol";
 import { BaseOracleDenominations } from "src/oracles/providers/base/BaseOracleDenominations.sol";
 import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
@@ -82,8 +83,15 @@ contract ConvexCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
         address curvePool = 0xDC24316b9AE028F1497c275EB9192a3Ea0f67022;
         curveLpToken = 0x06325440D014e39736583c165C2963BA99fAf14E;
 
+        vm.mockCall(
+            address(_rootPriceOracle),
+            abi.encodeWithSelector(
+                IRootPriceOracle.getRangePricesLP.selector, curveLpToken, curvePool, _systemRegistry.weth()
+            ),
+            abi.encode(1e18, 1e18, true)
+        );
+
         _curveV1Oracle.registerPool(curvePool, curveLpToken, true);
-        _rootPriceOracle.registerMapping(curveLpToken, _curveV1Oracle);
 
         // Using fake base Curve stats
         _curveStats = IDexLSTStats(vm.addr(1012));
@@ -109,7 +117,9 @@ contract ConvexCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
         IncentiveCalculatorBase.InitData memory initData = IncentiveCalculatorBase.InitData({
             rewarder: convexRewarder,
             underlyerStats: address(_curveStats),
-            platformToken: CVX_MAINNET
+            platformToken: CVX_MAINNET,
+            lpToken: curveLpToken,
+            pool: curvePool
         });
         bytes memory encodedInitData = abi.encode(initData);
 
@@ -150,7 +160,7 @@ contract ConvexCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
     }
 
     function test_ResolveLpTokenIsActualPoolToken() public {
-        address resolvedToken = _calculator.resolveLpToken();
+        address resolvedToken = _calculator.lpToken();
 
         assertEq(resolvedToken, curveLpToken, "curveLpToken");
         assertFalse(resolvedToken == IBaseRewardPool(convexRewarder).stakingToken(), "stakingToken");

@@ -24,6 +24,7 @@ import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { SwapRouter } from "src/swapper/SwapRouter.sol";
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
+import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { BalancerV2Swap } from "src/swapper/adapters/BalancerV2Swap.sol";
 import {
@@ -136,6 +137,8 @@ contract BalancerAuraDestinationVaultTests is Test {
         bytes memory initParamBytes = abi.encode(initParams);
         _testIncentiveCalculator = new TestIncentiveCalculator();
         _testIncentiveCalculator.setLpToken(address(_underlyer));
+        _testIncentiveCalculator.setPoolAddress(address(_underlyer));
+
         address payable newVault = payable(
             _destinationVaultFactory.create(
                 "template",
@@ -156,8 +159,6 @@ contract BalancerAuraDestinationVaultTests is Test {
 
         _mockSystemBound(address(_systemRegistry), address(_rootPriceOracle));
         _systemRegistry.setRootPriceOracle(address(_rootPriceOracle));
-        _mockRootPrice(address(_asset), 1 ether);
-        _mockRootPrice(address(_underlyer), 2 ether);
 
         // Set lmp vault registry for permissions
         _lmpVaultRegistry = ILMPVaultRegistry(vm.addr(237_894));
@@ -640,16 +641,72 @@ contract BalancerAuraDestinationVaultTests is Test {
         assertEq(IDestinationVault(_destVault).getPool(), WSETH_WETH_BAL_POOL);
     }
 
-    function _mockSystemBound(address registry, address addr) internal {
-        vm.mockCall(addr, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(registry));
+    function test_validateCalculator_EnsuresMatchingUnderlyingWithCalculator() external {
+        BalancerAuraDestinationVault.InitParams memory initParams = BalancerAuraDestinationVault.InitParams({
+            balancerPool: WSETH_WETH_BAL_POOL,
+            auraStaking: AURA_STAKING,
+            auraBooster: AURA_BOOSTER,
+            auraPoolId: 115
+        });
+        bytes memory initParamBytes = abi.encode(initParams);
+        _testIncentiveCalculator = new TestIncentiveCalculator();
+        _testIncentiveCalculator.setLpToken(address(_underlyer));
+        _testIncentiveCalculator.setPoolAddress(address(_underlyer));
+
+        TestERC20 badUnderlyer = new TestERC20("X", "X");
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DestinationVault.InvalidIncentiveCalculator.selector, address(_underlyer), address(badUnderlyer), "lp"
+            )
+        );
+        payable(
+            _destinationVaultFactory.create(
+                "template",
+                address(_asset),
+                address(badUnderlyer),
+                address(_testIncentiveCalculator),
+                additionalTrackedTokens,
+                keccak256("salt2"),
+                initParamBytes
+            )
+        );
     }
 
-    function _mockRootPrice(address token, uint256 price) internal {
-        vm.mockCall(
-            address(_rootPriceOracle),
-            abi.encodeWithSelector(IRootPriceOracle.getPriceInEth.selector, token),
-            abi.encode(price)
+    function test_validateCalculator_EnsuresMatchingPoolWithCalculator() external {
+        address badPool = makeAddr("badPool");
+
+        BalancerAuraDestinationVault.InitParams memory initParams = BalancerAuraDestinationVault.InitParams({
+            balancerPool: badPool,
+            auraStaking: AURA_STAKING,
+            auraBooster: AURA_BOOSTER,
+            auraPoolId: 115
+        });
+        bytes memory initParamBytes = abi.encode(initParams);
+        _testIncentiveCalculator = new TestIncentiveCalculator();
+        _testIncentiveCalculator.setLpToken(address(_underlyer));
+        _testIncentiveCalculator.setPoolAddress(address(_underlyer));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DestinationVault.InvalidIncentiveCalculator.selector, address(_underlyer), address(badPool), "pool"
+            )
         );
+        payable(
+            _destinationVaultFactory.create(
+                "template",
+                address(_asset),
+                address(_underlyer),
+                address(_testIncentiveCalculator),
+                additionalTrackedTokens,
+                keccak256("salt2"),
+                initParamBytes
+            )
+        );
+    }
+
+    function _mockSystemBound(address registry, address addr) internal {
+        vm.mockCall(addr, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(registry));
     }
 
     function _mockIsVault(address vault, bool isVault) internal {

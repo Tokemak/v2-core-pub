@@ -103,13 +103,6 @@ contract MavEthOracleTest is Test {
         assertEq(mavOracle.maxTotalBinWidth(), 60);
     }
 
-    // Test getPriceInEth
-    function test_RevertZeroAddress() external {
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_boostedPosition"));
-
-        mavOracle.getPriceInEth(address(0));
-    }
-
     // Test setPoolInformation error case
     function test_SetPoolInformation_RevertIf_ZeroAddress() external {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_poolInformation"));

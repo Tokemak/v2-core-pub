@@ -57,14 +57,14 @@ import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
 
 contract CurveConvexDestinationVaultTests is Test {
     address private constant LP_TOKEN_WHALE = CURVE_STETH_ETH_WHALE; //~1712
-    address private constant CONVEX_STAKING = 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03; // Curve Eth / stEth
-    uint256 private constant CONVEX_POOL_ID = 25;
+    address internal constant CONVEX_STAKING = 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03; // Curve Eth / stEth
+    uint256 internal constant CONVEX_POOL_ID = 25;
 
     uint256 private _mainnetFork;
 
     SystemRegistry internal _systemRegistry;
     AccessController private _accessController;
-    DestinationVaultFactory private _destinationVaultFactory;
+    DestinationVaultFactory internal _destinationVaultFactory;
     DestinationVaultRegistry private _destinationVaultRegistry;
     DestinationRegistry private _destinationTemplateRegistry;
 
@@ -158,6 +158,8 @@ contract CurveConvexDestinationVaultTests is Test {
         bytes memory initParamBytes = abi.encode(initParams);
         _testIncentiveCalculator = new TestIncentiveCalculator();
         _testIncentiveCalculator.setLpToken(address(_underlyer));
+        _testIncentiveCalculator.setPoolAddress(address(STETH_ETH_CURVE_POOL));
+
         address payable newVault = payable(
             _destinationVaultFactory.create(
                 "template",
@@ -178,8 +180,6 @@ contract CurveConvexDestinationVaultTests is Test {
 
         _mockSystemBound(address(_systemRegistry), address(_rootPriceOracle));
         _systemRegistry.setRootPriceOracle(address(_rootPriceOracle));
-        _mockRootPrice(address(_asset), 1 ether);
-        _mockRootPrice(address(_underlyer), 2 ether);
 
         // Set lmp vault registry for permissions
         _lmpVaultRegistry = ILMPVaultRegistry(vm.addr(237_894));
@@ -471,19 +471,82 @@ contract CurveConvexDestinationVaultTests is Test {
         vm.mockCall(addr, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(registry));
     }
 
-    function _mockRootPrice(address token, uint256 price) internal {
-        vm.mockCall(
-            address(_rootPriceOracle),
-            abi.encodeWithSelector(IRootPriceOracle.getPriceInEth.selector, token),
-            abi.encode(price)
-        );
-    }
-
     function _mockIsVault(address vault, bool isVault) internal {
         vm.mockCall(
             address(_lmpVaultRegistry),
             abi.encodeWithSelector(ILMPVaultRegistry.isVault.selector, vault),
             abi.encode(isVault)
+        );
+    }
+}
+
+contract ValidateCalculator is CurveConvexDestinationVaultTests {
+    TestIncentiveCalculator private _testIncentiveCalculator;
+
+    function test_validateCalculator_EnsuresMatchingUnderlyingWithCalculator() external {
+        CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
+            curvePool: STETH_ETH_CURVE_POOL,
+            convexStaking: CONVEX_STAKING,
+            convexPoolId: CONVEX_POOL_ID,
+            baseAssetBurnTokenIndex: 0
+        });
+        bytes memory initParamBytes = abi.encode(initParams);
+        _testIncentiveCalculator = new TestIncentiveCalculator();
+        _testIncentiveCalculator.setLpToken(address(_underlyer));
+        _testIncentiveCalculator.setPoolAddress(address(STETH_ETH_CURVE_POOL));
+
+        TestERC20 badUnderlyer = new TestERC20("X", "X");
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DestinationVault.InvalidIncentiveCalculator.selector, address(_underlyer), address(badUnderlyer), "lp"
+            )
+        );
+        payable(
+            _destinationVaultFactory.create(
+                "template",
+                address(_asset),
+                address(badUnderlyer),
+                address(_testIncentiveCalculator),
+                additionalTrackedTokens,
+                keccak256("salt2"),
+                initParamBytes
+            )
+        );
+    }
+
+    function test_validateCalculator_EnsuresMatchingPoolWithCalculator() external {
+        address badPool = makeAddr("badPool");
+
+        CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
+            curvePool: badPool,
+            convexStaking: CONVEX_STAKING,
+            convexPoolId: CONVEX_POOL_ID,
+            baseAssetBurnTokenIndex: 0
+        });
+        bytes memory initParamBytes = abi.encode(initParams);
+        _testIncentiveCalculator = new TestIncentiveCalculator();
+        _testIncentiveCalculator.setLpToken(address(_underlyer));
+        _testIncentiveCalculator.setPoolAddress(address(STETH_ETH_CURVE_POOL));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DestinationVault.InvalidIncentiveCalculator.selector,
+                address(STETH_ETH_CURVE_POOL),
+                address(badPool),
+                "pool"
+            )
+        );
+        payable(
+            _destinationVaultFactory.create(
+                "template",
+                address(_asset),
+                address(_underlyer),
+                address(_testIncentiveCalculator),
+                additionalTrackedTokens,
+                keccak256("salt2"),
+                initParamBytes
+            )
         );
     }
 }
@@ -521,6 +584,7 @@ contract Initialize is CurveConvexDestinationVaultTests {
 
         _testIncentiveCalculator = new TestIncentiveCalculator();
         _testIncentiveCalculator.setLpToken(address(_underlyer));
+        _testIncentiveCalculator.setPoolAddress(STETH_ETH_CURVE_POOL);
     }
 
     function test_RevertIf_ParamConvexStakingIsZeroAddress() public {

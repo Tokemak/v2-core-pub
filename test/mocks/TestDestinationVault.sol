@@ -115,8 +115,9 @@ contract TestDestinationVault is DestinationVault {
     }
 
     function _validateCalculator(address incentiveCalculator) internal view override {
-        if (IncentiveCalculatorBase(incentiveCalculator).resolveLpToken() != _underlying) {
-            revert InvalidIncentiveCalculator();
+        address lp = IncentiveCalculatorBase(incentiveCalculator).lpToken();
+        if (lp != _underlying) {
+            revert InvalidIncentiveCalculator(lp, _underlying, "lp");
         }
     }
 }

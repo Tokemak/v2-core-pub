@@ -8,7 +8,6 @@ import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IE
 import { IPool } from "src/interfaces/external/maverick/IPool.sol";
 import { IPoolPositionDynamicSlim } from "src/interfaces/external/maverick/IPoolPositionDynamicSlim.sol";
 import { Errors } from "src/utils/Errors.sol";
-import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -17,7 +16,7 @@ import { SystemComponent } from "src/SystemComponent.sol";
 import { IPoolInformation } from "src/interfaces/external/maverick/IPoolInformation.sol";
 
 //slither-disable-start similar-names
-contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPriceOracle {
+contract MavEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
     /// @notice Emitted when new maximum bin width is set.
     event MaxTotalBinWidthSet(uint256 newMaxBinWidth);
 
@@ -63,37 +62,6 @@ contract MavEthOracle is SystemComponent, IPriceOracle, SecurityBase, ISpotPrice
         poolInformation = IPoolInformation(_poolInformation);
 
         emit PoolInformationSet(_poolInformation);
-    }
-
-    /// @inheritdoc IPriceOracle
-    function getPriceInEth(address _boostedPosition) external returns (uint256) {
-        Errors.verifyNotZero(_boostedPosition, "_boostedPosition");
-
-        IPoolPositionDynamicSlim boostedPosition = IPoolPositionDynamicSlim(_boostedPosition);
-        IPool pool = IPool(boostedPosition.pool());
-
-        Errors.verifyNotZero(address(pool), "pool");
-
-        _checkSafeWidth(pool, boostedPosition);
-
-        // Get reserves in boosted position.
-        (uint256 reserveTokenA, uint256 reserveTokenB) = boostedPosition.getReserves();
-
-        // Get total supply of lp tokens from boosted position.
-        uint256 boostedPositionTotalSupply = boostedPosition.totalSupply();
-
-        IRootPriceOracle rootPriceOracle = systemRegistry.rootPriceOracle();
-
-        // Price pool tokens.
-        uint256 priceInEthTokenA = rootPriceOracle.getPriceInEth(address(pool.tokenA()));
-        uint256 priceInEthTokenB = rootPriceOracle.getPriceInEth(address(pool.tokenB()));
-
-        // Calculate total value of each token in boosted position.
-        uint256 totalBoostedPositionValueTokenA = reserveTokenA * priceInEthTokenA;
-        uint256 totalBoostedPositionValueTokenB = reserveTokenB * priceInEthTokenB;
-
-        // Return price of lp token in boosted position.
-        return (totalBoostedPositionValueTokenA + totalBoostedPositionValueTokenB) / boostedPositionTotalSupply;
     }
 
     /// @inheritdoc ISpotPriceOracle

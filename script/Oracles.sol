@@ -125,14 +125,12 @@ contract Oralces is BaseScript {
         address curveV2RethEthLpToken = 0x6c38cE8984a890F5e46e6dF6117C26b3F1EcfC9C;
 
         curveV2Oracle.registerPool(curveV2RethEthPool, curveV2RethEthLpToken, true);
-        rootPriceOracle.registerMapping(curveV2RethEthLpToken, curveV2Oracle);
         rootPriceOracle.registerPoolMapping(curveV2RethEthPool, curveV2Oracle);
 
         address curveV2cbEthEthPool = 0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A;
         address curveV2cbEthEthLpToken = 0x5b6C539b224014A09B3388e51CaAA8e354c959C8;
 
         curveV2Oracle.registerPool(curveV2cbEthEthPool, curveV2cbEthEthLpToken, true);
-        rootPriceOracle.registerMapping(curveV2cbEthEthLpToken, curveV2Oracle);
         rootPriceOracle.registerPoolMapping(curveV2cbEthEthPool, curveV2Oracle);
     }
 
@@ -141,28 +139,24 @@ contract Oralces is BaseScript {
         address curveStEthOriginalLpToken = 0x06325440D014e39736583c165C2963BA99fAf14E;
 
         curveV1Oracle.registerPool(curveStEthOriginalPool, curveStEthOriginalLpToken, true);
-        rootPriceOracle.registerMapping(curveStEthOriginalLpToken, curveV1Oracle);
         rootPriceOracle.registerPoolMapping(curveStEthOriginalPool, curveV1Oracle);
 
         address curveStEthConcentratedPool = 0x828b154032950C8ff7CF8085D841723Db2696056;
         address curveStEthConcentratedLpToken = 0x828b154032950C8ff7CF8085D841723Db2696056;
 
         curveV1Oracle.registerPool(curveStEthConcentratedPool, curveStEthConcentratedLpToken, false);
-        rootPriceOracle.registerMapping(curveStEthConcentratedLpToken, curveV1Oracle);
         rootPriceOracle.registerPoolMapping(curveStEthConcentratedPool, curveV1Oracle);
 
         address curveStEthNgPool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
         address curveStEthNgLpToken = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
 
         curveV1Oracle.registerPool(curveStEthNgPool, curveStEthNgLpToken, false);
-        rootPriceOracle.registerMapping(curveStEthNgLpToken, curveV1Oracle);
         rootPriceOracle.registerPoolMapping(curveStEthNgPool, curveV1Oracle);
 
         address curveRethWstethPool = 0x447Ddd4960d9fdBF6af9a790560d0AF76795CB08;
         address curveRethWstethLpToken = 0x447Ddd4960d9fdBF6af9a790560d0AF76795CB08;
 
         curveV1Oracle.registerPool(curveRethWstethPool, curveRethWstethLpToken, false);
-        rootPriceOracle.registerMapping(curveRethWstethLpToken, curveV1Oracle);
         rootPriceOracle.registerPoolMapping(curveRethWstethPool, curveV1Oracle);
     }
 }

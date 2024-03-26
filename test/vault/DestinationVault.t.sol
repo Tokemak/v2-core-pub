@@ -116,7 +116,6 @@ contract DestinationVaultBaseTests is Test {
             IERC20(_weth), underlyer, mainRewarder, address(testIncentiveCalculator), new address[](0), abi.encode("")
         );
 
-        _mockRootPrice(address(underlyer), 2 ether);
         _mockRootPriceGetRangesPriceLP(address(underlyer), pool, _weth, 1 ether, 2 ether, true);
         assertEq(bav.debtValue(10e6), 20 ether);
     }
@@ -127,7 +126,11 @@ contract DestinationVaultBaseTests is Test {
 
         TestDestinationVault wethVault = TestDestinationVault(testVaultTemplate.cloneDeterministic(bytes32("1")));
 
-        vm.expectRevert(DestinationVault.InvalidIncentiveCalculator.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DestinationVault.InvalidIncentiveCalculator.selector, address(0), address(underlyer), "lp"
+            )
+        );
         wethVault.initialize(
             IERC20(_weth), underlyer, mainRewarder, address(testIncentiveCalculator), new address[](0), abi.encode("")
         );

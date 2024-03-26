@@ -6,6 +6,7 @@ pragma solidity >=0.8.7;
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { AuraCalculator } from "src/stats/calculators/AuraCalculator.sol";
+import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IBaseRewardPool } from "src/interfaces/external/convex/IBaseRewardPool.sol";
 import { IOffchainAggregator } from "src/interfaces/external/chainlink/IOffchainAggregator.sol";
 import { BaseOracleDenominations } from "src/oracles/providers/base/BaseOracleDenominations.sol";
@@ -82,7 +83,13 @@ contract AuraCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
         auraRewarder = 0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D;
         balancerPool = 0x1E19CF2D73a72Ef1332C882F20534B6519Be0276;
 
-        _rootPriceOracle.registerMapping(balancerPool, _balancerMetaOracle);
+        vm.mockCall(
+            address(_rootPriceOracle),
+            abi.encodeWithSelector(
+                IRootPriceOracle.getRangePricesLP.selector, balancerPool, balancerPool, _systemRegistry.weth()
+            ),
+            abi.encode(1e18, 1e18, true)
+        );
 
         // Using fake base Balancer stats
         _balancerStats = IDexLSTStats(vm.addr(1012));
@@ -108,7 +115,9 @@ contract AuraCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
         IncentiveCalculatorBase.InitData memory initData = IncentiveCalculatorBase.InitData({
             rewarder: auraRewarder,
             underlyerStats: address(_balancerStats),
-            platformToken: AURA_MAINNET
+            platformToken: AURA_MAINNET,
+            lpToken: balancerPool,
+            pool: balancerPool
         });
         bytes memory encodedInitData = abi.encode(initData);
 
@@ -155,7 +164,7 @@ contract AuraCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
     }
 
     function test_ResolveLpTokenIsActualPoolToken() public {
-        address resolvedToken = _calculator.resolveLpToken();
+        address resolvedToken = _calculator.lpToken();
 
         assertEq(resolvedToken, balancerPool, "balancerPool");
         assertFalse(resolvedToken == IBaseRewardPool(auraRewarder).stakingToken(), "stakingToken");

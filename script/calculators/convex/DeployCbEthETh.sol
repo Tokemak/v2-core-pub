@@ -29,6 +29,8 @@ contract DeployCbEthETh is BaseScript, DeployIncentiveCalculatorBase {
             address(StatsCalculatorRegistry(address(systemRegistry.statsCalculatorRegistry())).factory())
         );
 
+        address curveV2cbEthEthPool = 0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A;
+        address curveV2cbEthEthLpToken = 0x5b6C539b224014A09B3388e51CaAA8e354c959C8;
         address curveV2cbEthEthCalculator = 0x177B9FB826F79a2c0d590F418AC9517E71eA4272;
         address convexV2cbEthEthRewarder = 0x5d02EcD9B83f1187e92aD5be3d1bd2915CA03699;
         _setupIncentiveCalculatorBase(
@@ -37,7 +39,9 @@ contract DeployCbEthETh is BaseScript, DeployIncentiveCalculatorBase {
             convexTemplateId,
             curveV2cbEthEthCalculator,
             constants.tokens.cvx,
-            convexV2cbEthEthRewarder
+            convexV2cbEthEthRewarder,
+            curveV2cbEthEthLpToken,
+            curveV2cbEthEthPool
         );
 
         vm.stopBroadcast();

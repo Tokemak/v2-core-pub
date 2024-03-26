@@ -747,13 +747,26 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         returns (IStrategy.SummaryStats memory outSummary)
     {
         // Use safe price
-        IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
-        uint256 outPrice = pricer.getPriceInEth(rebalanceParams.tokenOut);
+        uint256 outPrice = _getInOutTokenPriceInEth(rebalanceParams.tokenOut, rebalanceParams.destinationOut);
         outSummary = (
             getDestinationSummaryStats(
                 rebalanceParams.destinationOut, outPrice, RebalanceDirection.Out, rebalanceParams.amountOut
             )
         );
+    }
+
+    /// @dev Price the tokens from rebalance params with the appropriate method
+    function _getInOutTokenPriceInEth(address token, address destination) private returns (uint256) {
+        IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
+        if (destination == address(lmpVault)) {
+            // When the destination is the autoPool then the token is the underlying asset
+            // which means its not an LP token so we use this pricing fn
+            return pricer.getPriceInEth(token);
+        } else {
+            // Otherwise we know its a real destination and so we can get the price directly
+            // from there
+            return IDestinationVault(destination).getValidatedSafePrice();
+        }
     }
 
     // Summary stats for destination In
@@ -763,8 +776,7 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         returns (IStrategy.SummaryStats memory inSummary)
     {
         // Use safe price
-        IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
-        uint256 inPrice = pricer.getPriceInEth(rebalanceParams.tokenIn);
+        uint256 inPrice = _getInOutTokenPriceInEth(rebalanceParams.tokenIn, rebalanceParams.destinationIn);
         inSummary = (
             getDestinationSummaryStats(
                 rebalanceParams.destinationIn, inPrice, RebalanceDirection.In, rebalanceParams.amountIn

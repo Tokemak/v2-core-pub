@@ -22,6 +22,18 @@ abstract contract IncentiveCalculatorBase is
     IDexLSTStats,
     IStatsCalculator
 {
+    /// @dev Interval between two consecutive snapshot steps during the snapshot process.
+    uint256 public constant SNAPSHOT_INTERVAL = 3 hours;
+
+    /// @dev Non-trivial annual rate set at 0.5% (in fixed point format 1e18 = 1).
+    uint256 public constant NON_TRIVIAL_ANNUAL_RATE = 5e15;
+
+    /// @dev Duration after which a price/data becomes stale.
+    uint40 public constant PRICE_STALE_CHECK = 12 hours;
+
+    /// @dev Cap on allowable credits in the system.
+    uint8 public constant MAX_CREDITS = 48;
+
     IDexLSTStats public underlyerStats;
     IBaseRewardPool public rewarder;
     address public platformToken; // like cvx
@@ -53,20 +65,14 @@ abstract contract IncentiveCalculatorBase is
     /// @dev Incentive credits balance before decay
     uint8 public incentiveCredits;
 
-    /// @dev Interval between two consecutive snapshot steps during the snapshot process.
-    uint256 public constant SNAPSHOT_INTERVAL = 3 hours;
-
-    /// @dev Non-trivial annual rate set at 0.5% (in fixed point format 1e18 = 1).
-    uint256 public constant NON_TRIVIAL_ANNUAL_RATE = 5e15;
-
-    /// @dev Duration after which a price/data becomes stale.
-    uint40 public constant PRICE_STALE_CHECK = 12 hours;
-
-    /// @dev Cap on allowable credits in the system.
-    uint8 public constant MAX_CREDITS = 48;
-
     /// @dev The APR Id
     bytes32 private _aprId;
+
+    /// @dev LP token that is staked into the rewarder
+    address public lpToken;
+
+    /// @dev Pool related to the LP token
+    address public pool;
 
     /// @dev Enum representing the snapshot status for a given rewarder.
     enum SnapshotStatus {
@@ -81,6 +87,8 @@ abstract contract IncentiveCalculatorBase is
         address rewarder;
         address underlyerStats;
         address platformToken;
+        address lpToken;
+        address pool;
     }
 
     // Custom error for handling unexpected snapshot statuses
@@ -114,11 +122,15 @@ abstract contract IncentiveCalculatorBase is
         Errors.verifyNotZero(decodedInitData.rewarder, "rewarder");
         Errors.verifyNotZero(decodedInitData.underlyerStats, "underlyerStats");
         Errors.verifyNotZero(decodedInitData.platformToken, "platformToken");
+        Errors.verifyNotZero(decodedInitData.lpToken, "lpToken");
+        Errors.verifyNotZero(decodedInitData.pool, "pool");
 
         // slither-disable-start missing-zero-check
         rewarder = IBaseRewardPool(decodedInitData.rewarder);
         underlyerStats = IDexLSTStats(decodedInitData.underlyerStats);
         platformToken = decodedInitData.platformToken;
+        lpToken = decodedInitData.lpToken;
+        pool = decodedInitData.pool;
         // slither-disable-end missing-zero-check
 
         lastIncentiveTimestamp = block.timestamp;
@@ -508,9 +520,15 @@ abstract contract IncentiveCalculatorBase is
         return Math.min(fastPrice, slowPrice);
     }
 
-    function _getPriceInEth(address _token) internal returns (uint256) {
-        // the price oracle handles reentrancy issues
-        return systemRegistry.rootPriceOracle().getPriceInEth(_token);
+    function _getLpTokenPriceInEth() internal returns (uint256) {
+        (uint256 spotPrice, uint256 safePrice, bool isSpotSafe) =
+            systemRegistry.rootPriceOracle().getRangePricesLP(lpToken, pool, address(systemRegistry.weth()));
+
+        if (!isSpotSafe) {
+            revert Errors.UnsafePrice(lpToken, spotPrice, safePrice);
+        }
+
+        return safePrice;
     }
 
     function _getRewardPoolMetrics(address _rewarder)
@@ -531,7 +549,7 @@ abstract contract IncentiveCalculatorBase is
         }
 
         // slither-disable-next-line reentrancy-no-eth
-        uint256 lpPrice = _getPriceInEth(resolveLpToken());
+        uint256 lpPrice = _getLpTokenPriceInEth();
         address rewardToken = address(rewarder.rewardToken());
 
         // Compute APR factors for the main rewarder if the period is still active
@@ -590,7 +608,4 @@ abstract contract IncentiveCalculatorBase is
 
     /// @notice returns the address of the stash token for Convex & Aura
     function resolveRewardToken(address extraRewarder) public view virtual returns (address rewardToken);
-
-    // @notice returns the address of the lp token that is staked into the rewards platform
-    function resolveLpToken() public view virtual returns (address lpToken);
 }

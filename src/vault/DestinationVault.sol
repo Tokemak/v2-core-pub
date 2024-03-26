@@ -37,7 +37,7 @@ abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Init
     error NothingToRecover();
     error DuplicateToken(address token);
     error VaultShutdown();
-    error InvalidIncentiveCalculator();
+    error InvalidIncentiveCalculator(address calc, address local, string param);
     error PricesOutOfRange(uint256 spot, uint256 safe);
 
     /* ******************************** */
@@ -381,13 +381,22 @@ abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Init
 
     /// @inheritdoc IDestinationVault
     function getValidatedSpotPrice() external returns (uint256 price) {
-        //slither-disable-next-line unused-return
         (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) =
             systemRegistry.rootPriceOracle().getRangePricesLP(address(_underlying), getPool(), _baseAsset);
         if (!isSpotSafe) {
             revert PricesOutOfRange(spotPriceInQuote, safePriceInQuote);
         }
         price = spotPriceInQuote;
+    }
+
+    /// @inheritdoc IDestinationVault
+    function getValidatedSafePrice() external returns (uint256 price) {
+        (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) =
+            _systemRegistry.rootPriceOracle().getRangePricesLP(address(_underlying), getPool(), _baseAsset);
+        if (!isSpotSafe) {
+            revert PricesOutOfRange(spotPriceInQuote, safePriceInQuote);
+        }
+        price = safePriceInQuote;
     }
 
     /// @inheritdoc IDestinationVault

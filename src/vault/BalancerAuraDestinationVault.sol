@@ -88,11 +88,8 @@ contract BalancerAuraDestinationVault is DestinationVault {
         address[] memory additionalTrackedTokens_,
         bytes memory params_
     ) public virtual override {
-        // Base class has the initializer() modifier to prevent double-setup
-        // If you don't call the base initialize, make sure you protect this call
-        super.initialize(baseAsset_, underlyer_, rewarder_, incentiveCalculator_, additionalTrackedTokens_, params_);
-
         // Decode the init params, validate, and save off
+        // Run before the base initialize as _validateCalculator() relies on them being set
         InitParams memory initParams = abi.decode(params_, (InitParams));
         Errors.verifyNotZero(initParams.balancerPool, "balancerPool");
         Errors.verifyNotZero(initParams.auraStaking, "auraStaking");
@@ -104,6 +101,10 @@ contract BalancerAuraDestinationVault is DestinationVault {
         auraBooster = initParams.auraBooster;
         auraPoolId = initParams.auraPoolId;
         isComposable = BalancerUtilities.isComposablePool(initParams.balancerPool);
+
+        // Base class has the initializer() modifier to prevent double-setup
+        // If you don't call the base initialize, make sure you protect this call
+        super.initialize(baseAsset_, underlyer_, rewarder_, incentiveCalculator_, additionalTrackedTokens_, params_);
 
         // Tokens that are used by the proxied pool cannot be removed from the vault
         // via recover(). Make sure we track those tokens here.
@@ -210,8 +211,14 @@ contract BalancerAuraDestinationVault is DestinationVault {
     }
 
     function _validateCalculator(address incentiveCalculator) internal view override {
-        if (IncentiveCalculatorBase(incentiveCalculator).resolveLpToken() != _underlying) {
-            revert InvalidIncentiveCalculator();
+        address calcLp = IncentiveCalculatorBase(incentiveCalculator).lpToken();
+        address calcPool = IncentiveCalculatorBase(incentiveCalculator).pool();
+
+        if (calcLp != _underlying) {
+            revert InvalidIncentiveCalculator(calcLp, _underlying, "lp");
+        }
+        if (calcPool != balancerPool) {
+            revert InvalidIncentiveCalculator(calcPool, balancerPool, "pool");
         }
     }
 }

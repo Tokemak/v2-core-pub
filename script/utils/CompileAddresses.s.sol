@@ -31,7 +31,7 @@ contract Deposit is BaseScript {
         0x1406311f198A72CcA5F895141238E6043e4984B6
     ];
 
-    function run() external {
+    function run() external view {
         bytes memory x = abi.encode(ar);
         console.logBytes(x);
     }

@@ -30,6 +30,8 @@ contract DeployStEthOriginal is BaseScript, DeployIncentiveCalculatorBase {
         );
 
         // stETH/ETH Original
+        address curveStEthOriginalPool = 0xDC24316b9AE028F1497c275EB9192a3Ea0f67022;
+        address curveStEthOriginalLpToken = 0x06325440D014e39736583c165C2963BA99fAf14E;
         address curveStEthOriginalCalculator = 0xaed4850Ce877C0e0b051EbfF9286074C9378205c;
         address convexStEthOriginalRewarder = 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03;
         _setupIncentiveCalculatorBase(
@@ -38,7 +40,9 @@ contract DeployStEthOriginal is BaseScript, DeployIncentiveCalculatorBase {
             convexTemplateId,
             curveStEthOriginalCalculator,
             constants.tokens.cvx,
-            convexStEthOriginalRewarder
+            convexStEthOriginalRewarder,
+            curveStEthOriginalLpToken,
+            curveStEthOriginalPool
         );
 
         vm.stopBroadcast();

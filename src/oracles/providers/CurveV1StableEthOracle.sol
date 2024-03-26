@@ -10,7 +10,6 @@ import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IE
 import { Errors } from "src/utils/Errors.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
 import { ICurveOwner } from "src/interfaces/external/curve/ICurveOwner.sol";
@@ -20,7 +19,7 @@ import { LibAdapter } from "src/libs/LibAdapter.sol";
 
 /// @title Price oracle for Curve StableSwap pools
 /// @dev getPriceEth is not a view fn to support reentrancy checks. Don't actually change state.
-contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, ISpotPriceOracle {
+contract CurveV1StableEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
     ICurveResolver public immutable curveResolver;
     uint256 public constant FEE_PRECISION = 1e10;
 
@@ -37,7 +36,6 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
 
     error NotStableSwap(address curvePool);
     error NotRegistered(address curveLpToken);
-    error InvalidPrice(address token, uint256 price);
     error ResolverMismatch(address providedLP, address queriedLP);
 
     /// @notice Curve LP tokens and their underlying tokens
@@ -127,56 +125,6 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         delete lpTokenToPool[curveLpToken];
 
         emit TokenUnregistered(curveLpToken);
-    }
-
-    /// @inheritdoc IPriceOracle
-    function getPriceInEth(address token) external returns (uint256 price) {
-        Errors.verifyNotZero(token, "token");
-
-        address[] memory tokens = lpTokenToUnderlying[token];
-
-        uint256 minPrice = type(uint256).max;
-        uint256 nTokens = tokens.length;
-
-        if (nTokens == 0) {
-            revert NotRegistered(token);
-        }
-
-        PoolData memory poolInfo = lpTokenToPool[token];
-        ICurveV1StableSwap pool = ICurveV1StableSwap(poolInfo.pool);
-
-        /**
-         * We're in a V1 pool and we'll be reading the virtual price later
-         *      make sure we're not in a read-only reentrancy scenario
-         *
-         * This check can be done for any token, although the reentrancy attack only
-         *      applies to pools containing Eth, Weth, ERC-677 or ERC-777 tokens.
-         */
-        if (poolInfo.checkReentrancy == 1) {
-            // This will fail in reentrancy
-            ICurveOwner(pool.owner()).withdraw_admin_fees(address(pool));
-        }
-
-        for (uint256 i = 0; i < nTokens;) {
-            address iToken = tokens[i];
-
-            // Our prices are always in 1e18
-            uint256 tokenPrice = systemRegistry.rootPriceOracle().getPriceInEth(iToken);
-            if (tokenPrice < minPrice) {
-                minPrice = tokenPrice;
-            }
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        // If it's still the default price we set, something went wrong
-        if (minPrice == type(uint256).max) {
-            revert InvalidPrice(token, type(uint256).max);
-        }
-
-        price = (minPrice * pool.get_virtual_price() / 1e18);
     }
 
     function getLpTokenToUnderlying(address lpToken) external view returns (address[] memory tokens) {

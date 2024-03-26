@@ -15,7 +15,6 @@ import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCal
 
 contract AuraCalculator is IncentiveCalculatorBase {
     address public immutable BOOSTER;
-    address public balLpToken;
 
     constructor(ISystemRegistry _systemRegistry, address _booster) IncentiveCalculatorBase(_systemRegistry) {
         Errors.verifyNotZero(_booster, "_booster");
@@ -29,9 +28,11 @@ contract AuraCalculator is IncentiveCalculatorBase {
         super.initialize(dependentAprIds, initData);
 
         IBooster.PoolInfo memory poolInfo = IBooster(BOOSTER).poolInfo(rewarder.pid());
-        Errors.verifyNotZero(poolInfo.lptoken, "lptoken");
 
-        balLpToken = poolInfo.lptoken;
+        // Checking for a misconfiguration between the rewarder and the supplied params
+        if (poolInfo.lptoken != lpToken) {
+            revert Errors.InvalidParam("lptoken");
+        }
     }
 
     function getPlatformTokenMintAmount(
@@ -48,10 +49,5 @@ contract AuraCalculator is IncentiveCalculatorBase {
         if (stashToken.isValid()) {
             rewardToken = stashToken.baseToken();
         }
-    }
-
-    /// @inheritdoc IncentiveCalculatorBase
-    function resolveLpToken() public view virtual override returns (address lpToken) {
-        lpToken = balLpToken;
     }
 }

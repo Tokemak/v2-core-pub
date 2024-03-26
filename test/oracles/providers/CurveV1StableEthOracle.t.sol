@@ -69,39 +69,6 @@ contract CurveV1StableEthOracleTests is Test {
         accessController.grantRole(0x00, address(this));
     }
 
-    function testStEthEthPrice() public {
-        // Pool total USD: $1,147,182,216.20
-        // Eth Price: 1866.93
-        // Total Supply: 571879.785719421763346624
-        // https://curve.fi/#/ethereum/pools/steth/deposit
-
-        mockRootPrice(CURVE_ETH, 1e18); //ETH
-        mockRootPrice(STETH_MAINNET, 999_193_420_000_000_000); //stETH
-
-        oracle.registerPool(STETH_ETH_CURVE_POOL, STETH_ETH_LP_TOKEN, true);
-
-        uint256 price = oracle.getPriceInEth(STETH_ETH_LP_TOKEN);
-
-        assertApproxEqAbs(price, 1_070_000_000_000_000_000, 5e16);
-    }
-
-    function testUsdPool() public {
-        // Pool Total USD: $394,742,587.16
-        // Eth Price: 1866.93
-        // Total Supply: 384818030.963268482407003957
-        // https://curve.fi/#/ethereum/pools/3pool/deposit
-
-        mockRootPrice(USDC_MAINNET, 535_370_000_000_000); //USDC
-        mockRootPrice(DAI_MAINNET, 534_820_000_000_000); //DAI
-        mockRootPrice(USDT_MAINNET, 535_540_000_000_000); //USDT
-
-        oracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, false);
-
-        uint256 price = oracle.getPriceInEth(THREE_CURVE_POOL_MAINNET_LP);
-
-        assertApproxEqAbs(price, 549_453_000_000_000, 5e16);
-    }
-
     function testUnregisterSecurity() public {
         oracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, false);
 
@@ -190,95 +157,6 @@ contract CurveV1StableEthOracleTests is Test {
             abi.encodeWithSelector(CurveV1StableEthOracle.ResolverMismatch.selector, matchingLP, nonMatchingLP)
         );
         localOracle.registerPool(mockPool, matchingLP, true);
-    }
-
-    function testNoTokensWillRevert() public {
-        address mockResolver = vm.addr(24);
-        address mockPool = vm.addr(25);
-        address matchingLP = vm.addr(26);
-
-        address[8] memory tokens;
-
-        CurveV1StableEthOracle localOracle =
-            new CurveV1StableEthOracle(systemRegistry, CurveResolverMainnet(mockResolver));
-
-        // stable swap but not matching
-        vm.mockCall(
-            mockResolver,
-            abi.encodeWithSelector(CurveResolverMainnet.resolveWithLpToken.selector, mockPool),
-            abi.encode(tokens, 0, matchingLP, true)
-        );
-
-        localOracle.registerPool(mockPool, matchingLP, true);
-
-        vm.expectRevert(abi.encodeWithSelector(CurveV1StableEthOracle.NotRegistered.selector, matchingLP));
-        oracle.getPriceInEth(matchingLP);
-    }
-
-    function testReentrancyStethEthPool() public {
-        mockRootPrice(CURVE_ETH, 1e18); //ETH
-        mockRootPrice(STETH_MAINNET, 1e18); //stETH
-
-        oracle.registerPool(STETH_ETH_CURVE_POOL, STETH_ETH_LP_TOKEN, true);
-
-        // Create the tester
-        CurveEthStETHReentrancyTest tester =
-            new CurveEthStETHReentrancyTest(oracle, STETH_ETH_LP_TOKEN, STETH_ETH_CURVE_POOL, STETH_MAINNET);
-
-        // Make sure the tester has ETH and stETH so it can do an add_liquidity call
-        deal(address(tester), 10e18);
-        vm.prank(address(tester));
-        STETH_CONTRACT.submit{ value: 1 ether }(address(0));
-
-        tester.run();
-
-        assertEq(tester.priceReceived(), type(uint256).max);
-        assertEq(tester.getPriceFailed(), true);
-
-        // Ensure running the same call outside of the reentrancy state works
-        uint256 price = oracle.getPriceInEth(STETH_ETH_LP_TOKEN);
-
-        assertApproxEqAbs(price, 1 ether, 1e17);
-    }
-
-    function test_CanCallReentrancyNonEthPool() external {
-        mockRootPrice(USDC_MAINNET, 1e15);
-        mockRootPrice(USDT_MAINNET, 1e15);
-        mockRootPrice(DAI_MAINNET, 1e15);
-
-        oracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, true);
-
-        ICurveV1StableSwap pool = ICurveV1StableSwap(THREE_CURVE_MAINNET);
-
-        assertGt(pool.admin_balances(0), 0); // Check balances before reentrancy check.
-
-        oracle.getPriceInEth(THREE_CURVE_POOL_MAINNET_LP);
-
-        assertEq(pool.admin_balances(0), 0); // Balances transferred out on reentrancy check, should be 0.
-    }
-
-    // Check to make sure that ng pools cannot be reentered despite inability to do standard curve reentrancy check.
-    function testReentrancyStethEthNgPool() external {
-        mockRootPrice(CURVE_ETH, 1e18);
-        mockRootPrice(STETH_MAINNET, 1e18);
-
-        // Owner doesn't exist, cannot check reentrancy for ng pools.
-        oracle.registerPool(STETH_STABLESWAP_NG_POOL, STETH_STABLESWAP_NG_POOL, false);
-
-        CurveEthStETHReentrancyTest tester =
-            new CurveEthStETHReentrancyTest(oracle, STETH_STABLESWAP_NG_POOL, STETH_STABLESWAP_NG_POOL, STETH_MAINNET);
-        deal(address(tester), 10e18);
-        vm.prank(address(tester));
-        STETH_CONTRACT.submit{ value: 1 ether }(address(0));
-
-        tester.run();
-
-        assertEq(tester.priceReceived(), type(uint256).max);
-        assertEq(tester.getPriceFailed(), true);
-
-        uint256 price = oracle.getPriceInEth(STETH_STABLESWAP_NG_POOL);
-
-        assertApproxEqAbs(price, 1 ether, 1e17);
     }
 
     function testGetSpotPriceRevertIfPoolIsZeroAddress() public {
@@ -384,52 +262,5 @@ contract CurveV1StableEthOracleTests is Test {
         vm.mockCall(registry, abi.encodeWithSelector(ISystemRegistry.weth.selector), abi.encode(IWETH9(WETH9_ADDRESS)));
 
         return ISystemRegistry(registry);
-    }
-}
-
-contract CurveEthStETHReentrancyTest {
-    address private constant STETH_ETH_LP_TOKEN = ST_ETH_CURVE_LP_TOKEN_MAINNET;
-
-    CurveV1StableEthOracle private oracle;
-    IERC20 private lpToken;
-    ICurveV1StableSwap private pool;
-    address private token;
-
-    uint256 public priceReceived = type(uint256).max;
-    bool public getPriceFailed = false;
-
-    constructor(CurveV1StableEthOracle _oracle, address _lpToken, address _pool, address _token) {
-        oracle = _oracle;
-        lpToken = IERC20(_lpToken);
-        pool = ICurveV1StableSwap(_pool);
-        token = _token;
-    }
-
-    function run() external {
-        uint256[2] memory amounts;
-        amounts[0] = 1 ether;
-        amounts[1] = 1 ether;
-
-        uint256[2] memory outAmounts;
-        outAmounts[0] = 5e17;
-        outAmounts[1] = 5e17;
-
-        IERC20 stETH = IERC20(token);
-        stETH.approve(address(pool), 1 ether);
-
-        pool.add_liquidity{ value: 1 ether }(amounts, 0);
-
-        uint256 bal = lpToken.balanceOf(address(this));
-        pool.remove_liquidity(bal, outAmounts);
-    }
-
-    receive() external payable {
-        if (msg.sender == address(pool)) {
-            try oracle.getPriceInEth(address(lpToken)) returns (uint256 price) {
-                priceReceived = price;
-            } catch {
-                getPriceFailed = true;
-            }
-        }
     }
 }

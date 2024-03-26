@@ -39,7 +39,7 @@ import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVaul
 import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
-import { console } from "forge-std/console.sol";
+import { ConvexCalculator } from "src/stats/calculators/ConvexCalculator.sol";
 
 contract LMPStrategyInt is Test {
     address constant V2_DEPLOYER = 0xA6364F394616DD9238B284CfF97Cd7146C57808D;
@@ -265,7 +265,7 @@ contract LMPStrategyInt is Test {
 
         uint256 snapshotId = vm.snapshot();
 
-        uint256 inLpTokenPrice = _rootPriceOracle.getPriceInEth(underlying);
+        uint256 inLpTokenPrice = _stEthOriginalDv.getValidatedSafePrice();
         _strategy.setCheckInLpPrice(inLpTokenPrice);
 
         _vault.flashRebalance(
@@ -302,7 +302,7 @@ contract LMPStrategyInt is Test {
 
         uint256 snapshotId = vm.snapshot();
 
-        uint256 inLpTokenPrice = _rootPriceOracle.getPriceInEth(underlying);
+        uint256 inLpTokenPrice = _stEthOriginalDv.getValidatedSafePrice();
         _strategy.setCheckInLpPrice(inLpTokenPrice);
 
         _vault.flashRebalance(
@@ -344,7 +344,7 @@ contract LMPStrategyInt is Test {
         deal(_stEthNgDv.underlying(), address(_tokenReturnSolver), inAmount);
 
         address outUnderlying = _stEthOriginalDv.underlying();
-        uint256 outLpTokenPrice = _rootPriceOracle.getPriceInEth(outUnderlying);
+        uint256 outLpTokenPrice = _stEthOriginalDv.getValidatedSafePrice();
 
         vm.warp(block.timestamp + 1 hours);
 
@@ -403,7 +403,7 @@ contract LMPStrategyInt is Test {
         deal(_stEthNgDv.underlying(), address(_tokenReturnSolver), inAmount);
 
         address outUnderlying = _stEthOriginalDv.underlying();
-        uint256 outLpTokenPrice = _rootPriceOracle.getPriceInEth(outUnderlying);
+        uint256 outLpTokenPrice = _stEthOriginalDv.getValidatedSafePrice();
 
         vm.warp(block.timestamp + 1 hours);
 
@@ -451,7 +451,7 @@ contract LMPStrategyInt is Test {
         deal(_stEthNgDv.underlying(), address(_tokenReturnSolver), inAmount + additionalLp);
 
         address outUnderlying = _stEthOriginalDv.underlying();
-        uint256 outLpTokenPrice = _rootPriceOracle.getPriceInEth(outUnderlying);
+        uint256 outLpTokenPrice = _stEthOriginalDv.getValidatedSafePrice();
 
         vm.warp(block.timestamp + 1 hours);
 
@@ -580,6 +580,14 @@ contract LMPStrategyInt is Test {
         uint256 convexPoolId,
         uint256 baseAssetBurnTokenIndex
     ) internal returns (DestinationVault) {
+        // We are forked and running against a version of the calculators the destination vaults
+        // don't expect. Shim the differences
+        ConvexCalculator calcTemplate = new ConvexCalculator(_systemRegistry, ConvexCalculator(calculator).BOOSTER());
+        vm.etch(calculator, address(calcTemplate).code);
+        // 12 and 13, current slots of lpToken() and pool()
+        vm.store(calculator, bytes32(uint256(12)), bytes32(uint256(uint160(curvePoolLpToken))));
+        vm.store(calculator, bytes32(uint256(13)), bytes32(uint256(uint160(curvePool))));
+
         CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
             curvePool: curvePool,
             convexStaking: convexStaking,
@@ -737,14 +745,12 @@ contract LMPStrategyInt is Test {
         address curveV2RethEthLpToken = 0x6c38cE8984a890F5e46e6dF6117C26b3F1EcfC9C;
 
         curveV2Oracle.registerPool(curveV2RethEthPool, curveV2RethEthLpToken, true);
-        rootPriceOracle.registerMapping(curveV2RethEthLpToken, curveV2Oracle);
         rootPriceOracle.registerPoolMapping(curveV2RethEthPool, curveV2Oracle);
 
         address curveV2cbEthEthPool = 0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A;
         address curveV2cbEthEthLpToken = 0x5b6C539b224014A09B3388e51CaAA8e354c959C8;
 
         curveV2Oracle.registerPool(curveV2cbEthEthPool, curveV2cbEthEthLpToken, true);
-        rootPriceOracle.registerMapping(curveV2cbEthEthLpToken, curveV2Oracle);
         rootPriceOracle.registerPoolMapping(curveV2cbEthEthPool, curveV2Oracle);
     }
 
@@ -753,28 +759,24 @@ contract LMPStrategyInt is Test {
         address curveStEthOriginalLpToken = 0x06325440D014e39736583c165C2963BA99fAf14E;
 
         curveV1Oracle.registerPool(curveStEthOriginalPool, curveStEthOriginalLpToken, true);
-        rootPriceOracle.registerMapping(curveStEthOriginalLpToken, curveV1Oracle);
         rootPriceOracle.registerPoolMapping(curveStEthOriginalPool, curveV1Oracle);
 
         address curveStEthConcentratedPool = 0x828b154032950C8ff7CF8085D841723Db2696056;
         address curveStEthConcentratedLpToken = 0x828b154032950C8ff7CF8085D841723Db2696056;
 
         curveV1Oracle.registerPool(curveStEthConcentratedPool, curveStEthConcentratedLpToken, false);
-        rootPriceOracle.registerMapping(curveStEthConcentratedLpToken, curveV1Oracle);
         rootPriceOracle.registerPoolMapping(curveStEthConcentratedPool, curveV1Oracle);
 
         address curveStEthNgPool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
         address curveStEthNgLpToken = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
 
         curveV1Oracle.registerPool(curveStEthNgPool, curveStEthNgLpToken, false);
-        rootPriceOracle.registerMapping(curveStEthNgLpToken, curveV1Oracle);
         rootPriceOracle.registerPoolMapping(curveStEthNgPool, curveV1Oracle);
 
         address curveRethWstethPool = 0x447Ddd4960d9fdBF6af9a790560d0AF76795CB08;
         address curveRethWstethLpToken = 0x447Ddd4960d9fdBF6af9a790560d0AF76795CB08;
 
         curveV1Oracle.registerPool(curveRethWstethPool, curveRethWstethLpToken, false);
-        rootPriceOracle.registerMapping(curveRethWstethLpToken, curveV1Oracle);
         rootPriceOracle.registerPoolMapping(curveRethWstethPool, curveV1Oracle);
     }
 }
@@ -808,9 +810,6 @@ contract ValueCheckingStrategy is LMPStrategy, Test {
     {
         inSummary = super.getRebalanceInSummaryStats(rebalanceParams);
 
-        console.log("inSummary.pricePerShare", inSummary.pricePerShare);
-        console.log("_checkInLpPrice", _checkInLpPrice);
-
         if (_checkInLpPrice > 0) {
             if (inSummary.pricePerShare != _checkInLpPrice) {
                 revert BadInPrice();
@@ -826,8 +825,6 @@ contract ValueCheckingStrategy is LMPStrategy, Test {
     {
         outSummary = super._getRebalanceOutSummaryStats(rebalanceParams);
 
-        console.log("outSummary.pricePerShare", outSummary.pricePerShare);
-        console.log("_checkOutLpPrice", _checkOutLpPrice);
         if (_checkOutLpPrice > 0) {
             if (outSummary.pricePerShare != _checkOutLpPrice) {
                 revert BadOutPrice();

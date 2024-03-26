@@ -114,7 +114,6 @@ import { BalancerLPMetaStableEthOracle } from "src/oracles/providers/BalancerLPM
 import { ChainlinkOracle } from "src/oracles/providers/ChainlinkOracle.sol";
 import { CurveV1StableEthOracle } from "src/oracles/providers/CurveV1StableEthOracle.sol";
 import { EthPeggedOracle } from "src/oracles/providers/EthPeggedOracle.sol";
-import { UniswapV2EthOracle } from "src/oracles/providers/UniswapV2EthOracle.sol";
 import { WstETHEthOracle } from "src/oracles/providers/WstETHEthOracle.sol";
 import { MavEthOracle } from "src/oracles/providers/MavEthOracle.sol";
 import { CurveV2CryptoEthOracle } from "src/oracles/providers/CurveV2CryptoEthOracle.sol";
@@ -158,7 +157,6 @@ contract RootOracleIntegrationTest is Test {
     ChainlinkOracle public chainlinkOracle;
     CurveV1StableEthOracle public curveStableOracle;
     EthPeggedOracle public ethPegOracle;
-    UniswapV2EthOracle public uniV2EthOracle;
     WstETHEthOracle public wstEthOracle;
     MavEthOracle public mavEthOracle;
     CurveV2CryptoEthOracle public curveCryptoOracle;
@@ -185,7 +183,6 @@ contract RootOracleIntegrationTest is Test {
         chainlinkOracle = new ChainlinkOracle(systemRegistry);
         curveStableOracle = new CurveV1StableEthOracle(systemRegistry, ICurveResolver(curveResolver));
         ethPegOracle = new EthPeggedOracle(systemRegistry);
-        uniV2EthOracle = new UniswapV2EthOracle(systemRegistry);
         wstEthOracle = new WstETHEthOracle(systemRegistry, WSTETH_MAINNET);
         mavEthOracle = new MavEthOracle(systemRegistry, MAV_POOL_INFORMATION);
         curveCryptoOracle = new CurveV2CryptoEthOracle(systemRegistry, ICurveResolver(curveResolver));
@@ -210,7 +207,6 @@ contract RootOracleIntegrationTest is Test {
         vm.makePersistent(address(chainlinkOracle));
         vm.makePersistent(address(curveStableOracle));
         vm.makePersistent(address(ethPegOracle));
-        vm.makePersistent(address(uniV2EthOracle));
         vm.makePersistent(address(wstEthOracle));
         vm.makePersistent(address(mavEthOracle));
         vm.makePersistent(address(curveCryptoOracle));
@@ -275,10 +271,6 @@ contract RootOracleIntegrationTest is Test {
         priceOracle.registerMapping(STG_USDC_CURVE_V2_LP, IPriceOracle(address(curveCryptoOracle)));
         priceOracle.registerMapping(WBTC_BADGER_CURVE_V2_LP, IPriceOracle(address(curveCryptoOracle)));
         priceOracle.registerMapping(CBETH_ETH_V2_POOL_LP, IPriceOracle(address(curveCryptoOracle)));
-
-        // UniV2
-        priceOracle.registerMapping(STETH_ETH_UNIV2, IPriceOracle(address(uniV2EthOracle)));
-        priceOracle.registerMapping(ETH_USDT_UNIV2, IPriceOracle(address(uniV2EthOracle)));
 
         // Mav
         priceOracle.registerMapping(WSTETH_WETH_MAV, IPriceOracle(address(mavEthOracle)));
@@ -392,10 +384,6 @@ contract RootOracleIntegrationTest is Test {
         curveCryptoOracle.registerPool(WBTC_BADGER_V2_POOL, WBTC_BADGER_CURVE_V2_LP, false);
         curveCryptoOracle.registerPool(CBETH_ETH_V2_POOL, CBETH_ETH_V2_POOL_LP, false);
 
-        // Uni pool setup
-        uniV2EthOracle.register(STETH_ETH_UNIV2);
-        uniV2EthOracle.register(ETH_USDT_UNIV2);
-
         // Custom oracle setup
         address[] memory tokens = new address[](2);
         uint256[] memory maxAges = new uint256[](2);
@@ -497,385 +485,6 @@ contract GetPriceInQuote is RootOracleIntegrationTest {
 
 ///@dev Test LP token pricing
 contract GetPriceInEth is RootOracleIntegrationTest {
-    function test_BalComposableStablePoolOracle() external {
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_475_350);
-
-        // Calculated - 573334720000000
-        // Safe price - 575991341828605
-        uint256 calculatedPrice = uint256(573_334_720_000_000);
-        uint256 safePrice = priceOracle.getPriceInEth(USDC_DAI_USDT_BAL_POOL);
-        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-    }
-
-    function test_CurveStableV1PoolOracle() external {
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_475_426);
-
-        // Calculated - 1073735977000000000
-        // Safe price - 1073637176979605953
-        uint256 calculatedPrice = uint256(1_073_735_977_000_000_000);
-        uint256 safePrice = priceOracle.getPriceInEth(ST_ETH_CURVE_LP_TOKEN_MAINNET);
-        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // Calculated - 587546836000000
-        // Safe price - 590481873156925
-        calculatedPrice = uint256(587_546_836_000_000);
-        safePrice = priceOracle.getPriceInEth(THREE_CURVE_POOL_MAINNET_LP);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // Newer tests, new fork.
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_480_014);
-
-        // Calculated - 1098321582000000000
-        // Safe price - 1077905860822595469
-        calculatedPrice = uint256(1_098_321_582_000_000_000);
-        safePrice = priceOracle.getPriceInEth(RETH_WSTETH_CURVE_POOL_LP);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-    }
-
-    function test_UniV2PoolOracle() external {
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_475_530);
-
-        // Calculated - 2692923915000000000
-        // Safe price - 2719124222286442720
-        uint256 calculatedPrice = uint256(2_692_923_915_000_000_000);
-        uint256 safePrice = priceOracle.getPriceInEth(STETH_ETH_UNIV2);
-        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // Calculated - 111063607400000000000000
-        // Safe price - 111696966269313545001725
-        calculatedPrice = uint256(111_063_607_400_000_000_000_000);
-        safePrice = priceOracle.getPriceInEth(ETH_USDT_UNIV2);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-    }
-
-    function test_BalMetaStablePoolOracle() external {
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_475_744);
-
-        // Calculated - 1010052287000000000
-        // Safe price - 1049623347233950707
-        uint256 calculatedPrice = uint256(1_010_052_287_000_000_000);
-        uint256 safePrice = priceOracle.getPriceInEth(CBETH_WSTETH_BAL_POOL);
-        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // Calculated - 1023468806000000000
-        // Safe price - 1023189295745953671
-        calculatedPrice = uint256(1_023_691_743_000_000_000);
-        safePrice = priceOracle.getPriceInEth(RETH_WETH_BAL_POOL);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // Calculated - 1035273715000000000
-        // Safe price - 1035531137827401614
-        calculatedPrice = uint256(1_034_447_288_000_000_000);
-        safePrice = priceOracle.getPriceInEth(WSETH_WETH_BAL_POOL);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-    }
-
-    function test_MavEthOracle() external {
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_528_586);
-
-        // Calculated - 1279055722000000000
-        // Safe price - 1281595721753262897
-        uint256 calculatedPrice = uint256(1_279_055_722_000_000_000);
-        uint256 safePrice = priceOracle.getPriceInEth(WSTETH_WETH_MAV);
-        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-    }
-
-    /**
-     * @notice crvUsd / MIM and TricryptoLLAMA pool excluded as of 6/29/23.  MIM does not have a Chainlink price
-     *      feed, and TricryptoLLAMA is a v2 ng pool.
-     */
-    function test_CurveStableSwapNGPools() external {
-        // Pulled stEth ng pool test from elsewhere, use older fork
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_480_014);
-
-        // Calculated - 1006028244000000000
-        // Safe price - 1001718276876133469
-        uint256 calculatedPrice = uint256(1_006_028_244_000_000_000);
-        uint256 safePrice = priceOracle.getPriceInEth(STETH_STABLESWAP_NG_POOL);
-        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_586_413);
-
-        // Set up here because pool did not exist at original setup fork.
-        curveStableOracle.registerPool(SUSD_STABLESWAP_NG_POOL, SUSD_STABLESWAP_NG_POOL, false);
-
-        // Calculated - 540613701000000
-        // Safe price - 539414760524139;
-        calculatedPrice = uint256(540_613_701_000_000);
-        safePrice = priceOracle.getPriceInEth(USDC_STABLESWAP_NG_POOL);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // Calculated - 540416370000000
-        // Safe price - 540237542722259
-        calculatedPrice = uint256(540_416_370_000_000);
-        safePrice = priceOracle.getPriceInEth(USDT_STABLESWAP_NG_POOL);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // Calculated - 539978431000000
-        // Safe price - 538905372335699
-        calculatedPrice = uint256(539_978_431_000_000);
-        safePrice = priceOracle.getPriceInEth(TUSD_STABLESWAP_NG_POOL);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // Calculated - 540443002000000
-        // Safe price - 534720896910672
-        calculatedPrice = uint256(540_443_002_000_000);
-        safePrice = priceOracle.getPriceInEth(USDP_STABLESWAP_NG_POOL);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // Calculated - 539914597000000
-        // Safe price - 539944276470054
-        calculatedPrice = uint256(539_914_597_000_000);
-        safePrice = priceOracle.getPriceInEth(FRAX_STABLESWAP_NG_POOL);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // Calculated - 539909058000000
-        // Safe price - 538554606113206
-        calculatedPrice = uint256(539_909_058_000_000);
-        safePrice = priceOracle.getPriceInEth(SUSD_STABLESWAP_NG_POOL);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-    }
-
-    /**
-     * @notice Tested against multiple v2 pools that we are not using to test validity of approach.
-     */
-    function test_CurveV2Pools() external {
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_672_343);
-
-        // Calculated - 2079485290000000000
-        // Safe price - 2077740002016828677
-        uint256 calculatedPrice = uint256(2_079_485_290_000_000_000);
-        uint256 safePrice = priceOracle.getPriceInEth(RETH_ETH_CURVE_LP);
-        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // Calculated - 42945287200000000
-        // Safe Price - 43072642081141667
-        calculatedPrice = uint256(42_945_287_200_000_000);
-        safePrice = priceOracle.getPriceInEth(CRV_ETH_CURVE_V2_LP);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // Calculated - 64666948400000000
-        // Safe price - 64695922392289196
-        calculatedPrice = uint256(64_695_922_392_289_196);
-        safePrice = priceOracle.getPriceInEth(LDO_ETH_CURVE_V2_LP);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        //
-        // Non-eth base tests.
-        //
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_914_103);
-        // Set up here, does not exist at block forked for `setUp()`.
-        chainlinkOracle.registerOracle(
-            STG_MAINNET, IAggregatorV3Interface(STG_CL_FEED_MAINNET), BaseOracleDenominations.Denomination.USD, 24 hours
-        );
-
-        address[] memory tokens = new address[](1);
-        uint256[] memory prices = new uint256[](1);
-        uint256[] memory timestamps = new uint256[](1);
-
-        // Set frxEth pricing with custom set oracle, price in Eth taken from Coingecko.
-        tokens[0] = FRXETH_MAINNET;
-        prices[0] = 998_126_960_000_000_000;
-        timestamps[0] = block.timestamp;
-        customSetOracle.setPrices(tokens, prices, timestamps);
-
-        // Safe price - 892992560872301
-        // Calculated - 898924164000000
-        calculatedPrice = uint256(898_924_164_000_000);
-        safePrice = priceOracle.getPriceInEth(STG_USDC_CURVE_V2_LP);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // Safe price - 284617745946998885
-        // Calculated - 280364973000000000
-        calculatedPrice = uint256(280_364_973_000_000_000);
-        safePrice = priceOracle.getPriceInEth(WBTC_BADGER_CURVE_V2_LP);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-    }
-
-    /**
-     * Funtion tests path where quote token is < 18 decimals CurveV2.  This was a bug that came about due to a change
-     *    in the functionality of `getPriceInQuote()`.  The change was that getPriceInQuote went from returning
-     *    18 decimals to returning decimals of the quote token.  This was resulting in safe prices being returned
-     *    orders of magnitude off.
-     */
-    function test_GetSpotPriceQuoteNot18Decimals() external {
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19_298_357);
-
-        // ------------------
-        // WETH / USDC POOL
-        // ------------------
-
-        // Create Weth / Usdc pool using Curve Crypto factory.  Usdc must be quote token (coins[0]) for this test to
-        // be effective.  Params taken from here: https://docs.curve.fi/factory/cryptoswap/deployer-api/#liquidity-pools
-        ICurveFactoryV2 factory = ICurveFactoryV2(CURVE_CRYPTO_FACTORY);
-        address newPoolAddress = factory.deploy_pool(
-            "Test Decimals Quote Pool",
-            "TDQP",
-            [USDC_MAINNET, WETH_MAINNET],
-            20_000_000, // A
-            10_000_000_000_000_000, // Gamma
-            3_000_000, // Mid fee
-            45_000_000, // Out fee
-            10_000_000_000, // Allowed extra profit
-            300_000_000_000_000_000, // Fee gamma
-            5_500_000_000_000, // Adjustment step
-            5_000_000_000, // Admin fee
-            600, // Ma half time
-            3_000_000_000_000_000_000_000 // Initial price, ~3k Eth per USDC at pinned block.
-        );
-
-        ICryptoSwapPool pool = ICryptoSwapPool(newPoolAddress);
-        address newPoolToken = pool.token();
-
-        // Provide liquidity to pool.  Adhere to initial price set above (3k Usdc per Weth).
-        vm.prank(USDC_WHALE);
-        IERC20(USDC_MAINNET).transfer(address(this), 30_000e6);
-
-        vm.prank(WETH_WHALE);
-        IERC20(WETH_MAINNET).transfer(address(this), 10e18);
-
-        IERC20(WETH_MAINNET).approve(newPoolAddress, 10e18);
-        IERC20(USDC_MAINNET).approve(newPoolAddress, 30_000e6);
-
-        // Add liquidity to pool.
-        pool.add_liquidity([uint256(30_000e6), uint256(10e18)], 1);
-
-        /**
-         * Eth in usdc - 2958732380000000000000
-         * virtual - 1000000000000000000 -- No swaps yet, remains 1.
-         * sqrt value - 54394231127942235120
-         * Lp supply - 547722557505166113456
-         *
-         * Calculated price -      36764963801605100
-         * Safe price -            36768605025333338
-         * safe price before fix - 36768605025333180015422
-         */
-
-        // Checks for token ordering, if usdc is not coins[0] this test doesn't check what we need it to check.
-        // This is due to how the lp_pricce in CurveV2 is calculated.
-        address[2] memory coins = factory.get_coins(newPoolAddress);
-        assertEq(coins[0], USDC_MAINNET);
-
-        // Register pool with v2 oracle.
-        curveCryptoOracle.registerPool(newPoolAddress, newPoolToken, false);
-
-        uint256 safePrice = curveCryptoOracle.getPriceInEth(newPoolToken);
-        uint256 calculatedPrice = uint256(36_764_963_801_605_100);
-
-        // Checks for calculated price vs safe price.
-        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        // ------------------
-        // RETH / Usdc POOL
-        // ------------------
-
-        // Create rEth usdt pool.
-        newPoolAddress = factory.deploy_pool(
-            "Test Decimals Quote Pool 2",
-            "TDQP 2",
-            [USDC_MAINNET, RETH_MAINNET],
-            20_000_000, // A
-            10_000_000_000_000_000, // Gamma
-            3_000_000, // Mid fee
-            45_000_000, // Out fee
-            10_000_000_000, // Allowed extra profit
-            300_000_000_000_000_000, // Fee gamma
-            5_500_000_000_000, // Adjustment step
-            5_000_000_000, // Admin fee
-            600, // Ma half time
-            3_000_000_000_000_000_000_000 // Initial price, ~3k rEth per usdc at pinned block.
-        );
-
-        pool = ICryptoSwapPool(newPoolAddress);
-        newPoolToken = pool.token();
-
-        // Provide liquidity to pool.  Adhere to initial price set above (3k Usdc per rETh).
-        vm.prank(USDC_WHALE);
-        IERC20(USDC_MAINNET).transfer(address(this), 30_000e6);
-
-        vm.prank(RETH_WHALE);
-        IERC20(RETH_MAINNET).transfer(address(this), 10e18);
-
-        IERC20(RETH_MAINNET).approve(newPoolAddress, 10e18);
-        IERC20(USDC_MAINNET).approve(newPoolAddress, type(uint256).max);
-
-        // Add liquidity to pool.
-        pool.add_liquidity([uint256(30_000e6), uint256(10e18)], 1);
-
-        /**
-         * Eth in usdc - 2958732380000000000000
-         * rEth in usdc - 3252534505000000000000
-         * virtual - 1000000000000000000 -- No swaps yet, remains 1.
-         * sqrt value - 57030996002174115984
-         * Lp supply - 547722557505166113456
-         *
-         * Calculated price -      38459252246154413
-         * Safe price -            38550966209504974
-         * safe price before fix - 38550966209504896147450
-         */
-
-        // Checks for token ordering.
-        coins = factory.get_coins(newPoolAddress);
-        assertEq(coins[0], USDC_MAINNET);
-
-        // Register pool with v2 oracle.
-        curveCryptoOracle.registerPool(newPoolAddress, newPoolToken, false);
-
-        safePrice = curveCryptoOracle.getPriceInEth(newPoolToken);
-        calculatedPrice = uint256(38_459_252_246_154_413);
-
-        // Checks for calculated price vs safe price.
-        (upperBound, lowerBound) = _getTwoPercentTolerance(calculatedPrice);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-    }
-
     // Ensuring that all tokens and being used for guarded launch work as expected.
     function test_GuardedLaunchCoverage_getPriceInEth() external {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19_323_090);
@@ -904,18 +513,6 @@ contract GetPriceInEth is RootOracleIntegrationTest {
         // Safe price - 1059015260299733800
         offChain = uint256(1_059_015_260_299_733_800);
         safePrice = priceOracle.getPriceInEth(CBETH_MAINNET);
-        (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-
-        //
-        // cbEth/Eth CurveV2 pool
-        //
-
-        // Calculated - 2084743277334819570
-        // Safe price - 2082478222376828813
-        offChain = uint256(2_084_743_277_334_819_570);
-        safePrice = priceOracle.getPriceInEth(CBETH_ETH_V2_POOL_LP);
         (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
         assertGt(upperBound, safePrice);
         assertLt(lowerBound, safePrice);
@@ -981,29 +578,6 @@ contract GetPriceInEth is RootOracleIntegrationTest {
         safePrice = priceOracle.getPriceInEth(RSETH_MAINNET);
         (upperBound, lowerBound) = _getTwoPercentTolerance(offChain);
 
-        assertGt(upperBound, safePrice);
-        assertLt(lowerBound, safePrice);
-    }
-
-    // Specifically test path when asset is priced in USD
-    function test_EthInUsdPath() external {
-        // Use bal usdc - usdt - dai pool, usdc denominated in USD
-
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_475_310);
-
-        chainlinkOracle.removeOracleRegistration(USDC_MAINNET);
-        chainlinkOracle.registerOracle(
-            USDC_MAINNET,
-            IAggregatorV3Interface(USDC_IN_USD_CL_FEED_MAINNET),
-            BaseOracleDenominations.Denomination.USD,
-            24 hours
-        );
-
-        // calculated - 588167942000000
-        // safe price - 587583813652788
-        uint256 calculatedPrice = uint256(588_167_942_000_000);
-        uint256 safePrice = priceOracle.getPriceInEth(THREE_CURVE_POOL_MAINNET_LP);
-        (uint256 upperBound, uint256 lowerBound) = _getTwoPercentTolerance(calculatedPrice);
         assertGt(upperBound, safePrice);
         assertLt(lowerBound, safePrice);
     }
@@ -1497,7 +1071,7 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
  *    are a couple of reasons for this:
  *    - This can happen when a quote token adjustment does not happen.
  *    - This can also happen when lp supply and reserves retrieved from Etherscan are the same as what
- *      is being used in spot price calculations.  This will happen when no trades have occured on the
+ *      is being used in spot price calculations.  This will happen when no trades have occurred on the
  *      pool between contract calculations and getting information on the UI.
  */
 contract GetFloorCeilingPrice is RootOracleIntegrationTest {
@@ -1527,7 +1101,7 @@ contract GetFloorCeilingPrice is RootOracleIntegrationTest {
      *    the desired quote.  This method eliminates any lp or reserve decimal adjustments.
      *
      *  Getting ceiling price as that is the path that touches `_enforceQuoteToken`, which is what is
-     *    needed to asjust the quote.
+     *    needed to adjust the quote.
      *
      * Ceiling price returned -   1088774876286734804
      * Ceiling price calculated - 1087794810604558466.
@@ -1615,7 +1189,7 @@ contract GetFloorCeilingPrice is RootOracleIntegrationTest {
 
     /**
      * This test checks the situation where the token priced has a lesser number of decimals than the quote
-     *      token and reserces need to be scaled up.  This test is run in a very similar way to the one above.
+     *      token and reserves need to be scaled up.  This test is run in a very similar way to the one above.
      *      USDC swapped to FRAX here to get desired effect.
      *
      * Calculated - 1003891960978409778

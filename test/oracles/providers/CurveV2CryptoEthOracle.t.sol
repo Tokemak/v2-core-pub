@@ -181,18 +181,6 @@ contract CurveV2CryptoEthOracleTest is Test {
         assertEq(address(0), curveOracle.poolToLpToken(CRV_ETH_CURVE_V2_POOL));
     }
 
-    // getPriceInEth
-    // Actual pricing return functionality tested in `RootPriceOracleIntegrationTest.sol`
-    function test_RevertTokenZeroAddress() external {
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "token"));
-        curveOracle.getPriceInEth(address(0));
-    }
-
-    function test_RevertTokenNotRegistered() external {
-        vm.expectRevert(abi.encodeWithSelector(CurveV2CryptoEthOracle.NotRegistered.selector, CRV_ETH_CURVE_V2_LP));
-        curveOracle.getPriceInEth(CRV_ETH_CURVE_V2_LP);
-    }
-
     function testGetSpotPriceRevertIfPoolIsZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "pool"));
         curveOracle.getSpotPrice(RETH_MAINNET, address(0), WETH9_ADDRESS);

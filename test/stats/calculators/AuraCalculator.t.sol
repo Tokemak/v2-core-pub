@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
-/* solhint-disable func-name-mixedcase,contract-name-camelcase,one-contract-per-file */
+/* solhint-disable func-name-mixedcase,contract-name-camelcase,one-contract-per-file,max-states-count */
 pragma solidity >=0.8.7;
 
 import { Test } from "forge-std/Test.sol";
@@ -17,6 +17,7 @@ import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { LDO_MAINNET } from "test/utils/Addresses.sol";
+import { Errors } from "src/utils/Errors.sol";
 import { IBooster } from "src/interfaces/external/aura/IBooster.sol";
 
 contract AuraCalculatorTest is Test {
@@ -34,6 +35,9 @@ contract AuraCalculatorTest is Test {
     address internal booster;
     address internal stashToken;
     address internal baseToken;
+    address internal lpToken;
+    address internal pool;
+    address internal weth;
 
     AuraCalculator internal calculator;
 
@@ -65,6 +69,9 @@ contract AuraCalculatorTest is Test {
         booster = vm.addr(105);
         stashToken = vm.addr(106);
         baseToken = vm.addr(107);
+        lpToken = vm.addr(1001);
+        pool = vm.addr(109);
+        weth = vm.addr(110);
 
         vm.label(underlyerStats, "underlyerStats");
         vm.label(pricingStats, "pricingStats");
@@ -78,6 +85,8 @@ contract AuraCalculatorTest is Test {
         vm.label(booster, "booster");
         vm.label(stashToken, "stashToken");
         vm.label(baseToken, "baseToken");
+        vm.label(lpToken, "lpToken");
+        vm.label(pool, "pool");
 
         // mock system registry
         vm.mockCall(
@@ -92,9 +101,13 @@ contract AuraCalculatorTest is Test {
         vm.mockCall(
             systemRegistry, abi.encodeWithSelector(ISystemRegistry.incentivePricing.selector), abi.encode(pricingStats)
         );
+        vm.mockCall(systemRegistry, abi.encodeWithSelector(ISystemRegistry.weth.selector), abi.encode(weth));
 
         // mock all prices to be 1
         vm.mockCall(rootPriceOracle, abi.encodeWithSelector(IRootPriceOracle.getPriceInEth.selector), abi.encode(1));
+        vm.mockCall(
+            rootPriceOracle, abi.encodeWithSelector(IRootPriceOracle.getRangePricesLP.selector), abi.encode(1, 1, true)
+        );
         vm.mockCall(pricingStats, abi.encodeWithSelector(IIncentivesPricingStats.getPrice.selector), abi.encode(1, 1));
 
         // set platform reward token (CVX) total supply
@@ -124,7 +137,9 @@ contract AuraCalculatorTest is Test {
         IncentiveCalculatorBase.InitData memory initData = IncentiveCalculatorBase.InitData({
             rewarder: mainRewarder,
             underlyerStats: underlyerStats,
-            platformToken: platformRewarder
+            platformToken: platformRewarder,
+            lpToken: lpToken,
+            pool: pool
         });
         bytes memory encodedInitData = abi.encode(initData);
 
@@ -163,11 +178,11 @@ contract AuraCalculatorTest is Test {
         vm.mockCall(_rewarder, abi.encodeWithSelector(IBaseRewardPool.totalSupply.selector), abi.encode(value));
     }
 
-    function mockAsset(address _rewarder, address value) public {
+    function mockAsset(address _rewarder, address lpToken_) public {
         vm.mockCall(_rewarder, abi.encodeWithSelector(IBaseRewardPool.pid.selector), abi.encode(234_789));
 
         IBooster.PoolInfo memory poolInfo = IBooster.PoolInfo({
-            lptoken: value,
+            lptoken: lpToken_,
             token: address(0),
             gauge: address(0),
             crvRewards: address(0),
@@ -389,6 +404,17 @@ contract Snapshot is AuraCalculatorTest {
         assertTrue(calculator.safeTotalSupplies(mainRewarder) == 0);
     }
 
+    function test_RevertIf_PriceIsntSafe() public {
+        vm.mockCall(
+            rootPriceOracle, abi.encodeWithSelector(IRootPriceOracle.getRangePricesLP.selector), abi.encode(1, 1, false)
+        );
+
+        mockSimpleMainRewarder();
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.UnsafePrice.selector, lpToken, 1, 1));
+        calculator.snapshot();
+    }
+
     function test_FinalizesSnapshotProcess() public {
         mockSimpleMainRewarder();
 
@@ -418,6 +444,25 @@ contract Current is AuraCalculatorTest {
 
         calculator.snapshot();
 
+        calculator.current();
+    }
+
+    function test_RevertIf_PriceIsntSafe() public {
+        mockSimpleMainRewarder();
+
+        // start the snapshot process
+        calculator.snapshot();
+
+        // move forward in time
+        vm.warp(block.timestamp + 5 hours);
+
+        calculator.snapshot();
+
+        vm.mockCall(
+            rootPriceOracle, abi.encodeWithSelector(IRootPriceOracle.getRangePricesLP.selector), abi.encode(1, 1, false)
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.UnsafePrice.selector, lpToken, 1, 1));
         calculator.current();
     }
 
@@ -576,5 +621,26 @@ contract ResolveRewardToken is AuraCalculatorTest {
         // Reward token returned should be zero
         address rewardToken = calculator.resolveRewardToken(extraRewarder);
         assertEq(rewardToken, address(0));
+    }
+}
+
+contract Initialize is AuraCalculatorTest {
+    function test_RevertIf_RewarderLpTokenDoesntMatchProvided() public {
+        address invalidLpToken = makeAddr("invalidLpToken");
+
+        AuraCalculator calc = new AuraCalculator(ISystemRegistry(systemRegistry), booster);
+
+        bytes32[] memory dependantAprs = new bytes32[](0);
+        IncentiveCalculatorBase.InitData memory initData = IncentiveCalculatorBase.InitData({
+            rewarder: mainRewarder,
+            underlyerStats: underlyerStats,
+            platformToken: platformRewarder,
+            lpToken: invalidLpToken,
+            pool: pool
+        });
+        bytes memory encodedInitData = abi.encode(initData);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "lptoken"));
+        calc.initialize(dependantAprs, encodedInitData);
     }
 }

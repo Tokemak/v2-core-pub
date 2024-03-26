@@ -175,6 +175,31 @@ contract LMPStrategyTest is Test {
         defaultStrat.getRebalanceOutSummaryStats(defaultParams);
     }
 
+    function test_getRebalanceOutSummaryStats_UsesDestinationSafePrice() public {
+        vm.warp(181 days);
+        defaultStrat._setLastRebalanceTimestamp(180 days);
+
+        // ensure the vault has enough assets
+        setLmpDestinationBalanceOf(mockOutDest, 200e18);
+
+        defaultParams.amountIn = 199e18; // 199 eth
+        defaultParams.amountOut = 200e18; // 200 eth
+
+        IDexLSTStats.DexLSTStatsData memory inStats;
+        inStats.lastSnapshotTimestamp = 180 days;
+        inStats.feeApr = 0.095656855707106963e18; // calculated manually
+        setStatsCurrent(mockInStats, inStats);
+        IDexLSTStats.DexLSTStatsData memory outStats;
+        outStats.lastSnapshotTimestamp = 180 days;
+        outStats.feeApr = 0.03e18;
+        setStatsCurrent(mockOutStats, outStats);
+
+        setDestinationSafePrice(mockOutDest, 1817e18);
+
+        IStrategy.SummaryStats memory destOutSummary = defaultStrat.getRebalanceOutSummaryStats(defaultParams);
+        assertEq(destOutSummary.pricePerShare, 1817e18);
+    }
+
     function test_getRebalanceOutSummaryStats_RevertIf_invalidParams() public {
         // this test ensures that `validateRebalanceParams` is called. It is not exhaustive
         defaultParams.amountIn = 0;
@@ -1087,6 +1112,26 @@ contract LMPStrategyTest is Test {
         assertEq(stats.maxPremium, 0);
         assertEq(stats.compositeReturn, 0);
         assertEq(stats.slashingCost, 0);
+    }
+
+    function test_getRebalanceInSummaryStats_PricesIdleWithSafePrice() public {
+        uint256 idle = 456e17;
+        setLmpIdle(idle);
+
+        setTokenPrice(mockBaseAsset, 1.9e18);
+
+        IStrategy.RebalanceParams memory rebalParams = IStrategy.RebalanceParams({
+            destinationIn: mockLMPVault,
+            amountIn: 1,
+            tokenIn: mockBaseAsset,
+            destinationOut: address(1),
+            tokenOut: address(1),
+            amountOut: 0
+        });
+
+        IStrategy.SummaryStats memory stats = defaultStrat._getRebalanceInSummaryStats(rebalParams);
+
+        assertEq(stats.pricePerShare, 1.9e18);
     }
 
     function test_getDestinationSummaryStats_RevertIf_staleData() public {
@@ -2147,12 +2192,12 @@ contract LMPStrategyTest is Test {
     /* LP Token Mocks                           */
     /* **************************************** */
     function setTokenDefaultMocks() private {
-        setTokenPrice(mockInToken, 1e18);
+        setDestinationSafePrice(mockInDest, 1e18);
         setDestinationSpotPrice(mockInDest, 1e18);
         setTokenPrice(mockInLSTToken, 1e18);
         setTokenSpotPrice(mockInLSTToken, 1e18);
         setTokenDecimals(mockInToken, 18);
-        setTokenPrice(mockOutToken, 1e18);
+        setDestinationSafePrice(mockOutDest, 1e18);
         setDestinationSpotPrice(mockOutDest, 1e18);
         setTokenPrice(mockOutLSTToken, 1e18);
         setTokenSpotPrice(mockOutLSTToken, 1e18);
@@ -2177,6 +2222,14 @@ contract LMPStrategyTest is Test {
         vm.mockCall(
             address(rootPriceOracle),
             abi.encodeWithSelector(IRootPriceOracle.getPriceInEth.selector, token),
+            abi.encode(price)
+        );
+    }
+
+    function setDestinationSafePrice(address destination, uint256 price) private {
+        vm.mockCall(
+            address(destination),
+            abi.encodeWithSelector(IDestinationVault.getValidatedSafePrice.selector),
             abi.encode(price)
         );
     }
@@ -2291,6 +2344,13 @@ contract LMPStrategyHarness is LMPStrategy {
 
     function _getIncentivePrice(IIncentivesPricingStats pricing, address token) public view returns (uint256) {
         return getIncentivePrice(pricing, token);
+    }
+
+    function _getRebalanceInSummaryStats(IStrategy.RebalanceParams memory rebalanceParams)
+        public
+        returns (IStrategy.SummaryStats memory inSummary)
+    {
+        inSummary = getRebalanceInSummaryStats(rebalanceParams);
     }
 
     function _getDestinationSummaryStats(

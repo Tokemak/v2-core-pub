@@ -114,6 +114,7 @@ contract MaverickDestinationVaultTests is Test {
 
         _testIncentiveCalculator = new TestIncentiveCalculator();
         _testIncentiveCalculator.setLpToken(address(_underlyer));
+        _testIncentiveCalculator.setPoolAddress(address(MAV_WSTETH_WETH_POOL));
 
         MaverickDestinationVault dvTemplate = new MaverickDestinationVault(_systemRegistry);
         bytes32 dvType = keccak256(abi.encode("template"));
@@ -154,9 +155,6 @@ contract MaverickDestinationVaultTests is Test {
 
         _mockSystemBound(address(_systemRegistry), address(_rootPriceOracle));
         _systemRegistry.setRootPriceOracle(address(_rootPriceOracle));
-        _mockRootPrice(address(_asset), 1 ether);
-        _mockRootPrice(address(_underlyer), 2 ether);
-
         // Set lmp vault registry for permissions
         _lmpVaultRegistry = ILMPVaultRegistry(vm.addr(237_894));
         vm.label(address(_lmpVaultRegistry), "lmpVaultRegistry");
@@ -411,16 +409,75 @@ contract MaverickDestinationVaultTests is Test {
         assertEq(IDestinationVault(_destVault).getPool(), MAV_WSTETH_WETH_POOL);
     }
 
-    function _mockSystemBound(address registry, address addr) internal {
-        vm.mockCall(addr, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(registry));
+    function test_validateCalculator_EnsuresMatchingUnderlyingWithCalculator() external {
+        MaverickDestinationVault.InitParams memory initParams = MaverickDestinationVault.InitParams({
+            maverickRouter: MAV_ROUTER,
+            maverickBoostedPosition: MAV_WSTETH_WETH_BOOSTED_POS,
+            maverickRewarder: MAV_WSTETH_WETH_BOOSTED_POS_REWARDER,
+            maverickPool: MAV_WSTETH_WETH_POOL
+        });
+        bytes memory initParamBytes = abi.encode(initParams);
+        _testIncentiveCalculator = new TestIncentiveCalculator();
+        _testIncentiveCalculator.setLpToken(address(_underlyer));
+        _testIncentiveCalculator.setPoolAddress(address(MAV_WSTETH_WETH_POOL));
+
+        TestERC20 badUnderlyer = new TestERC20("X", "X");
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DestinationVault.InvalidIncentiveCalculator.selector, address(_underlyer), address(badUnderlyer), "lp"
+            )
+        );
+        payable(
+            _destinationVaultFactory.create(
+                "template",
+                address(_asset),
+                address(badUnderlyer),
+                address(_testIncentiveCalculator),
+                additionalTrackedTokens,
+                keccak256("salt2"),
+                initParamBytes
+            )
+        );
     }
 
-    function _mockRootPrice(address token, uint256 price) internal {
-        vm.mockCall(
-            address(_rootPriceOracle),
-            abi.encodeWithSelector(IRootPriceOracle.getPriceInEth.selector, token),
-            abi.encode(price)
+    function test_validateCalculator_EnsuresMatchingPoolWithCalculator() external {
+        address badPool = makeAddr("badPool");
+
+        MaverickDestinationVault.InitParams memory initParams = MaverickDestinationVault.InitParams({
+            maverickRouter: MAV_ROUTER,
+            maverickBoostedPosition: MAV_WSTETH_WETH_BOOSTED_POS,
+            maverickRewarder: MAV_WSTETH_WETH_BOOSTED_POS_REWARDER,
+            maverickPool: badPool
+        });
+        bytes memory initParamBytes = abi.encode(initParams);
+        _testIncentiveCalculator = new TestIncentiveCalculator();
+        _testIncentiveCalculator.setLpToken(address(_underlyer));
+        _testIncentiveCalculator.setPoolAddress(address(MAV_WSTETH_WETH_POOL));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DestinationVault.InvalidIncentiveCalculator.selector,
+                address(MAV_WSTETH_WETH_POOL),
+                address(badPool),
+                "pool"
+            )
         );
+        payable(
+            _destinationVaultFactory.create(
+                "template",
+                address(_asset),
+                address(_underlyer),
+                address(_testIncentiveCalculator),
+                additionalTrackedTokens,
+                keccak256("salt2"),
+                initParamBytes
+            )
+        );
+    }
+
+    function _mockSystemBound(address registry, address addr) internal {
+        vm.mockCall(addr, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(registry));
     }
 
     function _mockIsVault(address vault, bool isVault) internal {

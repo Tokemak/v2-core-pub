@@ -9,7 +9,11 @@ contract TestIncentiveCalculator {
     address internal _lpToken;
     address internal _poolAddress;
 
-    function resolveLpToken() public view virtual returns (address lpToken) {
+    function resolveLpToken() public view virtual returns (address) {
+        return _lpToken;
+    }
+
+    function lpToken() public view virtual returns (address) {
         return _lpToken;
     }
 
@@ -17,8 +21,12 @@ contract TestIncentiveCalculator {
         return _poolAddress;
     }
 
-    function setLpToken(address lpToken) public {
-        _lpToken = lpToken;
+    function pool() public view virtual returns (address) {
+        return _poolAddress;
+    }
+
+    function setLpToken(address lpToken_) public {
+        _lpToken = lpToken_;
     }
 
     function setPoolAddress(address poolAddress_) public {

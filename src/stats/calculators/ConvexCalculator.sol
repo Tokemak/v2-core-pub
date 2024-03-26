@@ -14,7 +14,6 @@ import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCal
 
 contract ConvexCalculator is IncentiveCalculatorBase {
     address public immutable BOOSTER;
-    address public convexLpToken;
 
     constructor(ISystemRegistry _systemRegistry, address _booster) IncentiveCalculatorBase(_systemRegistry) {
         Errors.verifyNotZero(_booster, "_booster");
@@ -28,10 +27,12 @@ contract ConvexCalculator is IncentiveCalculatorBase {
         super.initialize(dependentAprIds, initData);
 
         // slither-disable-next-line unused-return
-        (address lptoken,,,,,) = IConvexBooster(BOOSTER).poolInfo(rewarder.pid());
-        Errors.verifyNotZero(lptoken, "lptoken");
+        (address convexResolvedLpToken,,,,,) = IConvexBooster(BOOSTER).poolInfo(rewarder.pid());
 
-        convexLpToken = lptoken;
+        // Checking for a misconfiguration between the rewarder and the supplied params
+        if (convexResolvedLpToken != lpToken) {
+            revert Errors.InvalidParam("convexResolvedLpToken");
+        }
     }
 
     function getPlatformTokenMintAmount(
@@ -52,10 +53,5 @@ contract ConvexCalculator is IncentiveCalculatorBase {
             // Retrieving the actual token value if token is valid
             rewardToken = reward.isInvalid() ? address(0) : reward.token();
         }
-    }
-
-    /// @inheritdoc IncentiveCalculatorBase
-    function resolveLpToken() public view virtual override returns (address lpToken) {
-        lpToken = convexLpToken;
     }
 }

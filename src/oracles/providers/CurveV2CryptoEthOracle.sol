@@ -8,7 +8,6 @@ pragma solidity 0.8.17;
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { SecurityBase } from "src/security/SecurityBase.sol";
-import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -18,7 +17,7 @@ import { ICryptoSwapPool } from "src/interfaces/external/curve/ICryptoSwapPool.s
 import { ICurveV2Swap } from "src/interfaces/external/curve/ICurveV2Swap.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 
-contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, ISpotPriceOracle {
+contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
     uint256 public constant FEE_PRECISION = 1e10;
     ICurveResolver public immutable curveResolver;
     address public immutable WETH;
@@ -73,11 +72,6 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
      * @param numTokens The number of tokens in the pool attempted to be registered.
      */
     error InvalidNumTokens(uint256 numTokens);
-
-    /**
-     * @notice Thrown when y and z values do not converge during square root calculation.
-     */
-    error SqrtError();
 
     /// @notice Reverse mapping of LP token to pool info.
     mapping(address => PoolData) public lpTokenToPool;
@@ -162,59 +156,6 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, IPriceOracle, 
         delete lpTokenToPool[curveLpToken];
 
         emit TokenUnregistered(curveLpToken);
-    }
-
-    /// @inheritdoc IPriceOracle
-    function getPriceInEth(address token) external returns (uint256 price) {
-        Errors.verifyNotZero(token, "token");
-
-        PoolData memory poolInfo = lpTokenToPool[token];
-        if (poolInfo.pool == address(0)) revert NotRegistered(token);
-
-        ICryptoSwapPool cryptoPool = ICryptoSwapPool(poolInfo.pool);
-        address base = poolInfo.tokenToPrice;
-        address quote = poolInfo.tokenFromPrice;
-
-        // Checking for read only reentrancy scenario.
-        if (poolInfo.checkReentrancy == 1) {
-            // This will fail in a reentrancy situation.
-            cryptoPool.claim_admin_fees();
-        }
-
-        // `getPriceInQuote` works for both eth pegged and non eth pegged assets.
-        uint256 basePrice = systemRegistry.rootPriceOracle().getPriceInQuote(base, quote);
-        uint256 wethInQuote = systemRegistry.rootPriceOracle().getPriceInQuote(WETH, quote);
-
-        uint256 quoteDecimals = IERC20Metadata(quote).decimals();
-        if (quoteDecimals < 18) {
-            basePrice = basePrice * 10 ** (18 - quoteDecimals);
-            wethInQuote = wethInQuote * 10 ** (18 - quoteDecimals);
-        }
-
-        return (2 * cryptoPool.get_virtual_price() * _sqrt(basePrice)) / wethInQuote;
-    }
-
-    // solhint-disable max-line-length
-    // Adapted from CurveV2 pools, see here:
-    // https://github.com/curvefi/curve-crypto-contract/blob/d7d04cd9ae038970e40be850df99de8c1ff7241b/contracts/two/CurveCryptoSwap2.vy#L1330
-    function _sqrt(uint256 x) private pure returns (uint256) {
-        if (x == 0) return 0;
-
-        uint256 z = (x + 10 ** 18) / 2;
-        uint256 y = x;
-
-        for (uint256 i = 0; i < 256;) {
-            if (z == y) {
-                return y;
-            }
-            y = z;
-            z = (x * 10 ** 18 / z + z) / 2;
-
-            unchecked {
-                ++i;
-            }
-        }
-        revert SqrtError();
     }
 
     /// @inheritdoc ISpotPriceOracle

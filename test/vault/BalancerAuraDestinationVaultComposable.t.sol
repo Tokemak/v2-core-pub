@@ -160,6 +160,8 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
         bytes memory initParamBytes = abi.encode(initParams);
         _testIncentiveCalculator = new TestIncentiveCalculator();
         _testIncentiveCalculator.setLpToken(address(_underlyer));
+        _testIncentiveCalculator.setPoolAddress(address(_underlyer));
+
         address payable newVault = payable(
             _destinationVaultFactory.create(
                 "template",
@@ -180,8 +182,6 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
 
         _mockSystemBound(address(_systemRegistry), address(_rootPriceOracle));
         _systemRegistry.setRootPriceOracle(address(_rootPriceOracle));
-        _mockRootPrice(address(_asset), 1 ether);
-        _mockRootPrice(address(_underlyer), 2 ether);
 
         // Set lmp vault registry for permissions
         _lmpVaultRegistry = ILMPVaultRegistry(vm.addr(237_894));
@@ -443,14 +443,6 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
 
     function _mockSystemBound(address registry, address addr) internal {
         vm.mockCall(addr, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(registry));
-    }
-
-    function _mockRootPrice(address token, uint256 price) internal {
-        vm.mockCall(
-            address(_rootPriceOracle),
-            abi.encodeWithSelector(IRootPriceOracle.getPriceInEth.selector, token),
-            abi.encode(price)
-        );
     }
 
     function _mockIsVault(address vault, bool isVault) internal {

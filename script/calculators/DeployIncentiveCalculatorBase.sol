@@ -15,12 +15,16 @@ contract DeployIncentiveCalculatorBase {
         bytes32 aprTemplateId,
         address poolCalculator,
         address platformToken,
-        address rewarder
+        address rewarder,
+        address lpToken,
+        address pool
     ) internal returns (address) {
         IncentiveCalculatorBase.InitData memory initData = IncentiveCalculatorBase.InitData({
             rewarder: rewarder,
             platformToken: platformToken,
-            underlyerStats: poolCalculator
+            underlyerStats: poolCalculator,
+            lpToken: lpToken,
+            pool: pool
         });
 
         bytes memory encodedInitData = abi.encode(initData);

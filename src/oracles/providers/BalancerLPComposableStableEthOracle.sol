@@ -3,7 +3,6 @@
 
 pragma solidity 0.8.17;
 
-import { Errors } from "src/utils/Errors.sol";
 import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";

@@ -13,7 +13,6 @@ import { SystemComponent } from "src/SystemComponent.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
 import { Errors } from "src/utils/Errors.sol";
-import { ICryptoSwapPool } from "src/interfaces/external/curve/ICryptoSwapPool.sol";
 import { ICurveV2Swap } from "src/interfaces/external/curve/ICurveV2Swap.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 

@@ -34,6 +34,7 @@ import { Pausable } from "src/security/Pausable.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
+import { VmSafe } from "forge-std/Vm.sol";
 
 contract LMPVaultTests is
     Test,
@@ -4240,6 +4241,20 @@ contract PreviewTests is FlashRebalanceTests {
         assertEq(6e18, previewShares);
     }
 
+    function test_previewWithdraw_MakesNoStateChanges() public {
+        address user = makeAddr("user1");
+        uint256 depositAmount = 9e18;
+        _depositFor(user, depositAmount);
+
+        vm.startStateDiffRecording();
+
+        vault.previewWithdraw(depositAmount);
+
+        VmSafe.AccountAccess[] memory records = vm.stopAndReturnStateDiff();
+
+        _ensureNoStateChanges(records);
+    }
+
     // Just testing this functionality in a situation where shares are not minting 1:1
     function test_previewWithdraw_NavChange() public {
         _flashRebalance();
@@ -4267,6 +4282,19 @@ contract PreviewTests is FlashRebalanceTests {
 
         // 1:1 right now, 4e9 shares should yield same in assets.
         assertEq(4e9, previewAssets);
+    }
+
+    function test_previewRedeem_MakesNoStateChanges() public {
+        address user = makeAddr("user1");
+        uint256 depositAmount = 9e18;
+        uint256 sharesMinted = _depositFor(user, depositAmount);
+
+        vm.startStateDiffRecording();
+
+        vault.previewRedeem(sharesMinted);
+
+        VmSafe.AccountAccess[] memory records = vm.stopAndReturnStateDiff();
+        _ensureNoStateChanges(records);
     }
 
     // Just testing this functionality in a situation where shares are not minting 1:1
@@ -4312,6 +4340,25 @@ contract PreviewTests is FlashRebalanceTests {
             }),
             data
         );
+    }
+
+    function _ensureNoStateChanges(VmSafe.AccountAccess[] memory records) private {
+        for (uint256 i = 0; i < records.length; i++) {
+            if (!records[i].reverted) {
+                assertEq(records[i].oldBalance, records[i].newBalance);
+                assertEq(records[i].deployedCode.length, 0);
+
+                for (uint256 s = 0; s < records[i].storageAccesses.length; s++) {
+                    if (records[i].storageAccesses[s].isWrite) {
+                        if (!records[i].storageAccesses[s].reverted) {
+                            assertEq(
+                                records[i].storageAccesses[s].previousValue, records[i].storageAccesses[s].newValue
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 /// =====================================================

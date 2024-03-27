@@ -43,6 +43,12 @@ library Errors {
     error InvalidToken(address token);
     error UnreachableError();
 
+    error InvalidSigner(address signer);
+
+    error InvalidChainId(uint256 chainId);
+
+    error SenderMismatch(address recipient, address sender);
+
     function verifyNotZero(address addr, string memory paramName) internal pure {
         if (addr == address(0)) {
             revert ZeroAddress(paramName);

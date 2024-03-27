@@ -11,95 +11,116 @@ import { EIP712, ECDSA } from "openzeppelin-contracts/utils/cryptography/EIP712.
 import { SystemComponent } from "src/SystemComponent.sol";
 import { Errors } from "src/utils/Errors.sol";
 
+import "forge-std/console.sol";
+
 contract Rewards is IRewards, SecurityBase, SystemComponent, EIP712 {
-	using ECDSA for bytes32;
-	using SafeERC20 for IERC20;
+    using ECDSA for bytes32;
+    using SafeERC20 for IERC20;
 
-	mapping(address => uint256) public override claimedAmounts;
+    mapping(address => uint256) public override claimedAmounts;
 
-	bytes32 private constant _RECIPIENT_TYPEHASH =
-		keccak256("Recipient(uint256 chainId,uint256 cycle,address wallet,uint256 amount)");
+    bytes32 private constant _RECIPIENT_TYPEHASH =
+        keccak256("Recipient(uint256 chainId,uint256 cycle,address wallet,uint256 amount)");
 
-	IERC20 public immutable override vaultToken;
-	address public override rewardsSigner;
+    IERC20 public immutable override vaultToken;
+    address public override rewardsSigner;
 
-	constructor(
-		ISystemRegistry _systemRegistry,
-		IERC20 _vaultToken,
-		address _rewardsSigner
-	)
-		SystemComponent(_systemRegistry)
-		SecurityBase(address(_systemRegistry.accessController()))
-		EIP712("Vault Token Distribution", "1")
-	{
-		Errors.verifyNotZero(address(_vaultToken), "token");
-		Errors.verifyNotZero(address(_rewardsSigner), "signerAddress");
+    constructor(
+        ISystemRegistry _systemRegistry,
+        IERC20 _vaultToken,
+        address _rewardsSigner
+    )
+        SystemComponent(_systemRegistry)
+        SecurityBase(address(_systemRegistry.accessController()))
+        EIP712("Vault Token Distribution", "1")
+    {
+        Errors.verifyNotZero(address(_vaultToken), "token");
+        Errors.verifyNotZero(address(_rewardsSigner), "signerAddress");
 
-		vaultToken = _vaultToken;
-		rewardsSigner = _rewardsSigner;
-	}
+        vaultToken = _vaultToken;
+        rewardsSigner = _rewardsSigner;
+    }
 
-	function _hashRecipient(Recipient memory recipient) private pure returns (bytes32) {
-		return
-			keccak256(
-				abi.encode(_RECIPIENT_TYPEHASH, recipient.chainId, recipient.cycle, recipient.wallet, recipient.amount)
-			);
-	}
+    function _hashRecipient(Recipient memory recipient) private pure returns (bytes32) {
+        return keccak256(
+            abi.encode(_RECIPIENT_TYPEHASH, recipient.chainId, recipient.cycle, recipient.wallet, recipient.amount)
+        );
+    }
 
-	function _hash(Recipient memory recipient) private view returns (bytes32) {
-		return _hashTypedDataV4(_hashRecipient(recipient));
-	}
+    function genHash(Recipient memory recipient) public view returns (bytes32) {
+        return _hashTypedDataV4(_hashRecipient(recipient));
+    }
 
-	function _getChainID() private view returns (uint256) {
-		return block.chainid;
-	}
+    function _getChainID() private view returns (uint256) {
+        return block.chainid;
+    }
 
-	function setSigner(address newSigner) external override onlyOwner {
-		Errors.verifyNotZero(newSigner, "newSigner");
-		rewardsSigner = newSigner;
+    function setSigner(address newSigner) external override onlyOwner {
+        Errors.verifyNotZero(newSigner, "newSigner");
+        rewardsSigner = newSigner;
 
-		emit SignerSet(newSigner);
-	}
+        emit SignerSet(newSigner);
+    }
 
-	function getClaimableAmount(Recipient calldata recipient) external view override returns (uint256) {
-		return recipient.amount - claimedAmounts[recipient.wallet];
-	}
+    function getClaimableAmount(Recipient calldata recipient) external view override returns (uint256) {
+        return recipient.amount - claimedAmounts[recipient.wallet];
+    }
 
-	function claim(Recipient calldata recipient, uint8 v, bytes32 r, bytes32 s) external override returns (uint256) {
-		require(recipient.wallet == msg.sender, "Sender wallet Mismatch");
+    function claim(Recipient calldata recipient, uint8 v, bytes32 r, bytes32 s) external override returns (uint256) {
+        if (recipient.wallet != msg.sender) {
+            revert Errors.SenderMismatch(recipient.wallet, msg.sender);
+        }
 
-		return _claim(recipient, v, r, s, msg.sender);
-	}
+        return _claim(recipient, v, r, s, msg.sender);
+    }
 
-	function claimFor(Recipient calldata recipient, uint8 v, bytes32 r, bytes32 s) external override returns (uint256) {
-		require(msg.sender == address(systemRegistry.lmpVaultRouter()), "Not authorized");
+    function claimFor(
+        Recipient calldata recipient,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external override returns (uint256) {
+        if (msg.sender != address(systemRegistry.lmpVaultRouter())) {
+            revert Errors.AccessDenied();
+        }
 
-		return _claim(recipient, v, r, s, msg.sender);
-	}
+        return _claim(recipient, v, r, s, msg.sender);
+    }
 
-	// @dev bytes32 s is bytes calldata signature
-	function _claim(
-		Recipient calldata recipient,
-		uint8 v,
-		bytes32 r,
-		bytes32 s,
-		address sendTo
-	) internal returns (uint256) {
-		address signatureSigner = _hash(recipient).recover(v, r, s);
-		require(signatureSigner == rewardsSigner, "Invalid Signature");
-		require(recipient.chainId == _getChainID(), "Invalid chainId");
+    // @dev bytes32 s is bytes calldata signature
+    function _claim(
+        Recipient calldata recipient,
+        uint8 v,
+        bytes32 r,
+        bytes32 s,
+        address sendTo
+    ) internal returns (uint256) {
+        address signatureSigner = genHash(recipient).recover(v, r, s);
 
-		uint256 claimableAmount = recipient.amount - claimedAmounts[recipient.wallet];
+        if (signatureSigner != rewardsSigner) {
+            revert Errors.InvalidSigner(signatureSigner);
+        }
 
-		require(claimableAmount > 0, "Invalid claimable amount");
-		require(vaultToken.balanceOf(address(this)) >= claimableAmount, "Insufficient Funds");
+        if (recipient.chainId != _getChainID()) {
+            revert Errors.InvalidChainId(recipient.chainId);
+        }
 
-		claimedAmounts[recipient.wallet] = claimedAmounts[recipient.wallet] + claimableAmount;
+        uint256 claimableAmount = recipient.amount - claimedAmounts[recipient.wallet];
 
-		vaultToken.safeTransfer(sendTo, claimableAmount);
+        if (claimableAmount == 0) {
+            revert Errors.ZeroAmount();
+        }
 
-		emit Claimed(recipient.cycle, recipient.wallet, claimableAmount);
+        if (claimableAmount > vaultToken.balanceOf(address(this))) {
+            revert Errors.InsufficientBalance(address(vaultToken));
+        }
 
-		return claimableAmount;
-	}
+        claimedAmounts[recipient.wallet] = claimedAmounts[recipient.wallet] + claimableAmount;
+
+        vaultToken.safeTransfer(sendTo, claimableAmount);
+
+        emit Claimed(recipient.cycle, recipient.wallet, claimableAmount);
+
+        return claimableAmount;
+    }
 }

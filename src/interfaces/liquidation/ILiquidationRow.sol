@@ -12,12 +12,14 @@ interface ILiquidationRow {
     event VaultLiquidated(address indexed vault, address indexed fromToken, address indexed toToken, uint256 amount);
     event GasUsedForVault(address indexed vault, uint256 gasAmount, bytes32 action);
     event FeesTransferred(address indexed receiver, uint256 amountReceived, uint256 fees);
+    event PriceMarginSet(uint256 priceMarginBps);
 
     error NothingToLiquidate();
     error InvalidRewardToken();
     error FeeTooHigh();
     error SellAmountMismatch(uint256 totalBalanceToLiquidate, uint256 buyAmount);
     error AmountsMismatch(uint256 sellAmount, uint256 buyAmount);
+    error InsufficientAmountReceived(uint256 expectedAmount, uint256 amountReceived);
 
     /**
      * @param fromToken The address of the token to be liquidated
@@ -67,6 +69,12 @@ interface ILiquidationRow {
     function setFeeAndReceiver(address _feeReceiver, uint256 _feeBps) external;
 
     /**
+     * @notice Sets the price margin in bps for swap validation
+     * @param _priceMarginBps The price margin in basis points (bps)
+     */
+    function setPriceMarginBps(uint256 _priceMarginBps) external;
+
+    /**
      * @notice Get the balance of a specific token and vault
      * @param tokenAddress The address of the token
      * @param vaultAddress The address of the vault
@@ -95,16 +103,16 @@ interface ILiquidationRow {
     function getVaultsForToken(address tokenAddress) external view returns (address[] memory);
 
     /**
-     * @notice Liquidate the specified vaults' balances for a specific token
+     * @notice Conducts the liquidation process for a specific token across a list of vaults,
+     * performing the necessary balance adjustments, initiating the swap process via the asyncSwapper,
+     * using the price oracle for a fair swap validation, taking a fee from the received amount, and queues the
+     * remaining swapped tokens in the MainRewarder associated with each vault.
      * @param liquidationParams A LiquidationParams struct containing the necessary parameters for liquidation
      */
     function liquidateVaultsForToken(LiquidationParams memory liquidationParams) external;
 
     /**
-     * @notice Conducts the liquidation process for a specific token across a list of vaults,
-     * performing the necessary balance adjustments, initiating the swap process via the asyncSwapper,
-     * taking a fee from the received amount, and queues the remaining swapped tokens in the MainRewarder associated
-     * with each vault.
+     * @notice Same logic as liquidateVaultsForToken but for multiple tokens
      * @param liquidationParams An array of LiquidationParams structs containing the necessary parameters for
      * liquidation
      */

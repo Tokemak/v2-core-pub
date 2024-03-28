@@ -14,6 +14,7 @@ import { ILiquidationRow } from "src/interfaces/liquidation/ILiquidationRow.sol"
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
+import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
@@ -45,6 +46,9 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
 
     /// @notice Fee in basis points (bps). 1 bps is 0.01%
     uint256 public feeBps = 0;
+
+    /// @notice Margin in basis points (bps). Used to calculate the price margin for the swap
+    uint256 public priceMarginBps = 0;
 
     /// @notice Address to receive the fees
     address public feeReceiver;
@@ -92,13 +96,21 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
         address _feeReceiver,
         uint256 _feeBps
     ) external hasRole(Roles.REWARD_LIQUIDATION_MANAGER) {
-        // _feeBps should be less than or equal to 50%.  Want to limit the amount of received
-        //      that can be taken as fee.
+        // _feeBps should be less than or equal to 50%. Want to limit the amount of received that can be taken as fee.
         if (_feeBps > MAX_PCT / 2) revert FeeTooHigh();
 
         feeBps = _feeBps;
         // slither-disable-next-line missing-zero-check
         feeReceiver = _feeReceiver;
+    }
+
+    /// @inheritdoc ILiquidationRow
+    function setPriceMarginBps(uint256 _priceMarginBps) external hasRole(Roles.REWARD_LIQUIDATION_MANAGER) {
+        // Want to limit the price margin to 10%.
+        if (_priceMarginBps > MAX_PCT / 10) revert Errors.InvalidParam("priceMarginBps");
+        priceMarginBps = _priceMarginBps;
+
+        emit PriceMarginSet(_priceMarginBps);
     }
 
     function calculateFee(uint256 amount) public view returns (uint256) {
@@ -265,8 +277,9 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
     }
 
     /**
-     * @notice Performs the actual liquidation process, handles the async swap, calculates and transfers the fees,
-     * and queues the remaining swapped tokens in the MainRewarder associated with each vault.
+     * @notice Performs the actual liquidation process, handles the async swap, use the price oracle for a fair swap
+     * validation, calculates and transfers the fees, and queues the remaining swapped tokens in the MainRewarder
+     * associated with each vault.
      * @dev This function is part of a workaround for the "stack too deep" error and is meant to be used with
      * _prepareForLiquidation. It's not designed to be used standalone, but as part of the liquidateVaultsForToken
      * function
@@ -304,6 +317,22 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
             );
 
             amountReceived = abi.decode(data, (uint256));
+
+            // Use the price oracle to ensure we swapped at a fair price
+            IRootPriceOracle oracle = systemRegistry.rootPriceOracle();
+            uint256 sellTokenPrice = oracle.getPriceInEth(fromToken);
+            uint256 buyTokenPrice = oracle.getPriceInEth(params.buyTokenAddress);
+
+            // Expected buy amount from Price Oracle
+            uint256 expectedBuyAmount = (params.sellAmount * sellTokenPrice) / buyTokenPrice;
+
+            // Allow a margin of error for the swap
+            // slither-disable-next-line divide-before-multiply
+            uint256 minBuyAmount = (expectedBuyAmount * (MAX_PCT - priceMarginBps)) / MAX_PCT;
+
+            if (amountReceived < minBuyAmount) {
+                revert InsufficientAmountReceived(minBuyAmount, amountReceived);
+            }
         } else {
             // Ensure that if no swap is needed, the sell and buy amounts are the same.
             if (params.sellAmount != params.buyAmount) revert AmountsMismatch(params.sellAmount, params.buyAmount);

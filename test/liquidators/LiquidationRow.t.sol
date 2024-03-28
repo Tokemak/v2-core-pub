@@ -24,37 +24,70 @@ import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { WETH_MAINNET, TOKE_MAINNET, RANDOM } from "test/utils/Addresses.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
+import { TestOracle } from "test/mocks/TestOracle.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
+import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 
 /**
  * @dev This contract represents a mock of the actual AsyncSwapper to be used in tests. It simulates the swapping
  * process by simply minting the buyTokenAddress token to the LiquidationRow contract, under the assumption that the
- * swap
- * operation was successful. It doesn't perform any actual swapping of tokens.
+ * swap operation was successful. It doesn't perform any actual swapping of tokens.
+ * If the overrideReceivedAmount is greater than 0, it will return the overrideReceivedAmount instead of the buyAmount.
+ *
+ * Note that the all functions must be delegate called from the LiquidationRowWrapper contract.
  */
 contract AsyncSwapperMock is BaseAsyncSwapper {
+    // A far away slot to avoid collisions in the calling contract (LiquidationRowWrapper)
+    uint256 private constant SLOT = 999;
     address private immutable liquidationRow;
 
     constructor(address _aggregator, address _liquidationRow) BaseAsyncSwapper(_aggregator) {
         liquidationRow = _liquidationRow;
     }
 
+    function setOverrideReceivedAmount(uint256 _overrideReceivedAmount) external {
+        assembly {
+            sstore(SLOT, _overrideReceivedAmount)
+        }
+    }
+
     function swap(SwapParams memory params) public override returns (uint256 buyTokenAmountReceived) {
-        TestERC20(params.buyTokenAddress).mint(liquidationRow, params.buyAmount);
-        return params.buyAmount;
+        uint256 amountToMint = params.buyAmount;
+        assembly {
+            let overrideAmount := sload(SLOT)
+            if gt(overrideAmount, 0) { amountToMint := overrideAmount }
+        }
+        if (amountToMint > 0) {
+            TestERC20(params.buyTokenAddress).mint(liquidationRow, amountToMint);
+        }
+        return amountToMint;
     }
 }
-
 /**
  * @notice This contract is a wrapper for the LiquidationRow contract.
  * Its purpose is to expose the private functions for testing.
  */
+
 contract LiquidationRowWrapper is LiquidationRow {
     constructor(ISystemRegistry _systemRegistry) LiquidationRow(ISystemRegistry(_systemRegistry)) { }
 
     function exposed_increaseBalance(address tokenAddress, address vaultAddress, uint256 tokenAmount) public {
         _increaseBalance(tokenAddress, vaultAddress, tokenAmount);
+    }
+
+    /**
+     * @notice Sets the override received amount for the AsyncSwapperMock contract.
+     * @dev This function uses delegatecall to set the overrideReceivedAmount in the AsyncSwapperMock contract's
+     * context, but the storage is actually set in the LiquidationRowWrapper contract. This is necessary so that when
+     * the swap function is called using delegatecall, it can correctly read the overrideReceivedAmount from the
+     * LiquidationRowWrapper contract's storage.
+     */
+    function setOverrideReceivedAmount(address asyncSwapper, uint256 _overrideReceivedAmount) public {
+        (bool success,) = asyncSwapper.delegatecall(
+            abi.encodeWithSignature("setOverrideReceivedAmount(uint256)", _overrideReceivedAmount)
+        );
+        require(success, "setOverrideReceivedAmount delegatecall failed");
     }
 }
 
@@ -65,6 +98,7 @@ contract LiquidationRowTest is Test {
     event VaultLiquidated(address indexed vault, address indexed fromToken, address indexed toToken, uint256 amount);
     event GasUsedForVault(address indexed vault, uint256 gasAmount, bytes32 action);
     event FeesTransferred(address indexed receiver, uint256 amountReceived, uint256 fees);
+    event PriceMarginSet(uint256 priceMarginBps);
 
     SystemRegistry internal systemRegistry;
     DestinationVaultRegistry internal destinationVaultRegistry;
@@ -73,6 +107,8 @@ contract LiquidationRowTest is Test {
     IAccessController internal accessController;
     LiquidationRowWrapper internal liquidationRow;
     AsyncSwapperMock internal asyncSwapper;
+    RootPriceOracle internal rootPriceOracle;
+    TestOracle internal testOracle;
 
     address internal baseAsset;
     address internal underlyer;
@@ -124,11 +160,14 @@ contract LiquidationRowTest is Test {
         destinationVaultFactory = new DestinationVaultFactory(systemRegistry, 1, 1000);
         destinationVaultRegistry.setVaultFactory(address(destinationVaultFactory));
 
+        // Set up Root Price Oracle
+        rootPriceOracle = new RootPriceOracle(systemRegistry);
+        systemRegistry.setRootPriceOracle(address(rootPriceOracle));
+
         // Set up LiquidationRow
         liquidationRow = new LiquidationRowWrapper(systemRegistry);
 
         // grant this contract and liquidatorRow contract the LIQUIDATOR_ROLE so they can call the
-        // MainRewarder.queueNewRewards function
         accessController.grantRole(Roles.REWARD_LIQUIDATION_MANAGER, address(this));
         accessController.grantRole(Roles.REWARD_LIQUIDATION_EXECUTOR, address(this));
         accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
@@ -170,6 +209,25 @@ contract LiquidationRowTest is Test {
 
         // Set up the async swapper mock
         asyncSwapper = new AsyncSwapperMock(vm.addr(100), address(liquidationRow));
+
+        // Set up oracle mappings
+        testOracle = new TestOracle(systemRegistry);
+
+        rootPriceOracle.registerMapping(address(baseAsset), testOracle);
+        rootPriceOracle.registerMapping(address(rewardToken), testOracle);
+        rootPriceOracle.registerMapping(address(rewardToken2), testOracle);
+        rootPriceOracle.registerMapping(address(rewardToken3), testOracle);
+        rootPriceOracle.registerMapping(address(rewardToken4), testOracle);
+        rootPriceOracle.registerMapping(address(rewardToken5), testOracle);
+
+        // Set up default prices for the tokens
+        // Reward tokens prices are 2x the base asset price
+        testOracle.setPriceInEth(address(baseAsset), 1 ether);
+        testOracle.setPriceInEth(address(rewardToken), 2 ether);
+        testOracle.setPriceInEth(address(rewardToken2), 2 ether);
+        testOracle.setPriceInEth(address(rewardToken3), 2 ether);
+        testOracle.setPriceInEth(address(rewardToken4), 2 ether);
+        testOracle.setPriceInEth(address(rewardToken5), 2 ether);
 
         vm.label(address(liquidationRow), "liquidationRow");
         vm.label(address(asyncSwapper), "asyncSwapper");
@@ -409,6 +467,34 @@ contract SetFeeAndReceiver is LiquidationRowTest {
     }
 }
 
+contract SetPriceMarginBps is LiquidationRowTest {
+    function test_RevertIf_CallerIsNotLiquidationManager() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        vm.prank(RANDOM);
+        liquidationRow.setPriceMarginBps(1000);
+    }
+
+    function test_RevertIf_PriceMarginBpsIsGreaterThan10Percent() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "priceMarginBps"));
+        liquidationRow.setPriceMarginBps(1001);
+    }
+
+    function test_EmitPriceMarginSetEvent() public {
+        uint256 newPriceMarginBps = 750;
+
+        vm.expectEmit(true, true, true, true);
+        emit PriceMarginSet(newPriceMarginBps);
+
+        liquidationRow.setPriceMarginBps(newPriceMarginBps);
+    }
+
+    function test_SetPriceMarginBps() public {
+        uint256 newPriceMarginBps = 500;
+        liquidationRow.setPriceMarginBps(newPriceMarginBps);
+        assertEq(liquidationRow.priceMarginBps(), newPriceMarginBps);
+    }
+}
+
 contract ClaimsVaultRewards is LiquidationRowTest {
     // ⬇️ private functions use for the tests ⬇️
 
@@ -553,8 +639,8 @@ contract _increaseBalance is LiquidationRowTest {
 }
 
 contract LiquidateVaultsForToken is LiquidationRowTest {
-    uint256 private buyAmount = 200_000; // == amountReceived
     uint256 private sellAmount = 100_000;
+    uint256 private buyAmount = sellAmount * 2; // == amountReceived
     address private feeReceiver = address(1);
     uint256 private feeBps = 5000;
     uint256 private expectedFeesTransferred = buyAmount * feeBps / 10_000;
@@ -713,6 +799,27 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
         );
     }
 
+    function test_RevertIf_InsufficientAmountReceived() public {
+        SwapParams memory swapParams =
+            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+
+        _setWhitelistAndFee();
+
+        _mockComplexScenario(address(testVault));
+
+        IDestinationVault[] memory vaults = _initArrayOfOneTestVault();
+        liquidationRow.claimsVaultRewards(vaults);
+
+        // We set the price of the rewardToken2 to 3 ether so the exchange rate becomes 1:3
+        testOracle.setPriceInEth(address(rewardToken2), 3 ether);
+
+        // We expect to receive 300_000 but we only receive 200_000
+        vm.expectRevert(abi.encodeWithSelector(ILiquidationRow.InsufficientAmountReceived.selector, 300_000, 200_000));
+        liquidationRow.liquidateVaultsForToken(
+            ILiquidationRow.LiquidationParams(address(rewardToken2), address(asyncSwapper), vaults, swapParams)
+        );
+    }
+
     function test_EmitFeesTransferredEventWhenFeesFeatureIsTurnedOn() public {
         SwapParams memory swapParams =
             SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
@@ -774,6 +881,44 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
         assertTrue(balanceAfter - balanceBefore == buyAmount - expectedFeesTransferred);
     }
 
+    function test_ApplyPriceMarginToOracle() public {
+        uint256 priceMarginBps = 500; // 5%
+        liquidationRow.setPriceMarginBps(priceMarginBps);
+
+        SwapParams memory swapParams =
+            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+
+        _setWhitelistAndFee();
+
+        _mockComplexScenario(address(testVault));
+
+        IDestinationVault[] memory vaults = _initArrayOfOneTestVault();
+        liquidationRow.claimsVaultRewards(vaults);
+
+        // Set the price of rewardToken2 to 2 ether
+        testOracle.setPriceInEth(address(rewardToken2), 2 ether);
+
+        // Calculate the minimum and maximum amounts received after applying the price margin
+        uint256 minAmountReceived = (buyAmount * (10_000 - priceMarginBps)) / 10_000;
+        uint256 maxAmountReceived = buyAmount;
+
+        // Set the overrideReceivedAmount to be within the range of minAmountReceived and maxAmountReceived
+        uint256 receivedAmount = (minAmountReceived + maxAmountReceived) / 2;
+
+        liquidationRow.setOverrideReceivedAmount(address(asyncSwapper), receivedAmount);
+
+        ILiquidationRow.LiquidationParams[] memory liquidateParams = new ILiquidationRow.LiquidationParams[](1);
+        liquidateParams[0] =
+            ILiquidationRow.LiquidationParams(address(rewardToken2), address(asyncSwapper), vaults, swapParams);
+
+        // Call the function and check that it does not revert
+        liquidationRow.liquidateVaultsForTokens(liquidateParams);
+
+        // Check that liquidation was successful
+        assertTrue(liquidationRow.balanceOf(address(rewardToken2), address(testVault)) == 0);
+        assertTrue(liquidationRow.totalBalanceOf(address(rewardToken2)) == 0);
+    }
+
     function _setWhitelistAndFee() internal {
         liquidationRow.addToWhitelist(address(asyncSwapper));
         liquidationRow.setFeeAndReceiver(feeReceiver, feeBps);
@@ -782,7 +927,7 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
 
 contract LiquidateVaultsForTokens is LiquidationRowTest {
     uint256 private sellAmount = 100_000;
-    uint256 private buyAmount = 200_000; // == amountReceived
+    uint256 private buyAmount = sellAmount * 2; // == amountReceived
     address private feeReceiver = address(1);
     uint256 private feeBps = 5000;
     uint256 private expectedFeesTransferred = buyAmount * feeBps / 10_000;
@@ -934,7 +1079,7 @@ contract LiquidateVaultsForTokens is LiquidationRowTest {
         liquidationRow.claimsVaultRewards(vaults);
 
         SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), sellAmount, new bytes(0), new bytes(0));
+            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
 
         ILiquidationRow.LiquidationParams[] memory liquidateParams = new ILiquidationRow.LiquidationParams[](1);
         liquidateParams[0] =

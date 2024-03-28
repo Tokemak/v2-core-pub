@@ -19,6 +19,7 @@ import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
+import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { Roles } from "src/libs/Roles.sol";
 import {
     ZERO_EX_MAINNET,
@@ -39,6 +40,7 @@ import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegi
 
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
+import { TestOracle } from "test/mocks/TestOracle.sol";
 
 /**
  * @notice This file is a test to ensure that the flow from DestinationVault to LiquidationRow to BaseAsyncSwapper works
@@ -64,14 +66,14 @@ contract LiquidationRowTest is Test {
     LiquidationRow internal liquidationRow;
     BaseAsyncSwapper internal swapper;
     TestIncentiveCalculator internal testIncentiveCalculator;
+    RootPriceOracle internal rootPriceOracle;
+    TestOracle internal testOracle;
 
     /**
      * @notice Set up the minimal system for the tests
      */
     function setUp() public virtual {
-        // @comment
-        // say that we need to work on a forked block because the hardcoded swap data might be only valid for a specific
-        // block
+        // We need to work on a forked block since the hardcoded swap data may only be valid for that specific block
         uint256 _mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), 19_161_835);
         vm.selectFork(_mainnetFork);
 
@@ -97,13 +99,17 @@ contract LiquidationRowTest is Test {
 
         liquidationRow = new LiquidationRow(systemRegistry);
 
+        // Set up Root Price Oracle
+        rootPriceOracle = new RootPriceOracle(systemRegistry);
+
+        systemRegistry.setRootPriceOracle(address(rootPriceOracle));
+
         accessController.grantRole(Roles.REWARD_LIQUIDATION_MANAGER, address(this));
         accessController.grantRole(Roles.REWARD_LIQUIDATION_EXECUTOR, address(this));
         accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(liquidationRow));
         accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
         accessController.grantRole(Roles.REGISTRY_UPDATER, address(this));
 
-        // @comment
         // This contract (address(this)) will be calling the destination vaults as a Vault.
         // We don't want to implement IVault in this contract, so we just mock this part of the system.
         vm.mockCall(
@@ -114,6 +120,9 @@ contract LiquidationRowTest is Test {
 
         swapper = new BaseAsyncSwapper(ZERO_EX_MAINNET);
         liquidationRow.addToWhitelist(address(swapper));
+
+        // Set up default prices for the tokens
+        testOracle = new TestOracle(systemRegistry);
     }
 }
 
@@ -217,7 +226,14 @@ contract CurveIntegrationTest is LiquidationRowTest {
             CVX_MAINNET, poolInfo.sellAmount, WETH_MAINNET, poolInfo.buyAmount, poolInfo.swapperData, new bytes(0)
         );
 
-        // @comment Liquidate the rewards
+        // Set up the price oracles for the tokens being swapped
+        rootPriceOracle.registerMapping(CVX_MAINNET, testOracle);
+        rootPriceOracle.registerMapping(WETH_MAINNET, testOracle);
+
+        testOracle.setPriceInEth(WETH_MAINNET, 1 ether);
+        // Ensure that the price of CVX in ETH is set to the correct value
+        testOracle.setPriceInEth(CVX_MAINNET, (1 ether * poolInfo.buyAmount) / poolInfo.sellAmount);
+
         liquidationRow.liquidateVaultsForToken(
             ILiquidationRow.LiquidationParams(CVX_MAINNET, address(swapper), vaults, swapParams)
         );
@@ -327,7 +343,6 @@ contract CurveIntegrationTest is LiquidationRowTest {
 }
 
 contract BalancerAuraDestinationVaultIntegrationTest is LiquidationRowTest {
-    // @comment
     // Some properties aren't actually used in the test, but are included for informational and debug purposes
     struct BalancerPoolInfo {
         string name;
@@ -430,6 +445,14 @@ contract BalancerAuraDestinationVaultIntegrationTest is LiquidationRowTest {
             BAL_MAINNET, poolInfo.sellAmount, WETH_MAINNET, poolInfo.buyAmount, poolInfo.swapperData, new bytes(0)
         );
 
+        // Set up the price oracles for the tokens being swapped
+        rootPriceOracle.registerMapping(BAL_MAINNET, testOracle);
+        rootPriceOracle.registerMapping(WETH_MAINNET, testOracle);
+
+        testOracle.setPriceInEth(WETH_MAINNET, 1 ether);
+        // Ensure that the price of BAL in ETH is set to the correct value
+        testOracle.setPriceInEth(BAL_MAINNET, (1 ether * poolInfo.buyAmount) / poolInfo.sellAmount);
+
         liquidationRow.liquidateVaultsForToken(
             ILiquidationRow.LiquidationParams(BAL_MAINNET, address(swapper), vaults, swapParams)
         );
@@ -450,8 +473,6 @@ contract BalancerAuraDestinationVaultIntegrationTest is LiquidationRowTest {
         });
 
         runScenario(poolInfos);
-
-        assertTrue(true);
     }
 
     function test_SupportBalRethWeth() public {
@@ -469,7 +490,5 @@ contract BalancerAuraDestinationVaultIntegrationTest is LiquidationRowTest {
         });
 
         runScenario(poolInfos);
-
-        assertTrue(true);
     }
 }

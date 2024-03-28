@@ -114,6 +114,9 @@ contract LiquidationRowTest is Test {
 
         assertEq(IWETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(l1Dvs[0].rewarder()), 0, "beforeWethBal");
 
+        // Add a 2% price margin
+        _liquidationRow.setPriceMarginBps(200);
+
         _liquidationRow.liquidateVaultsForTokens(params);
 
         assertEq(

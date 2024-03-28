@@ -53,27 +53,33 @@ contract CustomSetOracle is SystemComponent, SecurityBase, IPriceOracle {
 
     /// @notice Change the max allowable per-token age
     /// @param age New allowed age
-    function setMaxAge(uint256 age) external onlyOwner {
+    function setMaxAge(uint256 age) external hasRole(Roles.ORACLE_MANAGER_ROLE) {
         _setMaxAge(age);
     }
 
     /// @notice Register tokens that should be resolvable through this oracle
     /// @param tokens addresses of tokens to register
     /// @param maxAges the max allowed age of a tokens price before it will revert on retrieval
-    function registerTokens(address[] memory tokens, uint256[] memory maxAges) external onlyOwner {
+    function registerTokens(
+        address[] memory tokens,
+        uint256[] memory maxAges
+    ) external hasRole(Roles.ORACLE_MANAGER_ROLE) {
         _registerTokens(tokens, maxAges, false);
     }
 
     /// @notice Update the max age of tokens that are already registered
     /// @param tokens addresses of tokens to update
     /// @param maxAges the max allowed age of a tokens price before it will revert on retrieval
-    function updateTokenMaxAges(address[] memory tokens, uint256[] memory maxAges) external onlyOwner {
+    function updateTokenMaxAges(
+        address[] memory tokens,
+        uint256[] memory maxAges
+    ) external hasRole(Roles.ORACLE_MANAGER_ROLE) {
         _registerTokens(tokens, maxAges, true);
     }
 
     /// @notice Unregister tokens that have been previously configured
     /// @param tokens addresses of the tokens to unregister
-    function unregisterTokens(address[] memory tokens) external onlyOwner {
+    function unregisterTokens(address[] memory tokens) external hasRole(Roles.ORACLE_MANAGER_ROLE) {
         uint256 len = tokens.length;
         Errors.verifyNotZero(len, "len");
 
@@ -94,7 +100,7 @@ contract CustomSetOracle is SystemComponent, SecurityBase, IPriceOracle {
     }
 
     /// @notice Update the price of one or more registered tokens
-    /// @dev Only callable by the ORACLE_MANAGER_ROLE
+    /// @dev Only callable by the CUSTOM_ORACLE_EXECUTOR
     /// @param tokens address of the tokens price we are setting
     /// @param ethPrices prices of the tokens we're setting
     /// @param queriedTimestamps the timestamps of when each price was queried
@@ -102,7 +108,7 @@ contract CustomSetOracle is SystemComponent, SecurityBase, IPriceOracle {
         address[] memory tokens,
         uint256[] memory ethPrices,
         uint256[] memory queriedTimestamps
-    ) external hasRole(Roles.ORACLE_MANAGER_ROLE) {
+    ) external hasRole(Roles.CUSTOM_ORACLE_EXECUTOR) {
         uint256 len = tokens.length;
         Errors.verifyNotZero(len, "len");
         Errors.verifyArrayLengths(len, ethPrices.length, "token+prices");

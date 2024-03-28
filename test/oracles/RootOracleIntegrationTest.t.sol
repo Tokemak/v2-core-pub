@@ -405,6 +405,7 @@ contract RootOracleIntegrationTest is Test {
         maxAges[1] = 50 weeks;
 
         accessControl.setupRole(Roles.ORACLE_MANAGER_ROLE, address(this));
+        accessControl.setupRole(Roles.CUSTOM_ORACLE_EXECUTOR, address(this));
 
         customSetOracle.registerTokens(tokens, maxAges);
 

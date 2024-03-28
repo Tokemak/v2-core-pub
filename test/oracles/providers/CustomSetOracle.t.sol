@@ -33,6 +33,7 @@ contract CustomSetOracleTest is Test {
         _oracle = new CustomSetOracle(_systemRegistry, maxAge);
 
         _accessController.grantRole(Roles.ORACLE_MANAGER_ROLE, address(this));
+        _accessController.grantRole(Roles.CUSTOM_ORACLE_EXECUTOR, address(this));
     }
 
     function test_construction_MaxAgeIsSet() public {
@@ -99,7 +100,7 @@ contract CustomSetOracleTest is Test {
         _oracle.registerTokens(tokens, ages);
     }
 
-    function test_registerToken_RevertIf_NotCalledByOwner() public {
+    function test_registerToken_RevertIf_NotCalledByRole() public {
         address[] memory tokens = new address[](1);
         uint256[] memory ages = new uint256[](1);
         address caller = address(5);
@@ -109,6 +110,12 @@ contract CustomSetOracleTest is Test {
 
         vm.startPrank(caller);
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        _oracle.registerTokens(tokens, ages);
+        vm.stopPrank();
+
+        _accessController.grantRole(Roles.ORACLE_MANAGER_ROLE, caller);
+
+        vm.startPrank(caller);
         _oracle.registerTokens(tokens, ages);
         vm.stopPrank();
     }
@@ -192,11 +199,17 @@ contract CustomSetOracleTest is Test {
         _oracle.registerTokens(tokens, ages);
     }
 
-    function test_setMaxAge_RevertIf_NotCalledByOwner() public {
+    function test_setMaxAge_RevertIf_NotCalledByRole() public {
         address caller = address(5);
 
         vm.startPrank(caller);
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        _oracle.setMaxAge(10_000);
+        vm.stopPrank();
+
+        _accessController.grantRole(Roles.ORACLE_MANAGER_ROLE, caller);
+
+        vm.startPrank(caller);
         _oracle.setMaxAge(10_000);
         vm.stopPrank();
     }
@@ -284,6 +297,12 @@ contract CustomSetOracleTest is Test {
 
         vm.startPrank(caller);
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        _oracle.updateTokenMaxAges(tokens, ages);
+        vm.stopPrank();
+
+        _accessController.grantRole(Roles.ORACLE_MANAGER_ROLE, caller);
+
+        vm.startPrank(caller);
         _oracle.updateTokenMaxAges(tokens, ages);
         vm.stopPrank();
     }
@@ -409,6 +428,28 @@ contract CustomSetOracleTest is Test {
         _oracle.unregisterTokens(tokens);
     }
 
+    function test_unregisterTokens_RevertIf_NotCalledByRole() public {
+        address[] memory tokens = new address[](1);
+        uint256[] memory ages = new uint256[](1);
+        address caller = address(5);
+
+        tokens[0] = address(1);
+        ages[0] = 100;
+
+        _oracle.registerTokens(tokens, ages);
+
+        vm.startPrank(caller);
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        _oracle.unregisterTokens(tokens);
+        vm.stopPrank();
+
+        _accessController.grantRole(Roles.ORACLE_MANAGER_ROLE, caller);
+
+        vm.startPrank(caller);
+        _oracle.unregisterTokens(tokens);
+        vm.stopPrank();
+    }
+
     function test_isRegistered_ReturnsTrueForRegisteredToken() public {
         address[] memory tokens = new address[](1);
         uint256[] memory ages = new uint256[](1);
@@ -475,6 +516,34 @@ contract CustomSetOracleTest is Test {
             abi.encodeWithSelector(CustomSetOracle.InvalidPrice.selector, address(1), uint256(type(uint192).max) + 1)
         );
         _oracle.setPrices(tokens, prices, timestamps);
+    }
+
+    function test_setPrices_RevertsIf_NotCalledByRole() public {
+        address[] memory tokens = new address[](1);
+        uint256[] memory ages = new uint256[](1);
+        uint256[] memory prices = new uint256[](1);
+        uint256[] memory timestamps = new uint256[](1);
+
+        vm.warp(10_000_000);
+
+        tokens[0] = address(1);
+        ages[0] = 1000;
+        prices[0] = 1e18;
+        timestamps[0] = 10_000_000 - 100;
+
+        _oracle.registerTokens(tokens, ages);
+
+        address caller = address(5);
+
+        vm.startPrank(caller);
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        _oracle.setPrices(tokens, prices, timestamps);
+        vm.stopPrank();
+
+        _accessController.grantRole(Roles.CUSTOM_ORACLE_EXECUTOR, caller);
+
+        _oracle.setPrices(tokens, prices, timestamps);
+        vm.stopPrank();
     }
 
     function test_setPrices_RevertsIf_QueriedTimestampIsInTheFuture() public {

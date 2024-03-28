@@ -47,4 +47,6 @@ library Roles {
 
     bytes32 public constant REWARD_LIQUIDATION_MANAGER = keccak256("REWARD_LIQUIDATION_MANAGER");
     bytes32 public constant REWARD_LIQUIDATION_EXECUTOR = keccak256("REWARD_LIQUIDATION_EXECUTOR");
+
+    bytes32 public constant CUSTOM_ORACLE_EXECUTOR = keccak256("CUSTOM_ORACLE_EXECUTOR");
 }

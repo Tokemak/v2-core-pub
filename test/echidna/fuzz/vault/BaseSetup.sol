@@ -223,7 +223,7 @@ contract TestDestinationVault is DestinationVault, Numbers {
         TestERC20(_underlying).burn(address(this), underlyerAmount);
 
         // Just convert the tokens back based on price
-        IRootPriceOracle oracle = _systemRegistry.rootPriceOracle();
+        IRootPriceOracle oracle = systemRegistry.rootPriceOracle();
 
         uint256 underlyingPrice = oracle.getPriceInEth(_underlying);
         uint256 assetPrice = oracle.getPriceInEth(_baseAsset);

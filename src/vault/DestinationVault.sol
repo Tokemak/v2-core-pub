@@ -17,8 +17,9 @@ import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
+import { SystemComponent } from "src/SystemComponent.sol";
 
-abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDestinationVault {
+abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Initializable, IDestinationVault {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -38,8 +39,6 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     error VaultShutdown();
     error InvalidIncentiveCalculator();
     error PricesOutOfRange(uint256 spot, uint256 safe);
-
-    ISystemRegistry internal immutable _systemRegistry;
 
     /* ******************************** */
     /* State Variables                  */
@@ -64,14 +63,16 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     /// @dev The reason for shutdown (or `Active` if not shutdown)
     VaultShutdownStatus internal _shutdownStatus;
 
-    constructor(ISystemRegistry sysRegistry) SecurityBase(address(sysRegistry.accessController())) ERC20("", "") {
-        _systemRegistry = sysRegistry;
-
+    constructor(ISystemRegistry sysRegistry)
+        SystemComponent(sysRegistry)
+        SecurityBase(address(sysRegistry.accessController()))
+        ERC20("", "")
+    {
         _disableInitializers();
     }
 
     modifier onlyLMPVault() {
-        if (!_systemRegistry.lmpVaultRegistry().isVault(msg.sender)) {
+        if (!systemRegistry.lmpVaultRegistry().isVault(msg.sender)) {
             revert Errors.AccessDenied();
         }
         _;
@@ -382,7 +383,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     function getValidatedSpotPrice() external returns (uint256 price) {
         //slither-disable-next-line unused-return
         (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) =
-            _systemRegistry.rootPriceOracle().getRangePricesLP(address(_underlying), getPool(), _baseAsset);
+            systemRegistry.rootPriceOracle().getRangePricesLP(address(_underlying), getPool(), _baseAsset);
         if (!isSpotSafe) {
             revert PricesOutOfRange(spotPriceInQuote, safePriceInQuote);
         }
@@ -414,7 +415,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
     function _debtValue(uint256 shares) private returns (uint256 value) {
         //slither-disable-next-line unused-return
         (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) =
-            _systemRegistry.rootPriceOracle().getRangePricesLP(address(_underlying), getPool(), _baseAsset);
+            systemRegistry.rootPriceOracle().getRangePricesLP(address(_underlying), getPool(), _baseAsset);
         if (!isSpotSafe) {
             revert PricesOutOfRange(spotPriceInQuote, safePriceInQuote);
         }
@@ -430,17 +431,17 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
         returns (uint256 spotPrice, uint256 safePrice, bool isSpotSafe)
     {
         (spotPrice, safePrice, isSpotSafe) =
-            _systemRegistry.rootPriceOracle().getRangePricesLP(address(_underlying), getPool(), _baseAsset);
+            systemRegistry.rootPriceOracle().getRangePricesLP(address(_underlying), getPool(), _baseAsset);
     }
 
     /// @inheritdoc IDestinationVault
     function getUnderlyerFloorPrice() external virtual override returns (uint256 price) {
-        price = _systemRegistry.rootPriceOracle().getFloorPrice(address(_underlying), getPool(), _baseAsset);
+        price = systemRegistry.rootPriceOracle().getFloorPrice(address(_underlying), getPool(), _baseAsset);
     }
 
     /// @inheritdoc IDestinationVault
     function getUnderlyerCeilingPrice() external virtual override returns (uint256 price) {
-        price = _systemRegistry.rootPriceOracle().getCeilingPrice(address(_underlying), getPool(), _baseAsset);
+        price = systemRegistry.rootPriceOracle().getCeilingPrice(address(_underlying), getPool(), _baseAsset);
     }
 
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override {
@@ -483,7 +484,7 @@ abstract contract DestinationVault is SecurityBase, ERC20, Initializable, IDesti
         // This fn is only called during a users withdrawal. The user should be making this
         // call via the LMP Router, or through one of the other routes where
         // slippage is controlled for. 0 min amount is expected here.
-        ISwapRouter swapRouter = _systemRegistry.swapRouter();
+        ISwapRouter swapRouter = systemRegistry.swapRouter();
         for (uint256 i = 0; i < nTokens; ++i) {
             address token = tokens[i];
 

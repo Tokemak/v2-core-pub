@@ -103,7 +103,7 @@ contract CurveConvexDestinationVault is DestinationVault {
         super.initialize(baseAsset_, underlyer_, rewarder_, incentiveCalculator_, additionalTrackedTokens_, params_);
 
         // We must configure a the curve resolver to setup the vault
-        ICurveResolver curveResolver = _systemRegistry.curveResolver();
+        ICurveResolver curveResolver = systemRegistry.curveResolver();
         Errors.verifyNotZero(address(curveResolver), "curveResolver");
 
         // Decode the init params, validate, and save off
@@ -143,7 +143,7 @@ contract CurveConvexDestinationVault is DestinationVault {
         }
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            address weth = address(_systemRegistry.weth());
+            address weth = address(systemRegistry.weth());
             address token = tokens[i] == LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER ? weth : tokens[i];
             _addTrackedToken(token);
             constituentTokens.push(token);
@@ -224,7 +224,7 @@ contract CurveConvexDestinationVault is DestinationVault {
 
         // We always want our tokens back in WETH so useEth false
         (tokens, amounts) = CurveV2FactoryCryptoAdapter.removeLiquidity(
-            minAmounts, underlyerAmount, curvePool, curveLpToken, IWETH9(_systemRegistry.weth())
+            minAmounts, underlyerAmount, curvePool, curveLpToken, IWETH9(systemRegistry.weth())
         );
     }
 

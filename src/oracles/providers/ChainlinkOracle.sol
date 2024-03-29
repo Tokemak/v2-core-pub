@@ -27,8 +27,6 @@ contract ChainlinkOracle is BaseAggregatorV3OracleInformation {
      * @param price Price obtained from oracle.
      */
     function _validateOffchainAggregator(OracleInfo memory oracleInfo, uint80 roundId, int256 price) internal view {
-        if (price <= 0) revert InvalidDataReturned();
-
         IOffchainAggregator aggregator = IOffchainAggregator(oracleInfo.oracle.aggregator());
 
         if (roundId == 0 || price == (int256(aggregator.maxAnswer())) || price == (int256(aggregator.minAnswer()))) {

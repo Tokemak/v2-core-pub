@@ -13,7 +13,7 @@ import { Lens } from "src/lens/Lens.sol";
 
 contract DeployLens is BaseScript {
     function run() external {
-        setUp(Systems.LST_GEN1_GOERLI);
+        setUp(Systems.LST_GEN1_MAINNET);
         vm.startBroadcast(privateKey);
 
         Lens o = new Lens(systemRegistry);

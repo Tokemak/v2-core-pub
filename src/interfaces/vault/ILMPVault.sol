@@ -8,6 +8,7 @@ import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
+import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 import { IERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 
 interface ILMPVault is IERC4626, IERC20Permit {
@@ -100,6 +101,9 @@ interface ILMPVault is IERC4626, IERC20Permit {
 
     /// @notice Query the type of vault
     function vaultType() external view returns (bytes32);
+
+    /// @notice Strategy governing the pools rebalances
+    function lmpStrategy() external view returns (ILMPStrategy);
 
     /// @notice Allow token recoverer to collect dust / unintended transfers (non-tracked assets only)
     function recover(address[] calldata tokens, uint256[] calldata amounts, address[] calldata destinations) external;

@@ -120,7 +120,7 @@ contract Rewards is IRewards, SecurityBase, SystemComponent, EIP712 {
         claimedAmounts[recipient.wallet] = claimedAmounts[recipient.wallet] + claimableAmount;
 
         emit Claimed(recipient.cycle, recipient.wallet, claimableAmount);
-        
+
         vaultToken.safeTransfer(sendTo, claimableAmount);
 
         return claimableAmount;

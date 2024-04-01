@@ -11,8 +11,6 @@ import { EIP712, ECDSA } from "openzeppelin-contracts/utils/cryptography/EIP712.
 import { SystemComponent } from "src/SystemComponent.sol";
 import { Errors } from "src/utils/Errors.sol";
 
-import "forge-std/console.sol";
-
 contract Rewards is IRewards, SecurityBase, SystemComponent, EIP712 {
     using ECDSA for bytes32;
     using SafeERC20 for IERC20;
@@ -37,7 +35,9 @@ contract Rewards is IRewards, SecurityBase, SystemComponent, EIP712 {
         Errors.verifyNotZero(address(_vaultToken), "token");
         Errors.verifyNotZero(address(_rewardsSigner), "signerAddress");
 
+        // slither-disable-next-line missing-zero-check
         vaultToken = _vaultToken;
+        // slither-disable-next-line missing-zero-check
         rewardsSigner = _rewardsSigner;
     }
 
@@ -57,6 +57,8 @@ contract Rewards is IRewards, SecurityBase, SystemComponent, EIP712 {
 
     function setSigner(address newSigner) external override onlyOwner {
         Errors.verifyNotZero(newSigner, "newSigner");
+
+        // slither-disable-next-line missing-zero-check
         rewardsSigner = newSigner;
 
         emit SignerSet(newSigner);
@@ -117,9 +119,9 @@ contract Rewards is IRewards, SecurityBase, SystemComponent, EIP712 {
 
         claimedAmounts[recipient.wallet] = claimedAmounts[recipient.wallet] + claimableAmount;
 
-        vaultToken.safeTransfer(sendTo, claimableAmount);
-
         emit Claimed(recipient.cycle, recipient.wallet, claimableAmount);
+        
+        vaultToken.safeTransfer(sendTo, claimableAmount);
 
         return claimableAmount;
     }

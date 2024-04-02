@@ -3,6 +3,7 @@
 pragma solidity 0.8.17;
 
 // solhint-disable func-name-mixedcase,max-states-count
+import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
@@ -10,16 +11,15 @@ import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 
 import { ILMPVault } from "src/vault/LMPVault.sol";
 import { LMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
+import { ISystemRegistry } from "src/vault/LMPVaultRouterBase.sol";
 
 import { hevm } from "test/echidna/fuzz/utils/Hevm.sol";
 import { BasePoolSetup } from "test/echidna/fuzz/vault/BaseSetup.sol";
+import { PropertiesAsserts } from "crytic/properties/contracts/util/PropertiesHelper.sol";
 
+import { ERC2612 } from "test/utils/ERC2612.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { ERC2612 } from "test/utils/ERC2612.sol";
-import { PeripheryPayments } from "src/utils/PeripheryPayments.sol";
-import { PropertiesAsserts } from "crytic/properties/contracts/util/PropertiesHelper.sol";
-import { ISystemRegistry } from "src/vault/LMPVaultRouterBase.sol";
-import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract TestRouter is LMPVaultRouter {
     using SafeERC20 for IERC20;
@@ -82,13 +82,16 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         _pool.toggleAllowedUser(address(lmpVaultRouter));
     }
 
-    function mintAssets(uint256 mintToSeed, uint256 amountSeed) public updateUser1Balance {
-        address mintTo = _resolveUserFromSeed(mintToSeed);
-        uint256 amount = clampBetween(amountSeed, 1e18, 1000e18);
+    // Multicall
+    function executeMulticall() public updateUser1Balance {
+        _startPrank(msg.sender);
+        lmpVaultRouter.multicall(queuedCalls);
+        _stopPrank();
 
-        _vaultAsset.mint(mintTo, amount);
+        delete queuedCalls;
     }
 
+    // Approve
     function approveAssetsToRouter(uint256 amount) public updateUser1Balance {
         _startPrank(msg.sender);
         _vaultAsset.approve(address(lmpVaultRouter), amount);
@@ -101,12 +104,40 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         _stopPrank();
     }
 
-    function executeMulticall() public updateUser1Balance {
-        _startPrank(msg.sender);
-        lmpVaultRouter.multicall(queuedCalls);
-        _stopPrank();
+    function approveAsset(uint256 toSeed, uint256 amount) public updateUser1Balance {
+        address to = _resolveUserFromSeed(toSeed);
 
-        delete queuedCalls;
+        _startPrank(msg.sender);
+        lmpVaultRouter.approve(_vaultAsset, to, amount);
+        _stopPrank();
+    }
+
+    function queueApproveAsset(uint256 toSeed, uint256 amount) public updateUser1Balance {
+        address to = _resolveUserFromSeed(toSeed);
+
+        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.approve.selector, _vaultAsset, to, amount));
+    }
+
+    function approveShare(uint256 toSeed, uint256 amount) public updateUser1Balance {
+        address to = _resolveUserFromSeed(toSeed);
+
+        _startPrank(msg.sender);
+        lmpVaultRouter.approve(_pool, to, amount);
+        _stopPrank();
+    }
+
+    function queueApproveShare(uint256 toSeed, uint256 amount) public updateUser1Balance {
+        address to = _resolveUserFromSeed(toSeed);
+
+        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.approve.selector, _pool, to, amount));
+    }
+
+    // Mint
+    function mintAssets(uint256 mintToSeed, uint256 amountSeed) public updateUser1Balance {
+        address mintTo = _resolveUserFromSeed(mintToSeed);
+        uint256 amount = clampBetween(amountSeed, 1e18, 1000e18);
+
+        _vaultAsset.mint(mintTo, amount);
     }
 
     function mint(uint256 toSeed, uint256 shares, uint256 maxAmountIn) public updateUser1Balance {
@@ -122,6 +153,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.mint.selector, _pool, to, shares, maxAmountIn));
     }
 
+    // Deposit
     function deposit(uint256 toSeed, uint256 amount, uint256 minSharesOut) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
 
@@ -135,6 +167,21 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.deposit.selector, _pool, to, amount, minSharesOut));
     }
 
+    function depositMax(uint256 toSeed, uint256 minSharesOut) public updateUser1Balance {
+        address to = _resolveUserFromSeed(toSeed);
+
+        _startPrank(msg.sender);
+        lmpVaultRouter.depositMax(_pool, to, minSharesOut);
+        _stopPrank();
+    }
+
+    function queueDepositMax(uint256 toSeed, uint256 minSharesOut) public updateUser1Balance {
+        address to = _resolveUserFromSeed(toSeed);
+
+        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.depositMax.selector, _pool, to, minSharesOut));
+    }
+
+    // Permit
     function permit(uint256 userSeed, uint256 senderSeed, uint256 amount) public updateUser1Balance {
         address user = _resolveUserFromSeed(userSeed);
         address sender = _resolveUserFromSeed(senderSeed);
@@ -166,66 +213,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         );
     }
 
-    function permitIfNecessary(uint256 userSeed, uint256 senderSeed, uint256 amount) public updateUser1Balance {
-        address user = _resolveUserFromSeed(userSeed);
-        address sender = _resolveUserFromSeed(senderSeed);
-        uint256 signerKey = _resolveUserPrivateKeyFromSeed(userSeed);
-
-        // Setup for the Spender to spend the Users tokens
-        uint256 deadline = block.timestamp + 100;
-        (uint8 v, bytes32 r, bytes32 s) = ERC2612.getPermitSignature(
-            _pool.DOMAIN_SEPARATOR(), signerKey, user, address(lmpVaultRouter), amount, 0, deadline
-        );
-
-        _startPrank(sender);
-        lmpVaultRouter.selfPermitIfNecessary(address(_pool), amount, deadline, v, r, s);
-        _stopPrank();
-    }
-
-    function queuePermitIfNecessary(uint256 userSeed, uint256 amount) public updateUser1Balance {
-        address user = _resolveUserFromSeed(userSeed);
-        uint256 signerKey = _resolveUserPrivateKeyFromSeed(userSeed);
-
-        // Setup for the Spender to spend the Users tokens
-        uint256 deadline = block.timestamp + 100;
-        (uint8 v, bytes32 r, bytes32 s) = ERC2612.getPermitSignature(
-            _pool.DOMAIN_SEPARATOR(), signerKey, user, address(lmpVaultRouter), amount, 0, deadline
-        );
-
-        queuedCalls.push(
-            abi.encodeWithSelector(
-                lmpVaultRouter.selfPermitIfNecessary.selector, address(_pool), amount, deadline, v, r, s
-            )
-        );
-    }
-
-    function approveAsset(uint256 toSeed, uint256 amount) public updateUser1Balance {
-        address to = _resolveUserFromSeed(toSeed);
-
-        _startPrank(msg.sender);
-        lmpVaultRouter.approve(_vaultAsset, to, amount);
-        _stopPrank();
-    }
-
-    function queueApproveAsset(uint256 toSeed, uint256 amount) public updateUser1Balance {
-        address to = _resolveUserFromSeed(toSeed);
-
-        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.approve.selector, _vaultAsset, to, amount));
-    }
-
-    function approveShare(uint256 toSeed, uint256 amount) public updateUser1Balance {
-        address to = _resolveUserFromSeed(toSeed);
-
-        _startPrank(msg.sender);
-        lmpVaultRouter.approve(_pool, to, amount);
-        _stopPrank();
-    }
-
-    function queueApproveShare(uint256 toSeed, uint256 amount) public updateUser1Balance {
-        address to = _resolveUserFromSeed(toSeed);
-
-        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.approve.selector, _pool, to, amount));
-    }
+    // Pull
 
     /// @dev This is vulnerable and is filtered function. Use it verify checks are working
     function pullTokenFromAsset(uint256 fromSeed, uint256 amount, uint256 recipientSeed) public updateUser1Balance {
@@ -303,6 +291,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         );
     }
 
+    // Sweep
     function sweepTokenAsset(uint256 amountMin, uint256 recipientSeed) public updateUser1Balance {
         address recipient = _resolveUserFromSeed(recipientSeed);
 
@@ -331,27 +320,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.sweepToken.selector, _pool, amountMin, recipient));
     }
 
-    function redeem(uint256 toSeed, uint256 shares, uint256 minAmountOut, bool unwrapWETH) public updateUser1Balance {
-        address to = _resolveUserFromSeed(toSeed);
-
-        _startPrank(msg.sender);
-        lmpVaultRouter.redeem(_pool, to, shares, minAmountOut, unwrapWETH);
-        _stopPrank();
-    }
-
-    function queueRedeem(
-        uint256 toSeed,
-        uint256 shares,
-        uint256 minAmountOut,
-        bool unwrapWETH
-    ) public updateUser1Balance {
-        address to = _resolveUserFromSeed(toSeed);
-
-        queuedCalls.push(
-            abi.encodeWithSelector(lmpVaultRouter.redeem.selector, _pool, to, shares, minAmountOut, unwrapWETH)
-        );
-    }
-
+    // Withdraw
     function withdraw(
         uint256 toSeed,
         uint256 amount,
@@ -375,6 +344,34 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
 
         queuedCalls.push(
             abi.encodeWithSelector(lmpVaultRouter.withdraw.selector, _pool, to, amount, maxSharesOut, unwrapWETH)
+        );
+    }
+
+    function withdrawToDeposit(
+        uint256 toSeed,
+        uint256 amount,
+        uint256 maxSharesIn,
+        uint256 minSharesOut
+    ) public updateUser1Balance {
+        address to = _resolveUserFromSeed(toSeed);
+
+        _startPrank(msg.sender);
+        lmpVaultRouter.withdrawToDeposit(_pool, _pool, to, amount, maxSharesIn, minSharesOut);
+        _stopPrank();
+    }
+
+    function queueWithdrawToDeposit(
+        uint256 toSeed,
+        uint256 amount,
+        uint256 maxSharesIn,
+        uint256 minSharesOut
+    ) public updateUser1Balance {
+        address to = _resolveUserFromSeed(toSeed);
+
+        queuedCalls.push(
+            abi.encodeWithSelector(
+                lmpVaultRouter.withdrawToDeposit.selector, _pool, _pool, to, amount, maxSharesIn, minSharesOut
+            )
         );
     }
 
@@ -415,18 +412,26 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
     //     return lmpVaultRouter.swapAndDepositToVault(swapper, swapParams, vault, to, minSharesOut);
     // }
 
-    function depositMax(uint256 toSeed, uint256 minSharesOut) public updateUser1Balance {
+    // Redeem
+    function redeem(uint256 toSeed, uint256 shares, uint256 minAmountOut, bool unwrapWETH) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.depositMax(_pool, to, minSharesOut);
+        lmpVaultRouter.redeem(_pool, to, shares, minAmountOut, unwrapWETH);
         _stopPrank();
     }
 
-    function queueDepositMax(uint256 toSeed, uint256 minSharesOut) public updateUser1Balance {
+    function queueRedeem(
+        uint256 toSeed,
+        uint256 shares,
+        uint256 minAmountOut,
+        bool unwrapWETH
+    ) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
 
-        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.depositMax.selector, _pool, to, minSharesOut));
+        queuedCalls.push(
+            abi.encodeWithSelector(lmpVaultRouter.redeem.selector, _pool, to, shares, minAmountOut, unwrapWETH)
+        );
     }
 
     function redeemMax(uint256 toSeed, uint256 minAmountOut) public updateUser1Balance {
@@ -460,34 +465,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         );
     }
 
-    function withdrawToDeposit(
-        uint256 toSeed,
-        uint256 amount,
-        uint256 maxSharesIn,
-        uint256 minSharesOut
-    ) public updateUser1Balance {
-        address to = _resolveUserFromSeed(toSeed);
-
-        _startPrank(msg.sender);
-        lmpVaultRouter.withdrawToDeposit(_pool, _pool, to, amount, maxSharesIn, minSharesOut);
-        _stopPrank();
-    }
-
-    function queueWithdrawToDeposit(
-        uint256 toSeed,
-        uint256 amount,
-        uint256 maxSharesIn,
-        uint256 minSharesOut
-    ) public updateUser1Balance {
-        address to = _resolveUserFromSeed(toSeed);
-
-        queuedCalls.push(
-            abi.encodeWithSelector(
-                lmpVaultRouter.withdrawToDeposit.selector, _pool, _pool, to, amount, maxSharesIn, minSharesOut
-            )
-        );
-    }
-
+    // Utils
     function _startPrank(address user) internal virtual {
         hevm.prank(user);
     }
@@ -511,6 +489,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
     }
 }
 
+// Echidna test
 contract LMPVaultRouterTest is LMPVaultRouterUsage {
     constructor() LMPVaultRouterUsage() { }
 

@@ -4,11 +4,10 @@ pragma solidity >=0.8.7;
 
 // solhint-disable func-name-mixedcase, no-console
 
-import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { LMPVaultRouterUsage } from "test/echidna/fuzz/vault/router/LMPVaultRouterTests.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ILMPVault } from "src/vault/LMPVault.sol";
-import { hevm } from "test/echidna/fuzz/utils/Hevm.sol";
 import { Vm } from "forge-std/Vm.sol";
 
 contract UsageTest is LMPVaultRouterUsage {
@@ -167,56 +166,6 @@ contract LMPVaultTests is Test {
         assertEq(ILMPVault(usage.pool()).allowance(usage.user1(), address(usage.router())), 0, "startAllowance");
 
         usage.queuePermit(1, 100e18);
-
-        vm.startPrank(usage.user1());
-        usage.executeMulticall();
-        vm.stopPrank();
-
-        assertEq(ILMPVault(usage.pool()).allowance(usage.user1(), address(usage.router())), 100e18, "endAllowance");
-
-        vm.startPrank(usage.user1());
-        usage.withdraw(1, 1000, 100e18, false);
-        vm.stopPrank();
-    }
-
-    function test_PermitIfNecessary() public {
-        usage.mintAssets(1, 100e18);
-
-        vm.startPrank(usage.user1());
-        usage.approveAssetsToRouter(100e18);
-        vm.stopPrank();
-
-        vm.startPrank(usage.user1());
-        usage.deposit(1, 100e18, 10_000_000);
-        vm.stopPrank();
-
-        assertEq(ILMPVault(usage.pool()).allowance(usage.user1(), address(usage.router())), 0, "startAllowance");
-
-        vm.startPrank(usage.user1());
-        usage.permitIfNecessary(1, 1, 100e18);
-        vm.stopPrank();
-
-        assertEq(ILMPVault(usage.pool()).allowance(usage.user1(), address(usage.router())), 100e18, "endAllowance");
-
-        vm.startPrank(usage.user1());
-        usage.withdraw(1, 1000, 100e18, false);
-        vm.stopPrank();
-    }
-
-    function test_PermitIfNecessaryMulticall() public {
-        usage.mintAssets(1, 100e18);
-
-        vm.startPrank(usage.user1());
-        usage.approveAssetsToRouter(100e18);
-        vm.stopPrank();
-
-        vm.startPrank(usage.user1());
-        usage.deposit(1, 100e18, 10_000_000);
-        vm.stopPrank();
-
-        assertEq(ILMPVault(usage.pool()).allowance(usage.user1(), address(usage.router())), 0, "startAllowance");
-
-        usage.queuePermitIfNecessary(1, 100e18);
 
         vm.startPrank(usage.user1());
         usage.executeMulticall();

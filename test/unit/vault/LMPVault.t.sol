@@ -1372,8 +1372,7 @@ contract WithdrawTests is LMPVaultTests {
         assertEq(vaultAsset.balanceOf(user), 1e9, "newBal");
     }
 
-    // TODO: Change name back
-    function test_RevertIf_NavDecreases1() public {
+    function test_RevertIf_NavDecreases() public {
         address user = makeAddr("user");
         _depositFor(user, 2e18);
 

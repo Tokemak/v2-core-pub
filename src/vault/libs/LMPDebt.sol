@@ -849,8 +849,8 @@ library LMPDebt {
     /**
      * @notice Function to complete a withdrawal or redeem.  This runs after shares to be burned and assets to be
      *    transferred are calculated.
-     * @param assets Amount of assets to be transferred to user.
-     * @param shares Amount of shares to be burned from user.
+     * @param assets Amount of assets to be transferred to receiver.
+     * @param shares Amount of shares to be burned from owner.
      * @param feeDivisor AutoPool fee divisor.  Always 10_000.
      * @param owner Owner of shares, user to burn shares from.
      * @param receiver The receiver of the baseAsset.
@@ -949,8 +949,6 @@ library LMPDebt {
                     assetsAmount := mload(add(returnData, 0x24))
                     sharesAmount := mload(add(returnData, 0x44))
                 }
-
-                return (assetsAmount, sharesAmount);
             } else {
                 // If the error is not the expected one, forward the original revert reason.
                 assembly {

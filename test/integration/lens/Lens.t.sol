@@ -283,6 +283,7 @@ contract LensIntTest6 is LensInt {
         assertEq(dv.statsIncomplete, false, "statsIncomplete");
         assertEq(dv.autoPoolOwnsShares, 25_692_933_029_349_164_507, "vaultOwnsShares");
         assertEq(dv.actualLPTotalSupply, 29_184_961_658_684_302_331_099, "actualLPTotalSupply");
+        assertEq(dv.dexPool, 0x21E27a5E5513D6e65C4f830167390997aA84843a, "dexPool");
         assertEq(dv.lpTokenAddress, 0x21E27a5E5513D6e65C4f830167390997aA84843a, "lpTokenAddress");
         assertEq(dv.lpTokenSymbol, "stETH-ng-f", "lpTokenSymbol");
         assertEq(dv.lpTokenName, "Curve.fi Factory Pool: stETH-ng", "lpTokenName");

@@ -69,6 +69,7 @@ contract Lens is SystemComponent {
         IDestinationVault.VaultShutdownStatus shutdownStatus;
         uint256 autoPoolOwnsShares;
         uint256 actualLPTotalSupply;
+        address dexPool;
         address lpTokenAddress;
         string lpTokenSymbol;
         string lpTokenName;
@@ -228,6 +229,7 @@ contract Lens is SystemComponent {
                 statsIncomplete: statsIncomplete,
                 autoPoolOwnsShares: vaultBalOfDest,
                 actualLPTotalSupply: IERC20Metadata(IDestinationVault(destinationAddress).underlying()).totalSupply(),
+                dexPool: IDestinationVault(destinationAddress).getPool(),
                 lpTokenAddress: IDestinationVault(destinationAddress).underlying(),
                 lpTokenSymbol: IERC20Metadata(IDestinationVault(destinationAddress).underlying()).symbol(),
                 lpTokenName: IERC20Metadata(IDestinationVault(destinationAddress).underlying()).name(),

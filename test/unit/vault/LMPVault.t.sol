@@ -1372,7 +1372,8 @@ contract WithdrawTests is LMPVaultTests {
         assertEq(vaultAsset.balanceOf(user), 1e9, "newBal");
     }
 
-    function test_RevertIf_NavDecreases() public {
+    // TODO: Change name back
+    function test_RevertIf_NavDecreases1() public {
         address user = makeAddr("user");
         _depositFor(user, 2e18);
 
@@ -4218,7 +4219,7 @@ contract UpdateDebtReportingTests is LMPVaultTests {
     }
 }
 
-// Testing previewWithdraw / previewRedeem
+// Testing previewWithdraw / previewRedeem / maxWithdraw
 contract PreviewTests is FlashRebalanceTests {
     function setUp() public virtual override {
         super.setUp();
@@ -4308,6 +4309,31 @@ contract PreviewTests is FlashRebalanceTests {
 
         // Nav / share currently 2
         assertEq(previewAssets, 20e9 * 2);
+    }
+
+    function test_maxWithdraw_Returns0_WhenVaultPaused() public {
+        address user = makeAddr("user");
+        _mockAccessControllerHasRole(accessController, address(this), Roles.EMERGENCY_PAUSER, true);
+        _depositFor(user, 9e18);
+
+        assertGt(vault.balanceOf(user), 0);
+
+        vault.pause();
+
+        uint256 maxWithdrawableAssets = vault.maxWithdraw(user);
+        assertEq(0, maxWithdrawableAssets);
+    }
+
+    function test_maxWithdraw_ReturnsCorrectAmount() public {
+        uint256 depositAmount = 9e18;
+        address user = makeAddr("user");
+        _depositFor(user, depositAmount);
+
+        // vault reporting 1:1.
+        assertEq(vault.balanceOf(user), depositAmount);
+
+        uint256 maxWithdrawableAssets = vault.maxWithdraw(user);
+        assertEq(depositAmount, maxWithdrawableAssets);
     }
 
     function _flashRebalance() private {

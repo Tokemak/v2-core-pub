@@ -11,8 +11,6 @@ import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSe
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 import { StructuredLinkedList } from "src/strategy/StructuredLinkedList.sol";
@@ -20,12 +18,14 @@ import { WithdrawalQueue } from "src/strategy/WithdrawalQueue.sol";
 import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
+import { AutoPoolToken } from "src/vault/libs/AutoPoolToken.sol";
 
 library LMPDebt {
     using Math for uint256;
     using SafeERC20 for IERC20;
     using WithdrawalQueue for StructuredLinkedList.List;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using AutoPoolToken for AutoPoolToken.TokenData;
 
     /// @notice Max time a cached debt report can be used
     uint256 public constant MAX_DEBT_REPORT_AGE_SECONDS = 1 days;
@@ -38,10 +38,16 @@ library LMPDebt {
     error InvalidTotalAssetPurpose();
     error InvalidDestination(address destination);
     error TooFewAssets(uint256 requested, uint256 actual);
-    error ShareOrAssetAmountReceived(uint256 amount);
+    error SharesAndAssetsReceived(uint256 assets, uint256 shares);
+    error AmountExceedsAllowance(uint256 shares, uint256 allowed);
 
     event DestinationDebtReporting(
         address destination, LMPDebt.IdleDebtUpdates debtInfo, uint256 claimed, uint256 claimGasUsed
+    );
+    event NewNavShareFeeMark(uint256 navPerShare, uint256 timestamp);
+    event Nav(uint256 idle, uint256 debt, uint256 totalSupply);
+    event Withdraw(
+        address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
 
     struct DestinationInfo {
@@ -841,16 +847,69 @@ library LMPDebt {
     }
 
     /**
+     * @notice Function to complete a withdrawal or redeem.  This runs after shares to be burned and assets to be
+     *    transferred are calculated.
+     * @param assets Amount of assets to be transferred to user.
+     * @param shares Amount of shares to be burned from user.
+     * @param feeDivisor AutoPool fee divisor.  Always 10_000.
+     * @param owner Owner of shares, user to burn shares from.
+     * @param receiver The receiver of the baseAsset.
+     * @param baseAsset Base asset of the AutoPool.
+     * @param feeSettings Fee settings for the AutoPool.
+     * @param assetBreakdown Asset breakdown for the AutoPool.
+     * @param tokenData Token data for the AutoPool.
+     */
+    function completeWithdrawal(
+        uint256 assets,
+        uint256 shares,
+        uint256 feeDivisor,
+        address owner,
+        address receiver,
+        IERC20 baseAsset,
+        ILMPVault.AutoPoolFeeSettings storage feeSettings,
+        ILMPVault.AssetBreakdown storage assetBreakdown,
+        AutoPoolToken.TokenData storage tokenData
+    ) external {
+        if (msg.sender != owner) {
+            uint256 allowed = ILMPVault(address(this)).allowance(owner, msg.sender);
+            if (allowed != type(uint256).max) {
+                if (shares > allowed) revert AmountExceedsAllowance(shares, allowed);
+
+                unchecked {
+                    tokenData.approve(owner, msg.sender, allowed - shares);
+                }
+            }
+        }
+
+        tokenData.burn(owner, shares);
+
+        // if totalSupply is now 0, reset the high water mark
+        uint256 ts = ILMPVault(address(this)).totalSupply();
+        if (ts == 0) {
+            feeSettings.navPerShareLastFeeMark = feeDivisor;
+
+            emit NewNavShareFeeMark(feeDivisor, block.timestamp);
+        }
+
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+
+        emit Nav(assetBreakdown.totalIdle, assetBreakdown.totalDebt, ts);
+
+        baseAsset.safeTransfer(receiver, assets);
+    }
+
+    /**
      * @notice A helper function to get estimates of what would happen on a withdraw or redeem.
      * @dev Reverts all changing state.
      * @param previewWithdraw Bool denoting whether to preview a redeem or withdrawal.
      * @param assets Assets to be withdrawn or redeemed.
-     * @param applicableTotalAssets Operation dependent assets in the vault.
+     * @param applicableTotalAssets Operation dependent assets in the AutoPool.
      * @param functionCallEncoded Abi encoded function signature for recursive call.
-     * @param assetBreakdown Breakdown of vault assets from LMPVault storage.
-     * @param withdrawalQueue Destination vault withdrawal queue from LMPVault storage.
+     * @param assetBreakdown Breakdown of vault assets from AutoPool storage.
+     * @param withdrawalQueue Destination vault withdrawal queue from AutoPool storage.
      * @param destinationInfo Mapping of information for destinations.
-     * @return Either shares burned or assets returned based on what operation is previewed.
+     * @return assetsAmount Preview of amount of assets to send to receiver.
+     * @return sharesAmount Preview of amount of assets to burn from owner.
      */
     function preview(
         bool previewWithdraw,
@@ -860,7 +919,7 @@ library LMPDebt {
         ILMPVault.AssetBreakdown storage assetBreakdown,
         StructuredLinkedList.List storage withdrawalQueue,
         mapping(address => LMPDebt.DestinationInfo) storage destinationInfo
-    ) external returns (uint256) {
+    ) external returns (uint256 assetsAmount, uint256 sharesAmount) {
         if (msg.sender != address(this)) {
             // Perform a recursive call the function in `funcCallEncoded`.  This will result in a call back to
             // the AutoPool, and then this function. The intention is to reach the "else" block in this function.
@@ -874,7 +933,7 @@ library LMPDebt {
                 revert Errors.UnreachableError();
             }
 
-            bytes4 sharesAmountSig = bytes4(keccak256("ShareOrAssetAmountReceived(uint256)"));
+            bytes4 sharesAmountSig = bytes4(keccak256("SharesAndAssetsReceived(uint256,uint256)"));
 
             // Extract the error signature (first 4 bytes) from the revert reason.
             bytes4 errorSignature;
@@ -885,12 +944,13 @@ library LMPDebt {
 
             // If the error matches the expected signature, extract the amount from the revert reason and return.
             if (errorSignature == sharesAmountSig) {
-                // Extract subsequent 32 bytes for uint256
-                uint256 amount;
+                // Extract subsequent bytes for uint256.
                 assembly {
-                    amount := mload(add(returnData, 0x24))
+                    assetsAmount := mload(add(returnData, 0x24))
+                    sharesAmount := mload(add(returnData, 0x44))
                 }
-                return amount;
+
+                return (assetsAmount, sharesAmount);
             } else {
                 // If the error is not the expected one, forward the original revert reason.
                 assembly {
@@ -903,17 +963,18 @@ library LMPDebt {
         else {
             // Perform the actual withdrawal or redeem logic to compute the amount. This will be reverted to
             // simulate the action.
-            uint256 shareOrAssetAmount;
+            uint256 previewAssets;
+            uint256 previewShares;
             if (previewWithdraw) {
-                (, shareOrAssetAmount,) =
+                (previewAssets, previewShares,) =
                     withdraw(assets, applicableTotalAssets, assetBreakdown, withdrawalQueue, destinationInfo);
             } else {
-                (shareOrAssetAmount,,) =
+                (previewAssets, previewShares,) =
                     redeem(assets, applicableTotalAssets, assetBreakdown, withdrawalQueue, destinationInfo);
             }
 
             // Revert with the computed amount as an error.
-            revert ShareOrAssetAmountReceived(shareOrAssetAmount);
+            revert SharesAndAssetsReceived(previewAssets, previewShares);
         }
     }
 }

@@ -732,6 +732,7 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
         );
     }
 
+    // solhint-disable max-line-length
     function test_RevertIf_VaultBalanceAndSellAmountMismatch() public {
         SwapParams memory swapParams =
             SwapParams(address(rewardToken2), sellAmount * 2, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
@@ -747,6 +748,7 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
             ILiquidationRow.LiquidationParams(address(rewardToken2), address(asyncSwapper), vaults, swapParams)
         );
     }
+    // solhint-enable max-line-length
 
     function test_OnlyLiquidateGivenTokenForGivenVaults() public {
         liquidationRow.addToWhitelist(address(asyncSwapper));

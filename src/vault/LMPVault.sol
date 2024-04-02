@@ -147,7 +147,6 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// Events
     /// =====================================================
 
-    event NewNavShareFeeMark(uint256 navPerShare, uint256 timestamp);
     event SymbolAndDescSet(string symbol, string desc);
 
     /// =====================================================
@@ -667,7 +666,23 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// @notice Returns the maximum amount of the underlying asset that can
     /// be withdrawn from the owner balance in the Vault, through a withdraw call
     function maxWithdraw(address owner) public virtual returns (uint256 maxAssets) {
-        maxAssets = paused() ? 0 : previewRedeem(balanceOf(owner));
+        if (paused()) {
+            return 0;
+        }
+
+        uint256 totalAssetsTimeChecked =
+            LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Withdraw);
+        uint256 convertedAssets =
+            convertToAssets(balanceOf(owner), totalAssetsTimeChecked, totalSupply(), Math.Rounding.Down);
+        (maxAssets,) = LMPDebt.preview(
+            true,
+            convertedAssets,
+            totalAssetsTimeChecked,
+            abi.encodeWithSelector(this.previewWithdraw.selector, convertedAssets),
+            _assetBreakdown,
+            _withdrawalQueue,
+            _destinationInfo
+        );
     }
 
     /// @notice Returns the maximum amount of Vault shares that can be redeemed
@@ -683,7 +698,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
     /// @notice Simulate the effects of their withdrawal at the current block, given current on-chain conditions.
     function previewWithdraw(uint256 assets) public virtual returns (uint256 shares) {
-        shares = LMPDebt.preview(
+        (, shares) = LMPDebt.preview(
             true,
             assets,
             LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Withdraw),
@@ -705,7 +720,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
             convertedAssets = convertToAssets(shares, applicableTotalAssets, totalSupply(), Math.Rounding.Down);
         }
 
-        assets = LMPDebt.preview(
+        (assets,) = LMPDebt.preview(
             false,
             convertedAssets,
             applicableTotalAssets,
@@ -717,33 +732,9 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     }
 
     function _completeWithdrawal(uint256 assets, uint256 shares, address owner, address receiver) internal virtual {
-        if (msg.sender != owner) {
-            uint256 allowed = allowance(owner, msg.sender);
-            if (allowed != type(uint256).max) {
-                if (shares > allowed) revert AmountExceedsAllowance(shares, allowed);
-
-                unchecked {
-                    _tokenData.approve(owner, msg.sender, allowed - shares);
-                }
-            }
-        }
-
-        _tokenData.burn(owner, shares);
-
-        // if totalSupply is now 0, reset the high water mark
-        // slither-disable-next-line incorrect-
-        uint256 ts = totalSupply();
-        if (ts == 0) {
-            _feeSettings.navPerShareLastFeeMark = FEE_DIVISOR;
-
-            emit NewNavShareFeeMark(FEE_DIVISOR, block.timestamp);
-        }
-
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
-
-        emit Nav(_assetBreakdown.totalIdle, _assetBreakdown.totalDebt, ts);
-
-        _baseAsset.safeTransfer(receiver, assets);
+        LMPDebt.completeWithdrawal(
+            assets, shares, FEE_DIVISOR, owner, receiver, _baseAsset, _feeSettings, _assetBreakdown, _tokenData
+        );
     }
 
     /// @notice Transfer out non-tracked tokens

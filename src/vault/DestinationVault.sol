@@ -392,7 +392,7 @@ abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Init
     /// @inheritdoc IDestinationVault
     function getValidatedSafePrice() external returns (uint256 price) {
         (uint256 spotPriceInQuote, uint256 safePriceInQuote, bool isSpotSafe) =
-            _systemRegistry.rootPriceOracle().getRangePricesLP(address(_underlying), getPool(), _baseAsset);
+            systemRegistry.rootPriceOracle().getRangePricesLP(address(_underlying), getPool(), _baseAsset);
         if (!isSpotSafe) {
             revert PricesOutOfRange(spotPriceInQuote, safePriceInQuote);
         }

@@ -54,6 +54,7 @@ address constant WEETH_MAINNET = 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee;
 address constant OSETH_MAINNET = 0xf1C9acDc66974dFB6dEcB12aA385b9cD01190E38;
 address constant EZETH_MAINNET = 0xbf5495Efe5DB9ce00f80364C8B423567e58d2110;
 address constant RSETH_MAINNET = 0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7;
+address constant ETHX_MAINNET = 0xA35b1B31Ce002FBF2058D22F30f95D405200A15b;
 
 // This is a Balancer's GnosisSafe proxy – found it through
 // Authorizer(0xA331D84eC860Bf466b4CdCcFb4aC09a1B43F3aE6)#hasRole by the needed actionId found from

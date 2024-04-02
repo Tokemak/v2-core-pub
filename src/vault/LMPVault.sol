@@ -675,6 +675,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
             LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Withdraw);
         uint256 convertedAssets =
             convertToAssets(ownerShareBalance, totalAssetsTimeChecked, totalSupply(), Math.Rounding.Down);
+        // slither-disable-next-line unused-return
         (maxAssets,) = LMPDebt.preview(
             true,
             convertedAssets,
@@ -699,6 +700,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
     /// @notice Simulate the effects of their withdrawal at the current block, given current on-chain conditions.
     function previewWithdraw(uint256 assets) public virtual returns (uint256 shares) {
+        // slither-disable-next-line unused-return
         (, shares) = LMPDebt.preview(
             true,
             assets,
@@ -721,6 +723,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
             convertedAssets = convertToAssets(shares, applicableTotalAssets, totalSupply(), Math.Rounding.Down);
         }
 
+        // slither-disable-next-line unused-return
         (assets,) = LMPDebt.preview(
             false,
             convertedAssets,

@@ -666,14 +666,15 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// @notice Returns the maximum amount of the underlying asset that can
     /// be withdrawn from the owner balance in the Vault, through a withdraw call
     function maxWithdraw(address owner) public virtual returns (uint256 maxAssets) {
-        if (paused()) {
+        uint256 ownerShareBalance = balanceOf(owner);
+        if (paused() || ownerShareBalance == 0) {
             return 0;
         }
 
         uint256 totalAssetsTimeChecked =
             LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Withdraw);
         uint256 convertedAssets =
-            convertToAssets(balanceOf(owner), totalAssetsTimeChecked, totalSupply(), Math.Rounding.Down);
+            convertToAssets(ownerShareBalance, totalAssetsTimeChecked, totalSupply(), Math.Rounding.Down);
         (maxAssets,) = LMPDebt.preview(
             true,
             convertedAssets,

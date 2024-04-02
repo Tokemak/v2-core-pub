@@ -4324,6 +4324,14 @@ contract PreviewTests is FlashRebalanceTests {
         assertEq(0, maxWithdrawableAssets);
     }
 
+    function test_maxWithdraw_Returns0_WhenOwnerHasNoBalance() public {
+        address user1 = makeAddr("user1");
+
+        assertEq(vault.balanceOf(user1), 0);
+
+        assertEq(vault.maxWithdraw(user1), 0);
+    }
+
     function test_maxWithdraw_ReturnsCorrectAmount() public {
         uint256 depositAmount = 9e18;
         address user = makeAddr("user");

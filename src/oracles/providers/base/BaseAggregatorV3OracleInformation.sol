@@ -118,6 +118,7 @@ abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
         }
         uint256 decimals = oracleInfo.decimals;
         // Oracle feeds have certain decimal precisions, does not necessarily conform to underlying asset.
+        // solhint-disable-next-line max-line-length
         uint256 normalizedPrice = decimals <= 18 ? priceUint * 10 ** (18 - decimals) : priceUint / 10 ** (decimals - 18);
 
         return _denominationPricing(oracleInfo.denomination, normalizedPrice, token);

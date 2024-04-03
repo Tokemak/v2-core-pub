@@ -98,6 +98,8 @@ contract BasePoolSetup {
         TestingPool poolTemplate = new TestingPool(_systemRegistry, address(vaultAsset));
         _pool = TestingPool(Clones.clone(address(poolTemplate)));
 
+        _pool.setRewarder(address(vaultAsset));
+
         DestinationVaultRegistry destVaultRegistry = new DestinationVaultRegistry(_systemRegistry);
         _systemRegistry.setDestinationVaultRegistry(address(destVaultRegistry));
 

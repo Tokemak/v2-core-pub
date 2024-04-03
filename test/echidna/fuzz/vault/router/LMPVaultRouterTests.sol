@@ -19,7 +19,6 @@ import { PropertiesAsserts } from "crytic/properties/contracts/util/PropertiesHe
 
 import { ERC2612 } from "test/utils/ERC2612.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
-import { ERC2612 } from "test/utils/ERC2612.sol";
 
 contract TestRouter is LMPVaultRouter {
     using SafeERC20 for IERC20;
@@ -29,6 +28,21 @@ contract TestRouter is LMPVaultRouter {
     /// @notice Intentionally vulnerable. Will filter out for normal runs but used to test checks are working
     function pullTokenFrom(IERC20 token, uint256 amount, address from, address recipient) public payable {
         token.safeTransferFrom(from, recipient, amount);
+    }
+
+    function imitateSwapAndDepositToVault(
+        SwapParams memory swapParams,
+        ILMPVault vault,
+        address to,
+        uint256 minSharesOut
+    ) external returns (uint256 sharesOut) {
+        pullToken(IERC20(swapParams.sellTokenAddress), swapParams.sellAmount, address(this));
+
+        // Mock 1:1 swap
+        TestERC20(swapParams.buyTokenAddress).mint(msg.sender, swapParams.sellAmount);
+        uint256 amountReceived = swapParams.sellAmount;
+
+        return _deposit(vault, to, amountReceived, minSharesOut);
     }
 }
 
@@ -375,42 +389,87 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         );
     }
 
-    // ///@dev Anyone can stake VaultToken
-    // function stakeVaultToken(IERC20 vault, uint256 maxAmount) public returns (uint256 staked) {
-    //     return lmpVaultRouter.stakeVaultToken(vault, maxAmount);
-    // }
+    // Stake
+    function stakeVaultToken(uint256 amount) public updateUser1Balance {
+        _startPrank(msg.sender);
+        lmpVaultRouter.stakeVaultToken(_pool, amount);
+        _stopPrank();
+    }
 
-    // ///@dev Anyone can try to withdraw VaultToken
-    // function withdrawVaultToken(
-    //     ILMPVault vault,
-    //     IMainRewarder rewarder,
-    //     uint256 maxAmount,
-    //     bool claim
-    // ) public returns (uint256 withdrawn) {
-    //     if (address(vault) == address(rewarder)) {
-    //         revert("invalid params");
-    //     }
-    //     return lmpVaultRouter.withdrawVaultToken(vault, rewarder, maxAmount, claim);
-    // }
+    function queueStakeVaultToken(uint256 amount) public updateUser1Balance {
+        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.stakeVaultToken.selector, _pool, amount));
+    }
 
-    // ///@dev Anyone can try to claim rewards
-    // function claimRewards(ILMPVault vault, IMainRewarder rewarder) public updateUser1Balance {
-    //     if (address(vault) == address(rewarder)) {
-    //         revert("invalid params");
-    //     }
-    //     return lmpVaultRouter.claimRewards(vault, rewarder);
-    // }
+    // Unstake
+    function withdrawVaultToken(uint256 maxAmount, bool claim) public updateUser1Balance {
+        _startPrank(msg.sender);
+        lmpVaultRouter.withdrawVaultToken(_pool, _pool.rewarder(), maxAmount, claim);
+        _stopPrank();
+    }
 
-    // ///@dev Only User1 can swap to deposit
-    // function swapAndDepositToVault(
-    //     address swapper,
-    //     SwapParams memory swapParams,
-    //     ILMPVault vault,
-    //     uint256 minSharesOut
-    // ) public updateUser1Balance returns (uint256 sharesOut) {
-    //     address to = _user1;
-    //     return lmpVaultRouter.swapAndDepositToVault(swapper, swapParams, vault, to, minSharesOut);
-    // }
+    function queueWithdrawVaultToken(uint256 maxAmount, bool claim) public updateUser1Balance {
+        queuedCalls.push(
+            abi.encodeWithSelector(
+                lmpVaultRouter.withdrawVaultToken.selector, _pool, _pool.rewarder(), maxAmount, claim
+            )
+        );
+    }
+
+    // Claim
+    function claimRewards() public updateUser1Balance {
+        _startPrank(msg.sender);
+        lmpVaultRouter.claimRewards(_pool, _pool.rewarder());
+        _stopPrank();
+    }
+
+    function queueClaimRewards() public updateUser1Balance {
+        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.claimRewards.selector, _pool, _pool.rewarder()));
+    }
+
+    // Swap
+    function swapAndDepositToVault(uint256 toSeed, uint256 amount, uint256 minSharesOut) public updateUser1Balance {
+        // Selling WETH for Vault Asset
+        SwapParams memory swapParams = SwapParams({
+            sellTokenAddress: address(_weth),
+            sellAmount: amount,
+            buyTokenAddress: _pool.asset(),
+            buyAmount: minSharesOut,
+            data: "", // no real payload since the swap is mocked
+            extraData: ""
+        });
+
+        address to = _resolveUserFromSeed(toSeed);
+
+        // Mocked 1:1 swap
+        _startPrank(msg.sender);
+        lmpVaultRouter.imitateSwapAndDepositToVault(swapParams, _pool, to, minSharesOut);
+        _stopPrank();
+    }
+
+    function queueSwapAndDepositToVault(
+        uint256 toSeed,
+        uint256 amount,
+        uint256 minSharesOut
+    ) public updateUser1Balance {
+        // Selling WETH for Vault Asset
+        SwapParams memory swapParams = SwapParams({
+            sellTokenAddress: address(_weth),
+            sellAmount: amount,
+            buyTokenAddress: _pool.asset(),
+            buyAmount: minSharesOut,
+            data: "", // no real payload since the swap is mocked
+            extraData: ""
+        });
+
+        address to = _resolveUserFromSeed(toSeed);
+
+        // Mocked 1:1 swap
+        queuedCalls.push(
+            abi.encodeWithSelector(
+                lmpVaultRouter.imitateSwapAndDepositToVault.selector, swapParams, _pool, to, minSharesOut
+            )
+        );
+    }
 
     // Redeem
     function redeem(uint256 toSeed, uint256 shares, uint256 minAmountOut, bool unwrapWETH) public updateUser1Balance {

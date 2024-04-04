@@ -47,6 +47,7 @@ contract Rewards is IRewards, SecurityBase, SystemComponent, EIP712 {
         );
     }
 
+    /// @inheritdoc IRewards
     function genHash(Recipient memory recipient) public view returns (bytes32) {
         return _hashTypedDataV4(_hashRecipient(recipient));
     }
@@ -55,6 +56,7 @@ contract Rewards is IRewards, SecurityBase, SystemComponent, EIP712 {
         return block.chainid;
     }
 
+    /// @inheritdoc IRewards
     function setSigner(address newSigner) external override onlyOwner {
         Errors.verifyNotZero(newSigner, "newSigner");
 
@@ -64,10 +66,12 @@ contract Rewards is IRewards, SecurityBase, SystemComponent, EIP712 {
         emit SignerSet(newSigner);
     }
 
+    /// @inheritdoc IRewards
     function getClaimableAmount(Recipient calldata recipient) external view override returns (uint256) {
         return recipient.amount - claimedAmounts[recipient.wallet];
     }
 
+    /// @inheritdoc IRewards
     function claim(Recipient calldata recipient, uint8 v, bytes32 r, bytes32 s) external override returns (uint256) {
         if (recipient.wallet != msg.sender) {
             revert Errors.SenderMismatch(recipient.wallet, msg.sender);
@@ -76,6 +80,7 @@ contract Rewards is IRewards, SecurityBase, SystemComponent, EIP712 {
         return _claim(recipient, v, r, s, msg.sender);
     }
 
+    /// @inheritdoc IRewards
     function claimFor(
         Recipient calldata recipient,
         uint8 v,

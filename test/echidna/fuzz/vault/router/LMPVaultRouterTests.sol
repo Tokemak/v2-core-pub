@@ -39,8 +39,8 @@ contract TestRouter is LMPVaultRouter {
         pullToken(IERC20(swapParams.sellTokenAddress), swapParams.sellAmount, address(this));
 
         // Mock 1:1 swap
-        TestERC20(swapParams.buyTokenAddress).mint(msg.sender, swapParams.sellAmount);
-        uint256 amountReceived = swapParams.sellAmount;
+        TestERC20(swapParams.buyTokenAddress).mint(address(this), swapParams.buyAmount);
+        uint256 amountReceived = swapParams.buyAmount;
 
         return _deposit(vault, to, amountReceived, minSharesOut);
     }
@@ -387,43 +387,6 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
                 lmpVaultRouter.withdrawToDeposit.selector, _pool, _pool, to, amount, maxSharesIn, minSharesOut
             )
         );
-    }
-
-    // Stake
-    function stakeVaultToken(uint256 amount) public updateUser1Balance {
-        _startPrank(msg.sender);
-        lmpVaultRouter.stakeVaultToken(_pool, amount);
-        _stopPrank();
-    }
-
-    function queueStakeVaultToken(uint256 amount) public updateUser1Balance {
-        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.stakeVaultToken.selector, _pool, amount));
-    }
-
-    // Unstake
-    function withdrawVaultToken(uint256 maxAmount, bool claim) public updateUser1Balance {
-        _startPrank(msg.sender);
-        lmpVaultRouter.withdrawVaultToken(_pool, _pool.rewarder(), maxAmount, claim);
-        _stopPrank();
-    }
-
-    function queueWithdrawVaultToken(uint256 maxAmount, bool claim) public updateUser1Balance {
-        queuedCalls.push(
-            abi.encodeWithSelector(
-                lmpVaultRouter.withdrawVaultToken.selector, _pool, _pool.rewarder(), maxAmount, claim
-            )
-        );
-    }
-
-    // Claim
-    function claimRewards() public updateUser1Balance {
-        _startPrank(msg.sender);
-        lmpVaultRouter.claimRewards(_pool, _pool.rewarder());
-        _stopPrank();
-    }
-
-    function queueClaimRewards() public updateUser1Balance {
-        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.claimRewards.selector, _pool, _pool.rewarder()));
     }
 
     // Swap

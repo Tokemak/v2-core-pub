@@ -37,6 +37,10 @@ contract UsageTest is LMPVaultRouterUsage {
         return _vaultAsset;
     }
 
+    function weth() public view returns (address) {
+        return address(_weth);
+    }
+
     function _startPrank(address user) internal override {
         _vm.startPrank(user);
     }
@@ -126,6 +130,65 @@ contract LMPVaultTests is Test {
         vm.stopPrank();
 
         assertEq(ILMPVault(usage.pool()).balanceOf(usage.user1()), 100e18, "endShareBal");
+    }
+
+    function test_SwapToDeposit() public {
+        uint256 amount = 100e18;
+        uint256 minSharesOut = amount; // imitating 1:1 swap
+
+        // Mint some sell asset
+        deal(usage.weth(), usage.user1(), amount);
+
+        // Approve
+        vm.startPrank(usage.user1());
+        IERC20(usage.weth()).approve(usage.router(), amount);
+        vm.stopPrank();
+
+        // Verify starting shares & balances
+        assertEq(ILMPVault(usage.pool()).balanceOf(usage.user1()), 0, "startShareBal");
+        assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "buyTokenStartBal");
+        assertEq(IERC20(usage.weth()).balanceOf(usage.user1()), amount, "sellTokenStartBal");
+
+        // Run swap & deposit
+        vm.startPrank(usage.user1());
+        usage.swapAndDepositToVault(1, amount, minSharesOut);
+        vm.stopPrank();
+
+        // Verify ending shares & balances
+        assertEq(ILMPVault(usage.pool()).balanceOf(usage.user1()), amount, "endShareBal");
+        assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "endBuyTokenBal");
+        assertEq(IERC20(usage.weth()).balanceOf(usage.user1()), 0, "endSellTokenBal");
+    }
+
+    function test_SwapToDepositMulticall() public {
+        uint256 amount = 100e18;
+        uint256 minSharesOut = amount; // imitating 1:1 swap
+
+        // Mint some sell asset
+        deal(usage.weth(), usage.user1(), amount);
+
+        // Approve
+        vm.startPrank(usage.user1());
+        IERC20(usage.weth()).approve(usage.router(), amount);
+        vm.stopPrank();
+
+        // Verify starting shares & balances
+        assertEq(ILMPVault(usage.pool()).balanceOf(usage.user1()), 0, "startShareBal");
+        assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "buyTokenStartBal");
+        assertEq(IERC20(usage.weth()).balanceOf(usage.user1()), amount, "sellTokenStartBal");
+
+        // Queue
+        usage.queueSwapAndDepositToVault(1, amount, minSharesOut);
+
+        // Run swap & deposit
+        vm.startPrank(usage.user1());
+        usage.executeMulticall();
+        vm.stopPrank();
+
+        // Verify ending shares & balances
+        assertEq(ILMPVault(usage.pool()).balanceOf(usage.user1()), amount, "endShareBal");
+        assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "endBuyTokenBal");
+        assertEq(IERC20(usage.weth()).balanceOf(usage.user1()), 0, "endSellTokenBal");
     }
 
     function test_Permit() public {

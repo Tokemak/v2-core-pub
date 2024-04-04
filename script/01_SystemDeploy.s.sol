@@ -135,7 +135,7 @@ contract DeploySystem is BaseScript {
         // console.log("Emerging LMP Vault address: ", emergingLmp);
 
         // LMP router setup.
-        lmpRouter = new LMPVaultRouter(systemRegistry, wethAddress);
+        lmpRouter = new LMPVaultRouter(systemRegistry);
         systemRegistry.setLMPVaultRouter(address(lmpRouter));
         console.log("LMP Router address: ", address(lmpRouter));
 

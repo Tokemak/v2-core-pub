@@ -15,7 +15,7 @@ contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard 
     using SafeERC20 for IERC20;
     using Address for address;
 
-    constructor(ISystemRegistry _systemRegistry, address _weth9) LMPVaultRouterBase(_weth9, _systemRegistry) { }
+    constructor(ISystemRegistry _systemRegistry) LMPVaultRouterBase(_systemRegistry) { }
 
     // For the below, no approval needed, assumes vault is already max approved
 

@@ -35,11 +35,18 @@ abstract contract LMPVaultRouterBase is
         _;
     }
 
-    constructor(
-        address _weth9,
-        ISystemRegistry _systemRegistry
-    ) PeripheryPayments(IWETH9(_weth9)) SystemComponent(_systemRegistry) { }
+    //read weth from system registry and give it to periphery payments
+    constructor(ISystemRegistry _systemRegistry)
+        PeripheryPayments(_systemRegistry.weth())
+        SystemComponent(_systemRegistry)
+    { }
 
+    //takes an amount now and do a deposit
+    // function wrapWETH9(amount ) public payable {
+    //     if (address(this).balance > 0) weth9.deposit{ value: address(this).balance }(); // wrap everything
+    // }
+
+    //compose a multi call here
     /// @inheritdoc ILMPVaultRouterBase
     function mint(
         ILMPVault vault,

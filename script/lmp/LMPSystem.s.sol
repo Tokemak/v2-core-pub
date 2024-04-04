@@ -59,7 +59,7 @@ contract LMPSystem is BaseScript {
         if (address(lmpRouter) != address(0)) {
             console.log("LMP Router already set: %s", address(lmpRouter));
         } else {
-            lmpRouter = new LMPVaultRouter(systemRegistry, wethAddress);
+            lmpRouter = new LMPVaultRouter(systemRegistry);
             systemRegistry.setLMPVaultRouter(address(lmpRouter));
             console.log("LMP Router: %s", address(lmpRouter));
         }

@@ -434,6 +434,7 @@ contract IncentivePricingTest is Test {
         }
 
         string memory addr = Strings.toHexString(uint160(target), 20);
-        fail(string.concat(addr, " not in list"));
+        // fail(string.concat(addr, " not in list"));
+        fail();
     }
 }

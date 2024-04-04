@@ -108,7 +108,7 @@ contract BaseTest is Test {
         lmpVaultRegistry = new LMPVaultRegistry(systemRegistry);
         systemRegistry.setLMPVaultRegistry(address(lmpVaultRegistry));
         // TODO: replace below 2 lines with `deployLMPVaultRouter`
-        lmpVaultRouter = new LMPVaultRouter(systemRegistry, address(weth));
+        lmpVaultRouter = new LMPVaultRouter(systemRegistry);
         systemRegistry.setLMPVaultRouter(address(lmpVaultRouter));
 
         systemSecurity = new SystemSecurity(systemRegistry);
@@ -213,7 +213,7 @@ contract BaseTest is Test {
     function deployLMPVaultRouter() public {
         if (address(lmpVaultRouter) != address(0)) return;
 
-        lmpVaultRouter = new LMPVaultRouter(systemRegistry, WETH_MAINNET);
+        lmpVaultRouter = new LMPVaultRouter(systemRegistry);
         systemRegistry.setLMPVaultRouter(address(lmpVaultRouter));
     }
 

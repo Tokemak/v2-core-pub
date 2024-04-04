@@ -13,7 +13,7 @@ contract DeployLens is BaseScript {
         setUp(Systems.LST_GEN1_GOERLI);
         vm.startBroadcast(privateKey);
 
-        LMPVaultRouter o = new LMPVaultRouter(systemRegistry, constants.tokens.weth);
+        LMPVaultRouter o = new LMPVaultRouter(systemRegistry);
         console.log("Router Address: %s", address(o));
 
         systemRegistry.setLMPVaultRouter(address(o));

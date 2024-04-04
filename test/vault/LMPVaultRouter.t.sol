@@ -41,7 +41,7 @@ contract LMPVaultRouterWrapper is LMPVaultRouter {
 
     event SomethingHappened();
 
-    constructor(ISystemRegistry _systemRegistry, address _weth9) LMPVaultRouter(_systemRegistry, _weth9) { }
+    constructor(ISystemRegistry _systemRegistry) LMPVaultRouter(_systemRegistry) { }
 
     function doSomethingWrong() public pure {
         revert SomethingWentWrong();
@@ -787,7 +787,7 @@ contract LMPVaultRouterTest is BaseTest {
     }
 
     function test_catchCustomErrors() public {
-        LMPVaultRouterWrapper router = new LMPVaultRouterWrapper(systemRegistry, WETH_MAINNET);
+        LMPVaultRouterWrapper router = new LMPVaultRouterWrapper(systemRegistry);
 
         bytes[] memory data = new bytes[](2);
         data[0] = abi.encodeWithSelector(LMPVaultRouterWrapper.doSomethingRight.selector);

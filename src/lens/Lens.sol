@@ -101,14 +101,14 @@ contract Lens is SystemComponent {
     /// =====================================================
 
     /// @notice Returns all AutoPools currently registered in the system
-    function getVaults() external view returns (AutoPool[] memory) {
-        return _getVaults();
+    function getPools() external view returns (AutoPool[] memory) {
+        return _getPools();
     }
 
     /// @notice Returns all AutoPools and their destinations
     /// @dev Makes no state changes. Not a view fn because of stats pricing
-    function getVaultsAndDestinations() external returns (AutoPools memory retValues) {
-        retValues.autoPools = _getVaults();
+    function getPoolsAndDestinations() external returns (AutoPools memory retValues) {
+        retValues.autoPools = _getPools();
         retValues.destinations = new DestinationVault[][](retValues.autoPools.length);
 
         for (uint256 i = 0; i < retValues.autoPools.length; ++i) {
@@ -129,7 +129,7 @@ contract Lens is SystemComponent {
     /// =====================================================
 
     /// @dev Returns AutoPool information for those currently registered in the system
-    function _getVaults() private view returns (AutoPool[] memory lmpVaults) {
+    function _getPools() private view returns (AutoPool[] memory lmpVaults) {
         address[] memory lmpAddresses = systemRegistry.lmpVaultRegistry().listVaults();
         lmpVaults = new AutoPool[](lmpAddresses.length);
 
@@ -191,13 +191,13 @@ contract Lens is SystemComponent {
     /// @dev Returns destination information for those currently related to the AutoPool
     /// @param autoPool AutoPool to query destinations for
     function _getDestinations(address autoPool) private returns (DestinationVault[] memory destinations) {
-        address[] memory vaultDestinations = ILMPVault(autoPool).getDestinations();
-        address[] memory queuedVaultRemovals = ILMPVault(autoPool).getRemovalQueue();
-        destinations = new DestinationVault[](vaultDestinations.length + queuedVaultRemovals.length);
+        address[] memory poolDestinations = ILMPVault(autoPool).getDestinations();
+        address[] memory poolQueuedDestRemovals = ILMPVault(autoPool).getRemovalQueue();
+        destinations = new DestinationVault[](poolDestinations.length + poolQueuedDestRemovals.length);
 
         for (uint256 i = 0; i < destinations.length; ++i) {
             address destinationAddress =
-                i < vaultDestinations.length ? vaultDestinations[i] : queuedVaultRemovals[i - vaultDestinations.length];
+                i < poolDestinations.length ? poolDestinations[i] : poolQueuedDestRemovals[i - poolDestinations.length];
             (IDexLSTStats.DexLSTStatsData memory currentStats, bool statsIncomplete) =
                 _safeDestinationGetStats(destinationAddress);
             address[] memory destinationTokens = IDestinationVault(destinationAddress).underlyingTokens();
@@ -223,7 +223,7 @@ contract Lens is SystemComponent {
                             + (vaultDestInfo.cachedMaxDebtValue * vaultBalOfDest / vaultDestInfo.ownedShares)
                         : 0
                     ) / 2,
-                queuedForRemoval: i >= vaultDestinations.length,
+                queuedForRemoval: i >= poolDestinations.length,
                 isShutdown: IDestinationVault(destinationAddress).isShutdown(),
                 shutdownStatus: IDestinationVault(destinationAddress).shutdownStatus(),
                 statsIncomplete: statsIncomplete,

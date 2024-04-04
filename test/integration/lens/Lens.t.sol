@@ -70,7 +70,7 @@ contract LensIntTest1 is LensInt {
     function test_ReturnsVaults() public {
         // Should only have one deployed at this block
 
-        Lens.AutoPool[] memory vaults = _lens.getVaults();
+        Lens.AutoPool[] memory vaults = _lens.getPools();
 
         assertEq(vaults.length, 1, "len");
         assertEq(vaults[0].poolAddress, 0xA43a16d818Fea4Ad0Fb9356D33904251d726079b, "addr");
@@ -83,7 +83,7 @@ contract LensIntTest2 is LensInt {
     }
 
     function test_ReturnsDestinations() external {
-        Lens.AutoPools memory retValues = _lens.getVaultsAndDestinations();
+        Lens.AutoPools memory retValues = _lens.getPoolsAndDestinations();
 
         assertEq(retValues.autoPools.length, 1, "vaultLen");
         assertEq(retValues.autoPools[0].poolAddress, 0xA43a16d818Fea4Ad0Fb9356D33904251d726079b, "autoPoolAddr");
@@ -137,7 +137,7 @@ contract LensIntTest3 is LensInt {
         // Have deployed the vault 4 time and the vault we're testing has had a debt reporting and claimed
         // rewards so has an increased nav/share
 
-        Lens.AutoPool[] memory vaults = _lens.getVaults();
+        Lens.AutoPool[] memory vaults = _lens.getPools();
 
         assertEq(vaults.length, 4, "len");
 
@@ -166,12 +166,12 @@ contract LensIntTest4 is LensInt {
     //     LMPVault(autoPool).shutdown(ILMPVault.VaultShutdownStatus.Exploit);
     //     vm.stopPrank();
 
-    //     Lens.AutoPool[] memory autoPools = _lens.getVaults();
+    //     Lens.AutoPool[] memory autoPools = _lens.getPools();
     //     uint256 ix = _findIndexOfPool(autoPools, autoPool);
     // }
 
     function test_ReturnsDestinationsWhenPricingIsStale() external {
-        Lens.AutoPools memory data = _lens.getVaultsAndDestinations();
+        Lens.AutoPools memory data = _lens.getPoolsAndDestinations();
         uint256 ix = _findIndexOfPool(data.autoPools, 0x57FA6bb127a428Fe268104AB4d170fe4a99B73B6);
 
         bool someDestStatsIncomplete = false;
@@ -187,7 +187,7 @@ contract LensIntTest4 is LensInt {
     function test_ReturnsDestinationsQueuedForRemoval() external {
         // We removed cbETH/ETH earlier this day
 
-        Lens.AutoPools memory data = _lens.getVaultsAndDestinations();
+        Lens.AutoPools memory data = _lens.getPoolsAndDestinations();
         uint256 pix = _findIndexOfPool(data.autoPools, 0x57FA6bb127a428Fe268104AB4d170fe4a99B73B6);
         uint256 dix = _findIndexOfDestination(data, pix, 0x258Ef53417F3ce45A993b8aD777b87712322Cc7B);
 
@@ -222,7 +222,7 @@ contract LensIntTest5 is LensInt {
         LMPVault(autoPool).shutdown(ILMPVault.VaultShutdownStatus.Exploit);
         vm.stopPrank();
 
-        Lens.AutoPool[] memory autoPools = _lens.getVaults();
+        Lens.AutoPool[] memory autoPools = _lens.getPools();
         Lens.AutoPool memory pool = autoPools[_findIndexOfPool(autoPools, autoPool)];
 
         assertEq(pool.poolAddress, autoPool, "poolAddress");
@@ -263,7 +263,7 @@ contract LensIntTest6 is LensInt {
         IDestinationVault(destVault).shutdown(IDestinationVault.VaultShutdownStatus.Exploit);
         vm.stopPrank();
 
-        Lens.AutoPools memory data = _lens.getVaultsAndDestinations();
+        Lens.AutoPools memory data = _lens.getPoolsAndDestinations();
         uint256 pix = _findIndexOfPool(data.autoPools, autoPool);
         uint256 dix = _findIndexOfDestination(data, pix, destVault);
         Lens.DestinationVault memory dv = data.destinations[pix][dix];

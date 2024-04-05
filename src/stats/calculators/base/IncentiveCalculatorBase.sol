@@ -32,7 +32,7 @@ abstract contract IncentiveCalculatorBase is
     uint40 public constant PRICE_STALE_CHECK = 12 hours;
 
     /// @dev Cap on allowable credits in the system.
-    uint8 public constant MAX_CREDITS = 48;
+    uint8 public constant MAX_CREDITS = 168;
 
     IDexLSTStats public underlyerStats;
     IBaseRewardPool public rewarder;
@@ -276,7 +276,7 @@ abstract contract IncentiveCalculatorBase is
             // If APR is above a threshold, increment credits based on time elapsed
             // Only give credit for whole days, so divide-before-multiply is desired
             // slither-disable-next-line divide-before-multiply
-            uint8 credits = uint8(2 * (elapsedTime / 1 days)); // 2 credits for each day
+            uint8 credits = uint8(12 * (elapsedTime / 1 days)); // 2 credits for each day
             // Increment credits, but cap at MAX_CREDITS
             incentiveCredits = uint8(Math.min(currentCredits + credits, MAX_CREDITS));
             // Update the last incentive timestamp to the current block's timestamp

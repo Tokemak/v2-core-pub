@@ -492,7 +492,8 @@ contract Current is AuraCalculatorTest {
         _runScenario(rewardRates, totalSupply, rewardPerToken, time);
 
         IDexLSTStats.DexLSTStatsData memory res = calculator.current();
-        assertEq(res.stakingIncentiveStats.incentiveCredits, nbSnapshots);
+        // Incentives are earned at 12 hours per day
+        assertEq(res.stakingIncentiveStats.incentiveCredits, nbSnapshots*6);
         assertEq(res.stakingIncentiveStats.rewardTokens.length, 2);
         assertEq(res.stakingIncentiveStats.rewardTokens[0], mainRewarderRewardToken);
         assertEq(res.stakingIncentiveStats.rewardTokens[1], platformRewarder);
@@ -528,7 +529,7 @@ contract Current is AuraCalculatorTest {
         IDexLSTStats.DexLSTStatsData memory res = calculator.current();
 
         // Ensure that the incentive credits have been increased
-        assertTrue(res.stakingIncentiveStats.incentiveCredits == 24);
+        assertTrue(res.stakingIncentiveStats.incentiveCredits == 24*6);
 
         // Decrease the incentive credits by decreasing the reward rate
         nbSnapshots = 3;
@@ -552,7 +553,8 @@ contract Current is AuraCalculatorTest {
 
         _runScenario(rewardRates, totalSupply, rewardPerToken, time);
         res = calculator.current();
-        assertTrue(res.stakingIncentiveStats.incentiveCredits == 0);
+        // Credits should go from 144 to 120 due to decay
+        assertTrue(res.stakingIncentiveStats.incentiveCredits == 120);
     }
 }
 

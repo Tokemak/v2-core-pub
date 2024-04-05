@@ -1390,7 +1390,13 @@ contract GetFloorCeilingPrice is RootOracleIntegrationTest {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19_222_223);
 
         uint256 calculatedFloorPrice = 128_392_302_540_179_900;
-        uint256 calculatedCeilingPrice = 131_979_816_103_475_891;
+
+        // Pool reserves and lp supply at block 19_222_223
+        // totalReserves: 253740198952000572
+        // totalLpSupply: 273259897168240633
+        // cbETH price at time of fork (Feburary 13th, 2024) on Coingecko: 1.15
+        uint256 price = (1.15 * 1e18);
+        uint256 calculatedCeilingPrice = (price * 253_740_198_952_000_572) / 273_259_897_168_240_633;
 
         uint256 floorPrice =
             priceOracle.getFloorCeilingPrice(CBETH_WSTETH_BAL_POOL, CBETH_WSTETH_BAL_POOL, WETH_MAINNET, false);

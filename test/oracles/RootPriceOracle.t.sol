@@ -16,12 +16,29 @@ import { IAccessController } from "src/interfaces/security/IAccessController.sol
 import { TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 
+import { TestSpotPriceOracle } from "test/mocks/TestSpotPriceOracle.sol";
+import { TestPriceOracle } from "test/mocks/TestPriceOracle.sol";
+
 import { MockERC20 } from "test/mocks/MockERC20.sol";
+import { TestERC20 } from "test/mocks/TestERC20.sol";
+
+contract RootPriceOracleWrapper is RootPriceOracle {
+    constructor(SystemRegistry _systemRegistry) RootPriceOracle(_systemRegistry) { }
+
+    function expose_calculateReservesAndPrice(
+        address pool,
+        address lpToken,
+        address inQuote,
+        bool ceiling
+    ) external returns (uint256 totalReserves, uint256 floorOrCeilingPrice, uint256 totalLpSupply) {
+        return _calculateReservesAndPrice(pool, lpToken, inQuote, ceiling);
+    }
+}
 
 contract RootPriceOracleTests is Test {
     SystemRegistry internal _systemRegistry;
     AccessController private _accessController;
-    RootPriceOracle internal _rootPriceOracle;
+    RootPriceOracleWrapper internal _rootPriceOracle;
 
     address internal _pool;
     address internal _token;
@@ -45,7 +62,7 @@ contract RootPriceOracleTests is Test {
         _systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
         _accessController = new AccessController(address(_systemRegistry));
         _systemRegistry.setAccessController(address(_accessController));
-        _rootPriceOracle = new RootPriceOracle(_systemRegistry);
+        _rootPriceOracle = new RootPriceOracleWrapper(_systemRegistry);
 
         _pool = makeAddr("_pool");
         _token = makeAddr("_token");
@@ -690,5 +707,99 @@ contract GetPriceInQuote is RootPriceOracleTests {
     function _setGetPriceInEth(address token, address oracle, uint256 price) internal {
         bytes memory selector = abi.encodeWithSelector(IPriceOracle.getPriceInEth.selector, token);
         vm.mockCall(oracle, selector, abi.encode(price));
+    }
+}
+
+/**
+ * @dev Creates a scenario where a pool contains 3 tokens with varying safe and spot prices.
+ *  (wstETH, cbETH, and rETH)
+ *
+ * The test uses protocol-agnostic price oracles (TestSpotPriceOracle and TestPriceOracle) for better control.
+ */
+contract _calculateReservesAndPrice is RootPriceOracleTests {
+    TestSpotPriceOracle internal spotPriceOracle;
+    TestPriceOracle internal safePriceOracle;
+    address internal pool;
+    address internal lpToken;
+
+    address internal weth;
+
+    address internal wstETH;
+    address internal cbETH;
+    address internal rETH;
+
+    function setUp() public override {
+        super.setUp();
+
+        // Deploy the Price and Spot Price Oracles
+        spotPriceOracle = new TestSpotPriceOracle(_systemRegistry);
+        safePriceOracle = new TestPriceOracle(_systemRegistry);
+
+        // Deploy WETH
+        weth = address(new TestERC20("WETH", "WETH"));
+
+        // Deploy the 3 tokens
+        wstETH = address(new TestERC20("wstETH", "wstETH"));
+        cbETH = address(new TestERC20("cbETH", "cbETH"));
+        rETH = address(new TestERC20("rETH", "rETH"));
+
+        // Deploy a pool and lp token as ERC20s
+        // Only decimals() is called on these contracts
+        pool = address(new TestERC20("POOL", "P"));
+        lpToken = address(new TestERC20("LP_TOKEN", "LPT"));
+
+        // Replace previous mappings with new ones
+        _rootPriceOracle.registerMapping(weth, safePriceOracle);
+        _rootPriceOracle.registerMapping(wstETH, safePriceOracle);
+        _rootPriceOracle.registerMapping(cbETH, safePriceOracle);
+        _rootPriceOracle.registerMapping(rETH, safePriceOracle);
+        _rootPriceOracle.registerPoolMapping(pool, spotPriceOracle);
+
+        vm.label(address(safePriceOracle), "safePriceOracle");
+    }
+
+    function test_CalculatePriceAndReserves() public {
+        ISpotPriceOracle.ReserveItemInfo[] memory reserves = new ISpotPriceOracle.ReserveItemInfo[](3);
+
+        // Set WETH price to 1 ETH with 18 decimals
+        safePriceOracle.setPriceInEth(weth, 1 * 1e18);
+
+        /* **************************************** */
+        /* Token 1: wstETH                          */
+        /* safePrice = 200 eth                      */
+        /* spotPrice = 201 eth                      */
+        /* **************************************** */
+        safePriceOracle.setPriceInEth(wstETH, 200);
+        reserves[0] = ISpotPriceOracle.ReserveItemInfo(wstETH, 1000, 201, weth);
+
+        /* **************************************** */
+        /* Token 2: cbETH                           */
+        /* safePrice = 310 eth Ceiling Winner       */
+        /* spotPrice = 121 eth                      */
+        /* **************************************** */
+        safePriceOracle.setPriceInEth(cbETH, 310);
+        reserves[1] = ISpotPriceOracle.ReserveItemInfo(cbETH, 1000, 121, weth);
+
+        /* **************************************** */
+        /* Token 3: rETH                            */
+        /* safePrice = 220 eth                      */
+        /* spotPrice = 101 eth Floor Winner         */
+        /* **************************************** */
+        safePriceOracle.setPriceInEth(rETH, 220);
+        reserves[2] = ISpotPriceOracle.ReserveItemInfo(rETH, 1000, 101, weth);
+
+        spotPriceOracle.setSafeSpotPriceInfo(pool, lpToken, weth, 50_000, reserves);
+
+        // Calculate floor price
+        (uint256 totalReserves, uint256 floorPrice, uint256 totalLpSupply) =
+            _rootPriceOracle.expose_calculateReservesAndPrice(pool, lpToken, weth, false);
+
+        // Calculate ceil price
+        (, uint256 ceilPrice,) = _rootPriceOracle.expose_calculateReservesAndPrice(pool, lpToken, weth, true);
+
+        assertEq(totalReserves, 3000);
+        assertEq(floorPrice, 101);
+        assertEq(ceilPrice, 310);
+        assertEq(totalLpSupply, 50_000);
     }
 }

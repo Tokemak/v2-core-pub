@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier:UNLICENSED
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 
 pragma solidity 0.8.17;
 
+import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
@@ -13,6 +14,8 @@ import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 
 contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
+    using Math for uint256;
+
     address private immutable _weth;
 
     mapping(address => IPriceOracle) public tokenMappings;
@@ -198,60 +201,76 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         address inQuote,
         bool ceiling
     ) public returns (uint256 floorOrCeilingPerLpToken) {
-        uint256 totalLpSupply;
+        (uint256 totalReserves, uint256 floorOrCeilingPrice, uint256 totalLpSupply) =
+            _calculateReservesAndPrice(pool, lpToken, inQuote, ceiling);
+        floorOrCeilingPerLpToken = totalReserves * floorOrCeilingPrice / totalLpSupply;
+    }
+
+    /**
+     * @notice Calculates the total reserves, floor/ceiling price, and total LP supply for a given pool and token pair.
+     * @param pool The address of the liquidity pool.
+     * @param lpToken The address of the LP token.
+     * @param inQuote The address of the desired quote token.
+     * @param ceiling A boolean indicating whether to calculate the ceiling price (true) or floor price (false).
+     * @return totalReserves The total reserves in the pool, scaled to the desired quote token decimals.
+     * @return floorOrCeilingPrice The floor or ceiling price, depending on the `ceiling` parameter.
+     * @return totalLpSupply The total LP supply, scaled to the desired quote token decimals.
+     */
+    function _calculateReservesAndPrice(
+        address pool,
+        address lpToken,
+        address inQuote,
+        bool ceiling
+    ) internal returns (uint256 totalReserves, uint256 floorOrCeilingPrice, uint256 totalLpSupply) {
         ISpotPriceOracle.ReserveItemInfo[] memory reserveInfoArray;
 
-        // Scoping for stack too deep.
-        {
-            // Check oracle, get spot pricing info.
-            ISpotPriceOracle oracle = _checkSpotOracleRegistration(pool);
-            (totalLpSupply, reserveInfoArray) = oracle.getSafeSpotPriceInfo(pool, lpToken, inQuote);
-        }
+        ISpotPriceOracle oracle = _checkSpotOracleRegistration(pool);
+        (totalLpSupply, reserveInfoArray) = oracle.getSafeSpotPriceInfo(pool, lpToken, inQuote);
 
-        // Get decimals of the desired quote token - rest of calculations will be based on this.
         uint256 inQuoteDecimals = IERC20Metadata(inQuote).decimals();
-
-        // Scale lp supply to decimals desired quote if neccessary.
         uint256 lpTokenDecimals = IERC20Metadata(lpToken).decimals();
-        if (lpTokenDecimals > inQuoteDecimals) {
-            totalLpSupply = totalLpSupply / 10 ** (lpTokenDecimals - inQuoteDecimals);
-        } else if (lpTokenDecimals < inQuoteDecimals) {
-            totalLpSupply = totalLpSupply * 10 ** (inQuoteDecimals - lpTokenDecimals);
-        }
 
-        // Track highest or lowest price, total number of reserves in pool.
-        // slither-disable-start uninitialized-local
-        uint256 floorOrCeilingPrice;
-        uint256 totalReserves;
-        // slither-disable-end uninitialized-local
+        totalLpSupply = _scaleValue(totalLpSupply, lpTokenDecimals, inQuoteDecimals);
+
         uint256 nTokens = reserveInfoArray.length;
+
         for (uint256 i = 0; i < nTokens; ++i) {
             ISpotPriceOracle.ReserveItemInfo memory reserveInfo = reserveInfoArray[i];
-            address actualQuote = reserveInfo.actualQuoteToken;
-            uint256 spotPrice = reserveInfo.rawSpotPrice;
-            uint256 reserveAmount = reserveInfo.reserveAmount;
 
-            // Converting and scaling to correct quote token.
-            spotPrice = _enforceQuoteToken(inQuote, actualQuote, spotPrice);
+            uint256 safePrice = getPriceInQuote(reserveInfo.token, inQuote);
+            uint256 spotPrice = _enforceQuoteToken(inQuote, reserveInfo.actualQuoteToken, reserveInfo.rawSpotPrice);
 
-            // Scaling reserves, reserves are always returned in the decimals of the token priced.
             uint256 tokenPricedDecimals = IERC20Metadata(reserveInfo.token).decimals();
-            if (tokenPricedDecimals > inQuoteDecimals) {
-                totalReserves += reserveAmount / 10 ** (tokenPricedDecimals - inQuoteDecimals);
-            } else if (tokenPricedDecimals < inQuoteDecimals) {
-                totalReserves += reserveAmount * 10 ** (inQuoteDecimals - tokenPricedDecimals);
-            } else {
-                totalReserves += reserveAmount;
-            }
+            totalReserves += _scaleValue(reserveInfo.reserveAmount, tokenPricedDecimals, inQuoteDecimals);
 
-            if (i == 0 || (ceiling && spotPrice > floorOrCeilingPrice) || (!ceiling && spotPrice < floorOrCeilingPrice))
-            {
-                floorOrCeilingPrice = spotPrice;
+            if (ceiling) {
+                floorOrCeilingPrice = Math.max(floorOrCeilingPrice, Math.max(spotPrice, safePrice));
+            } else {
+                floorOrCeilingPrice = i == 0
+                    ? Math.min(spotPrice, safePrice)
+                    : Math.min(floorOrCeilingPrice, Math.min(spotPrice, safePrice));
             }
         }
+    }
 
-        // Return floor or ceiling price per lp token.
-        floorOrCeilingPerLpToken = totalReserves * floorOrCeilingPrice / totalLpSupply;
+    /**
+     * @dev Scales a value based on the token decimals and desired quote token decimals.
+     * @param value The value to be scaled.
+     * @param tokenDecimals The decimals of the token.
+     * @param inQuoteDecimals The decimals of the desired quote token.
+     * @return The scaled value.
+     */
+    function _scaleValue(
+        uint256 value,
+        uint256 tokenDecimals,
+        uint256 inQuoteDecimals
+    ) internal pure returns (uint256) {
+        if (tokenDecimals > inQuoteDecimals) {
+            return value / 10 ** (tokenDecimals - inQuoteDecimals);
+        } else if (tokenDecimals < inQuoteDecimals) {
+            return value * 10 ** (inQuoteDecimals - tokenDecimals);
+        }
+        return value;
     }
 
     /// @inheritdoc IRootPriceOracle

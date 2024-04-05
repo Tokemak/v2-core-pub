@@ -91,7 +91,7 @@ contract Rewards is IRewards, SecurityBase, SystemComponent, EIP712 {
             revert Errors.AccessDenied();
         }
 
-        return _claim(recipient, v, r, s, msg.sender);
+        return _claim(recipient, v, r, s, recipient.wallet);
     }
 
     // @dev bytes32 s is bytes calldata signature

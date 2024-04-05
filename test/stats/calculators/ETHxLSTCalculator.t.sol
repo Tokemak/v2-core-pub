@@ -17,6 +17,7 @@ import { LSTCalculatorBase } from "src/stats/calculators/base/LSTCalculatorBase.
 import { TOKE_MAINNET, WETH_MAINNET, ETHX_MAINNET } from "test/utils/Addresses.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 
+// solhint-disable func-name-mixedcase
 contract ETHxLSTCalculatorTest is Test {
     function test_calculateEthPerToken_CorrectStandardCalculation() public {
         ETHxLSTCalculator calculator = _setUp(19_570_655);

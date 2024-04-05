@@ -18,6 +18,11 @@ import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 
+// TODO: Delete
+import { console } from "forge-std/console.sol";
+import { WETH_MAINNET } from "test/utils/Addresses.sol";
+import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
+
 contract LMPVaultFactoryTest is Test {
     SystemRegistry private _systemRegistry;
     AccessController private _accessController;
@@ -25,7 +30,7 @@ contract LMPVaultFactoryTest is Test {
     LMPVaultFactory private _lmpVaultFactory;
     SystemSecurity private _systemSecurity;
 
-    TestERC20 private _asset;
+    IWETH9 private _asset;
     TestERC20 private _toke;
 
     address private _template;
@@ -33,6 +38,7 @@ contract LMPVaultFactoryTest is Test {
     bytes private lmpVaultInitData;
 
     function setUp() public {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"));
         vm.warp(1000 days);
 
         vm.label(address(this), "testContract");
@@ -40,7 +46,7 @@ contract LMPVaultFactoryTest is Test {
         _toke = new TestERC20("test", "test");
         vm.label(address(_toke), "toke");
 
-        _systemRegistry = new SystemRegistry(address(_toke), address(new TestERC20("weth", "weth")));
+        _systemRegistry = new SystemRegistry(address(_toke), WETH_MAINNET);
         _systemRegistry.addRewardToken(address(_toke));
 
         _accessController = new AccessController(address(_systemRegistry));
@@ -54,7 +60,7 @@ contract LMPVaultFactoryTest is Test {
 
         // Setup the LMP Vault
 
-        _asset = new TestERC20("asset", "asset");
+        _asset = IWETH9(WETH_MAINNET);
         _systemRegistry.addRewardToken(address(_asset));
         vm.label(address(_asset), "asset");
 
@@ -91,6 +97,12 @@ contract LMPVaultFactoryTest is Test {
         assertEq(_lmpVaultFactory.defaultRewardBlockDuration(), 100);
         _lmpVaultFactory.setDefaultRewardBlockDuration(900);
         assertEq(_lmpVaultFactory.defaultRewardBlockDuration(), 900);
+    }
+
+    function test_MessageSender_Init() public {
+        address vault =
+            _lmpVaultFactory.createVault{ value: 100_000 }(_stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData);
+        emit log_address(vault);
     }
 
     function test_createVault_CreatesVaultAndAddsToRegistry() public {

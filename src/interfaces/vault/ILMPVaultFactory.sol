@@ -21,7 +21,7 @@ interface ILMPVaultFactory {
         string memory descPrefix,
         bytes32 salt,
         bytes calldata extraParams
-    ) external returns (address newVaultAddress);
+    ) external payable returns (address newVaultAddress);
 
     function addStrategyTemplate(address strategyTemplate) external;
 

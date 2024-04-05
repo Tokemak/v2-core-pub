@@ -66,6 +66,8 @@ library AutoPoolToken {
     error ERC2612InvalidSigner(address signer, address owner);
     /// @dev The nonce used for an `account` is not the expected current nonce.
     error InvalidAccountNonce(address account, uint256 currentNonce);
+    /// @dev Thrown when a delegatecall fails.
+    error DelegatecallFail();
 
     /// @dev Emitted when `value` tokens are moved from one account `from` to another `to`.
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -98,6 +100,29 @@ library AutoPoolToken {
         address spender = msg.sender;
         _spendAllowance(data, from, spender, value);
         _transfer(data, from, to, value);
+        return true;
+    }
+
+    /// @dev Special transfer to send funds to the zero address on initalization.
+    function zeroAddressTransfer(TokenData storage data, uint256 value) external returns (bool) {
+        // Delegatecall here keeps msg.sender as factory, necessary for weth transferFrom on deposit.
+        (bool success, bytes memory returnData) =
+        // solhint-disable-next-line avoid-low-level-calls
+         address(this).delegatecall(abi.encodeWithSignature("deposit(uint256,address)", value, address(this)));
+
+        if (!success || returnData.length == 0) revert DelegatecallFail();
+
+        uint256 shares = abi.decode(returnData, (uint256));
+
+        // First mint, can use shares instead of checking balance.
+        if (value > shares) {
+            revert ERC20InsufficientBalance(address(this), shares, value);
+        }
+
+        data.balances[address(this)] -= value;
+        data.balances[address(0)] += value;
+
+        emit Transfer(address(this), address(0), value);
         return true;
     }
 

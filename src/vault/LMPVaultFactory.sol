@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { ISystemRegistry, IWETH9 } from "src/interfaces/ISystemRegistry.sol";
 import { ILMPVaultFactory } from "src/interfaces/vault/ILMPVaultFactory.sol";
 import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
 import { LMPVault } from "src/vault/LMPVault.sol";
@@ -14,6 +14,7 @@ import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
+import { LibAdapter } from "src/libs/LibAdapter.sol";
 
 contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
     using Clones for address;
@@ -67,6 +68,7 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
     /// =====================================================
 
     error InvalidStrategy();
+    error InvalidEthAmount(uint256 amount);
 
     /// =====================================================
     /// Functions - Constructor
@@ -123,7 +125,7 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
         string memory descPrefix,
         bytes32 salt,
         bytes calldata extraParams
-    ) external onlyVaultCreator returns (address newVaultAddress) {
+    ) external payable onlyVaultCreator returns (address newVaultAddress) {
         // verify params
         Errors.verifyNotZero(salt, "salt");
 
@@ -144,6 +146,13 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
         );
 
         newVaultAddress = template.cloneDeterministic(salt);
+
+        // For Autopool deposit on initialization.
+        uint256 wethInitAmount = LMPVault(newVaultAddress).WETH_INIT_DEPOSIT();
+        IWETH9 weth = systemRegistry.weth();
+        if (msg.value != wethInitAmount) revert InvalidEthAmount(msg.value);
+        weth.deposit{ value: wethInitAmount }();
+        LibAdapter._approve(weth, newVaultAddress, wethInitAmount);
 
         LMPVault(newVaultAddress).initialize(newStrategy, symbolSuffix, descPrefix, extraParams);
         LMPVault(newVaultAddress).setRewarder(address(mainRewarder));

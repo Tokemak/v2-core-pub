@@ -48,6 +48,9 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// @notice 100% == 10000
     uint256 public constant FEE_DIVISOR = 10_000;
 
+    /// @notice Amount of weth to be sent to vault on initialization.
+    uint256 public constant WETH_INIT_DEPOSIT = 100_000;
+
     /// =====================================================
     /// Immutable Vars
     /// =====================================================
@@ -236,6 +239,10 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
         factory = msg.sender;
 
+        // Prevents nav / share inflation attack that can occur with very small amount of vault shares
+        // and assets that are not 1:1 with shares.
+        AutoPoolToken.zeroAddressTransfer(_tokenData, WETH_INIT_DEPOSIT);
+
         _symbol = string(abi.encodePacked(symbolSuffix));
         _name = string(abi.encodePacked(descPrefix));
 
@@ -251,7 +258,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         uint256 assets,
         address receiver
     )
-        external
+        public
         virtual
         override
         nonReentrant

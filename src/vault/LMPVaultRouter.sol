@@ -28,8 +28,9 @@ contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard 
         uint256 maxSharesIn,
         uint256 minSharesOut
     ) external override returns (uint256 sharesOut) {
-        withdraw(fromVault, address(this), amount, maxSharesIn, false);
-        return _deposit(toVault, to, amount, minSharesOut);
+        withdraw(fromVault, address(this), amount, maxSharesIn);
+        approve(IERC20(toVault.asset()), address(toVault), amount);
+        return deposit(toVault, to, amount, minSharesOut);
     }
 
     /// @inheritdoc ILMPVaultRouter
@@ -52,7 +53,8 @@ contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard 
 
         uint256 amountReceived = abi.decode(data, (uint256));
 
-        return _deposit(vault, to, amountReceived, minSharesOut);
+        approve(IERC20(vault.asset()), address(vault), amountReceived);
+        return deposit(vault, to, amountReceived, minSharesOut);
     }
 
     /// @inheritdoc ILMPVaultRouter
@@ -64,8 +66,10 @@ contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard 
         uint256 minSharesOut
     ) external override returns (uint256 sharesOut) {
         // amount out passes through so only one slippage check is needed
-        uint256 amount = redeem(fromVault, address(this), shares, 0, false);
-        return _deposit(toVault, to, amount, minSharesOut);
+        uint256 amount = redeem(fromVault, address(this), shares, 0);
+
+        approve(IERC20(toVault.asset()), address(toVault), amount);
+        return deposit(toVault, to, amount, minSharesOut);
     }
 
     /// @inheritdoc ILMPVaultRouter
@@ -79,7 +83,9 @@ contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard 
         uint256 maxDeposit = vault.maxDeposit(to);
         uint256 amount = maxDeposit < assetBalance ? maxDeposit : assetBalance;
         pullToken(asset, amount, address(this));
-        return _deposit(vault, to, amount, minSharesOut);
+
+        approve(IERC20(vault.asset()), address(vault), amount);
+        return deposit(vault, to, amount, minSharesOut);
     }
 
     /// @inheritdoc ILMPVaultRouter
@@ -87,6 +93,6 @@ contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard 
         uint256 shareBalance = vault.balanceOf(msg.sender);
         uint256 maxRedeem = vault.maxRedeem(msg.sender);
         uint256 amountShares = maxRedeem < shareBalance ? maxRedeem : shareBalance;
-        return redeem(vault, to, amountShares, minAmountOut, false);
+        return redeem(vault, to, amountShares, minAmountOut);
     }
 }

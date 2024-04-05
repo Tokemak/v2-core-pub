@@ -110,13 +110,13 @@ contract LMPVaultRouterTest is BaseTest {
         assertEq(lmpVault.allowedUsers(receiver), false);
         assertEq(lmpVault.allowedUsers(user), true);
         vm.expectRevert();
-        lmpVaultRouter.redeem(lmpVault, receiver, amount, 0, false);
+        lmpVaultRouter.redeem(lmpVault, receiver, amount, 0);
         vm.stopPrank();
 
         lmpVault.toggleAllowedUser(receiver);
         assertEq(lmpVault.allowedUsers(receiver), true);
         vm.startPrank(user);
-        lmpVaultRouter.redeem(lmpVault, receiver, amount, 0, false);
+        lmpVaultRouter.redeem(lmpVault, receiver, amount, 0);
         vm.stopPrank();
 
         assertEq(baseAsset.balanceOf(receiver), amount);
@@ -364,7 +364,7 @@ contract LMPVaultRouterTest is BaseTest {
         // -- try to fail slippage first by allowing a little less shares than it would need-- //
         lmpVault.approve(address(lmpVaultRouter), amount);
         vm.expectRevert(abi.encodeWithSelector(ILMPVaultRouterBase.MaxSharesError.selector));
-        lmpVaultRouter.withdraw(lmpVault, address(this), amount, amount - 1, false);
+        lmpVaultRouter.withdraw(lmpVault, address(this), amount, amount - 1);
 
         // -- now test a successful withdraw -- //
         uint256 baseAssetBefore = baseAsset.balanceOf(address(this));
@@ -376,11 +376,11 @@ contract LMPVaultRouterTest is BaseTest {
         lmpVault.approve(address(lmpVaultRouter), sharesBefore);
 
         vm.expectRevert();
-        lmpVaultRouter.withdraw(lmpVault, address(this), amount, amount, false);
+        lmpVaultRouter.withdraw(lmpVault, address(this), amount, amount);
 
         lmpVault.toggleAllowedUser(address(this));
         assertEq(lmpVault.allowedUsers(address(this)), true);
-        uint256 sharesOut = lmpVaultRouter.withdraw(lmpVault, address(this), amount, amount, false);
+        uint256 sharesOut = lmpVaultRouter.withdraw(lmpVault, address(this), amount, amount);
 
         assertEq(sharesOut, amount);
         assertEq(baseAsset.balanceOf(address(this)), baseAssetBefore + amount);
@@ -397,7 +397,7 @@ contract LMPVaultRouterTest is BaseTest {
         // -- try to fail slippage first by requesting a little more assets than we can get-- //
         lmpVault.approve(address(lmpVaultRouter), amount);
         vm.expectRevert(abi.encodeWithSelector(ILMPVaultRouterBase.MinAmountError.selector));
-        lmpVaultRouter.redeem(lmpVault, address(this), amount, amount + 1, false);
+        lmpVaultRouter.redeem(lmpVault, address(this), amount, amount + 1);
 
         // -- now test a successful redeem -- //
         uint256 baseAssetBefore = baseAsset.balanceOf(address(this));
@@ -409,11 +409,11 @@ contract LMPVaultRouterTest is BaseTest {
         lmpVault.approve(address(lmpVaultRouter), sharesBefore);
 
         vm.expectRevert();
-        lmpVaultRouter.redeem(lmpVault, address(this), amount, amount, false);
+        lmpVaultRouter.redeem(lmpVault, address(this), amount, amount);
 
         lmpVault.toggleAllowedUser(address(this));
         assertEq(lmpVault.allowedUsers(address(this)), true);
-        uint256 assetsReceived = lmpVaultRouter.redeem(lmpVault, address(this), amount, amount, false);
+        uint256 assetsReceived = lmpVaultRouter.redeem(lmpVault, address(this), amount, amount);
 
         assertEq(assetsReceived, amount);
         assertEq(baseAsset.balanceOf(address(this)), baseAssetBefore + assetsReceived);

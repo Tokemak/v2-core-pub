@@ -29,6 +29,7 @@ library Roles {
     bytes32 public constant STATS_CALC_TEMPLATE_MGMT_ROLE = keccak256("STATS_CALC_TEMPLATE_MGMT_ROLE");
     bytes32 public constant STATS_SNAPSHOT_ROLE = keccak256("STATS_SNAPSHOT_ROLE");
     bytes32 public constant STATS_INCENTIVE_TOKEN_UPDATER = keccak256("STATS_INCENTIVE_TOKEN_UPDATER");
+    bytes32 public constant STATS_GENERAL_MANAGER = keccak256("STATS_GENERAL_MANAGER");
 
     bytes32 public constant SOLVER_ROLE = keccak256("SOLVER_ROLE");
 

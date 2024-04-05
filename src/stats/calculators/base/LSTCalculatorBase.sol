@@ -93,7 +93,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
     constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
 
     /// @inheritdoc IStatsCalculator
-    function initialize(bytes32[] calldata, bytes calldata initData) external override initializer {
+    function initialize(bytes32[] calldata, bytes memory initData) public virtual override initializer {
         InitData memory decodedInitData = abi.decode(initData, (InitData));
         lstTokenAddress = decodedInitData.lstTokenAddress;
         _aprId = Stats.generateRawTokenIdentifier(lstTokenAddress);

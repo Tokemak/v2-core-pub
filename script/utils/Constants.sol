@@ -26,6 +26,7 @@ library Constants {
         address rEth;
         address sfrxEth;
         address aura;
+        address osEth;
     }
 
     struct System {
@@ -53,6 +54,7 @@ library Constants {
         address balancerMeta;
         address balancerComp;
         address wstEth;
+        address redStone;
     }
 
     struct External {
@@ -110,7 +112,8 @@ library Constants {
                 cbEth: address(1),
                 rEth: 0xf7bb4a608F8DFDc1a31A72bFa089c7f57545CeA9,
                 sfrxEth: 0x306C8Ca71f691f7Bb23c14B8fEA13320a35B70A6,
-                aura: address(1)
+                aura: address(1),
+                osEth: address(1)
             }),
             sys: System({
                 systemRegistry: address(registry),
@@ -133,6 +136,7 @@ library Constants {
                     curveV2: address(0),
                     balancerMeta: address(0),
                     balancerComp: address(0),
+                    redStone: address(0),
                     wstEth: address(0)
                 })
             }),
@@ -169,7 +173,8 @@ library Constants {
                 cbEth: 0xBe9895146f7AF43049ca1c1AE358B0541Ea49704,
                 rEth: 0xae78736Cd615f374D3085123A210448E74Fc6393,
                 sfrxEth: 0xac3E018457B222d93114458476f3E3416Abbe38F,
-                aura: 0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF
+                aura: 0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF,
+                osEth: 0xf1C9acDc66974dFB6dEcB12aA385b9cD01190E38
             }),
             sys: System({
                 systemRegistry: 0x0406d2D96871f798fcf54d5969F69F55F803eEA4,
@@ -192,7 +197,8 @@ library Constants {
                     curveV2: 0x075c80cd9E8455F94b7Ea6EDB91485F2D974FB9B,
                     balancerMeta: 0xFC9c5417299851829FA512bDB7e0d18aC3b35184,
                     balancerComp: 0x2BB64D96B0DCfaB7826D11707AAE3F55409d8E19,
-                    wstEth: address(0xA93F316ef40848AeaFCd23485b6044E7027b5890)
+                    wstEth: 0xA93F316ef40848AeaFCd23485b6044E7027b5890,
+                    redStone: 0x9E16879c6F4415Ce5EBE21816C51F476AEEc49bE
                 })
             }),
             ext: External({

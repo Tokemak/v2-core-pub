@@ -25,10 +25,8 @@ contract Deposit is BaseScript {
 
         address owner = vm.addr(privateKey);
 
-        // uint256 shareBal =
+        vault.deposit(AMOUNT, owner);
 
-        // vault.deposit(AMOUNT, owner);
-
-        // vm.stopBroadcast();
+        vm.stopBroadcast();
     }
 }

@@ -112,7 +112,8 @@ contract Rewards is IRewards, SecurityBase, SystemComponent, EIP712 {
             revert Errors.InvalidChainId(recipient.chainId);
         }
 
-        uint256 claimableAmount = recipient.amount - claimedAmounts[recipient.wallet];
+        uint256 claimedAmount = claimedAmounts[recipient.wallet];
+        uint256 claimableAmount = recipient.amount - claimedAmount;
 
         if (claimableAmount == 0) {
             revert Errors.ZeroAmount();
@@ -122,7 +123,7 @@ contract Rewards is IRewards, SecurityBase, SystemComponent, EIP712 {
             revert Errors.InsufficientBalance(address(vaultToken));
         }
 
-        claimedAmounts[recipient.wallet] = claimedAmounts[recipient.wallet] + claimableAmount;
+        claimedAmounts[recipient.wallet] = claimedAmount + claimableAmount;
 
         emit Claimed(recipient.cycle, recipient.wallet, claimableAmount);
 

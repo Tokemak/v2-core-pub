@@ -276,7 +276,7 @@ abstract contract IncentiveCalculatorBase is
             // If APR is above a threshold, increment credits based on time elapsed
             // Only give credit for whole days, so divide-before-multiply is desired
             // slither-disable-next-line divide-before-multiply
-            uint8 credits = uint8(12 * (elapsedTime / 1 days)); // 2 credits for each day
+            uint256 credits = 12 * (elapsedTime / 1 days); // 2 credits for each day
             // Increment credits, but cap at MAX_CREDITS
             incentiveCredits = uint8(Math.min(currentCredits + credits, MAX_CREDITS));
             // Update the last incentive timestamp to the current block's timestamp

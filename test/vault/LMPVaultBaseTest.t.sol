@@ -79,7 +79,7 @@ contract LMPVaultBaseTest is BaseTest {
 
         bytes memory initData = abi.encode("");
         bytes32 template = keccak256("vault");
-        lmpVault = LMPVault(vaultFactory.createVault(lmpStrategy, "x", "y", template, initData));
+        lmpVault = LMPVault(vaultFactory.createVault{ value: 100_000 }(lmpStrategy, "x", "y", template, initData));
 
         assert(systemRegistry.lmpVaultRegistry().isVault(address(lmpVault)));
     }

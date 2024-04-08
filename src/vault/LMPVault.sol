@@ -239,9 +239,21 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
         factory = msg.sender;
 
+        // Both factory and autopool need permission to use deposit functionality.
+        if (_checkUsers) {
+            toggleAllowedUser(address(this));
+            toggleAllowedUser(factory);
+        }
+
         // Prevents nav / share inflation attack that can occur with very small amount of vault shares
         // and assets that are not 1:1 with shares.
         AutoPoolToken.zeroAddressTransfer(_tokenData, WETH_INIT_DEPOSIT);
+
+        // No reason to continue to have either be allowed user.
+        if (_checkUsers) {
+            toggleAllowedUser(address(this));
+            toggleAllowedUser(factory);
+        }
 
         _symbol = string(abi.encodePacked(symbolSuffix));
         _name = string(abi.encodePacked(descPrefix));
@@ -415,7 +427,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         AutoPoolFees.setProfitUnlockPeriod(_profitUnlockSettings, _tokenData, newUnlockPeriodSeconds);
     }
 
-    function toggleAllowedUser(address user) external hasRole(Roles.AUTO_POOL_ADMIN) {
+    function toggleAllowedUser(address user) public hasRole(Roles.AUTO_POOL_ADMIN) {
         allowedUsers[user] = !allowedUsers[user];
     }
 

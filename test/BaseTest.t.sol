@@ -22,6 +22,7 @@ import { LMPVault } from "src/vault/LMPVault.sol";
 import { AccToke } from "src/staking/AccToke.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
 import { Roles } from "src/libs/Roles.sol";
+import { TestWETH9 } from "test/mocks/TestWETH9.sol";
 import { TOKE_MAINNET, USDC_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
 
 contract BaseTest is Test {
@@ -62,6 +63,8 @@ contract BaseTest is Test {
     uint256 internal constant ONE_YEAR = 365 days;
     uint256 internal constant ONE_MONTH = 30 days;
 
+    uint256 public constant LMP_INIT_DEPOSIT = 100_000;
+
     bool public restrictPoolUsers = false;
 
     function setUp() public virtual {
@@ -78,31 +81,34 @@ contract BaseTest is Test {
         //////////////////////////////////////
         toke = IERC20(TOKE_MAINNET);
         usdc = IERC20(USDC_MAINNET);
-        weth = IWETH9(WETH_MAINNET);
+
+        if (toFork) {
+            weth = IWETH9(WETH_MAINNET);
+            baseAsset = IERC20(address(weth));
+        } else {
+            uint256 amt = uint256(1_000_000_000_000_000_000_000_000);
+            TestWETH9 _baseAsset = new TestWETH9();
+            _baseAsset.mint(address(this), amt);
+            baseAsset = IERC20(_baseAsset);
+            weth = IWETH9(address(_baseAsset));
+        }
 
         vm.label(address(toke), "TOKE");
         vm.label(address(usdc), "USDC");
         vm.label(address(weth), "WETH");
 
-        if (toFork) {
-            baseAsset = IERC20(address(weth));
-        } else {
-            uint256 amt = uint256(1_000_000_000_000_000_000_000_000);
-            baseAsset = IERC20(address(mockAsset("MockERC20", "MockERC20", amt)));
-        }
-
         //////////////////////////////////////
         // Set up system registry
         //////////////////////////////////////
 
-        systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
+        systemRegistry = new SystemRegistry(TOKE_MAINNET, address(weth));
 
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
         lmpVaultRegistry = new LMPVaultRegistry(systemRegistry);
         systemRegistry.setLMPVaultRegistry(address(lmpVaultRegistry));
         // TODO: replace below 2 lines with `deployLMPVaultRouter`
-        lmpVaultRouter = new LMPVaultRouter(systemRegistry, WETH_MAINNET);
+        lmpVaultRouter = new LMPVaultRouter(systemRegistry, address(baseAsset));
         systemRegistry.setLMPVaultRouter(address(lmpVaultRouter));
 
         systemSecurity = new SystemSecurity(systemRegistry);

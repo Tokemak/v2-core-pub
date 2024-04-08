@@ -96,8 +96,11 @@ contract LMPVaultRouterTest is BaseTest {
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
-        _lmpVault =
-            LMPVault(lmpVaultFactory.createVault(address(stratTemplate), "x", "y", keccak256(salt), lmpVaultInitData));
+        _lmpVault = LMPVault(
+            lmpVaultFactory.createVault{ value: 100_000 }(
+                address(stratTemplate), "x", "y", keccak256(salt), lmpVaultInitData
+            )
+        );
         assert(systemRegistry.lmpVaultRegistry().isVault(address(_lmpVault)));
     }
 
@@ -859,8 +862,11 @@ contract LMPVaultRouterTest is BaseTest {
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
-        lmpVault =
-            LMPVault(lmpVaultFactory.createVault(address(stratTemplate), "x", "y", keccak256("weth"), lmpVaultInitData));
+        lmpVault = LMPVault(
+            lmpVaultFactory.createVault{ value: 100_000 }(
+                address(stratTemplate), "x", "y", keccak256("weth"), lmpVaultInitData
+            )
+        );
         assert(systemRegistry.lmpVaultRegistry().isVault(address(lmpVault)));
     }
 }

@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 /* solhint-disable func-name-mixedcase,gas-custom-errors */
 
-import { TestERC20 } from "test/mocks/TestERC20.sol";
+import { TestWETH9 } from "test/mocks/TestWETH9.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
@@ -12,12 +12,16 @@ import { AutoPoolFees } from "src/vault/libs/AutoPoolFees.sol";
 import { Numbers } from "test/echidna/fuzz/utils/Numbers.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { hevm } from "test/echidna/fuzz/utils/Hevm.sol";
-import { BasePoolSetup, TestDestinationVault, TestSolver } from "test/echidna/fuzz/vault/BaseSetup.sol";
+import {
+    BasePoolSetup,
+    TestDestinationVault,
+    TestSolver
+} from "test/echidna/fuzz/vault/BaseSetup.sol";
 
 import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 
 contract LMPVaultUsage is BasePoolSetup, Numbers {
-    TestERC20 internal _vaultAsset;
+    TestWETH9 internal _vaultAsset;
 
     /// =====================================================
     /// State Tracking
@@ -62,9 +66,12 @@ contract LMPVaultUsage is BasePoolSetup, Numbers {
     constructor() BasePoolSetup() {
         // If you are running directly
 
-        _vaultAsset = new TestERC20("vaultAsset", "vaultAsset");
+        _vaultAsset = new TestWETH9();
         _vaultAsset.setDecimals(18);
         initializeBaseSetup(address(_vaultAsset));
+
+        _vaultAsset.deposit{ value: 100_000 }();
+        _vaultAsset.approve(address(_pool), 100_000);
 
         _pool.initialize(address(_strategy), "SYMBOL", "NAME", abi.encode(""));
         _pool.setDisableNavDecreaseCheck(true);

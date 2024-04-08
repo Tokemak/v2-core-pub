@@ -27,8 +27,11 @@ contract LMPVaultTest is ERC4626Test, BaseTest {
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
-        LMPVault vault =
-            LMPVault(lmpVaultFactory.createVault(address(stratTemplate), "x", "y", keccak256("v8"), initData));
+        LMPVault vault = LMPVault(
+            lmpVaultFactory.createVault{ value: LMP_INIT_DEPOSIT }(
+                address(stratTemplate), "x", "y", keccak256("v8"), initData
+            )
+        );
 
         _vault_ = address(vault);
         _delta_ = 0;

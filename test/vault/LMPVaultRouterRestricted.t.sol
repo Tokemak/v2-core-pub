@@ -52,6 +52,7 @@ contract LMPVaultRouterTest is BaseTest {
         accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));
         accessController.grantRole(Roles.SET_WITHDRAWAL_QUEUE_ROLE, address(this));
         accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(lmpVaultFactory));
 
         // We use mock since this function is called not from owner and
         vm.mockCall(
@@ -64,20 +65,23 @@ contract LMPVaultRouterTest is BaseTest {
 
         lmpVault = _setupVault("v1");
 
-        // Set rewarder as rewarder set on LMP by factory.
-        lmpRewarder = lmpVault.rewarder();
-
         lmpVault.toggleAllowedUser(address(this));
         lmpVault.toggleAllowedUser(vm.addr(1));
         lmpVault.toggleAllowedUser(address(lmpVaultRouter));
+
+        // Set rewarder as rewarder set on LMP by factory.
+        lmpRewarder = lmpVault.rewarder();
     }
 
     function _setupVault(bytes memory salt) internal returns (LMPVault _lmpVault) {
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
-        _lmpVault =
-            LMPVault(lmpVaultFactory.createVault(address(stratTemplate), "x", "y", keccak256(salt), lmpVaultInitData));
+        _lmpVault = LMPVault(
+            lmpVaultFactory.createVault{ value: LMP_INIT_DEPOSIT }(
+                address(stratTemplate), "x", "y", keccak256(salt), lmpVaultInitData
+            )
+        );
         assert(systemRegistry.lmpVaultRegistry().isVault(address(_lmpVault)));
     }
 
@@ -536,12 +540,16 @@ contract LMPVaultRouterTest is BaseTest {
         lmpVaultFactory = new LMPVaultFactory(systemRegistry, lmpVaultTemplate, 800, 100);
         // NOTE: deployer grants factory permission to update the registry
         accessController.grantRole(Roles.REGISTRY_UPDATER, address(lmpVaultFactory));
+        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(lmpVaultFactory));
         systemRegistry.setLMPVaultFactory(VaultTypes.LST, address(lmpVaultFactory));
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
-        lmpVault =
-            LMPVault(lmpVaultFactory.createVault(address(stratTemplate), "x", "y", keccak256("weth"), lmpVaultInitData));
+        lmpVault = LMPVault(
+            lmpVaultFactory.createVault{ value: LMP_INIT_DEPOSIT }(
+                address(stratTemplate), "x", "y", keccak256("weth"), lmpVaultInitData
+            )
+        );
         assert(systemRegistry.lmpVaultRegistry().isVault(address(lmpVault)));
     }
 }

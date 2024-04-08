@@ -46,6 +46,7 @@ contract LMPVaultTests is
     AutoPoolStrategyMocks
 {
     address internal FEE_RECIPIENT = address(4335);
+    uint256 public constant WETH_INIT_DEPOSIT = 100_000;
 
     constructor()
         TestBase(vm)
@@ -116,8 +117,6 @@ contract LMPVaultTests is
         _mockSysRegSystemSecurity(systemRegistry, address(systemSecurity));
         _mockSysSecurityInit(systemSecurity);
 
-        vaultAsset = new TestERC20("mockWETH", "Mock WETH");
-        vaultAsset.setDecimals(9);
         vm.label(address(vaultAsset), "baseAsset");
 
         lmpStrategy = makeAddr("lmpStrategy");
@@ -125,10 +124,21 @@ contract LMPVaultTests is
 
         _mockNavUpdate(lmpStrategy);
 
+        vaultAsset = new TestERC20("mockWETH", "Mock WETH");
+        vaultAsset.setDecimals(9);
+
         FeeAndProfitTestVault tempVault = new FeeAndProfitTestVault(systemRegistry, address(vaultAsset));
         vault = FeeAndProfitTestVault(Clones.cloneDeterministic(address(tempVault), "salt1"));
+
+        vaultAsset.mint(address(this), WETH_INIT_DEPOSIT);
+        vaultAsset.approve(address(vault), WETH_INIT_DEPOSIT);
+
         vault.initialize(lmpStrategy, "1", "1", initData);
         vm.label(address(vault), "FeeAndProfitTestVaultProxy");
+
+        // Autopool init weth deposit was added later, breaks many tests in this file.  Zero out to avoid issues.
+        vault.setTotalIdle(0);
+        vault.setTotalSupply(0);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
         vault.toggleAllowedUser(address(this));
@@ -1711,8 +1721,8 @@ contract PeriodicFees is LMPVaultTests {
         uint256 expectedLastPeriodicFeeTake = warpAmount;
 
         // Mint, approve, deposit to give supply, record supply.
-        vaultAsset.mint(address(this), type(uint256).max);
-        vaultAsset.approve(address(vault), type(uint256).max);
+        vaultAsset.mint(address(this), type(uint112).max);
+        vaultAsset.approve(address(vault), type(uint112).max);
         vault.deposit(depositAmount, address(this));
         uint256 vaultTotalSupplyFirstDeposit = vault.totalSupply();
 
@@ -4566,6 +4576,10 @@ contract TestLMPVault is LMPVault {
 
     function setTotalDebt(uint256 _totalDebt) external {
         _assetBreakdown.totalDebt = _totalDebt;
+    }
+
+    function setTotalSupply(uint256 _totalSupply) external {
+        _tokenData.totalSupply = _totalSupply;
     }
 
     function mint(address receiver, uint256 amount) public {

@@ -15,6 +15,8 @@ import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 
 contract LMPVaultRegistryTest is BaseTest {
+    uint256 public constant WETH_INIT_DEPOSIT = 100_000;
+
     LMPVault internal vault;
 
     event VaultAdded(address indexed asset, address indexed vault);
@@ -33,7 +35,11 @@ contract LMPVaultRegistryTest is BaseTest {
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
-        vault = LMPVault(lmpVaultFactory.createVault(address(stratTemplate), "x", "y", keccak256("v8"), initData));
+        vault = LMPVault(
+            lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
+                address(stratTemplate), "x", "y", keccak256("v8"), initData
+            )
+        );
     }
 
     function _contains(address[] memory arr, address value) internal pure returns (bool) {
@@ -69,8 +75,11 @@ contract AddVault is LMPVaultRegistryTest {
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
-        LMPVault anotherVault =
-            LMPVault(lmpVaultFactory.createVault(address(stratTemplate), "x", "y", keccak256("v9"), initData));
+        LMPVault anotherVault = LMPVault(
+            lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
+                address(stratTemplate), "x", "y", keccak256("v9"), initData
+            )
+        );
 
         vm.expectEmit(true, true, false, true);
         emit VaultAdded(anotherVault.asset(), address(anotherVault));

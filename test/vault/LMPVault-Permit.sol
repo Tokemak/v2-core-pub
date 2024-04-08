@@ -16,6 +16,7 @@ import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
+import { TestWETH9 } from "test/mocks/TestWETH9.sol";
 
 contract PermitTests is Test {
     SystemRegistry private _systemRegistry;
@@ -27,16 +28,19 @@ contract PermitTests is Test {
     TestERC20 private _asset;
     TestERC20 private _toke;
     LMPVault private _lmpVault;
+    TestWETH9 private _weth;
 
     function setUp() public {
         vm.warp(1000 days);
 
         vm.label(address(this), "testContract");
 
+        _weth = new TestWETH9();
+
         _toke = new TestERC20("test", "test");
         vm.label(address(_toke), "toke");
 
-        _systemRegistry = new SystemRegistry(address(_toke), address(new TestERC20("weth", "weth")));
+        _systemRegistry = new SystemRegistry(address(_toke), address(_weth));
         _systemRegistry.addRewardToken(address(_toke));
 
         _accessController = new AccessController(address(_systemRegistry));
@@ -50,13 +54,14 @@ contract PermitTests is Test {
 
         // Setup the LMP Vault
 
-        _asset = new TestERC20("asset", "asset");
+        _asset = TestERC20(address(_weth));
         _systemRegistry.addRewardToken(address(_asset));
         vm.label(address(_asset), "asset");
 
-        address template = address(new LMPVault(_systemRegistry, address(_asset), false));
+        LMPVault template = new LMPVault(_systemRegistry, address(_asset), false);
+        uint256 lmpInitDeposit = template.WETH_INIT_DEPOSIT();
 
-        _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, template, 800, 100);
+        _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, address(template), 800, 100);
         _accessController.grantRole(Roles.REGISTRY_UPDATER, address(_lmpVaultFactory));
 
         bytes memory initData = abi.encode("");
@@ -71,8 +76,11 @@ contract PermitTests is Test {
             abi.encode(makeAddr("LMP_VAULT_ROUTER"))
         );
 
-        _lmpVault =
-            LMPVault(_lmpVaultFactory.createVault(address(strategyTemplate), "x", "y", keccak256("v1"), initData));
+        _lmpVault = LMPVault(
+            _lmpVaultFactory.createVault{ value: lmpInitDeposit }(
+                address(strategyTemplate), "x", "y", keccak256("v1"), initData
+            )
+        );
         vm.label(address(_lmpVault), "lmpVault");
     }
 

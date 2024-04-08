@@ -9,7 +9,7 @@ import { LMPVault } from "src/vault/LMPVault.sol";
 import { LMPVaultUsage } from "test/echidna/fuzz/vault/LMPVaultTests.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-contract LMPVaultTests is Test, LMPVaultUsage {
+contract LMPVaultTests1 is Test, LMPVaultUsage {
     constructor() LMPVaultUsage() { }
 
     function test_Construction() public {
@@ -153,8 +153,8 @@ contract LMPVaultTests is Test, LMPVaultUsage {
         userDonate(255, 100e18);
         randomDonate(100e18, address(777_777));
 
-        assertEq(_pool.totalSupply(), 0);
-        assertEq(_vaultAsset.balanceOf(address(_pool)), 400e18);
+        assertEq(_pool.totalSupply(), 100_000); // AutoPool init deposit.
+        assertEq(_vaultAsset.balanceOf(address(_pool)), 400_000_000_000_000_100_000);
     }
 
     function test_Rebalance() public {
@@ -168,9 +168,11 @@ contract LMPVaultTests is Test, LMPVaultUsage {
         // with 50 left in idle and 50 destination vault 1 tokens
         rebalance(250, 1, uint8(128), 0);
 
-        assertEq(_vaultAsset.balanceOf(address(_pool)), 50e18, "basePoolBal");
-        assertEq(_destVault1.balanceOf(address(_pool)), 50e18, "poolDv1Bal");
-        assertEq(IERC20(_destVault1Underlyer).balanceOf(address(_destVault1)), 50e18, "tokenBalInDv1");
+        assertEq(_vaultAsset.balanceOf(address(_pool)), 50_000_000_000_000_050_000, "basePoolBal");
+        assertEq(_destVault1.balanceOf(address(_pool)), 50_000_000_000_000_050_000, "poolDv1Bal");
+        assertEq(
+            IERC20(_destVault1Underlyer).balanceOf(address(_destVault1)), 50_000_000_000_000_050_000, "tokenBalInDv1"
+        );
 
         // 1 will give us bucket 0, destination 1
         // 75 will give us bucket 1, destination 2
@@ -179,15 +181,17 @@ contract LMPVaultTests is Test, LMPVaultUsage {
         rebalance(1, 75, uint8(255), 0);
 
         // Should see no change to idle
-        assertEq(_vaultAsset.balanceOf(address(_pool)), 50e18, "basePoolBal");
+        assertEq(_vaultAsset.balanceOf(address(_pool)), 50_000_000_000_000_050_000, "basePoolBal");
 
         // D1 should be gone
         assertEq(_destVault1.balanceOf(address(_pool)), 0e18, "poolDv1Bal");
         assertEq(IERC20(_destVault1Underlyer).balanceOf(address(_destVault1)), 0e18, "tokenBalInDv1");
 
         // D2
-        assertEq(_destVault2.balanceOf(address(_pool)), 50e18, "poolDv2Bal");
-        assertEq(IERC20(_destVault2Underlyer).balanceOf(address(_destVault2)), 50e18, "tokenBalInDv2");
+        assertEq(_destVault2.balanceOf(address(_pool)), 50_000_000_000_000_050_000, "poolDv2Bal");
+        assertEq(
+            IERC20(_destVault2Underlyer).balanceOf(address(_destVault2)), 50_000_000_000_000_050_000, "tokenBalInDv2"
+        );
 
         // 75 will give us bucket 1, destination 2
         // 160 will give us bucket 2, destination 3
@@ -196,15 +200,19 @@ contract LMPVaultTests is Test, LMPVaultUsage {
         rebalance(75, 160, uint8(128), int16(-1000));
 
         // Should see no change to idle
-        assertEq(_vaultAsset.balanceOf(address(_pool)), 50e18, "basePoolBal");
+        assertEq(_vaultAsset.balanceOf(address(_pool)), 50_000_000_000_000_050_000, "basePoolBal");
 
         // D2 should be at half
-        assertEq(_destVault2.balanceOf(address(_pool)), 25e18, "poolDv1Bal");
-        assertEq(IERC20(_destVault2Underlyer).balanceOf(address(_destVault2)), 25e18, "tokenBalInDv1");
+        assertEq(_destVault2.balanceOf(address(_pool)), 25_000_000_000_000_025_000, "poolDv1Bal");
+        assertEq(
+            IERC20(_destVault2Underlyer).balanceOf(address(_destVault2)), 25_000_000_000_000_025_000, "tokenBalInDv1"
+        );
 
         // D3
-        assertEq(_destVault3.balanceOf(address(_pool)), 24.237060546875e18, "poolDv3Bal");
-        assertEq(IERC20(_destVault3Underlyer).balanceOf(address(_destVault3)), 24.237060546875e18, "tokenBalInDv3");
+        assertEq(_destVault3.balanceOf(address(_pool)), 24_237_060_546_875_024_238, "poolDv3Bal");
+        assertEq(
+            IERC20(_destVault3Underlyer).balanceOf(address(_destVault3)), 24_237_060_546_875_024_238, "tokenBalInDv3"
+        );
     }
 
     function test_RecognizeLossEntire() public {
@@ -234,23 +242,23 @@ contract LMPVaultTests is Test, LMPVaultUsage {
     function test_DebtReportWithPriceChange() public {
         userMint(0, 100e18, true);
 
-        // 100e18 idle -> 1/2 going to dv1
+        // 100e18 + 100_000 wei init deposit idle -> 1/2 going to dv1
         rebalance(250, 1, uint8(128), 0);
 
-        assertEq(_pool.getAssetBreakdown().totalIdle, 50e18, "round1Idle");
-        assertEq(_pool.getAssetBreakdown().totalDebt, 50e18, "round1Debt");
-        assertEq(_pool.getAssetBreakdown().totalDebtMin, 50e18, "round1DebtMin");
-        assertEq(_pool.getAssetBreakdown().totalDebtMax, 50e18, "round1DebtMax");
+        assertEq(_pool.getAssetBreakdown().totalIdle, 50_000_000_000_000_050_000, "round1Idle");
+        assertEq(_pool.getAssetBreakdown().totalDebt, 50_000_000_000_000_050_000, "round1Debt");
+        assertEq(_pool.getAssetBreakdown().totalDebtMin, 50_000_000_000_000_050_000, "round1DebtMin");
+        assertEq(_pool.getAssetBreakdown().totalDebtMax, 50_000_000_000_000_050_000, "round1DebtMax");
 
         // Increase the dv1 price by ~6.3%
         tweakDestVaultUnderlyerPrice(1, 8);
 
         debtReport(3);
 
-        assertEq(_pool.getAssetBreakdown().totalIdle, 50e18, "round2Idle");
-        assertEq(_pool.getAssetBreakdown().totalDebt, 53.1496062992125984e18, "round2Debt");
-        assertEq(_pool.getAssetBreakdown().totalDebtMin, 53.1496062992125984e18, "round2DebtMin");
-        assertEq(_pool.getAssetBreakdown().totalDebtMax, 53.1496062992125984e18, "round2DebtMax");
+        assertEq(_pool.getAssetBreakdown().totalIdle, 50_000_000_000_000_050_000, "round2Idle");
+        assertEq(_pool.getAssetBreakdown().totalDebt, 53_149_606_299_212_651_549, "round2Debt");
+        assertEq(_pool.getAssetBreakdown().totalDebtMin, 53_149_606_299_212_651_549, "round2DebtMin");
+        assertEq(_pool.getAssetBreakdown().totalDebtMax, 53_149_606_299_212_651_549, "round2DebtMax");
 
         // Skew the safe price up 3.93
         setDestVaultUnderlyerSafeTweak(1, 5);
@@ -259,10 +267,10 @@ contract LMPVaultTests is Test, LMPVaultUsage {
 
         debtReport(3);
 
-        assertEq(_pool.getAssetBreakdown().totalIdle, 50e18, "round2Idle");
-        assertEq(_pool.getAssetBreakdown().totalDebt, 52.119701895653791275e18, "round2Debt");
-        assertEq(_pool.getAssetBreakdown().totalDebtMin, 48.99729330708661415e18, "round2DebtMin");
-        assertEq(_pool.getAssetBreakdown().totalDebtMax, 55.2421104842209684e18, "round2DebtMax");
+        assertEq(_pool.getAssetBreakdown().totalIdle, 50_000_000_000_000_050_000, "round2Idle");
+        assertEq(_pool.getAssetBreakdown().totalDebt, 52_119_701_895_653_843_394, "round2Debt");
+        assertEq(_pool.getAssetBreakdown().totalDebtMin, 48_997_293_307_086_663_147, "round2DebtMin");
+        assertEq(_pool.getAssetBreakdown().totalDebtMax, 55_242_110_484_221_023_642, "round2DebtMax");
     }
 
     function test_QueueDestinationRewards() public {

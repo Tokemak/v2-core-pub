@@ -24,6 +24,8 @@ import { WETH_MAINNET } from "test/utils/Addresses.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 
 contract LMPVaultFactoryTest is Test {
+    uint256 public constant WETH_INIT_DEPOSIT = 100_000;
+
     SystemRegistry private _systemRegistry;
     AccessController private _accessController;
     LMPVaultRegistry private _lmpVaultRegistry;
@@ -99,14 +101,18 @@ contract LMPVaultFactoryTest is Test {
         assertEq(_lmpVaultFactory.defaultRewardBlockDuration(), 900);
     }
 
+    // TODO: Delete
     function test_MessageSender_Init() public {
-        address vault =
-            _lmpVaultFactory.createVault{ value: 100_000 }(_stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData);
+        address vault = _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
+            _stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData
+        );
         emit log_address(vault);
     }
 
     function test_createVault_CreatesVaultAndAddsToRegistry() public {
-        address newVault = _lmpVaultFactory.createVault(_stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData);
+        address newVault = _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
+            _stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData
+        );
         assertTrue(_lmpVaultRegistry.isVault(newVault));
     }
 
@@ -118,7 +124,9 @@ contract LMPVaultFactoryTest is Test {
     }
 
     function test_createVault_FixesUpTokenFields() public {
-        address newVault = _lmpVaultFactory.createVault(_stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData);
+        address newVault = _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
+            _stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData
+        );
         assertEq(IERC20(newVault).symbol(), "x");
         assertEq(IERC20(newVault).name(), "y");
     }

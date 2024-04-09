@@ -12,6 +12,8 @@ import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { ILMPVault } from "src/vault/LMPVault.sol";
 import { LMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
 import { ISystemRegistry } from "src/vault/LMPVaultRouterBase.sol";
+import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
+import { AsyncSwapperRegistry } from "src/liquidation/AsyncSwapperRegistry.sol";
 
 import { hevm } from "test/echidna/fuzz/utils/Hevm.sol";
 import { BasePoolSetup } from "test/echidna/fuzz/vault/BaseSetup.sol";
@@ -29,26 +31,23 @@ contract TestRouter is LMPVaultRouter {
     function pullTokenFrom(IERC20 token, uint256 amount, address from, address recipient) public payable {
         token.safeTransferFrom(from, recipient, amount);
     }
+}
 
-    function imitateSwapAndDepositToVault(
-        SwapParams memory swapParams,
-        ILMPVault vault,
-        address to,
-        uint256 minSharesOut
-    ) external returns (uint256 sharesOut) {
-        pullToken(IERC20(swapParams.sellTokenAddress), swapParams.sellAmount, address(this));
+/// @dev Custom mocked swapper for testing to represent a 1:1 swap
+contract SwapperMock is BaseAsyncSwapper {
+    constructor(address _aggregator) BaseAsyncSwapper(_aggregator) { }
 
+    function swap(SwapParams memory params) public override returns (uint256 buyTokenAmountReceived) {
         // Mock 1:1 swap
-        TestERC20(swapParams.buyTokenAddress).mint(address(this), swapParams.buyAmount);
-        uint256 amountReceived = swapParams.buyAmount;
-
-        return _deposit(vault, to, amountReceived, minSharesOut);
+        TestERC20(params.buyTokenAddress).mint(address(this), params.buyAmount);
+        return params.buyAmount;
     }
 }
 
 abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
     TestERC20 internal _vaultAsset;
     TestRouter internal lmpVaultRouter;
+    SwapperMock internal swapperMock;
 
     /// @dev The caller of the operation
     address[] internal _msgSenders;
@@ -94,6 +93,12 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         _pool.toggleAllowedUser(_user2);
         _pool.toggleAllowedUser(_user3);
         _pool.toggleAllowedUser(address(lmpVaultRouter));
+
+        AsyncSwapperRegistry asyncSwapperRegistry = new AsyncSwapperRegistry(_systemRegistry);
+        _systemRegistry.setAsyncSwapperRegistry(address(asyncSwapperRegistry));
+
+        swapperMock = new SwapperMock(address(123));
+        asyncSwapperRegistry.register(address(swapperMock));
     }
 
     // Multicall
@@ -405,7 +410,8 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
 
         // Mocked 1:1 swap
         _startPrank(msg.sender);
-        lmpVaultRouter.imitateSwapAndDepositToVault(swapParams, _pool, to, minSharesOut);
+
+        lmpVaultRouter.swapAndDepositToVault(address(swapperMock), swapParams, _pool, to, minSharesOut);
         _stopPrank();
     }
 
@@ -429,7 +435,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         // Mocked 1:1 swap
         queuedCalls.push(
             abi.encodeWithSelector(
-                lmpVaultRouter.imitateSwapAndDepositToVault.selector, swapParams, _pool, to, minSharesOut
+                lmpVaultRouter.swapAndDepositToVault.selector, address(swapperMock), swapParams, _pool, to, minSharesOut
             )
         );
     }

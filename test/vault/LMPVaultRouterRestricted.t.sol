@@ -28,10 +28,6 @@ import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 
 import "forge-std/console.sol";
 
-interface PeripheryPaymentsWrapWETH9 {
-    function wrapWETH9(uint256 amount) external;
-}
-
 // solhint-disable func-name-mixedcase
 contract LMPVaultRouterTest is BaseTest {
     // IDestinationVault public destinationVault;
@@ -297,7 +293,7 @@ contract LMPVaultRouterTest is BaseTest {
         assertEq(lmpVault.allowedUsers(address(this)), false);
 
         bytes[] memory calls = new bytes[](3);
-        calls[0] = abi.encodeCall(PeripheryPaymentsWrapWETH9.wrapWETH9, (amount));
+        calls[0] = abi.encodeWithSignature("wrapWETH9(uint256)", amount);
         calls[1] = abi.encodeCall(lmpVaultRouter.approve, (weth, address(lmpVault), amount));
         calls[2] = abi.encodeCall(lmpVaultRouter.deposit, (lmpVault, address(this), amount, 1));
 
@@ -397,7 +393,7 @@ contract LMPVaultRouterTest is BaseTest {
         assertEq(lmpVault.allowedUsers(address(this)), true);
 
         bytes[] memory calls = new bytes[](3);
-        calls[0] = abi.encodeCall(PeripheryPaymentsWrapWETH9.wrapWETH9, (amount));
+        calls[0] = abi.encodeWithSignature("wrapWETH9(uint256)", amount);
         calls[1] = abi.encodeCall(lmpVaultRouter.approve, (weth, address(lmpVault), amount));
         calls[2] = abi.encodeCall(lmpVaultRouter.deposit, (lmpVault, address(this), amount, 1));
 

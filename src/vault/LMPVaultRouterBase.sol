@@ -57,19 +57,6 @@ abstract contract LMPVaultRouterBase is
         onlyAllowedUsers(vault, to)
         returns (uint256 amountIn)
     {
-        // IERC20 vaultAsset = IERC20(vault.asset());
-        // uint256 assets = vault.previewMint(shares);
-
-        // if (msg.value > 0 && address(vaultAsset) == address(weth9)) {
-        // 	// We allow different amounts for different functions while performing a multicall now
-        // 	// and msg.value can be more than a single instructions amount
-        // 	// so we don't verify msg.value == assets
-        // 	_processEthIn(assets);
-        // } else {
-        // 	pullToken(vaultAsset, assets, address(this));
-        // }
-        // LibAdapter._approve(vaultAsset, address(vault), assets);
-
         amountIn = vault.mint(shares, to);
         if (amountIn > maxAmountIn) {
             revert MaxAmountError();
@@ -83,34 +70,10 @@ abstract contract LMPVaultRouterBase is
         uint256 amount,
         uint256 minSharesOut
     ) public payable virtual override returns (uint256 sharesOut) {
-        // IERC20 vaultAsset = IERC20(vault.asset());
-
-        // if (msg.value > 0 && address(vaultAsset) == address(weth9)) {
-        // 	// We allow different amounts for different functions while performing a multicall now
-        // 	// and msg.value can be more than a single instructions amount
-        // 	// so we don't verify msg.value == amount
-        // 	_processEthIn(amount);
-        // } else {
-        // 	pullToken(vaultAsset, amount, address(this));
-        // }
-
         if ((sharesOut = vault.deposit(amount, to)) < minSharesOut) {
             revert MinSharesError();
         }
     }
-
-    // /// @dev Assumes tokens are already in the router
-    // function _deposit(
-    // 	ILMPVault vault,
-    // 	address to,
-    // 	uint256 amount,
-    // 	uint256 minSharesOut
-    // ) internal onlyAllowedUsers(vault, msg.sender) onlyAllowedUsers(vault, to) returns (uint256 sharesOut) {
-    // 	approve(IERC20(vault.asset()), address(vault), amount);
-    // 	if ((sharesOut = vault.deposit(amount, to)) < minSharesOut) {
-    // 		revert MinSharesError();
-    // 	}
-    // }
 
     /// @inheritdoc ILMPVaultRouterBase
     function withdraw(

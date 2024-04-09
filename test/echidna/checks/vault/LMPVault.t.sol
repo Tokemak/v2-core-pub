@@ -9,7 +9,7 @@ import { LMPVault } from "src/vault/LMPVault.sol";
 import { LMPVaultUsage } from "test/echidna/fuzz/vault/LMPVaultTests.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-contract LMPVaultTests1 is Test, LMPVaultUsage {
+contract LMPVaultTests is Test, LMPVaultUsage {
     constructor() LMPVaultUsage() { }
 
     function test_Construction() public {

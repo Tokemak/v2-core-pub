@@ -16,7 +16,7 @@ import { LMPVault } from "src/vault/LMPVault.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { SystemRegistryMocks } from "test/unit/mocks/SystemRegistryMocks.t.sol";
-import { TestERC20 } from "test/mocks/TestERC20.sol";
+import { TestERC20, ERC20 } from "test/mocks/TestERC20.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { ISystemSecurity } from "src/interfaces/security/ISystemSecurity.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
@@ -105,6 +105,7 @@ contract LMPVaultTests is
     event Withdraw(
         address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
+    event Transfer(address indexed sender, address indexed receiver, uint256 amount);
 
     function setUp() public virtual {
         vm.warp(1_702_419_857);
@@ -322,6 +323,113 @@ contract BaseConstructionTests is LMPVaultTests {
         vault.setPeriodicFeeSink(runTwo);
 
         assertEq(vault.getFeeSettings().periodicFeeSink, runTwo, "setRunOne");
+    }
+}
+
+contract InitializationTests is LMPVaultTests {
+    LMPVault public initTestVault;
+    LMPVault public initTestVaultRestricted;
+
+    error DelegatecallFail();
+    error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed);
+
+    function setUp() public virtual override {
+        super.setUp();
+
+        LMPVault initTestVaultTemplate = new LMPVault(systemRegistry, address(vaultAsset), false);
+        LMPVault initTestVaultRestrictedTemplate = new LMPVault(systemRegistry, address(vaultAsset), true);
+
+        initTestVault = LMPVault(Clones.cloneDeterministic(address(initTestVaultTemplate), "salt1"));
+        // solhint-disable-next-line max-line-length
+        initTestVaultRestricted = LMPVault(Clones.cloneDeterministic(address(initTestVaultRestrictedTemplate), "salt1"));
+
+        vaultAsset.mint(address(this), WETH_INIT_DEPOSIT);
+        vaultAsset.approve(address(initTestVault), WETH_INIT_DEPOSIT);
+        vaultAsset.approve(address(initTestVaultRestricted), WETH_INIT_DEPOSIT);
+    }
+
+    function test_Reverts_EmptyAndZero() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "lmpStrategyAddress"));
+        initTestVault.initialize(address(0), "suffix", "prefix", "");
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "symbolSuffix"));
+        initTestVault.initialize(lmpStrategy, "", "prefix", "");
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "descPrefix"));
+        initTestVault.initialize(lmpStrategy, "suffix", "", "");
+    }
+
+    function test_SetsState() public {
+        uint256 blockTimestamp = block.timestamp;
+        string memory suffix = "symbolSuffix";
+        string memory prefix = "descPrefix";
+
+        initTestVault.initialize(lmpStrategy, suffix, prefix, "");
+
+        assertEq(initTestVault.symbol(), suffix);
+        assertEq(initTestVault.name(), prefix);
+        assertEq(address(initTestVault.lmpStrategy()), lmpStrategy);
+
+        ILMPVault.AutoPoolFeeSettings memory feeSettings = initTestVault.getFeeSettings();
+        assertEq(feeSettings.lastPeriodicFeeTake, blockTimestamp);
+        assertEq(feeSettings.navPerShareLastFeeMark, AutoPoolFees.FEE_DIVISOR);
+        assertEq(feeSettings.navPerShareLastFeeMarkTimestamp, blockTimestamp);
+    }
+
+    function test_RestrictedVault_AllowsInitDeposit() public {
+        uint256 vaultInitializorAssetAmountBefore = vaultAsset.balanceOf(address(this));
+
+        vm.expectEmit(true, true, false, true);
+        emit Transfer(address(initTestVaultRestricted), address(0), WETH_INIT_DEPOSIT);
+        initTestVaultRestricted.initialize(lmpStrategy, "suffix", "prefix", "");
+
+        assertEq(initTestVaultRestricted.balanceOf(address(0)), WETH_INIT_DEPOSIT);
+        assertEq(initTestVaultRestricted.balanceOf(address(initTestVaultRestricted)), 0);
+        assertEq(initTestVaultRestricted.balanceOf(address(this)), 0);
+        assertEq(vaultAsset.balanceOf(address(initTestVaultRestricted)), WETH_INIT_DEPOSIT);
+        assertEq(vaultAsset.balanceOf(address(this)), vaultInitializorAssetAmountBefore - WETH_INIT_DEPOSIT);
+    }
+
+    function test_NonRestrictedVault_AllowsInitDeposit() public {
+        uint256 vaultInitializorAssetAmountBefore = vaultAsset.balanceOf(address(this));
+
+        vm.expectEmit(true, true, false, true);
+        emit Transfer(address(initTestVault), address(0), WETH_INIT_DEPOSIT);
+        initTestVault.initialize(lmpStrategy, "suffix", "prefix", "");
+
+        assertEq(initTestVault.balanceOf(address(0)), WETH_INIT_DEPOSIT);
+        assertEq(initTestVault.balanceOf(address(initTestVault)), 0);
+        assertEq(initTestVault.balanceOf(address(this)), 0);
+        assertEq(vaultAsset.balanceOf(address(initTestVault)), WETH_INIT_DEPOSIT);
+        assertEq(vaultAsset.balanceOf(address(this)), vaultInitializorAssetAmountBefore - WETH_INIT_DEPOSIT);
+    }
+
+    function test_zeroAddressTransfer_RevertsWhen_DelegatecallFails() public {
+        // Mocking `transferFrom` call to fail will result in deposit failing, returning false to `zeroAddressTransfer`
+        vm.mockCall(address(vaultAsset), abi.encodeWithSelector(ERC20.transferFrom.selector), abi.encode(false));
+
+        vm.expectRevert(DelegatecallFail.selector);
+        initTestVault.initialize(lmpStrategy, "suffix", "prefix", "");
+    }
+
+    function test_zeroAddressTransfer_RevertsWhen_DelegaecallReturnsNoData() public {
+        vm.mockCall(address(initTestVault), abi.encodeWithSelector(LMPVault.deposit.selector), "");
+
+        vm.expectRevert(DelegatecallFail.selector);
+        initTestVault.initialize(lmpStrategy, "suffix", "prefix", "");
+    }
+
+    function test_zeroAddressTransfer_RevertsWhen_IncorrectSharesAmountReturned() public {
+        vm.mockCall(
+            address(initTestVault), abi.encodeWithSelector(LMPVault.deposit.selector), abi.encode(WETH_INIT_DEPOSIT - 1)
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ERC20InsufficientBalance.selector, address(initTestVault), WETH_INIT_DEPOSIT - 1, WETH_INIT_DEPOSIT
+            )
+        );
+        initTestVault.initialize(lmpStrategy, "suffix", "prefix", "");
     }
 }
 

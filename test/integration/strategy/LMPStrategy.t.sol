@@ -51,6 +51,8 @@ contract LMPStrategyInt is Test {
     address constant CURVE_ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address constant WSTETH_MAINNET = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
 
+    uint256 public constant WETH_INIT_DEPOSIT = 100_000;
+
     uint256 internal saltIx = 0;
     address internal user1;
     IWETH9 internal weth;
@@ -78,7 +80,6 @@ contract LMPStrategyInt is Test {
     ValueCheckingStrategy _strategy;
 
     uint256 minStakingDuration = 30 days;
-    uint256 autoPoolWethInitAmount;
 
     function setUp() public {
         user1 = makeAddr("user1");
@@ -142,7 +143,6 @@ contract LMPStrategyInt is Test {
         _systemRegistry.setLMPVaultRegistry(address(_lmpVaultRegistry));
 
         address lmpTemplate = address(new LMPVault(_systemRegistry, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, false));
-        autoPoolWethInitAmount = LMPVault(lmpTemplate).WETH_INIT_DEPOSIT();
         _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, lmpTemplate, 800, 100);
 
         _accessController.grantRole(Roles.REGISTRY_UPDATER, address(_lmpVaultFactory));
@@ -160,7 +160,7 @@ contract LMPStrategyInt is Test {
 
         _vault = LMPVault(
             address(
-                _lmpVaultFactory.createVault{ value: 100_000 }(
+                _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
                     address(_strategyTemplate), "X", "X", lmpSalt, abi.encode("")
                 )
             )
@@ -203,7 +203,7 @@ contract LMPStrategyInt is Test {
     function test_Construction() public {
         assertTrue(address(_vault) != address(0), "vaultAddress");
         assertEq(_vault.balanceOf(V2_DEPLOYER), 100e18, "userBal");
-        assertEq(_vault.getAssetBreakdown().totalIdle, 100e18 + autoPoolWethInitAmount, "totalIdle");
+        assertEq(_vault.getAssetBreakdown().totalIdle, 100e18 + WETH_INIT_DEPOSIT, "totalIdle");
     }
 
     function test_FullIdleToCurveNg() public {
@@ -516,7 +516,7 @@ contract LMPStrategyInt is Test {
             IERC3156FlashBorrower(_tokenReturnSolver), rebalanceParams, abi.encode(inAmount, address(weth))
         );
 
-        assertEq(_vault.getAssetBreakdown().totalIdle, inAmount + autoPoolWethInitAmount, "vaultBal");
+        assertEq(_vault.getAssetBreakdown().totalIdle, inAmount + WETH_INIT_DEPOSIT, "vaultBal");
     }
 
     function test_FullIdleToCurveFullExitToIdle() public {
@@ -558,7 +558,7 @@ contract LMPStrategyInt is Test {
             IERC3156FlashBorrower(_tokenReturnSolver), rebalanceParams, abi.encode(inAmount, address(weth))
         );
 
-        assertEq(_vault.getAssetBreakdown().totalIdle, inAmount + autoPoolWethInitAmount, "vaultBal");
+        assertEq(_vault.getAssetBreakdown().totalIdle, inAmount + WETH_INIT_DEPOSIT, "vaultBal");
     }
 
     function test_IdleCantLeaveIfShutdown() public {

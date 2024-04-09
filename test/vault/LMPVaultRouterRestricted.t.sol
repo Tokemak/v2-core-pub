@@ -78,7 +78,7 @@ contract LMPVaultRouterTest is BaseTest {
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
         _lmpVault = LMPVault(
-            lmpVaultFactory.createVault{ value: LMP_INIT_DEPOSIT }(
+            lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
                 address(stratTemplate), "x", "y", keccak256(salt), lmpVaultInitData
             )
         );
@@ -546,7 +546,7 @@ contract LMPVaultRouterTest is BaseTest {
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
         lmpVault = LMPVault(
-            lmpVaultFactory.createVault{ value: LMP_INIT_DEPOSIT }(
+            lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
                 address(stratTemplate), "x", "y", keccak256("weth"), lmpVaultInitData
             )
         );

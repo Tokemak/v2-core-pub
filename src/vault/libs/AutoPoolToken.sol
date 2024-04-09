@@ -114,8 +114,9 @@ library AutoPoolToken {
 
         uint256 shares = abi.decode(returnData, (uint256));
 
-        // First mint, can use shares instead of checking balance.
-        if (value > shares) {
+        // TODO: Does != make sense here? Was > before.  Change comment if needed.
+        // First mint, can use shares instead of checking balance.  Expect mint to be 1:1, revert otherwise.
+        if (value != shares) {
             revert ERC20InsufficientBalance(address(this), shares, value);
         }
 

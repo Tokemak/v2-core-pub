@@ -15,8 +15,6 @@ import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 
 contract LMPVaultRegistryTest is BaseTest {
-    uint256 public constant WETH_INIT_DEPOSIT = 100_000;
-
     LMPVault internal vault;
 
     event VaultAdded(address indexed asset, address indexed vault);

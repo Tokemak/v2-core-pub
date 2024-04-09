@@ -28,7 +28,7 @@ contract LMPVaultTest is ERC4626Test, BaseTest {
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
 
         LMPVault vault = LMPVault(
-            lmpVaultFactory.createVault{ value: LMP_INIT_DEPOSIT }(
+            lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
                 address(stratTemplate), "x", "y", keccak256("v8"), initData
             )
         );

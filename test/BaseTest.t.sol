@@ -63,7 +63,7 @@ contract BaseTest is Test {
     uint256 internal constant ONE_YEAR = 365 days;
     uint256 internal constant ONE_MONTH = 30 days;
 
-    uint256 public constant LMP_INIT_DEPOSIT = 100_000;
+    uint256 public constant WETH_INIT_DEPOSIT = 100_000;
 
     bool public restrictPoolUsers = false;
 

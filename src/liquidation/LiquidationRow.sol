@@ -63,6 +63,8 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
 
         // System registry must be properly initialized first
         Errors.verifyNotZero(address(destinationVaultRegistry), "destinationVaultRegistry");
+
+        _setPriceMarginBps(200);
     }
 
     /// @notice Restricts access to whitelisted swappers
@@ -105,12 +107,8 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
     }
 
     /// @inheritdoc ILiquidationRow
-    function setPriceMarginBps(uint256 _priceMarginBps) external hasRole(Roles.REWARD_LIQUIDATION_MANAGER) {
-        // Want to limit the price margin to 10%.
-        if (_priceMarginBps > MAX_PCT / 10) revert Errors.InvalidParam("priceMarginBps");
-        priceMarginBps = _priceMarginBps;
-
-        emit PriceMarginSet(_priceMarginBps);
+    function setPriceMarginBps(uint256 _priceMarginBps) public hasRole(Roles.REWARD_LIQUIDATION_MANAGER) {
+        _setPriceMarginBps(_priceMarginBps);
     }
 
     function calculateFee(uint256 amount) public view returns (uint256) {
@@ -409,5 +407,13 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
         balances[tokenAddress][vaultAddress] = currentBalance + balance;
 
         emit BalanceUpdated(tokenAddress, vaultAddress, currentBalance + balance);
+    }
+
+    function _setPriceMarginBps(uint256 _priceMarginBps) private {
+        // Want to limit the price margin to 10%.
+        if (_priceMarginBps > MAX_PCT / 10) revert Errors.InvalidParam("priceMarginBps");
+        priceMarginBps = _priceMarginBps;
+
+        emit PriceMarginSet(_priceMarginBps);
     }
 }

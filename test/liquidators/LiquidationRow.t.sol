@@ -322,6 +322,22 @@ contract LiquidationRowTest is Test {
     }
 }
 
+contract Constructor is LiquidationRowTest {
+    function test_RevertIf_DestinationVaultRegistryNotSetYet() public {
+        SystemRegistry _systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
+        accessController = new AccessController(address(_systemRegistry));
+        _systemRegistry.setAccessController(address(accessController));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "destinationVaultRegistry"));
+        new LiquidationRowWrapper(_systemRegistry);
+    }
+
+    function test_SetDefaultPriceMarginBps() public {
+        LiquidationRowWrapper _liquidationRow = new LiquidationRowWrapper(systemRegistry);
+        assertEq(_liquidationRow.priceMarginBps(), 200);
+    }
+}
+
 contract AddToWhitelist is LiquidationRowTest {
     function test_RevertIf_CallerIsNotLiquidationManager() public {
         address swapper = address(1);
@@ -813,8 +829,8 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
         // We set the price of the rewardToken2 to 3 ether so the exchange rate becomes 1:3
         testOracle.setPriceInEth(address(rewardToken2), 3 ether);
 
-        // We expect to receive 300_000 but we only receive 200_000
-        vm.expectRevert(abi.encodeWithSelector(ILiquidationRow.InsufficientAmountReceived.selector, 300_000, 200_000));
+        // We expect to receive 294_000 (300_000 with 2% margin error) but we only receive 200_000
+        vm.expectRevert(abi.encodeWithSelector(ILiquidationRow.InsufficientAmountReceived.selector, 294_000, 200_000));
         liquidationRow.liquidateVaultsForToken(
             ILiquidationRow.LiquidationParams(address(rewardToken2), address(asyncSwapper), vaults, swapParams)
         );

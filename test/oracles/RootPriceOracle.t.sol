@@ -724,9 +724,9 @@ contract _calculateReservesAndPrice is RootPriceOracleTests {
 
     address internal weth;
 
-    address internal wstETH;
-    address internal cbETH;
-    address internal rETH;
+    TestERC20 internal wstETH;
+    TestERC20 internal cbETH;
+    TestERC20 internal rETH;
 
     function setUp() public override {
         super.setUp();
@@ -739,9 +739,13 @@ contract _calculateReservesAndPrice is RootPriceOracleTests {
         weth = address(new TestERC20("WETH", "WETH"));
 
         // Deploy the 3 tokens
-        wstETH = address(new TestERC20("wstETH", "wstETH"));
-        cbETH = address(new TestERC20("cbETH", "cbETH"));
-        rETH = address(new TestERC20("rETH", "rETH"));
+        wstETH = new TestERC20("wstETH", "wstETH");
+        cbETH = new TestERC20("cbETH", "cbETH");
+        rETH = new TestERC20("rETH", "rETH");
+
+        vm.label(address(wstETH), "wstETH");
+        vm.label(address(cbETH), "cbETH");
+        vm.label(address(rETH), "rETH");
 
         // Deploy a pool and lp token as ERC20s
         // Only decimals() is called on these contracts
@@ -750,56 +754,98 @@ contract _calculateReservesAndPrice is RootPriceOracleTests {
 
         // Replace previous mappings with new ones
         _rootPriceOracle.registerMapping(weth, safePriceOracle);
-        _rootPriceOracle.registerMapping(wstETH, safePriceOracle);
-        _rootPriceOracle.registerMapping(cbETH, safePriceOracle);
-        _rootPriceOracle.registerMapping(rETH, safePriceOracle);
+        _rootPriceOracle.registerMapping(address(wstETH), safePriceOracle);
+        _rootPriceOracle.registerMapping(address(cbETH), safePriceOracle);
+        _rootPriceOracle.registerMapping(address(rETH), safePriceOracle);
         _rootPriceOracle.registerPoolMapping(pool, spotPriceOracle);
 
         vm.label(address(safePriceOracle), "safePriceOracle");
     }
 
-    function test_CalculatePriceAndReserves() public {
+    function test_CalculatePriceAndReservesForTokensWithDifferentDecimals() public {
+        /**
+         * Below is a fictional, yet realistic, example of a scenario in which a pool contains three tokens, each with
+         * varying decimals, along with their respective safe and spot prices.
+         *
+         * WSTETH: 18 decimals
+         * CBETH: 6 decimals
+         * RETH: 9 decimals
+         *
+         * wstETH/ETH: 0.98
+         * make wstETH slightly discounted compared to ETH
+         *
+         * cbETH/ETH: 1.0 (Ceiling Winner)
+         * make cbETH slightly premium compared to ETH
+         *
+         * rETH/ETH: 0.95 (Floor Winner)
+         * make rETH slightly discounted compared to ETH
+         *
+         * wstETH/cbETH: 0.96
+         * derived from the ratio of wstETH/ETH and cbETH/ETH prices (0.98 / 1.02 ≈ 0.96).
+         *
+         * cbETH/rETH: 1.07
+         * derived from the ratio of cbETH/ETH and rETH/ETH prices (1.02 / 0.95 ≈ 1.07).
+         *
+         * rETH/cbETH: 0.93
+         * derived from the ratio of rETH/ETH and cbETH/ETH prices (0.95 / 1.02 ≈ 0.93).
+         *
+         */
+        uint256 wstethEthPrice = 0.98 ether;
+        uint256 cbethEthPrice = 1.02 ether; // Ceiling Winner
+        uint256 rethEthPrice = 0.95 ether; // Floor Winner
+
+        // wstETH/cbETH price is 1e6 for cbETH
+        uint256 wstethCbethPrice = wstethEthPrice * 1e6 / cbethEthPrice;
+        // cbETH/rETH price is 1e9 for rETH
+        uint256 cbethRethPrice = cbethEthPrice * 1e9 / rethEthPrice;
+        // rETH/cbETH price is 1e6 for cbETH
+        uint256 rethCbethPrice = rethEthPrice * 1e6 / cbethEthPrice;
+
+        safePriceOracle.setPriceInEth(weth, 1 ether);
+
         ISpotPriceOracle.ReserveItemInfo[] memory reserves = new ISpotPriceOracle.ReserveItemInfo[](3);
 
-        // Set WETH price to 1 ETH with 18 decimals
-        safePriceOracle.setPriceInEth(weth, 1 * 1e18);
+        /* **************************************** */
+        /* Token: wstETH                          */
+        /* Actual quote: cbETH                      */
+        /* reserve: 1000 in 18 decimals             */
+        /* **************************************** */
+        wstETH.setDecimals(18);
+        safePriceOracle.setPriceInEth(address(wstETH), wstethEthPrice);
+        reserves[0] = ISpotPriceOracle.ReserveItemInfo(address(wstETH), 1000 * 1e18, wstethCbethPrice, address(cbETH));
 
         /* **************************************** */
-        /* Token 1: wstETH                          */
-        /* safePrice = 200 eth                      */
-        /* spotPrice = 201 eth                      */
+        /* Token: cbETH                           */
+        /* Actual quote: rETH                       */
+        /* reserve: 500 in 6 decimals               */
         /* **************************************** */
-        safePriceOracle.setPriceInEth(wstETH, 200);
-        reserves[0] = ISpotPriceOracle.ReserveItemInfo(wstETH, 1000, 201, weth);
+        cbETH.setDecimals(6);
+        safePriceOracle.setPriceInEth(address(cbETH), cbethEthPrice);
+        reserves[1] = ISpotPriceOracle.ReserveItemInfo(address(cbETH), 500 * 1e6, cbethRethPrice, address(rETH));
 
         /* **************************************** */
-        /* Token 2: cbETH                           */
-        /* safePrice = 310 eth Ceiling Winner       */
-        /* spotPrice = 121 eth                      */
+        /* Token: rETH                              */
+        /* Actual quote: cbETH                      */
+        /* reserve: 800 in 9 decimals               */
         /* **************************************** */
-        safePriceOracle.setPriceInEth(cbETH, 310);
-        reserves[1] = ISpotPriceOracle.ReserveItemInfo(cbETH, 1000, 121, weth);
+        rETH.setDecimals(9);
+        safePriceOracle.setPriceInEth(address(rETH), rethEthPrice);
+        reserves[2] = ISpotPriceOracle.ReserveItemInfo(address(rETH), 800 * 1e9, rethCbethPrice, address(cbETH));
 
-        /* **************************************** */
-        /* Token 3: rETH                            */
-        /* safePrice = 220 eth                      */
-        /* spotPrice = 101 eth Floor Winner         */
-        /* **************************************** */
-        safePriceOracle.setPriceInEth(rETH, 220);
-        reserves[2] = ISpotPriceOracle.ReserveItemInfo(rETH, 1000, 101, weth);
+        spotPriceOracle.setSafeSpotPriceInfo(pool, lpToken, weth, 10_000, reserves);
 
-        spotPriceOracle.setSafeSpotPriceInfo(pool, lpToken, weth, 50_000, reserves);
-
-        // Calculate floor price
         (uint256 totalReserves, uint256 floorPrice, uint256 totalLpSupply) =
             _rootPriceOracle.expose_calculateReservesAndPrice(pool, lpToken, weth, false);
 
-        // Calculate ceil price
         (, uint256 ceilPrice,) = _rootPriceOracle.expose_calculateReservesAndPrice(pool, lpToken, weth, true);
 
-        assertEq(totalReserves, 3000);
-        assertEq(floorPrice, 101);
-        assertEq(ceilPrice, 310);
-        assertEq(totalLpSupply, 50_000);
+        // Verify that totalReserves are scaled to 18 decimals
+        // 1000 * 1e18 + 500 * 1e6 + 800 * 1e9 = 2300 * 1e18
+        assertEq(totalReserves, 2300 ether);
+        assertEq(totalLpSupply, 10_000);
+
+        // Floor price requires a 1% tolerance to account for rounding errors
+        assertGt(floorPrice, rethEthPrice * 99 / 100);
+        assertEq(ceilPrice, cbethEthPrice);
     }
 }

@@ -241,6 +241,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
             uint256 spotPrice = _enforceQuoteToken(inQuote, reserveInfo.actualQuoteToken, reserveInfo.rawSpotPrice);
 
             uint256 tokenPricedDecimals = IERC20Metadata(reserveInfo.token).decimals();
+            // Scaling reserves, reserves are always returned in the decimals of the token priced.
             totalReserves += _scaleValue(reserveInfo.reserveAmount, tokenPricedDecimals, inQuoteDecimals);
 
             if (ceiling) {

@@ -11,8 +11,6 @@ import { RedstoneOracle } from "src/oracles/providers/RedstoneOracle.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
 contract DeployOsethCalculator is BaseScript {
-    address internal constant STAKEWISE_OSETH_PRICE_ORACLE = 0x8023518b2192FB5384DAdc596765B3dD1cdFe471;
-
     bytes32 internal osEthTemplateId = keccak256("oseth");
 
     function run() external {

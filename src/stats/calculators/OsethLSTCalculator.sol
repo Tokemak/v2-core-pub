@@ -6,7 +6,7 @@ import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { LSTCalculatorBase } from "src/stats/calculators/base/LSTCalculatorBase.sol";
-import { IBalancerRateProvider } from "src/interfaces/external/stakewise/IBalancerRateProvider.sol";
+import { IRateProvider } from "src/interfaces/external/balancer/IRateProvider.sol";
 
 contract OsethLSTCalculator is LSTCalculatorBase {
     /// =====================================================
@@ -14,7 +14,7 @@ contract OsethLSTCalculator is LSTCalculatorBase {
     /// =====================================================
 
     /// @notice Price feed for osToken (e.g osETH price in ETH)
-    IBalancerRateProvider public osEthPriceOracle;
+    IRateProvider public osEthPriceOracle;
 
     /// =====================================================
     /// Structs
@@ -78,7 +78,7 @@ contract OsethLSTCalculator is LSTCalculatorBase {
     function _setOsEthPriceOracle(address newOracle) private {
         Errors.verifyNotZero(newOracle, "priceOracle");
 
-        osEthPriceOracle = IBalancerRateProvider(newOracle);
+        osEthPriceOracle = IRateProvider(newOracle);
 
         emit OsEthPriceOracleSet(newOracle);
     }

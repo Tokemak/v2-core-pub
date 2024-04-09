@@ -160,23 +160,6 @@ abstract contract LMPVaultRouterBase is
         rewarder.getReward(msg.sender, true);
     }
 
-    ///@dev Function assumes that vault.asset() is verified externally to be weth9
-    function _processEthIn(uint256 amount) internal {
-        if (amount > 0) {
-            // wrap eth
-            weth9.deposit{ value: amount }();
-        }
-    }
-
-    function _processWethOut(address to) internal {
-        uint256 balanceWETH9 = weth9.balanceOf(address(this));
-
-        if (balanceWETH9 > 0) {
-            weth9.withdraw(balanceWETH9);
-            Address.sendValue(payable(to), balanceWETH9);
-        }
-    }
-
     // Helper function for repeat functionalities.
     function _checkVault(address vault) internal view {
         if (!systemRegistry.lmpVaultRegistry().isVault(vault)) {

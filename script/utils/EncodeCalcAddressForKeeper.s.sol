@@ -6,7 +6,7 @@ pragma solidity 0.8.17;
 
 import { BaseScript, console } from "script/BaseScript.sol";
 
-contract Deposit is BaseScript {
+contract EncodeCalcAddressForKeeper is BaseScript {
     address[] private ar = [
         0x1Bb5f0B50F505934B5fc1821b24ecc1E1b287543,
         0xaed4850Ce877C0e0b051EbfF9286074C9378205c,
@@ -28,7 +28,8 @@ contract Deposit is BaseScript {
         0xfDfA1529c13452A6b50C678be6972B44b133b55B,
         0xe4b9411eC51FE2D674DE00cA1f44833320e8dEe4,
         0x6171F028c1D06c4ceEDf41Ae61024931281f6DaC,
-        0x1406311f198A72CcA5F895141238E6043e4984B6
+        0x1406311f198A72CcA5F895141238E6043e4984B6,
+        0xDAb4F9CcbAF39E664B3a4dD3ae9DadFBB176BdDA
     ];
 
     function run() external view {

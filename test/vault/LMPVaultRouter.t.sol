@@ -35,7 +35,6 @@ import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { ERC2612 } from "test/utils/ERC2612.sol";
 import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
-import "forge-std/console.sol";
 
 contract LMPVaultRouterWrapper is LMPVaultRouter {
     error SomethingWentWrong();
@@ -115,11 +114,6 @@ contract LMPVaultRouterTest is BaseTest {
         // Mints to the test contract, shares to go User
         deal(address(baseAsset), address(this), amount);
         baseAsset.approve(address(lmpVaultRouter), amount);
-        console.log("baseAsset", address(baseAsset));
-        //
-        // lmpVaultRouter.pullToken((baseAsset), amount, address(lmpVaultRouter));
-        // lmpVaultRouter.approve(baseAsset, address(lmpVault), amount);
-        // uint256 sharesReceived = lmpVaultRouter.deposit(lmpVault, user, amount, 0);
 
         bytes[] memory calls = new bytes[](3);
 
@@ -133,7 +127,6 @@ contract LMPVaultRouterTest is BaseTest {
 
         assertEq(sharesReceived, lmpVault.balanceOf(user));
 
-        console.log("depositsuccess");
         // Setup for the Spender to spend the Users tokens
         uint256 deadline = block.timestamp + 100;
         (uint8 v, bytes32 r, bytes32 s) = ERC2612.getPermitSignature(
@@ -332,7 +325,7 @@ contract LMPVaultRouterTest is BaseTest {
         calls[2] = abi.encodeCall(lmpVaultRouter.deposit, (lmpVault, address(this), amount, minSharesExpected));
 
         vm.expectRevert(abi.encodeWithSelector(ILMPVaultRouterBase.MinSharesError.selector));
-        bytes[] memory results = lmpVaultRouter.multicall(calls);
+        lmpVaultRouter.multicall(calls);
 
         // -- now do a successful scenario -- //
         _deposit(lmpVault, amount);
@@ -354,7 +347,7 @@ contract LMPVaultRouterTest is BaseTest {
         calls[2] = abi.encodeCall(lmpVaultRouter.deposit, (lmpVault, address(this), amount, minSharesExpected));
 
         vm.expectRevert(abi.encodeWithSelector(ILMPVaultRouterBase.MinSharesError.selector));
-        bytes[] memory results = lmpVaultRouter.multicall(calls);
+        lmpVaultRouter.multicall(calls);
 
         // -- pre-approve -- //
         lmpVaultRouter.approve(baseAsset, address(lmpVault), amount);
@@ -404,25 +397,13 @@ contract LMPVaultRouterTest is BaseTest {
     }
 
     function test_mintA() public {
-        console.log("hello");
-        //lmpVault.toggleAllowedUser(address(lmpVaultRouter));
-        //lmpVault.toggleAllowedUser(address(this));
-
         uint256 amount = depositAmount;
-        // NOTE: allowance bumped up to make sure it's not what's triggering the revert (and explicitly amounts
-        // returned)
-        //baseAsset.approve(address(lmpVaultRouter), amount * 2);
 
         // -- try to fail slippage first -- //
         // // set threshold for just over what's expected
         uint256 maxAssets = lmpVault.previewMint(amount) - 1;
         baseAsset.approve(address(lmpVaultRouter), amount); // `amount` instead of `maxAssets` so that we don't
         // // allowance error
-        // vm.expectRevert(abi.encodeWithSelector(ILMPVaultRouterBase.MaxAmountError.selector));
-        // lmpVaultRouter.mint(lmpVault, address(this), amount, maxAssets);
-
-        console.log("amout is ", amount);
-        console.log("max Assets is", maxAssets);
 
         bytes[] memory calls = new bytes[](3);
 
@@ -450,7 +431,7 @@ contract LMPVaultRouterTest is BaseTest {
         uint256 wethBefore = weth.balanceOf(address(this));
         uint256 sharesBefore = lmpVault.balanceOf(address(this));
 
-        uint256 assets = lmpVault.previewMint(amount);
+        lmpVault.previewMint(amount);
 
         bytes[] memory calls = new bytes[](3);
         calls[0] = abi.encodeWithSignature("wrapWETH9(uint256)", amount);
@@ -748,7 +729,6 @@ contract LMPVaultRouterTest is BaseTest {
         // Deposit to vault.
         uint256 sharesReceived = _deposit(lmpVault, depositAmount);
 
-        console.log("Shares received: %s", sharesReceived);
         // Stake to rewarder.
         lmpVault.approve(address(lmpVaultRouter), sharesReceived);
 
@@ -840,8 +820,6 @@ contract LMPVaultRouterTest is BaseTest {
         // Get preview of shares for staking.
         uint256 expectedShares = lmpVault.previewDeposit(depositAmount);
 
-        console.log("ExpectedShares", expectedShares);
-
         bytes[] memory calls = new bytes[](5);
 
         calls[0] = abi.encodeCall(lmpVaultRouter.pullToken, (baseAsset, depositAmount, address(lmpVaultRouter)));
@@ -885,7 +863,7 @@ contract LMPVaultRouterTest is BaseTest {
         calls[1] = abi.encodeCall(lmpVaultRouter.approve, (lmpVault, address(lmpRewarder), shares));
         calls[2] = abi.encodeCall(lmpVaultRouter.stakeVaultToken, (lmpVault, shares));
 
-        bytes[] memory results = lmpVaultRouter.multicall(calls);
+        lmpVaultRouter.multicall(calls);
 
         // Need array of bytes with two members, one for unstaking from rewarder, other for withdrawing from LMP.
         bytes[] memory data = new bytes[](2);
@@ -946,7 +924,7 @@ contract LMPVaultRouterTest is BaseTest {
         calls[1] = abi.encodeCall(lmpVaultRouter.approve, (lmpVault, address(lmpRewarder), shares));
         calls[2] = abi.encodeCall(lmpVaultRouter.stakeVaultToken, (lmpVault, shares));
 
-        bytes[] memory results = lmpVaultRouter.multicall(calls);
+        lmpVaultRouter.multicall(calls);
 
         // Should only deposit amount of shares user has.
         assertEq(lmpRewarder.balanceOf(address(this)), shares);

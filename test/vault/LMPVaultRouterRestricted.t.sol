@@ -26,8 +26,6 @@ import { ERC2612 } from "test/utils/ERC2612.sol";
 import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 
-import "forge-std/console.sol";
-
 // solhint-disable func-name-mixedcase
 contract LMPVaultRouterTest is BaseTest {
     // IDestinationVault public destinationVault;

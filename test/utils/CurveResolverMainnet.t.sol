@@ -12,7 +12,7 @@ contract CurveResolverMainnetTests is Test {
     CurveResolverMainnet private resolver;
 
     function setUp() public {
-        uint256 mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"));
+        uint256 mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), 19_600_440);
         vm.selectFork(mainnetFork);
 
         resolver = new CurveResolverMainnet(ICurveMetaRegistry(0xF98B45FA17DE75FB1aD0e7aFD971b0ca00e379fC));

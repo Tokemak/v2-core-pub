@@ -26,4 +26,13 @@ interface IStatsCalculator {
     /// @notice Indicates if a snapshot should be taken
     /// @return takeSnapshot if true then a snapshot should be taken. If false, calling snapshot will do nothing
     function shouldSnapshot() external view returns (bool takeSnapshot);
+
+    /// @dev Enum representing the snapshot status for a given rewarder (Convex and Aura) or reward token (Maverick)
+    enum SnapshotStatus {
+        noSnapshot, // Indicates that no snapshot has been taken yet for the rewarder.
+        tooSoon, // Indicates that it's too soon to take another snapshot since the last one.
+        shouldFinalize, // Indicates that the conditions are met for finalizing a snapshot.
+        shouldRestart // Indicates that the conditions are met for restarting a snapshot.
+
+    }
 }

@@ -32,7 +32,7 @@ abstract contract IncentiveCalculatorBase is
     uint40 public constant PRICE_STALE_CHECK = 12 hours;
 
     /// @dev Cap on allowable credits in the system.
-    uint8 public constant MAX_CREDITS = 168;
+    uint8 public constant MAX_CREDITS = 48;
 
     IDexLSTStats public underlyerStats;
     IBaseRewardPool public rewarder;
@@ -73,15 +73,6 @@ abstract contract IncentiveCalculatorBase is
 
     /// @dev Pool related to the LP token
     address public pool;
-
-    /// @dev Enum representing the snapshot status for a given rewarder.
-    enum SnapshotStatus {
-        noSnapshot, // Indicates that no snapshot has been taken yet for the rewarder.
-        tooSoon, // Indicates that it's too soon to take another snapshot since the last one.
-        shouldFinalize, // Indicates that the conditions are met for finalizing a snapshot.
-        shouldRestart // Indicates that the conditions are met for restarting a snapshot.
-
-    }
 
     struct InitData {
         address rewarder;
@@ -176,7 +167,7 @@ abstract contract IncentiveCalculatorBase is
                 // slither-disable-start timestamp
                 uint256 hoursPassed = (block.timestamp - decayInitTimestamp) / 3600;
                 if (hoursPassed > 0) {
-                    currentCredits = _decayCredits(incentiveCredits, hoursPassed);
+                    currentCredits = Stats.decayCredits(incentiveCredits, hoursPassed);
                 }
                 // slither-disable-end timestamp
             }
@@ -276,7 +267,7 @@ abstract contract IncentiveCalculatorBase is
             // If APR is above a threshold, increment credits based on time elapsed
             // Only give credit for whole days, so divide-before-multiply is desired
             // slither-disable-next-line divide-before-multiply
-            uint256 credits = 12 * (elapsedTime / 1 days); // 2 credits for each day
+            uint8 credits = uint8(2 * (elapsedTime / 1 days)); // 2 credits for each day
             // Increment credits, but cap at MAX_CREDITS
             incentiveCredits = uint8(Math.min(currentCredits + credits, MAX_CREDITS));
             // Update the last incentive timestamp to the current block's timestamp
@@ -295,7 +286,7 @@ abstract contract IncentiveCalculatorBase is
                 uint256 hoursPassed = (block.timestamp - decayInitTimestamp) / 3600;
                 // slither-disable-end timestamp
                 if (hoursPassed > 0 && decayState) {
-                    incentiveCredits = _decayCredits(currentCredits, hoursPassed);
+                    incentiveCredits = Stats.decayCredits(currentCredits, hoursPassed);
 
                     // Update the incentive decay init timestamp to current timestamp
                     decayInitTimestamp = block.timestamp;
@@ -373,7 +364,7 @@ abstract contract IncentiveCalculatorBase is
         if (_totalSupply == 0) return true;
 
         // if _rewardRate differs by more than 5% from the last snapshot reward rate, take another snapshot.
-        if (_differsByMoreThanFivePercent(lastSnapshotRewardRate[_rewarder], _rewardRate)) {
+        if (Stats.differsByMoreThanFivePercent(lastSnapshotRewardRate[_rewarder], _rewardRate)) {
             return true;
         }
 
@@ -382,7 +373,7 @@ abstract contract IncentiveCalculatorBase is
         // If the staked supply deviates by more than 5% from the safe supply and 6 hours have passed since
         // the last snapshot, take another snapshot.
         // slither-disable-next-line timestamp
-        if (_differsByMoreThanFivePercent(safeTotalSupply, _totalSupply) && timeBetweenSnapshots > 6 hours) {
+        if (Stats.differsByMoreThanFivePercent(safeTotalSupply, _totalSupply) && timeBetweenSnapshots > 6 hours) {
             return true;
         }
 
@@ -481,36 +472,6 @@ abstract contract IncentiveCalculatorBase is
             safeTotalSupply = safeTotalSupplies[address(_rewarder)];
 
             return (safeTotalSupply, rewardToken, annualizedRewardAmount, uint40(periodFinishForReward));
-        }
-    }
-
-    /**
-     * @dev Decays credits based on the elapsed time and reward rate.
-     * Credits decay when the current time is past the reward period finish time
-     * or when the reward rate is zero.
-     *
-     * @param currentCredits The current amount of credits.
-     * @return The adjusted amount of credits after potential decay.
-     */
-    function _decayCredits(uint8 currentCredits, uint256 hoursPassed) internal pure returns (uint8) {
-        // slither-disable-start timestamp
-        currentCredits = uint8((hoursPassed > currentCredits) ? 0 : currentCredits - hoursPassed);
-        // slither-disable-end timestamp
-
-        return currentCredits;
-    }
-
-    /**
-     * @notice Checks if the difference between two values is more than 5%.
-     * @param value1 The first value.
-     * @param value2 The second value.
-     * @return A boolean indicating if the difference between the two values is more than 5%.
-     */
-    function _differsByMoreThanFivePercent(uint256 value1, uint256 value2) public pure returns (bool) {
-        if (value1 > value2) {
-            return value1 > (value2 + (value2 / 20)); // value2 / 20 represents 5% of value2
-        } else {
-            return value2 > (value1 + (value1 / 20)); // value1 / 20 represents 5% of value1
         }
     }
 

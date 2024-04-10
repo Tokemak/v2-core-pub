@@ -902,10 +902,10 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
         // Ensure the destinations are in the queues they should be
         LMPDestinations._manageQueuesForDestination(
-            rebalanceParams.destinationOut, false, _withdrawalQueue, _debtReportQueue
+            rebalanceParams.destinationOut, false, _withdrawalQueue, _debtReportQueue, _removalQueue
         );
         LMPDestinations._manageQueuesForDestination(
-            rebalanceParams.destinationIn, true, _withdrawalQueue, _debtReportQueue
+            rebalanceParams.destinationIn, true, _withdrawalQueue, _debtReportQueue, _removalQueue
         );
 
         // Signal to the strategy that everything went well

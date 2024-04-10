@@ -3649,6 +3649,7 @@ contract FlashRebalanceTests is LMPVaultTests {
     function test_DestinationRemovedFromQueuesWhenBalanceEmpty() public {
         address user = makeAddr("user");
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.DESTINATION_VAULTS_UPDATER, true);
         _mockSucessfulRebalance();
 
         _depositFor(user, 100e9);
@@ -3683,6 +3684,12 @@ contract FlashRebalanceTests is LMPVaultTests {
             inData
         );
 
+        // Add dv1 to the removal queue
+        address[] memory destinations = new address[](1);
+        destinations[0] = address(dv1);
+        vault.removeDestinations(destinations);
+
+        assertEq(_isInList(vault.getRemovalQueue(), address(dv1)), true, "r1");
         assertEq(_isInList(vault.getDebtReportingQueue(), address(dv1)), true, "d1");
         assertEq(_isInList(vault.getWithdrawalQueue(), address(dv1)), true, "w1");
 
@@ -3700,6 +3707,7 @@ contract FlashRebalanceTests is LMPVaultTests {
             inData
         );
 
+        assertEq(_isInList(vault.getRemovalQueue(), address(dv1)), false, "r1");
         assertEq(_isInList(vault.getDebtReportingQueue(), address(dv1)), false, "d2");
         assertEq(_isInList(vault.getWithdrawalQueue(), address(dv1)), false, "w2");
     }

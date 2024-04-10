@@ -115,7 +115,8 @@ library LMPDestinations {
         address destination,
         bool destinationIn,
         StructuredLinkedList.List storage withdrawalQueue,
-        StructuredLinkedList.List storage debtReportQueue
+        StructuredLinkedList.List storage debtReportQueue,
+        EnumerableSet.AddressSet storage removalQueue
     ) external {
         // The vault itself, when we are moving idle around, should never be
         // in the queues.
@@ -145,6 +146,10 @@ library LMPDestinations {
                 // on it and we also have nothing to withdraw from it
                 debtReportQueue.popAddress(destination);
                 withdrawalQueue.popAddress(destination);
+
+                if (removalQueue.remove(destination)) {
+                    emit RemovedFromRemovalQueue(destination);
+                }
             }
         }
     }

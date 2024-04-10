@@ -107,7 +107,7 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
     }
 
     /// @inheritdoc ILiquidationRow
-    function setPriceMarginBps(uint256 _priceMarginBps) public hasRole(Roles.REWARD_LIQUIDATION_MANAGER) {
+    function setPriceMarginBps(uint256 _priceMarginBps) external hasRole(Roles.REWARD_LIQUIDATION_MANAGER) {
         _setPriceMarginBps(_priceMarginBps);
     }
 

@@ -730,6 +730,89 @@ contract DepositTests is LMPVaultTests {
         assertEq(shares, 1000, "shares");
     }
 
+    /**
+     * This test is testing for a donation attack type of bug where the user is essentially using the vaults
+     * rounding functionality to skew nav/share and cause a second depositor a loss.  This attack was able
+     * to happen before an init deposit was added to the vault.  Steps to recreate the attack:
+     * - Vault needs to be in a state where totalSupply is 1 wei and totalAssets is > 1 wei.
+     * - In a loop, user deposits 2 * totalAssets - 1, and withdraws 1 wei of shares. Because of rounding
+     *    this loop will mint 1 wei share every time, burn 1 wei share every time, and return 1 wei asset
+     *    to the depositor each time.  This leads to a scenario where totalAssets grows larger and totalSupply
+     *    stays as 1 wei.
+     * - User2 comes and deposits 2 * totalAssets - 1 assets after user1 finishes skewing nav / share.  This will
+     *    only mint user2 1 wei shares even thought they have deposited nearly double what user1 has deposited.
+     * - User1 redeems their one share for half of the assets in the vault, more than they originally deposited.
+     *
+     * The goal of this test is to have both user and and user 2 get the same amount of assets deposited back, showing
+     *  that the attack can no longer happen.
+     */
+    function test_11111() public {
+        uint256 multiplier = 1;
+
+        address user = makeAddr("user1");
+        _depositFor(user, 1 * multiplier);
+
+        // Setting up idle, supply to what would exist at init, plus any extra to simulate attack.
+        // TotalAssets had to be > totalSupply for attack to work.
+        vault.setTotalIdle(2 * multiplier + WETH_INIT_DEPOSIT);
+        vault.setTotalSupply(WETH_INIT_DEPOSIT + 1);
+
+        console.log(vaultAsset.balanceOf(address(vault)));
+
+        // Actually send assets to vault to match idle.
+        vaultAsset.mint(address(vault), 2 * multiplier - 1);
+
+        console.log(vault.totalAssets());
+        console.log(vaultAsset.balanceOf(address(vault)));
+
+        uint256 totalDeposited = 1 * multiplier;
+        uint256 totalWithdrawn = 0;
+
+        // Attack, before fix this would skew nav / share by depositing just under double totalAssets each time,
+        // only get minted one share.
+        for (uint256 i = 0; i < 30; i++) {
+            uint256 totalAssets = vault.totalAssets();
+            _depositFor(user, 2 * totalAssets - 1);
+            totalDeposited += 2 * totalAssets - 1;
+            vm.prank(user);
+            vault.withdraw(1, user, user);
+            totalWithdrawn += 1;
+        }
+
+        uint256 user1TotalDeposited = totalDeposited - totalWithdrawn;
+
+        // Deposit for user2, almost 2x total deposits of user1
+        address user2 = newAddr(1002, "user2");
+        uint256 user2Deposit = 2 * vault.totalAssets() - 1;
+        _depositFor(user2, user2Deposit);
+
+        // User1 redeems all of their shares.  Before fix, this would have caused them to receive half of the
+        // total vault assets.  Now they should just get back what the deposited.
+        uint256 user1Bal = vault.balanceOf(user);
+        vm.prank(user);
+        uint256 user1Remove = vault.redeem(user1Bal, user, user);
+
+        // User2 redeem.  Would have lost shares before fix.
+        uint256 user2Bal = vault.balanceOf(user2);
+        vm.prank(user2);
+        uint256 user2Remove = vault.redeem(user2Bal, user2, user2);
+
+        console.log(user1Bal);
+        console.log(user2Bal);
+        console.log(user1TotalDeposited);
+        console.log(user2Deposit);
+        console.log(user1Remove);
+        console.log(user2Remove);
+
+        // Balance of both would have been 1 in attack scenario, will be much higher now.
+        assertGt(user1Bal, 1);
+        assertGt(user2Bal, 1);
+
+        // Check that both get back amount that was deposited.
+        assertEq(user1TotalDeposited, user1Remove);
+        assertEq(user2Deposit, user2Remove);
+    }
+
     // function test_RevertIf_PerWalletLimitIsHit() public {
     //     // Approve 3 then deposit 1
     //     // Set limit to 2 and then try to deposit 2 which would make 3 total

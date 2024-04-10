@@ -110,11 +110,13 @@ library AutoPoolToken {
         // solhint-disable-next-line avoid-low-level-calls
          address(this).delegatecall(abi.encodeWithSignature("deposit(uint256,address)", value, address(this)));
 
+        // address(this) will always be a contract, and `deposit` will always return a value.
         if (!success || returnData.length == 0) revert DelegatecallFail();
 
         uint256 shares = abi.decode(returnData, (uint256));
 
         // TODO: Does != make sense here? Was > before.  Change comment if needed.
+        // TODO: Different error here?
         // First mint, can use shares instead of checking balance.  Expect mint to be 1:1, revert otherwise.
         if (value != shares) {
             revert ERC20InsufficientBalance(address(this), shares, value);

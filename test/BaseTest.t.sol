@@ -108,7 +108,7 @@ contract BaseTest is Test {
         lmpVaultRegistry = new LMPVaultRegistry(systemRegistry);
         systemRegistry.setLMPVaultRegistry(address(lmpVaultRegistry));
         // TODO: replace below 2 lines with `deployLMPVaultRouter`
-        lmpVaultRouter = new LMPVaultRouter(systemRegistry, address(baseAsset));
+        lmpVaultRouter = new LMPVaultRouter(systemRegistry, address(weth));
         systemRegistry.setLMPVaultRouter(address(lmpVaultRouter));
 
         systemSecurity = new SystemSecurity(systemRegistry);

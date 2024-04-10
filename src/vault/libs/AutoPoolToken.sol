@@ -66,8 +66,10 @@ library AutoPoolToken {
     error ERC2612InvalidSigner(address signer, address owner);
     /// @dev The nonce used for an `account` is not the expected current nonce.
     error InvalidAccountNonce(address account, uint256 currentNonce);
-    /// @dev Thrown when a delegatecall fails.
+    /// @dev Thrown when a delegatecall fails.  Specific to `zeroAddressTransfer`
     error DelegatecallFail();
+    /// @dev Thrown when value to be transferred and shares do not match.  Specific to `zeroAddressTransfer`
+    error ValueSharesAmountMismatch(uint256 value, uint256 shares);
 
     /// @dev Emitted when `value` tokens are moved from one account `from` to another `to`.
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -103,29 +105,31 @@ library AutoPoolToken {
         return true;
     }
 
-    /// @dev Special transfer to send funds to the zero address on initalization.
+    /// @notice Special transfer to send funds to the zero address on initalization.
+    /// @dev This should only be used on initialization.
     function zeroAddressTransfer(TokenData storage data, uint256 value) external returns (bool) {
         // Delegatecall here keeps msg.sender as factory, necessary for weth transferFrom on deposit.
         (bool success, bytes memory returnData) =
         // solhint-disable-next-line avoid-low-level-calls
          address(this).delegatecall(abi.encodeWithSignature("deposit(uint256,address)", value, address(this)));
 
-        // address(this) will always be a contract, and `deposit` will always return a value.
+        // address(this) will always be a contract, and `deposit` will always return a value when used in this context.
         if (!success || returnData.length == 0) revert DelegatecallFail();
 
         uint256 shares = abi.decode(returnData, (uint256));
 
-        // TODO: Does != make sense here? Was > before.  Change comment if needed.
-        // TODO: Different error here?
-        // First mint, can use shares instead of checking balance.  Expect mint to be 1:1, revert otherwise.
+        // Expect mint to be 1:1, revert otherwise.
         if (value != shares) {
-            revert ERC20InsufficientBalance(address(this), shares, value);
+            revert ValueSharesAmountMismatch(value, shares);
         }
 
-        data.balances[address(this)] -= value;
-        data.balances[address(0)] += value;
+        // Shares just minted to address(this) with no other state operations in between, no risk of underflow.
+        unchecked {
+            data.balances[address(this)] -= shares;
+            data.balances[address(0)] += shares;
+        }
 
-        emit Transfer(address(this), address(0), value);
+        emit Transfer(address(this), address(0), shares);
         return true;
     }
 

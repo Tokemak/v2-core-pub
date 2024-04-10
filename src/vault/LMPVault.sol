@@ -239,6 +239,14 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
         factory = msg.sender;
 
+        _symbol = string(abi.encodePacked(symbolSuffix));
+        _name = string(abi.encodePacked(descPrefix));
+
+        AutoPoolFees.initializeFeeSettings(_feeSettings);
+
+        lmpStrategy = ILMPStrategy(strategy);
+
+        // slither-disable-start reentrancy-no-eth
         // Both factory and autopool need permission to use deposit functionality.
         if (_checkUsers) {
             toggleAllowedUser(address(this));
@@ -246,7 +254,8 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         }
 
         // Prevents nav / share inflation attack that can occur with very small amount of vault shares
-        // and assets that are not 1:1 with shares.
+        // and assets that are great than shares.
+        // slither-disable-next-line unused-return
         AutoPoolToken.zeroAddressTransfer(_tokenData, WETH_INIT_DEPOSIT);
 
         // No reason to continue to have either be allowed user.
@@ -254,13 +263,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
             toggleAllowedUser(address(this));
             toggleAllowedUser(factory);
         }
-
-        _symbol = string(abi.encodePacked(symbolSuffix));
-        _name = string(abi.encodePacked(descPrefix));
-
-        AutoPoolFees.initializeFeeSettings(_feeSettings);
-
-        lmpStrategy = ILMPStrategy(strategy);
+        // slither-disable-end reentrancy-no-eth
     }
 
     /// @notice Mints Vault shares to receiver by depositing exactly amount of underlying tokens

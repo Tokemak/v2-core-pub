@@ -331,7 +331,7 @@ contract InitializationTests is LMPVaultTests {
     LMPVault public initTestVaultRestricted;
 
     error DelegatecallFail();
-    error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed);
+    error ValueSharesAmountMismatch(uint256 value, uint256 shares);
 
     function setUp() public virtual override {
         super.setUp();
@@ -413,6 +413,7 @@ contract InitializationTests is LMPVaultTests {
     }
 
     function test_zeroAddressTransfer_RevertsWhen_DelegaecallReturnsNoData() public {
+        // Return empty bytes.
         vm.mockCall(address(initTestVault), abi.encodeWithSelector(LMPVault.deposit.selector), "");
 
         vm.expectRevert(DelegatecallFail.selector);
@@ -420,14 +421,13 @@ contract InitializationTests is LMPVaultTests {
     }
 
     function test_zeroAddressTransfer_RevertsWhen_IncorrectSharesAmountReturned() public {
+        // Return incorrect amount.
         vm.mockCall(
             address(initTestVault), abi.encodeWithSelector(LMPVault.deposit.selector), abi.encode(WETH_INIT_DEPOSIT - 1)
         );
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                ERC20InsufficientBalance.selector, address(initTestVault), WETH_INIT_DEPOSIT - 1, WETH_INIT_DEPOSIT
-            )
+            abi.encodeWithSelector(ValueSharesAmountMismatch.selector, WETH_INIT_DEPOSIT, WETH_INIT_DEPOSIT - 1)
         );
         initTestVault.initialize(lmpStrategy, "suffix", "prefix", "");
     }
@@ -746,7 +746,7 @@ contract DepositTests is LMPVaultTests {
      * The goal of this test is to have both user and and user 2 get the same amount of assets deposited back, showing
      *  that the attack can no longer happen.
      */
-    function test_11111() public {
+    function test_depositWithdraw_AttackVector() public {
         uint256 multiplier = 1;
 
         address user = makeAddr("user1");
@@ -787,7 +787,7 @@ contract DepositTests is LMPVaultTests {
         _depositFor(user2, user2Deposit);
 
         // User1 redeems all of their shares.  Before fix, this would have caused them to receive half of the
-        // total vault assets.  Now they should just get back what the deposited.
+        // total vault assets.  Now they should just get back what they deposited.
         uint256 user1Bal = vault.balanceOf(user);
         vm.prank(user);
         uint256 user1Remove = vault.redeem(user1Bal, user, user);

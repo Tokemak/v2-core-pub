@@ -438,17 +438,7 @@ library AutoPoolFees {
 
         // Set the high mark when we change the fee so we aren't able to go farther back in
         // time than one debt reporting and claim fee's against past profits
-        uint256 supply = vault.totalSupply();
-        if (supply > 0) {
-            feeSettings.navPerShareLastFeeMark = (vault.totalAssets() * FEE_DIVISOR) / supply;
-        } else {
-            // The default high mark is 1:1. We don't want to be able to take
-            // fee's before the first debt reporting
-            // Before a rebalance, everything will be in idle and we don't want to take
-            // fee's on pure idle
-            feeSettings.navPerShareLastFeeMark = FEE_DIVISOR;
-        }
-
+        feeSettings.navPerShareLastFeeMark = (vault.totalAssets() * FEE_DIVISOR) / vault.totalSupply();
         emit StreamingFeeSet(fee);
     }
 

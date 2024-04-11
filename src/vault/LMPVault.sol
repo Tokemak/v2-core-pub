@@ -758,9 +758,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     }
 
     function _completeWithdrawal(uint256 assets, uint256 shares, address owner, address receiver) internal virtual {
-        LMPDebt.completeWithdrawal(
-            assets, shares, FEE_DIVISOR, owner, receiver, _baseAsset, _feeSettings, _assetBreakdown, _tokenData
-        );
+        LMPDebt.completeWithdrawal(assets, shares, owner, receiver, _baseAsset, _assetBreakdown, _tokenData);
     }
 
     /// @notice Transfer out non-tracked tokens

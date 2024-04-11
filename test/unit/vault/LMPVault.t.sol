@@ -249,6 +249,10 @@ contract BaseConstructionTests is LMPVaultTests {
     }
 
     function test_setStreamingFeeBps_RevertIf_CallerMissingFeeSetterRole() public {
+        // Reset idle and supply to what it should have been after initialization.
+        vault.setTotalIdle(WETH_INIT_DEPOSIT);
+        vault.setTotalSupply(WETH_INIT_DEPOSIT);
+
         // This test is allowed
         _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_FEE_SETTER_ROLE, true);
 

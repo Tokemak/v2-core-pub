@@ -85,9 +85,11 @@ contract LiquidationRowWrapper is LiquidationRow {
      * LiquidationRowWrapper contract's storage.
      */
     function setOverrideReceivedAmount(address asyncSwapper, uint256 _overrideReceivedAmount) public {
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success,) = asyncSwapper.delegatecall(
             abi.encodeWithSignature("setOverrideReceivedAmount(uint256)", _overrideReceivedAmount)
         );
+        // solhint-disable-next-line reason-string
         require(success, "setOverrideReceivedAmount delegatecall failed");
     }
 }

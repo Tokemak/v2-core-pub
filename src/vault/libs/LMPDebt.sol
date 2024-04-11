@@ -850,22 +850,18 @@ library LMPDebt {
      *    transferred are calculated.
      * @param assets Amount of assets to be transferred to receiver.
      * @param shares Amount of shares to be burned from owner.
-     * @param feeDivisor AutoPool fee divisor.  Always 10_000.
      * @param owner Owner of shares, user to burn shares from.
      * @param receiver The receiver of the baseAsset.
      * @param baseAsset Base asset of the AutoPool.
-     * @param feeSettings Fee settings for the AutoPool.
      * @param assetBreakdown Asset breakdown for the AutoPool.
      * @param tokenData Token data for the AutoPool.
      */
     function completeWithdrawal(
         uint256 assets,
         uint256 shares,
-        uint256 feeDivisor,
         address owner,
         address receiver,
         IERC20 baseAsset,
-        ILMPVault.AutoPoolFeeSettings storage feeSettings,
         ILMPVault.AssetBreakdown storage assetBreakdown,
         AutoPoolToken.TokenData storage tokenData
     ) external {
@@ -884,11 +880,6 @@ library LMPDebt {
 
         // if totalSupply is now 0, reset the high water mark
         uint256 ts = ILMPVault(address(this)).totalSupply();
-        if (ts == 0) {
-            feeSettings.navPerShareLastFeeMark = feeDivisor;
-
-            emit NewNavShareFeeMark(feeDivisor, block.timestamp);
-        }
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 

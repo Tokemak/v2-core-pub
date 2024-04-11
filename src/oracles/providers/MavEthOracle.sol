@@ -101,8 +101,6 @@ contract MavEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
         IPool mavPool = IPool(pool);
         IPoolPositionDynamicSlim boostedPosition = IPoolPositionDynamicSlim(_boostedPosition);
 
-        _checkSafeWidth(mavPool, boostedPosition);
-
         // Get total supply of lp tokens from boosted position
         totalLPSupply = boostedPosition.totalSupply();
 
@@ -138,22 +136,17 @@ contract MavEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
     function _getSpotPrice(address token, IPool pool, bool isTokenA) private returns (uint256 price) {
         price = poolInformation.calculateSwap(
             pool,
-            uint128(10 ** IERC20Metadata(token).decimals()), // amount
+            // we swap 0.001 units to minimize the impact on small pools
+            uint128(10 ** (IERC20Metadata(token).decimals() - 3)),
             isTokenA, // tokenAIn
             false, // exactOutput
             0 // sqrtPriceLimit
         );
 
         // Maverick Fee is in 1e18.
+        // We scale up the price by 1000 (1e21) so the returned price is in 1 unit
         // https://docs.mav.xyz/guides/technical-reference/pool#fn-fee
-        price = (price * 1e18) / (1e18 - pool.fee());
-    }
-
-    ///@dev Check that total width of all bins in position does not exceed what we deem safe
-    function _checkSafeWidth(IPool pool, IPoolPositionDynamicSlim boostedPosition) private {
-        if (pool.tickSpacing() * boostedPosition.allBinIds().length > maxTotalBinWidth) {
-            revert TotalBinWidthExceedsMax();
-        }
+        price = (price * 1e21) / (1e18 - pool.fee());
     }
 
     ///@dev Scale decimals back to original value from 1e18

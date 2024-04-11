@@ -132,22 +132,22 @@ contract MavEthOracleTest is Test {
         mavOracle.getSpotPrice(address(0), MAV_WSTETH_WETH_POOL, WETH_MAINNET);
     }
 
-    /// @dev WestEth -> Weth at block 18_579_296 is 1.146037501992223339
+    /// @dev WestEth -> Weth at block 18_579_296 is 1.146037777780535053
     function test_GetSpotPrice_WstEthWeth() external {
         mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
 
         (uint256 price,) = mavOracle.getSpotPrice(WSTETH_MAINNET, MAV_WSTETH_WETH_POOL, WETH_MAINNET);
 
-        assertEq(price, 1_146_037_501_992_223_339);
+        assertEq(price, 1_146_037_777_780_535_053);
     }
 
-    /// @dev Weth -> WestEth at block 18_579_296 is 0.872571401184986273
+    /// @dev Weth -> WestEth at block 18_579_296 is 0.872571584407596759
     function test_GetSpotPrice_WethWstEth() external {
         mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
 
         (uint256 price,) = mavOracle.getSpotPrice(WETH_MAINNET, MAV_WSTETH_WETH_POOL, WSTETH_MAINNET);
 
-        assertEq(price, 872_571_401_184_986_273);
+        assertEq(price, 872_571_584_407_596_759);
     }
 
     function test_GetSpotPrice_ReturnActualQuoteToken() external {
@@ -177,11 +177,11 @@ contract GetSafeSpotPriceInfo is MavEthOracleTest {
         assertEq(totalLPSupply, 1_583_228_439_277_980_125_577);
         assertEq(reserves[0].token, WSTETH_MAINNET);
         assertEq(reserves[0].reserveAmount, 1_219_492_263_128_448_752_227);
-        assertEq(reserves[0].rawSpotPrice, 1_146_037_501_992_223_339);
+        assertEq(reserves[0].rawSpotPrice, 1_146_037_777_780_535_053);
         assertEq(reserves[0].actualQuoteToken, WETH_MAINNET);
         assertEq(reserves[1].token, WETH_MAINNET);
         assertEq(reserves[1].reserveAmount, 649_912_488_471_763_583_072);
-        assertEq(reserves[1].rawSpotPrice, 872_571_401_184_986_273);
+        assertEq(reserves[1].rawSpotPrice, 872_571_584_407_596_759);
         assertEq(reserves[1].actualQuoteToken, WSTETH_MAINNET);
     }
 

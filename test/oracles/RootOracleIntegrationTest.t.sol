@@ -97,7 +97,9 @@ import {
     OSETH_RS_FEED_MAINNET,
     EZETH_RS_FEED_MAINNET,
     SWETH_RS_FEED_MAINNET,
-    RSETH_RS_FEED_MAINNET
+    RSETH_RS_FEED_MAINNET,
+    MAV_WSTETH_WETH_BOOSTED_POS_LATEST,
+    MAV_WSTETH_WETH_POOL
 } from "../utils/Addresses.sol";
 
 import { SystemRegistry } from "src/SystemRegistry.sol";
@@ -264,7 +266,7 @@ contract RootOracleIntegrationTest is Test {
         priceOracle.registerMapping(CBETH_ETH_V2_POOL_LP, IPriceOracle(address(curveCryptoOracle)));
 
         // Mav
-        priceOracle.registerMapping(WSTETH_WETH_MAV, IPriceOracle(address(mavEthOracle)));
+        priceOracle.registerPoolMapping(MAV_WSTETH_WETH_POOL, mavEthOracle);
 
         // Eth 1:1 setup
         priceOracle.registerMapping(WETH9_ADDRESS, IPriceOracle(address(ethPegOracle)));
@@ -1030,6 +1032,16 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
         calculatedPrice = uint256(2_082_488_694_887_636_300);
         (spot, safe, isSafe) = priceOracle.getRangePricesLP(CBETH_ETH_V2_POOL_LP, CBETH_ETH_V2_POOL, WETH_MAINNET);
         _verifySafePriceByPercentTolerance(calculatedPrice, safe, spot, 2, isSafe);
+    }
+
+    function test_MavPools() external {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 19_631_603);
+
+        uint256 calculatedPrice = 10_596_113_953_715_642_461;
+        (uint256 spotPrice, uint256 safePrice, bool isSpotSafe) =
+            priceOracle.getRangePricesLP(MAV_WSTETH_WETH_BOOSTED_POS_LATEST, MAV_WSTETH_WETH_POOL, WETH9_ADDRESS);
+
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
     }
 }
 

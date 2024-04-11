@@ -309,17 +309,18 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
 
         // Swap only if the sellToken is different than the vault rewardToken
         if (fromToken != params.buyTokenAddress) {
+            // Use the price oracle to ensure we swapped at a fair price
+            // Retrieve prices before the swap to ensure accuracy unaffected by market changes.
+            IRootPriceOracle oracle = systemRegistry.rootPriceOracle();
+            uint256 sellTokenPrice = oracle.getPriceInEth(fromToken);
+            uint256 buyTokenPrice = oracle.getPriceInEth(params.buyTokenAddress);
+
             // the swapper checks that the amount received is greater or equal than the params.buyAmount
             bytes memory data = asyncSwapper.functionDelegateCall(
                 abi.encodeWithSelector(IAsyncSwapper.swap.selector, params), "SwapFailed"
             );
 
             amountReceived = abi.decode(data, (uint256));
-
-            // Use the price oracle to ensure we swapped at a fair price
-            IRootPriceOracle oracle = systemRegistry.rootPriceOracle();
-            uint256 sellTokenPrice = oracle.getPriceInEth(fromToken);
-            uint256 buyTokenPrice = oracle.getPriceInEth(params.buyTokenAddress);
 
             // Expected buy amount from Price Oracle
             uint256 expectedBuyAmount = (params.sellAmount * sellTokenPrice) / buyTokenPrice;

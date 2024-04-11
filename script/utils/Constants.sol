@@ -37,13 +37,11 @@ library Constants {
         address destinationTemplateRegistry;
         address destinationVaultFactory;
         address swapRouter;
-        address customSetOracle;
         address lens;
         address systemSecurity;
         address statsCalcRegistry;
         address statsCalcFactory;
         address curveResolver;
-        address chainlinkOracle;
         address rootPriceOracle;
         SystemOracles subOracles;
     }
@@ -57,6 +55,7 @@ library Constants {
         address balancerComp;
         address wstEth;
         address redStone;
+        address customSet;
     }
 
     struct External {
@@ -123,13 +122,11 @@ library Constants {
                 destinationTemplateRegistry: address(registry.destinationTemplateRegistry()),
                 destinationVaultFactory: address(registry.destinationVaultRegistry().factory()),
                 swapRouter: address(registry.swapRouter()),
-                customSetOracle: 0x8A1de606ceF7Df46E577e9e1C3c6B45712Ce65d1,
                 lens: 0xbE87fb643fF79B427C42baCf5D49DC743Cc8bF3a,
                 systemSecurity: address(registry.systemSecurity()),
                 statsCalcRegistry: address(0),
                 statsCalcFactory: address(0),
                 curveResolver: address(0),
-                chainlinkOracle: address(0),
                 rootPriceOracle: address(0),
                 subOracles: SystemOracles({
                     chainlink: address(0),
@@ -139,7 +136,8 @@ library Constants {
                     balancerMeta: address(0),
                     balancerComp: address(0),
                     redStone: address(0),
-                    wstEth: address(0)
+                    wstEth: address(0),
+                    customSet: address(0)
                 })
             }),
             ext: External({
@@ -184,14 +182,12 @@ library Constants {
                 destinationTemplateRegistry: 0x44e02280bbc2A1a1214C4959747F2EC2D9cFf237,
                 destinationVaultFactory: 0xbefd2500435bC49107aE54Ac8ea0716b989313a1,
                 swapRouter: address(0),
-                customSetOracle: address(0),
                 lens: address(0),
                 systemSecurity: 0x5e72DE713a4782563E4E6bA39D28699F0E053d66,
                 statsCalcRegistry: 0x257b2A2179Cf0586da51d9856463fe5dF9E6e5F9,
                 statsCalcFactory: 0x6AF0984Ca9E707a4dc3F22266eCF37515E47ec3c,
                 curveResolver: 0x118871DA329cFC4b45219BE37dFc2a5C27e469DF,
-                chainlinkOracle: 0x70975337525D8D4Cae2deb3Ec896e7f4b9fAaB72,
-                rootPriceOracle: 0xcAC23b64ab47391646553e94399f4c35BAEa1a10,
+                rootPriceOracle: 0x3b3188c10cb9E2d3A331a4EfAD05B70bdEA1b08e,
                 subOracles: SystemOracles({
                     chainlink: 0x70975337525D8D4Cae2deb3Ec896e7f4b9fAaB72,
                     ethPegged: 0x58374B8fF79f4C40Fb66e7ca8B13A08992125821,
@@ -200,7 +196,8 @@ library Constants {
                     balancerMeta: 0xFC9c5417299851829FA512bDB7e0d18aC3b35184,
                     balancerComp: 0x2BB64D96B0DCfaB7826D11707AAE3F55409d8E19,
                     wstEth: 0xA93F316ef40848AeaFCd23485b6044E7027b5890,
-                    redStone: 0x9E16879c6F4415Ce5EBE21816C51F476AEEc49bE
+                    redStone: 0x9E16879c6F4415Ce5EBE21816C51F476AEEc49bE,
+                    customSet: 0x58e161B002034f1F94858613Da0967EB985EB3D0
                 })
             }),
             ext: External({

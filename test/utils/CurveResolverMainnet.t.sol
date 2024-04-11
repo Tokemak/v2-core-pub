@@ -9,13 +9,43 @@ import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
 
 contract CurveResolverMainnetTests is Test {
-    CurveResolverMainnet private resolver;
+    CurveResolverMainnet internal resolver;
 
-    function setUp() public {
-        uint256 mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), 19_600_440);
+    function _setUp(uint256 blockNumber) internal {
+        uint256 mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), blockNumber);
         vm.selectFork(mainnetFork);
 
         resolver = new CurveResolverMainnet(ICurveMetaRegistry(0xF98B45FA17DE75FB1aD0e7aFD971b0ca00e379fC));
+    }
+
+    function assertPool(
+        address pool,
+        address[] memory expectedTokens,
+        uint256 expectedNumTokens,
+        address expectedLP,
+        bool expectedIsStableSwap
+    ) internal {
+        (address[8] memory tokens, uint256 numTokens, bool isStableSwap) = resolver.resolve(pool);
+        (address[8] memory wlpTokens, uint256 wlNumTokens, address lpToken, bool wlpIsStableSwap) =
+            resolver.resolveWithLpToken(pool);
+
+        for (uint256 i = 0; i < 8; i++) {
+            assertEq(tokens[i], expectedTokens[i], "token");
+            assertEq(wlpTokens[i], expectedTokens[i], "token");
+            expectedTokens[i] = address(0); // Reset
+        }
+
+        assertEq(expectedNumTokens, numTokens, "numTokens");
+        assertEq(expectedNumTokens, wlNumTokens, "wlNumTokens");
+        assertEq(expectedIsStableSwap, isStableSwap, "isStableSwap");
+        assertEq(expectedIsStableSwap, wlpIsStableSwap, "wlpIsStableSwap");
+        assertEq(expectedLP, lpToken, "lpToken");
+    }
+}
+
+contract CurveResolverMainnetTestsStandard is CurveResolverMainnetTests {
+    function setUp() public {
+        _setUp(19_600_440);
     }
 
     function testStableSwapMetaBase() public {
@@ -159,28 +189,93 @@ contract CurveResolverMainnetTests is Test {
     function test_getReservesInfo_ReturnsData() public view {
         resolver.getReservesInfo(0x21E27a5E5513D6e65C4f830167390997aA84843a);
     }
+}
 
-    function assertPool(
-        address pool,
-        address[] memory expectedTokens,
-        uint256 expectedNumTokens,
-        address expectedLP,
-        bool expectedIsStableSwap
-    ) internal {
-        (address[8] memory tokens, uint256 numTokens, bool isStableSwap) = resolver.resolve(pool);
-        (address[8] memory wlpTokens, uint256 wlNumTokens, address lpToken, bool wlpIsStableSwap) =
-            resolver.resolveWithLpToken(pool);
+/// @notice For tokens that don't resolve through the meta-registry
+contract CurveResolverMainnetTestsCustom is CurveResolverMainnetTests {
+    function setUp() public {
+        _setUp(19_634_653);
+    }
 
-        for (uint256 i = 0; i < 8; i++) {
-            assertEq(tokens[i], expectedTokens[i], "token");
-            assertEq(wlpTokens[i], expectedTokens[i], "token");
-            expectedTokens[i] = address(0); // Reset
-        }
+    function test_resolve_ReturnsDataForStableNGFactory() public {
+        address[] memory et = new address[](8);
 
-        assertEq(expectedNumTokens, numTokens, "numTokens");
-        assertEq(expectedNumTokens, wlNumTokens, "wlNumTokens");
-        assertEq(expectedIsStableSwap, isStableSwap, "isStableSwap");
-        assertEq(expectedIsStableSwap, wlpIsStableSwap, "wlpIsStableSwap");
-        assertEq(expectedLP, lpToken, "lpToken");
+        // osETH/rETH
+        et[0] = 0xf1C9acDc66974dFB6dEcB12aA385b9cD01190E38;
+        et[1] = 0xae78736Cd615f374D3085123A210448E74Fc6393;
+
+        assertPool(0xe080027Bd47353b5D1639772b4a75E9Ed3658A0d, et, 2, 0xe080027Bd47353b5D1639772b4a75E9Ed3658A0d, true);
+    }
+
+    function test_getReservesInfo_ReturnsDataForStableNGFactory() public {
+        uint256[8] memory vals = resolver.getReservesInfo(0xe080027Bd47353b5D1639772b4a75E9Ed3658A0d);
+
+        assertEq(vals[0], 2_402_674_761_662_089_933_557, "c0");
+        assertEq(vals[1], 2_575_467_035_449_654_532_961, "c1");
+        assertEq(vals[2], 0, "c2");
+        assertEq(vals[3], 0, "c3");
+        assertEq(vals[4], 0, "c4");
+        assertEq(vals[5], 0, "c5");
+        assertEq(vals[6], 0, "c6");
+        assertEq(vals[7], 0, "c7");
+    }
+
+    function test_getLpToken_ReturnsDataForLpTokenPath() public {
+        address pool = makeAddr("pool");
+        vm.mockCall(pool, abi.encodeWithSignature("lp_token()"), abi.encode(address(5)));
+
+        address ret = resolver.getLpToken(pool);
+
+        assertEq(ret, address(5), "lp");
+    }
+
+    function test_getLpToken_ReturnsDataForTokenPath() public {
+        address pool = makeAddr("pool");
+        vm.mockCall(pool, abi.encodeWithSignature("token()"), abi.encode(address(5)));
+
+        address ret = resolver.getLpToken(pool);
+
+        assertEq(ret, address(5), "lp");
+    }
+
+    function test_resolve_RevertIf_EOA() public {
+        address pool = makeAddr("pool");
+
+        vm.expectRevert(abi.encodeWithSelector(CurveResolverMainnet.CouldNotResolve.selector, pool));
+        resolver.resolve(pool);
+    }
+
+    function test_resolve_RevertIf_InvalidContract() public {
+        address blank = address(new Blank());
+        vm.expectRevert(abi.encodeWithSelector(CurveResolverMainnet.CouldNotResolve.selector, blank));
+        resolver.resolve(blank);
+    }
+
+    function test_getLpToken_RevertIf_EOA() public {
+        address pool = makeAddr("pool");
+
+        vm.expectRevert(abi.encodeWithSelector(CurveResolverMainnet.CouldNotResolve.selector, pool));
+        resolver.getLpToken(pool);
+    }
+
+    function test_getLpToken_RevertIf_InvalidContract() public {
+        address blank = address(new Blank());
+        vm.expectRevert(abi.encodeWithSelector(CurveResolverMainnet.CouldNotResolve.selector, blank));
+        resolver.getLpToken(blank);
+    }
+
+    function test_getReservesInfo_RevertIf_EOA() public {
+        address pool = makeAddr("pool");
+
+        vm.expectRevert(abi.encodeWithSelector(CurveResolverMainnet.CouldNotResolve.selector, pool));
+        resolver.getReservesInfo(pool);
+    }
+
+    function test_getReservesInfo_RevertIf_InvalidContract() public {
+        address blank = address(new Blank());
+        vm.expectRevert(abi.encodeWithSelector(CurveResolverMainnet.CouldNotResolve.selector, blank));
+        resolver.getReservesInfo(blank);
     }
 }
+
+contract Blank { }

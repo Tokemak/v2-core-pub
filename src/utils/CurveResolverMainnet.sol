@@ -10,6 +10,8 @@ import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegi
 contract CurveResolverMainnet is ICurveResolver {
     ICurveMetaRegistry public immutable curveMetaRegistry;
 
+    error CouldNotResolve(address poolAddress);
+
     constructor(ICurveMetaRegistry _curveMetaRegistry) {
         Errors.verifyNotZero(address(_curveMetaRegistry), "_curveMetaRegistry");
 
@@ -24,17 +26,37 @@ contract CurveResolverMainnet is ICurveResolver {
     {
         Errors.verifyNotZero(poolAddress, "poolAddress");
 
-        tokens = curveMetaRegistry.get_coins(poolAddress);
-        numTokens = curveMetaRegistry.get_n_coins(poolAddress);
+        // If a pool is not showing up in the registry, this will revert
+        try curveMetaRegistry.get_coins(poolAddress) returns (address[8] memory retTokens) {
+            tokens = retTokens;
+            numTokens = curveMetaRegistry.get_n_coins(poolAddress);
+        } catch {
+            // We have to try other means to get the information
+            do {
+                //slither-disable-start low-level-calls,missing-zero-check
+                (bool success, bytes memory retData) =
+                    poolAddress.staticcall(abi.encodeWithSignature("coins(uint256)", numTokens));
+                //slither-disable-end low-level-calls,missing-zero-check
+                if (!success) {
+                    break;
+                }
+                if (retData.length > 0) {
+                    tokens[numTokens] = abi.decode(retData, (address));
+                }
+                if (tokens[numTokens] == address(0)) {
+                    break;
+                }
+                unchecked {
+                    ++numTokens;
+                }
+            } while (true);
+        }
 
-        // Using the presence of a gamma() fn as an indicator of pool type
-        // Zero check for the poolAddress is above
-        // slither-disable-start low-level-calls,missing-zero-check,unchecked-lowlevel
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success,) = poolAddress.staticcall(abi.encodeWithSignature("gamma()"));
-        // slither-disable-end low-level-calls,missing-zero-check,unchecked-lowlevel
+        if (numTokens == 0) {
+            revert CouldNotResolve(poolAddress);
+        }
 
-        isStableSwap = !success;
+        isStableSwap = _isStableSwap(poolAddress);
     }
 
     /// @inheritdoc ICurveResolver
@@ -44,18 +66,79 @@ contract CurveResolverMainnet is ICurveResolver {
         returns (address[8] memory tokens, uint256 numTokens, address lpToken, bool isStableSwap)
     {
         (tokens, numTokens, isStableSwap) = resolve(poolAddress);
-
-        lpToken = curveMetaRegistry.get_lp_token(poolAddress);
+        lpToken = getLpToken(poolAddress);
     }
 
     /// @inheritdoc ICurveResolver
-    function getLpToken(address poolAddress) external view returns (address) {
-        return curveMetaRegistry.get_lp_token(poolAddress);
+    function getLpToken(address poolAddress) public view returns (address) {
+        // If a pool is not showing up in the registry, this will revert
+        try curveMetaRegistry.get_lp_token(poolAddress) returns (address lpToken) {
+            return lpToken;
+        } catch {
+            //slither-disable-start low-level-calls,missing-zero-check
+            // We have to try other means to get the information
+            (bool success, bytes memory retData) = poolAddress.staticcall(abi.encodeWithSignature("totalSupply()"));
+            if (success && retData.length > 0) {
+                // If the pool address has a totalSupply() call then pool is lpToken
+                return poolAddress;
+            }
+
+            (success, retData) = poolAddress.staticcall(abi.encodeWithSignature("lp_token()"));
+            if (success && retData.length > 0) {
+                return abi.decode(retData, (address));
+            }
+
+            (success, retData) = poolAddress.staticcall(abi.encodeWithSignature("token()"));
+            if (success && retData.length > 0) {
+                return abi.decode(retData, (address));
+            }
+            //slither-disable-end low-level-calls,missing-zero-check
+        }
+
+        revert CouldNotResolve(poolAddress);
     }
 
     /// @inheritdoc ICurveResolver
-    function getReservesInfo(address poolAddress) external view returns (uint256[8] memory balances) {
+    function getReservesInfo(address poolAddress) external view returns (uint256[8] memory ret) {
         Errors.verifyNotZero(poolAddress, "poolAddress");
-        balances = curveMetaRegistry.get_balances(poolAddress);
+
+        // If a pool is not showing up in the registry, this will revert
+        try curveMetaRegistry.get_balances(poolAddress) returns (uint256[8] memory retBalances) {
+            return retBalances;
+        } catch {
+            // We have to try other means to get the information
+            uint256 i = 0;
+            do {
+                // No newer pools use the balances(int256) interface and we won't be targeting the older ones
+                //slither-disable-start low-level-calls,missing-zero-check
+                (bool success, bytes memory retData) =
+                    poolAddress.staticcall(abi.encodeWithSignature("balances(uint256)", i));
+                //slither-disable-end low-level-calls,missing-zero-check
+                if (success && retData.length > 0) {
+                    ret[i] = abi.decode(retData, (uint256));
+                } else {
+                    break;
+                }
+
+                unchecked {
+                    ++i;
+                }
+            } while (i < 8);
+
+            if (i == 0) {
+                revert CouldNotResolve(poolAddress);
+            }
+        }
+    }
+
+    function _isStableSwap(address pool) private view returns (bool) {
+        // Using the presence of a gamma() fn as an indicator of pool type
+        // Zero check for the poolAddress is above
+        // slither-disable-start low-level-calls,missing-zero-check,unchecked-lowlevel
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success,) = pool.staticcall(abi.encodeWithSignature("gamma()"));
+        // slither-disable-end low-level-calls,missing-zero-check,unchecked-lowlevel
+
+        return !success;
     }
 }

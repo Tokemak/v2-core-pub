@@ -254,7 +254,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         }
 
         // Prevents nav / share inflation attack that can occur with very small amount of vault shares
-        // and assets that are great than shares.
+        // and assets that are greater than shares.
         // slither-disable-next-line unused-return
         AutoPoolToken.zeroAddressTransfer(_tokenData, WETH_INIT_DEPOSIT);
 

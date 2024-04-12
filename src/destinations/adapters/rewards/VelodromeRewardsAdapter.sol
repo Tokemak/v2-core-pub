@@ -6,7 +6,6 @@ pragma solidity 0.8.17;
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { Errors } from "src/utils/Errors.sol";
-import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { RewardAdapter } from "src/destinations/adapters/rewards/RewardAdapter.sol";
 import { IVoter } from "src/interfaces/external/velodrome/IVoter.sol";
 import { IVotingEscrow } from "src/interfaces/external/velodrome/IVotingEscrow.sol";

@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
 import { ILMPVaultRouterBase } from "src/interfaces/vault/ILMPVaultRouterBase.sol";
-import { IAsyncSwapper, SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
+import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 
 /**
  * @title ILMPVaultRouter Interface

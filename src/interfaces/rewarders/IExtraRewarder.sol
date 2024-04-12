@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { IBaseRewarder } from "./IBaseRewarder.sol";
+import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 
 interface IExtraRewarder is IBaseRewarder {
     /**

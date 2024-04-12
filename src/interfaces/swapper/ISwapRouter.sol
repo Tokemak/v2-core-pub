@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { ISyncSwapper } from "./ISyncSwapper.sol";
+import { ISyncSwapper } from "src/interfaces/swapper/ISyncSwapper.sol";
 
 interface ISwapRouter {
     struct SwapData {

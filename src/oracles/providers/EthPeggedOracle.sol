@@ -3,7 +3,6 @@
 
 pragma solidity 0.8.17;
 
-import { Errors } from "src/utils/Errors.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { SystemComponent } from "src/SystemComponent.sol";

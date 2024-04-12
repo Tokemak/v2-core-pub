@@ -7,8 +7,6 @@ import {
     BaseAggregatorV3OracleInformation,
     ISystemRegistry
 } from "src/oracles/providers/base/BaseAggregatorV3OracleInformation.sol";
-import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
-import { Errors } from "src/utils/Errors.sol";
 
 /**
  * @title Gets the value of tokens that Redstone provides a feed for.

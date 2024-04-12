@@ -9,10 +9,8 @@ import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
-import { IBalancerPool } from "src/interfaces/external/balancer/IBalancerPool.sol";
 import { BalancerBeethovenAdapter } from "src/destinations/adapters/BalancerBeethovenAdapter.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 import { BalancerStablePoolCalculatorBase } from "src/stats/calculators/base/BalancerStablePoolCalculatorBase.sol";
 
 /// @title Destination Vault to proxy a Balancer Pool that holds the LP asset

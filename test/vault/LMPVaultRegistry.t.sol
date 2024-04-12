@@ -9,7 +9,6 @@ import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
 import { ILMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
-import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
 import { LMPVault } from "src/vault/LMPVault.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";

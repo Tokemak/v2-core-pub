@@ -11,7 +11,6 @@ import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IDestinationVaultFactory } from "src/interfaces/vault/IDestinationVaultFactory.sol";
-import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 contract DestinationVaultFactory is SystemComponent, IDestinationVaultFactory, SecurityBase {

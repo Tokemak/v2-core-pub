@@ -9,7 +9,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IExtraRewarder } from "src/interfaces/rewarders/IExtraRewarder.sol";
-import { AbstractRewarder } from "./AbstractRewarder.sol";
+import { AbstractRewarder } from "src/rewarders/AbstractRewarder.sol";
 
 import { Errors } from "src/utils/Errors.sol";
 import { Roles } from "src/libs/Roles.sol";

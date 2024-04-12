@@ -7,9 +7,7 @@ import {
     BaseAggregatorV3OracleInformation,
     ISystemRegistry
 } from "src/oracles/providers/base/BaseAggregatorV3OracleInformation.sol";
-import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
 import { IOffchainAggregator } from "src/interfaces/external/chainlink/IOffchainAggregator.sol";
-import { Errors } from "src/utils/Errors.sol";
 
 /**
  * @title Gets the value of tokens that Chainlink provides a feed for.

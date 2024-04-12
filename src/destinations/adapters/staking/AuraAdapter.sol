@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.17;
 
-import { ConvexStaking } from "./ConvexAdapter.sol";
+import { ConvexStaking } from "src/destinations/adapters/staking/ConvexAdapter.sol";
 import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.sol";
 
 /**

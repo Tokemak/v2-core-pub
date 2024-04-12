@@ -4,13 +4,10 @@ pragma solidity 0.8.17;
 
 // solhint-disable func-name-mixedcase
 
-import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
-import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
+import { Test } from "forge-std/Test.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
-import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 import { BalancerLPComposableStableEthOracle } from "src/oracles/providers/BalancerLPComposableStableEthOracle.sol";
 import {
     BAL_VAULT,
@@ -18,14 +15,9 @@ import {
     RETH_MAINNET,
     SFRXETH_MAINNET,
     WSETH_RETH_SFRXETH_BAL_POOL,
-    CBETH_MAINNET,
     UNI_ETH_MAINNET,
     WETH_MAINNET,
-    DAI_MAINNET,
-    USDC_MAINNET,
-    UNI_WETH_POOL,
-    USDT_MAINNET,
-    CBETH_WSTETH_BAL_POOL
+    UNI_WETH_POOL
 } from "test/utils/Addresses.sol";
 
 contract BalancerLPComposableStableEthOracleTests is Test {

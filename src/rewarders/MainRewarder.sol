@@ -12,7 +12,6 @@ import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IExtraRewarder } from "src/interfaces/rewarders/IExtraRewarder.sol";
 import { AbstractRewarder } from "src/rewarders/AbstractRewarder.sol";
 
-import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 
 /**

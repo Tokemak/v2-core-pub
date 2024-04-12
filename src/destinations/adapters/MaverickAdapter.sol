@@ -2,15 +2,9 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import { IERC721Receiver } from "openzeppelin-contracts/token/ERC721/ERC721.sol";
-import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard.sol";
-
-import { IPoolAdapter } from "../../interfaces/destinations/IPoolAdapter.sol";
-import { IPool } from "../../interfaces/external/maverick/IPool.sol";
-import { IPosition } from "../../interfaces/external/maverick/IPosition.sol";
-import { IRouter } from "../../interfaces/external/maverick/IRouter.sol";
-import { LibAdapter } from "../../libs/LibAdapter.sol";
+import { IPool } from "src/interfaces/external/maverick/IPool.sol";
+import { IRouter } from "src/interfaces/external/maverick/IRouter.sol";
+import { LibAdapter } from "src/libs/LibAdapter.sol";
 
 //slither-disable-start similar-names
 library MaverickAdapter {

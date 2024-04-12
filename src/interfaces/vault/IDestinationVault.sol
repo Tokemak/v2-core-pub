@@ -4,9 +4,8 @@ pragma solidity 0.8.17;
 
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { IBaseAssetVault } from "./IBaseAssetVault.sol";
+import { IBaseAssetVault } from "src/interfaces/vault/IBaseAssetVault.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
-import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 
 interface IDestinationVault is IBaseAssetVault, IERC20 {

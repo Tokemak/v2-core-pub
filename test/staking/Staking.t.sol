@@ -3,8 +3,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { IAccToke, AccToke, BaseTest } from "test/BaseTest.t.sol";
-import { WETH_MAINNET } from "test/utils/Addresses.sol";
+import { IAccToke } from "src/interfaces/staking/IAccToke.sol";
+import { BaseTest } from "test/BaseTest.t.sol";
 
 contract StakingTest is BaseTest {
     uint256 private stakeAmount = 1 ether;

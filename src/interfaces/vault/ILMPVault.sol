@@ -3,7 +3,6 @@
 pragma solidity 0.8.17;
 
 import { IERC4626 } from "src/interfaces/vault/IERC4626.sol";
-import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";

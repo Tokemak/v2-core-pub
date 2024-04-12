@@ -4,41 +4,15 @@ pragma solidity 0.8.17;
 
 /* solhint-disable func-name-mixedcase */
 
-import { LMPVault } from "src/vault/LMPVault.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
-import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
-import { SystemRegistry } from "src/SystemRegistry.sol";
-import { WETH9 } from "test/echidna/fuzz/mocks/WETH9.sol";
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
-import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
-import { MockRootOracle } from "test/echidna/fuzz/mocks/MockRootOracle.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
 import { AutoPoolFees } from "src/vault/libs/AutoPoolFees.sol";
-import { DestinationVault } from "src/vault/DestinationVault.sol";
-import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { Numbers } from "test/echidna/fuzz/utils/Numbers.sol";
-import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
-import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
-import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
-import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
-import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { hevm } from "test/echidna/fuzz/utils/Hevm.sol";
-import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
-import {
-    BasePoolSetup,
-    TestingStrategy,
-    TestingAccessController,
-    TestingPool,
-    TestDestinationVault,
-    TestSolver
-} from "test/echidna/fuzz/vault/BaseSetup.sol";
-import { WETH9 } from "test/echidna/fuzz/mocks/WETH9.sol";
+import { BasePoolSetup, TestDestinationVault, TestSolver } from "test/echidna/fuzz/vault/BaseSetup.sol";
 
 import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 

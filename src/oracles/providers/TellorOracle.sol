@@ -6,7 +6,6 @@ pragma solidity 0.8.17;
 import { SafeCast } from "openzeppelin-contracts/utils/math/SafeCast.sol";
 
 import { BaseOracleDenominations, ISystemRegistry } from "src/oracles/providers/base/BaseOracleDenominations.sol";
-import { IEthValueOracle } from "src/interfaces/pricing/IEthValueOracle.sol";
 import { Errors } from "src/utils/Errors.sol";
 
 import { UsingTellor } from "usingtellor/UsingTellor.sol";

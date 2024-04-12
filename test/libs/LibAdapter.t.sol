@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity >=0.8.7;
 
-import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 

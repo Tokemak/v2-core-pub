@@ -1,12 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import { AccessControl } from "openzeppelin-contracts/access/AccessControl.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { Roles } from "src/libs/Roles.sol";
-import { VaultTypes } from "src/vault/VaultTypes.sol";
 
 import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
 import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";

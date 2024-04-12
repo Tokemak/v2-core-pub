@@ -2,9 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity >=0.8.7;
 
-import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
-import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
-import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
+import { Test } from "forge-std/Test.sol";
 import { Arrays } from "src/utils/Arrays.sol";
 
 contract ArraysUtilTests is Test {

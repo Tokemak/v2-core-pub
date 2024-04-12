@@ -30,8 +30,6 @@ import {
     ST_ETH_CURVE_LP_TOKEN_MAINNET,
     STETH_ETH_CURVE_POOL,
     THREE_CURVE_POOL_MAINNET_LP,
-    STETH_ETH_UNIV2,
-    ETH_USDT_UNIV2,
     WETH9_ADDRESS,
     CURVE_ETH,
     THREE_CURVE_MAINNET,
@@ -88,10 +86,6 @@ import {
     WSETH_RETH_SFRXETH_BAL_POOL,
     STETH_WETH_CURVE_POOL_CONCENTRATED,
     STETH_WETH_CURVE_POOL_CONCENTRATED_LP,
-    CURVE_CRYPTO_FACTORY,
-    USDC_WHALE,
-    WETH_WHALE,
-    RETH_WHALE,
     CBETH_ETH_V2_POOL_LP,
     CBETH_ETH_V2_POOL,
     WEETH_MAINNET,
@@ -126,9 +120,6 @@ import { CurveResolverMainnet, ICurveResolver, ICurveMetaRegistry } from "src/ut
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
 
 import { RedstoneOracle } from "src/oracles/providers/RedstoneOracle.sol";
-import { ICurveFactoryV2 } from "src/interfaces/external/curve/ICurveFactoryV2.sol";
-import { ICryptoSwapPool } from "src/interfaces/external/curve/ICryptoSwapPool.sol";
-import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 /**
  * This series of tests compares expected values with contract calculated values for lp token pricing.  Below is a guide

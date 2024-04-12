@@ -5,7 +5,6 @@ pragma solidity >=0.8.17;
 // solhint-disable func-name-mixedcase
 // solhint-disable avoid-low-level-calls
 
-import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
@@ -13,14 +12,12 @@ import { Test } from "forge-std/Test.sol";
 import { DestinationVault } from "src/vault/DestinationVault.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
 import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
-import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { SwapRouter } from "src/swapper/SwapRouter.sol";
 import { BalancerDestinationVault } from "src/vault/BalancerDestinationVault.sol";
@@ -30,7 +27,6 @@ import { BalancerV2Swap } from "src/swapper/adapters/BalancerV2Swap.sol";
 import {
     WETH_MAINNET,
     WSETH_RETH_SFRXETH_BAL_POOL,
-    STETH_MAINNET,
     BAL_VAULT,
     WSTETH_MAINNET,
     WSETH_WETH_BAL_POOL,

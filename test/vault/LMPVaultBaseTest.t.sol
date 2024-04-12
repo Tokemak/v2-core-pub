@@ -6,12 +6,11 @@ pragma solidity 0.8.17;
 
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
-import { IDestinationVault, DestinationVault } from "src/vault/DestinationVault.sol";
-import { ILMPVaultFactory, LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
-import { ILMPVault, LMPVault } from "src/vault/LMPVault.sol";
+import { IDestinationVault } from "src/vault/DestinationVault.sol";
+import { ILMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
+import { LMPVault } from "src/vault/LMPVault.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { Errors, SystemRegistry } from "src/SystemRegistry.sol";

@@ -17,7 +17,6 @@ import { StructuredLinkedList } from "src/strategy/StructuredLinkedList.sol";
 import { WithdrawalQueue } from "src/strategy/WithdrawalQueue.sol";
 import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
-import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import { AutoPoolToken } from "src/vault/libs/AutoPoolToken.sol";
 
 library LMPDebt {

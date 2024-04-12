@@ -6,7 +6,7 @@ pragma solidity 0.8.17;
 // solhint-disable func-name-mixedcase
 
 import { Test } from "forge-std/Test.sol";
-import { TELLOR_ORACLE, RETH_MAINNET, RETH_CL_FEED_MAINNET } from "test/utils/Addresses.sol";
+import { TELLOR_ORACLE } from "test/utils/Addresses.sol";
 
 import { TellorOracle, BaseOracleDenominations, UsingTellor } from "src/oracles/providers/TellorOracle.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";

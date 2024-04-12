@@ -4,7 +4,7 @@ pragma solidity >=0.8.7;
 
 // solhint-disable func-name-mixedcase
 
-import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
 

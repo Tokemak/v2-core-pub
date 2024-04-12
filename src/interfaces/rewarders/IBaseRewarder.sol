@@ -2,8 +2,6 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { IStakeTracking } from "src/interfaces/rewarders/IStakeTracking.sol";
-
 interface IBaseRewarder {
     event RewardAdded(
         uint256 reward,

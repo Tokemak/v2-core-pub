@@ -8,7 +8,6 @@ import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { Stats } from "src/stats/Stats.sol";
-import { SecurityBase } from "src/security/SecurityBase.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 
 abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializable {

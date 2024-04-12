@@ -3,7 +3,6 @@
 pragma solidity 0.8.17;
 
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
 /// @notice Creates and registers Destination Vaults for the system
 interface IDestinationVaultFactory is ISystemComponent {

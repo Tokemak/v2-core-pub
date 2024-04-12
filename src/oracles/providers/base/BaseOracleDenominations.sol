@@ -6,7 +6,6 @@ pragma solidity 0.8.17;
 import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { Ownable } from "openzeppelin-contracts/access/Ownable.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 

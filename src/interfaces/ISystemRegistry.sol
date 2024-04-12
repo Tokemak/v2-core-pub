@@ -5,22 +5,19 @@ pragma solidity 0.8.17;
 
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { IAccToke } from "src/interfaces/staking/IAccToke.sol";
-import { ILMPVaultRegistry } from "./vault/ILMPVaultRegistry.sol";
-import { IAccessController } from "./security/IAccessController.sol";
+import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
+import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
 import { ILMPVaultRouter } from "src/interfaces/vault/ILMPVaultRouter.sol";
 import { ILMPVaultFactory } from "src/interfaces/vault/ILMPVaultFactory.sol";
 import { ISystemSecurity } from "src/interfaces/security/ISystemSecurity.sol";
-import { IDestinationRegistry } from "./destinations/IDestinationRegistry.sol";
-import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
-import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
-import { IDestinationVaultRegistry } from "./vault/IDestinationVaultRegistry.sol";
-import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { IDestinationRegistry } from "src/interfaces/destinations/IDestinationRegistry.sol";
+import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
+import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
+import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { IStatsCalculatorRegistry } from "src/interfaces/stats/IStatsCalculatorRegistry.sol";
 import { IAsyncSwapperRegistry } from "src/interfaces/liquidation/IAsyncSwapperRegistry.sol";
-import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 

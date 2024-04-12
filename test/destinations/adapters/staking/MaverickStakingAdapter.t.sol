@@ -8,7 +8,6 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { IReward } from "src/interfaces/external/maverick/IReward.sol";
 import { MaverickStakingAdapter } from "src/destinations/adapters/staking/MaverickStakingAdapter.sol";
-import { Errors } from "src/utils/Errors.sol";
 
 // solhint-disable func-name-mixedcase
 contract MaverickStakingAdapterTest is Test {

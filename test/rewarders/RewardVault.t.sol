@@ -4,18 +4,16 @@ pragma solidity 0.8.17;
 
 // solhint-disable func-name-mixedcase
 
-import { Test } from "forge-std/Test.sol";
 import { ERC20Mock } from "openzeppelin-contracts/mocks/ERC20Mock.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { DestinationVaultMainRewarder, MainRewarder } from "src/rewarders/DestinationVaultMainRewarder.sol";
 import { ExtraRewarder } from "src/rewarders/ExtraRewarder.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { StakeTrackingMock } from "test/mocks/StakeTrackingMock.sol";
-import { IStakeTracking } from "src/interfaces/rewarders/IStakeTracking.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { BaseTest } from "test/BaseTest.t.sol";
 import { Errors } from "src/utils/Errors.sol";
-import { PRANK_ADDRESS, RANDOM } from "test/utils/Addresses.sol";
+import { RANDOM } from "test/utils/Addresses.sol";
 
 /**
  * @notice This contract is an integration test suite for the MainRewarder.sol and ExtraRewarder.sol contracts.

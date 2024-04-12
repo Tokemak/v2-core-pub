@@ -2,25 +2,12 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { Vm } from "forge-std/Vm.sol";
-import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
-import { IBalancerMetaStablePool } from "src/interfaces/external/balancer/IBalancerMetaStablePool.sol";
 import { BalancerLPMetaStableEthOracle } from "src/oracles/providers/BalancerLPMetaStableEthOracle.sol";
-import {
-    BAL_VAULT,
-    WSTETH_MAINNET,
-    CBETH_MAINNET,
-    RETH_WETH_BAL_POOL,
-    CBETH_WSTETH_BAL_POOL,
-    RETH_MAINNET,
-    WSETH_WETH_BAL_POOL,
-    WETH_MAINNET,
-    WSETH_RETH_SFRXETH_BAL_POOL
-} from "test/utils/Addresses.sol";
+import { BAL_VAULT, WSTETH_MAINNET, CBETH_MAINNET, CBETH_WSTETH_BAL_POOL } from "test/utils/Addresses.sol";
 
 // solhint-disable func-name-mixedcase
 

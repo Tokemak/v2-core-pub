@@ -8,7 +8,6 @@ pragma solidity 0.8.17;
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { Test } from "forge-std/Test.sol";
 import { DestinationVault, IDestinationVault } from "src/vault/DestinationVault.sol";
-import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
@@ -19,7 +18,6 @@ import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
 import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
-import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { SwapRouter } from "src/swapper/SwapRouter.sol";
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
@@ -30,7 +28,6 @@ import { BalancerV2Swap } from "src/swapper/adapters/BalancerV2Swap.sol";
 import {
     WETH_MAINNET,
     WSETH_WETH_BAL_POOL,
-    STETH_MAINNET,
     BAL_VAULT,
     BAL_MAINNET,
     AURA_BOOSTER,

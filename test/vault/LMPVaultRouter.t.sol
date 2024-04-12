@@ -3,22 +3,21 @@
 pragma solidity >=0.8.7;
 
 import { IERC4626 } from "openzeppelin-contracts/interfaces/IERC4626.sol";
-import { IERC20, ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ISelfPermit } from "src/interfaces/utils/ISelfPermit.sol";
 
-import { AccessController } from "src/security/AccessController.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AsyncSwapperRegistry } from "src/liquidation/AsyncSwapperRegistry.sol";
+import { LMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
+import { LMPVaultMainRewarder } from "src/rewarders/LMPVaultMainRewarder.sol";
 
 import { ILMPVault, LMPVault } from "src/vault/LMPVault.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
-import { ILMPVaultFactory, LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
-import { ILMPVaultRouterBase, ILMPVaultRouter } from "src/interfaces/vault/ILMPVaultRouter.sol";
-import { LMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
-import { LMPVaultMainRewarder } from "src/rewarders/LMPVaultMainRewarder.sol";
+import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
+import { ILMPVaultRouterBase } from "src/interfaces/vault/ILMPVaultRouter.sol";
 
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 

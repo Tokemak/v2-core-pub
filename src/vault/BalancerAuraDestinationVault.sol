@@ -11,7 +11,6 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { AuraStaking } from "src/destinations/adapters/staking/AuraAdapter.sol";
 import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.sol";
-import { IBalancerPool } from "src/interfaces/external/balancer/IBalancerPool.sol";
 import { AuraRewards } from "src/destinations/adapters/rewards/AuraRewardsAdapter.sol";
 import { BalancerBeethovenAdapter } from "src/destinations/adapters/BalancerBeethovenAdapter.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";

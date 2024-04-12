@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import { IChildChainStreamer } from "./IChildChainStreamer.sol";
+import { IChildChainStreamer } from "src/interfaces/external/beethoven/IChildChainStreamer.sol";
 
 // solhint-disable func-name-mixedcase
 // slither-disable-start naming-convention

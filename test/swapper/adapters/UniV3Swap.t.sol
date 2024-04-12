@@ -11,14 +11,7 @@ import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { ISyncSwapper } from "src/interfaces/swapper/ISyncSwapper.sol";
 import { UniV3Swap } from "src/swapper/adapters/UniV3Swap.sol";
 
-import {
-    WETH_MAINNET,
-    USDC_MAINNET,
-    RANDOM,
-    DAI_MAINNET,
-    WETH9_ADDRESS,
-    UNIV3_SWAP_ROUTER_MAINNET
-} from "test/utils/Addresses.sol";
+import { USDC_MAINNET, RANDOM, DAI_MAINNET, WETH9_ADDRESS, UNIV3_SWAP_ROUTER_MAINNET } from "test/utils/Addresses.sol";
 
 // solhint-disable func-name-mixedcase
 contract UniV3SwapTest is Test {

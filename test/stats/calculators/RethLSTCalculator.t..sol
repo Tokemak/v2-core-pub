@@ -3,7 +3,6 @@
 pragma solidity 0.8.17;
 
 import { Test } from "forge-std/Test.sol";
-import { StethLSTCalculator } from "src/stats/calculators/StethLSTCalculator.sol";
 import { RethLSTCalculator } from "src/stats/calculators/RethLSTCalculator.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";

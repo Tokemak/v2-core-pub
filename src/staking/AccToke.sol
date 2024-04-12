@@ -8,7 +8,6 @@ import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IE
 import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { ERC20Votes } from "openzeppelin-contracts/token/ERC20/extensions/ERC20Votes.sol";
 import { ERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
-import { Ownable } from "openzeppelin-contracts/access/Ownable.sol";
 import { Pausable } from "openzeppelin-contracts/security/Pausable.sol";
 import { SafeCast } from "openzeppelin-contracts/utils/math/SafeCast.sol";
 

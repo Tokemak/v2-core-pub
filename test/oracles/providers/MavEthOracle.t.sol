@@ -22,11 +22,8 @@ import { MavEthOracle } from "src/oracles/providers/MavEthOracle.sol";
 import { SystemRegistry, ISystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController, IAccessController } from "src/security/AccessController.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
-import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { Errors } from "src/utils/Errors.sol";
-
-import { IPool } from "src/interfaces/external/maverick/IPool.sol";
 
 // solhint-disable func-name-mixedcase
 

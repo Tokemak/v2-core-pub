@@ -2,19 +2,13 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
 import { Test } from "forge-std/Test.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
-import { IAccessController, AccessController } from "src/security/AccessController.sol";
+import { AccessController } from "src/security/AccessController.sol";
 import { FrxBeaconChainBacking } from "src/beacon/FrxBeaconChainBacking.sol";
-import { IBeaconChainBacking } from "src/interfaces/beacon/IBeaconChainBacking.sol";
-import { PRANK_ADDRESS, RANDOM, TOKE_MAINNET, WETH_MAINNET, FRXETH_MAINNET } from "test/utils/Addresses.sol";
-
-import { BaseTest } from "test/BaseTest.t.sol";
+import { WETH_MAINNET, FRXETH_MAINNET } from "test/utils/Addresses.sol";
 
 contract FrxBeaconChainBackingTest is Test {
     AccessController private accessController;

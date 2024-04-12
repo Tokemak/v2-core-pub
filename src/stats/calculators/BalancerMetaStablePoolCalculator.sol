@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 import { BalancerStablePoolCalculatorBase } from "src/stats/calculators/base/BalancerStablePoolCalculatorBase.sol";
 import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 

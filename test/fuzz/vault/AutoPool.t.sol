@@ -5,15 +5,8 @@ pragma solidity 0.8.17;
 // solhint-disable func-name-mixedcase,max-states-count
 
 import { ERC4626Test } from "test/fuzz/vault/ERC4626Test.sol";
-
-import { ERC20Mock } from "openzeppelin-contracts/mocks/ERC20Mock.sol";
-import { ERC4626Mock, IERC20Metadata } from "openzeppelin-contracts/mocks/ERC4626Mock.sol";
 import { BaseTest } from "test/BaseTest.t.sol";
-import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-
-import { ILMPVault, LMPVault } from "src/vault/LMPVault.sol";
-
-import { Roles } from "src/libs/Roles.sol";
+import { LMPVault } from "src/vault/LMPVault.sol";
 import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 

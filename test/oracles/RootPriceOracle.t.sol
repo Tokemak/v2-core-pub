@@ -4,12 +4,10 @@ pragma solidity 0.8.17;
 
 /* solhint-disable func-name-mixedcase */
 
-import { IwstEth } from "src/interfaces/external/lido/IwstEth.sol";
-import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
-import { WstETHEthOracle } from "src/oracles/providers/WstETHEthOracle.sol";
-import { RootPriceOracle, IRootPriceOracle } from "src/oracles/RootPriceOracle.sol";
+import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Errors } from "src/utils/Errors.sol";

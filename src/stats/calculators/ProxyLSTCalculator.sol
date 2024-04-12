@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { Stats } from "src/stats/Stats.sol";
 import { BaseStatsCalculator } from "src/stats/calculators/base/BaseStatsCalculator.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";

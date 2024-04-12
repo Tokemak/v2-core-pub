@@ -2,10 +2,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { Address } from "openzeppelin-contracts/utils/Address.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
-import { IPoolAdapter } from "src/interfaces/destinations/IPoolAdapter.sol";
 import { ICryptoSwapPool, IPool } from "src/interfaces/external/curve/ICryptoSwapPool.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";

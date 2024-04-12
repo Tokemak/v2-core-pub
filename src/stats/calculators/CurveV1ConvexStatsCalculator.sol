@@ -12,7 +12,6 @@ import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.so
 import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 import { BaseStatsCalculator } from "src/stats/calculators/base/BaseStatsCalculator.sol";
 import { IStatsCalculatorRegistry } from "src/interfaces/stats/IStatsCalculatorRegistry.sol";
-import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 
 /// @notice Calculate stats for a Curve pool whose LP is staked in Convex
 contract CurveV1ConvexStatsCalculator is IDexLSTStats, BaseStatsCalculator, Initializable {

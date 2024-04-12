@@ -8,7 +8,6 @@ import { Test } from "forge-std/Test.sol";
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
-import { Stats } from "src/stats/Stats.sol";
 import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.sol";
 import { ConvexCalculator } from "src/stats/calculators/ConvexCalculator.sol";
 import { ITokenWrapper } from "src/interfaces/external/convex/ITokenWrapper.sol";

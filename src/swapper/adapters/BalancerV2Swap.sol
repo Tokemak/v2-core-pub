@@ -7,7 +7,6 @@ import { IERC20, SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/Safe
 import { Errors } from "src/utils/Errors.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
-import { IAsset } from "src/interfaces/external/balancer/IAsset.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { IBasePool } from "src/interfaces/external/balancer/IBasePool.sol";
 import { BaseAdapter, ISyncSwapper } from "src/swapper/adapters/BaseAdapter.sol";

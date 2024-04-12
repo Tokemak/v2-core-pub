@@ -8,11 +8,10 @@ import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { Pausable } from "src/security/Pausable.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
-import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
-import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 
 contract PausableTests is Test {
     SystemRegistry private _systemRegistry;

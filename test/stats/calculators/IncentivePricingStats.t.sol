@@ -7,7 +7,6 @@ import { SystemRegistry } from "src/SystemRegistry.sol";
 import { Strings } from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import { TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
 import { IncentivePricingStats } from "src/stats/calculators/IncentivePricingStats.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";

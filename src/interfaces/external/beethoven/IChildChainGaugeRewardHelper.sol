@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import { IRewardsOnlyGauge } from "./IRewardsOnlyGauge.sol";
+import { IRewardsOnlyGauge } from "src/interfaces/external/beethoven/IRewardsOnlyGauge.sol";
 
 //  solhint-disable max-line-length
 /**

@@ -3,8 +3,6 @@
 
 pragma solidity 0.8.17;
 
-import { Errors } from "src/utils/Errors.sol";
-
 /// @title Copy of OZ's ReentrancyGuard with a read only variant added
 abstract contract NonReentrant {
     uint256 private constant NOT_ENTERED = 1;

@@ -3,7 +3,6 @@
 pragma solidity 0.8.17;
 
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
-import { Context } from "openzeppelin-contracts/utils/Context.sol";
 import { Errors } from "src/utils/Errors.sol";
 
 contract SecurityBase {

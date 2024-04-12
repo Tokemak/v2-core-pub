@@ -16,7 +16,6 @@ import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { BalancerBaseOracle } from "src/oracles/providers/base/BalancerBaseOracle.sol";
 import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 import { Errors } from "src/utils/Errors.sol";
-import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import {
     BAL_VAULT,

@@ -4,19 +4,14 @@ pragma solidity 0.8.17;
 
 // solhint-disable func-name-mixedcase
 
-import { Vm } from "forge-std/Vm.sol";
-import { Roles } from "src/libs/Roles.sol";
-import { Test, StdCheats, StdUtils } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { IstEth } from "src/interfaces/external/lido/IstEth.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
-import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
-import { ICurveV1StableSwap } from "src/interfaces/external/curve/ICurveV1StableSwap.sol";
-import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
 import { CurveV1StableEthOracle } from "src/oracles/providers/CurveV1StableEthOracle.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
@@ -32,7 +27,6 @@ import {
     USDT_MAINNET,
     THREE_CURVE_POOL_MAINNET_LP,
     THREE_CURVE_MAINNET,
-    STETH_STABLESWAP_NG_POOL,
     FRAX_USDC,
     FRAX_USDC_LP,
     FRAX_MAINNET,

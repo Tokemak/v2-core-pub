@@ -4,8 +4,6 @@ pragma solidity 0.8.17;
 
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
-import { SystemComponent } from "src/SystemComponent.sol";
-import { SecurityBase } from "src/security/SecurityBase.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { ISystemSecurity } from "src/interfaces/security/ISystemSecurity.sol";

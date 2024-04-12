@@ -9,7 +9,6 @@ import { ProxyLSTCalculator } from "src/stats/calculators/ProxyLSTCalculator.sol
 import { Roles } from "src/libs/Roles.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
-import { Stats } from "src/stats/Stats.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";

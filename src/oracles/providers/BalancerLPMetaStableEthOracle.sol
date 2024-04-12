@@ -3,13 +3,10 @@
 
 pragma solidity 0.8.17;
 
-import { Errors } from "src/utils/Errors.sol";
 import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
-import { IBalancerMetaStablePool } from "src/interfaces/external/balancer/IBalancerMetaStablePool.sol";
-import { IRateProvider } from "src/interfaces/external/balancer/IRateProvider.sol";
 import { BalancerBaseOracle } from "src/oracles/providers/base/BalancerBaseOracle.sol";
 
 /// @title Price oracle for Balancer Meta Stable pools

@@ -3,9 +3,7 @@
 pragma solidity >=0.8.7;
 
 import { Test } from "forge-std/Test.sol";
-import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
-import { SystemRegistry } from "src/SystemRegistry.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";

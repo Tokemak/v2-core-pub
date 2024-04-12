@@ -4,11 +4,10 @@ pragma solidity 0.8.17;
 
 import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { ISyncSwapper } from "src/interfaces/swapper/ISyncSwapper.sol";
 import { BalancerV2Swap } from "src/swapper/adapters/BalancerV2Swap.sol";
-import { WSTETH_MAINNET, STETH_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
+import { WSTETH_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
 
 // solhint-disable func-name-mixedcase
 contract BalancerV2SwapTest is Test {

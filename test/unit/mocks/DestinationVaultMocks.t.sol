@@ -5,7 +5,6 @@ pragma solidity >=0.8.7;
 // solhint-disable func-name-mixedcase,max-states-count
 
 import { Vm } from "forge-std/Vm.sol";
-import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 
 contract DestinationVaultMocks {
     Vm private vm;

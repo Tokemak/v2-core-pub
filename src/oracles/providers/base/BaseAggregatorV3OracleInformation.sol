@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 
 import { BaseOracleDenominations, ISystemRegistry } from "src/oracles/providers/base/BaseOracleDenominations.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
-import { IOffchainAggregator } from "src/interfaces/external/chainlink/IOffchainAggregator.sol";
 import { Errors } from "src/utils/Errors.sol";
 
 abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {

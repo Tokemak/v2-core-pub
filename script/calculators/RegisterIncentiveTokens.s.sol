@@ -17,9 +17,8 @@ contract RegisterIncentiveTokens is BaseScript {
     function run() external {
         setUp(Systems.LST_GEN1_MAINNET);
 
-        address[] memory tokens = new address[](2);
-        tokens[0] = 0x48C3399719B582dD63eB5AADf12A40B4C3f52FA2;
-        tokens[1] = 0xD33526068D116cE69F19A9ee46F0bd304F21A51f;
+        address[] memory tokens = new address[](1);
+        tokens[0] = 0xba100000625a3754423978a60c9317c58a424e3D;
 
         vm.startBroadcast(vm.envUint(constants.privateKeyEnvVar));
 

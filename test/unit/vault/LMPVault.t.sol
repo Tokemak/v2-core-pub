@@ -35,6 +35,7 @@ import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC315
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 import { VmSafe } from "forge-std/Vm.sol";
+import { TokenReturnSolver } from "test/mocks/TokenReturnSolver.sol";
 
 contract LMPVaultTests is
     Test,
@@ -3535,7 +3536,7 @@ contract FlashRebalanceTests is LMPVaultTests {
             })
         );
 
-        solver = new TokenReturnSolver();
+        solver = new TokenReturnSolver(vm);
     }
 
     function test_IdleAssetsCanRebalanceOut() public {
@@ -3546,7 +3547,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         _depositFor(user, 100e9);
 
         // Setup the solver data to mint us the dv1 underlying for amount
-        bytes memory data = solver.buildDataForDvIn(dv1, 50e9);
+        bytes memory data = solver.buildDataForDvIn(address(dv1), 50e9);
         _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
         vault.flashRebalance(
             solver,
@@ -3573,7 +3574,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         _depositFor(user, 100e9);
 
         // Setup the solver data to mint us the dv1 underlying for amount
-        bytes memory outData = solver.buildDataForDvIn(dv1, 50e9);
+        bytes memory outData = solver.buildDataForDvIn(address(dv1), 50e9);
         _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
         vault.flashRebalance(
             solver,
@@ -3618,7 +3619,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         assertEq(vault.getAssetBreakdown().totalDebtMax, 0, "premax");
 
         // Setup the solver data to mint us the dv1 underlying for amount
-        bytes memory data = solver.buildDataForDvIn(dv1, 50e9);
+        bytes memory data = solver.buildDataForDvIn(address(dv1), 50e9);
         _mockDestVaultRangePricesLP(address(dv1), 0.25e9, 0.75e9, true);
         vault.flashRebalance(
             solver,
@@ -3648,7 +3649,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         // _depositFor(user, 100e9);
 
         // // Setup the solver data to mint us the dv1 underlying for amount
-        // bytes memory data = solver.buildDataForDvIn(dv1, 50e9);
+        // bytes memory data = solver.buildDataForDvIn(address(dv1, 50e9);
         // _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
 
         // VerifyNavOpsInProgress checkSolver = new VerifyNavOpsInProgress();
@@ -3685,7 +3686,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         assertEq(vault.totalAssets(), 100e9, "originalAssets");
 
         // We swap 50 idle for 150 assets at 1:1 value
-        bytes memory data = solver.buildDataForDvIn(dv1, 150e9);
+        bytes memory data = solver.buildDataForDvIn(address(dv1), 150e9);
         _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
         vault.flashRebalance(
             solver,
@@ -3725,7 +3726,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         assertEq(vault.totalAssets(), 100e9, "originalAssets");
 
         // We swap 50 idle for 150 assets at 1:1 value
-        bytes memory data = solver.buildDataForDvIn(dv1, 150e9);
+        bytes memory data = solver.buildDataForDvIn(address(dv1), 150e9);
         _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
         vault.flashRebalance(
             solver,
@@ -3754,7 +3755,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         _depositFor(user, 100e9);
 
         // Setup the solver data to mint us the dv1 underlying for amount
-        bytes memory data = solver.buildDataForDvIn(dv1, 50e9);
+        bytes memory data = solver.buildDataForDvIn(address(dv1), 50e9);
         _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
 
         address dv1Underlyer = address(dv1.underlyer());
@@ -3783,7 +3784,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         _depositFor(user, 100e9);
 
         // Setup the solver data to mint us the dv1 underlying for amount
-        bytes memory outData = solver.buildDataForDvIn(dv1, 50e9);
+        bytes memory outData = solver.buildDataForDvIn(address(dv1), 50e9);
         _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
         vault.flashRebalance(
             solver,
@@ -3832,7 +3833,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         _depositFor(user, 100e9);
 
         // Setup the solver data to mint us the dv1 underlying for amount
-        bytes memory outData = solver.buildDataForDvIn(dv1, 50e9);
+        bytes memory outData = solver.buildDataForDvIn(address(dv1), 50e9);
         _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
         vault.flashRebalance(
             solver,
@@ -3902,7 +3903,7 @@ contract FlashRebalanceTests is LMPVaultTests {
 
         for (uint256 x = 0; x < order.length; x++) {
             // Setup the solver data to mint us the dv1 underlying for amount
-            bytes memory outData = solver.buildDataForDvIn(dvs[order[x]], 1e9);
+            bytes memory outData = solver.buildDataForDvIn(address(dvs[order[x]]), 1e9);
             _mockDestVaultRangePricesLP(address(dvs[order[x]]), 1e9, 1e9, true);
             vault.flashRebalance(
                 solver,
@@ -3940,7 +3941,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         uint256[4] memory order = [uint256(4), 2, 7, 8];
         for (uint256 x = 0; x < order.length; x++) {
             // Setup the solver data to mint us the dv1 underlying for amount
-            bytes memory outData = solver.buildDataForDvIn(dvs[order[x]], 1e9);
+            bytes memory outData = solver.buildDataForDvIn(address(dvs[order[x]]), 1e9);
             _mockDestVaultRangePricesLP(address(dvs[order[x]]), 1e9, 1e9, true);
             vault.flashRebalance(
                 solver,
@@ -3957,7 +3958,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         }
 
         // Swap out of 2 and into 5
-        bytes memory xData = solver.buildDataForDvIn(dvs[5], 1e9);
+        bytes memory xData = solver.buildDataForDvIn(address(dvs[5]), 1e9);
         _mockDestVaultRangePricesLP(address(dvs[5]), 1e9, 1e9, true);
         vault.flashRebalance(
             solver,
@@ -3989,7 +3990,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         uint256[4] memory order = [uint256(4), 2, 7, 8];
         for (uint256 x = 0; x < order.length; x++) {
             // Setup the solver data to mint us the dv1 underlying for amount
-            bytes memory outData = solver.buildDataForDvIn(dvs[order[x]], 1e9);
+            bytes memory outData = solver.buildDataForDvIn(address(dvs[order[x]]), 1e9);
             _mockDestVaultRangePricesLP(address(dvs[order[x]]), 1e9, 1e9, true);
             vault.flashRebalance(
                 solver,
@@ -4006,7 +4007,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         }
 
         // Swap out of 2 and into 5
-        bytes memory xData = solver.buildDataForDvIn(dvs[5], 1e9);
+        bytes memory xData = solver.buildDataForDvIn(address(dvs[5]), 1e9);
         _mockDestVaultRangePricesLP(address(dvs[5]), 1e9, 1e9, true);
         vault.flashRebalance(
             solver,
@@ -4037,7 +4038,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         // Fill in a bunch of destinations
         for (uint256 x = 0; x < dvs.length - 1; x++) {
             // Setup the solver data to mint us the dv1 underlying for amount
-            bytes memory outData = solver.buildDataForDvIn(dvs[x], 1e9);
+            bytes memory outData = solver.buildDataForDvIn(address(dvs[x]), 1e9);
             _mockDestVaultRangePricesLP(address(dvs[x]), 1e9, 1e9, true);
             vault.flashRebalance(
                 solver,
@@ -4054,7 +4055,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         }
 
         // Swap out of 2 and into 5
-        bytes memory xData = solver.buildDataForDvIn(dvs[48], 1e9);
+        bytes memory xData = solver.buildDataForDvIn(address(dvs[48]), 1e9);
         _mockDestVaultRangePricesLP(address(dvs[48]), 1e9, 1e9, true);
         address inUnderlyer = address(dvs[48].underlyer());
         address baseAsset = address(vault.asset());
@@ -4082,7 +4083,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         _depositFor(user, 100e9);
 
         // Setup the solver data to mint us the dv1 underlying for amount
-        bytes memory outData = solver.buildDataForDvIn(dv1, 50e9);
+        bytes memory outData = solver.buildDataForDvIn(address(dv1), 50e9);
         _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
         vault.flashRebalance(
             solver,
@@ -4114,7 +4115,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         );
 
         // DV to DV
-        outData = solver.buildDataForDvIn(dv1, 50e9);
+        outData = solver.buildDataForDvIn(address(dv1), 50e9);
         _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
         address dv1Underlyer = address(dv1.underlyer());
 
@@ -4544,7 +4545,7 @@ contract PreviewTests is FlashRebalanceTests {
         assertEq(vault.convertToShares(1e9), 1e9, "originalNavShare");
 
         // We swap 50 idle for 150 assets at 1:1 value
-        bytes memory data = solver.buildDataForDvIn(dv1, 150e9);
+        bytes memory data = solver.buildDataForDvIn(address(dv1), 150e9);
         _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
         vault.flashRebalance(
             solver,
@@ -4593,6 +4594,10 @@ contract DestinationVaultFake {
     constructor(TestERC20 _underlyer, TestERC20 _baseAsset) {
         underlyer = _underlyer;
         baseAsset = _baseAsset;
+    }
+
+    function underlying() external view returns (address) {
+        return address(underlyer);
     }
 
     function decimals() external view returns (uint8) {
@@ -4856,26 +4861,6 @@ contract FeeAndProfitTestVault is TestLMPVault {
 
             return currentTotalSupply + shares;
         }
-    }
-}
-
-contract TokenReturnSolver is IERC3156FlashBorrower {
-    constructor() { }
-
-    function buildDataForDvIn(DestinationVaultFake dv, uint256 returnAmount) public view returns (bytes memory) {
-        return abi.encode(returnAmount, dv.underlyer());
-    }
-
-    function buildForIdleIn(LMPVault vault, uint256 returnAmount) public view returns (bytes memory) {
-        return abi.encode(returnAmount, vault.asset());
-    }
-
-    function onFlashLoan(address, address, uint256, uint256, bytes memory data) external returns (bytes32) {
-        (uint256 ret, address token) = abi.decode(data, (uint256, address));
-
-        TestERC20(token).mint(msg.sender, ret);
-
-        return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 }
 

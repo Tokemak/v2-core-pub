@@ -15,16 +15,26 @@ import { CurveV1StableSwap } from "src/swapper/adapters/CurveV1StableSwap.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { SwapRouter } from "src/swapper/SwapRouter.sol";
 import { STETH_MAINNET } from "test/utils/Addresses.sol";
+import { DestinationVault } from "src/vault/DestinationVault.sol";
+import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
+import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { TokenReturnSolver } from "test/mocks/TokenReturnSolver.sol";
+import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 
-contract LiquidationRowTest is Test {
-    address public constant V2_DEPLOYER = 0xA6364F394616DD9238B284CfF97Cd7146C57808D;
-    address public constant SYSTEM_REGISTRY = 0x0406d2D96871f798fcf54d5969F69F55F803eEA4;
+contract AutoPoolTests is Test {
+    address internal constant V2_DEPLOYER = 0xA6364F394616DD9238B284CfF97Cd7146C57808D;
+    address internal constant SYSTEM_REGISTRY = 0x0406d2D96871f798fcf54d5969F69F55F803eEA4;
 
+    function _setUp(uint256 blockNumber) internal {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), blockNumber);
+    }
+}
+
+contract RedeemTests is AutoPoolTests {
     SystemRegistry internal _systemRegistry;
 
     function setUp() public virtual {
-        uint256 forkId = vm.createFork(vm.envString("MAINNET_RPC_URL"), 19_386_214);
-        vm.selectFork(forkId);
+        _setUp(19_386_214);
 
         vm.startPrank(V2_DEPLOYER);
 
@@ -66,6 +76,60 @@ contract LiquidationRowTest is Test {
 
         assertEq(assets, 15.479430294412169634e18, "receivedAssets");
 
+        vm.stopPrank();
+    }
+}
+
+contract ShutdownDestination is AutoPoolTests {
+    LMPVault internal _pool;
+    SystemRegistry internal _systemRegistry;
+
+    function setUp() public {
+        _setUp(19_640_105);
+        _pool = LMPVault(0x57FA6bb127a428Fe268104AB4d170fe4a99B73B6);
+        _systemRegistry = SystemRegistry(address(_pool.getSystemRegistry()));
+    }
+
+    function test_DestinationShutdownReleasesAssetsAndCanRemove() public {
+        // stETH/ETH-ng
+        DestinationVault destinationToShutdown = DestinationVault(0xba1a495630a948f0942081924a5682f4f55E3e82);
+        IWETH9 baseAsset = _systemRegistry.weth();
+
+        TokenReturnSolver solver = new TokenReturnSolver(vm);
+
+        // Shutdown Vault
+        vm.startPrank(V2_DEPLOYER);
+        destinationToShutdown.shutdown(IDestinationVault.VaultShutdownStatus.Deprecated);
+        AccessController(address(_systemRegistry.accessController())).grantRole(Roles.SOLVER_ROLE, address(this));
+        vm.stopPrank();
+
+        uint256 amountWethFromRebalance = 26.35e18;
+
+        bytes memory data = solver.buildForIdleIn(_pool, amountWethFromRebalance);
+
+        uint256 previousBalance = baseAsset.balanceOf(address(_pool));
+        uint256 previousIdle = _pool.getAssetBreakdown().totalIdle;
+
+        _pool.flashRebalance(
+            solver,
+            IStrategy.RebalanceParams({
+                destinationOut: address(destinationToShutdown),
+                tokenOut: address(destinationToShutdown.underlying()),
+                amountOut: 25.692933029349164507e18,
+                destinationIn: address(_pool),
+                tokenIn: _pool.asset(),
+                amountIn: amountWethFromRebalance
+            }),
+            data
+        );
+
+        assertEq(baseAsset.balanceOf(address(_pool)), previousBalance + amountWethFromRebalance, "bal");
+        assertEq(_pool.getAssetBreakdown().totalIdle, previousIdle + amountWethFromRebalance, "idle");
+
+        vm.startPrank(V2_DEPLOYER);
+        address[] memory toRemove = new address[](1);
+        toRemove[0] = address(destinationToShutdown);
+        _pool.removeDestinations(toRemove);
         vm.stopPrank();
     }
 }

@@ -29,7 +29,8 @@ contract EncodeCalcAddressForKeeper is BaseScript {
         0xe4b9411eC51FE2D674DE00cA1f44833320e8dEe4,
         0x6171F028c1D06c4ceEDf41Ae61024931281f6DaC,
         0x1406311f198A72CcA5F895141238E6043e4984B6,
-        0xDAb4F9CcbAF39E664B3a4dD3ae9DadFBB176BdDA
+        0xDAb4F9CcbAF39E664B3a4dD3ae9DadFBB176BdDA,
+        0x1D1352D930287C993b2ace1Afb463eC4f5dd0Cc8
     ];
 
     function run() external view {

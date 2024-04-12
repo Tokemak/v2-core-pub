@@ -193,7 +193,7 @@ library Constants {
                     ethPegged: 0x58374B8fF79f4C40Fb66e7ca8B13A08992125821,
                     curveV1: 0xc3fD8f8C544adc02aFF22C31a9aBAd0c3f79a672,
                     curveV2: 0x075c80cd9E8455F94b7Ea6EDB91485F2D974FB9B,
-                    balancerMeta: 0xFC9c5417299851829FA512bDB7e0d18aC3b35184,
+                    balancerMeta: 0xeaD83A1A04f730b428055151710ba38e886b644e,
                     balancerComp: 0x2BB64D96B0DCfaB7826D11707AAE3F55409d8E19,
                     wstEth: 0xA93F316ef40848AeaFCd23485b6044E7027b5890,
                     redStone: 0x9E16879c6F4415Ce5EBE21816C51F476AEEc49bE,

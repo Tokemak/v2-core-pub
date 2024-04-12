@@ -12,11 +12,7 @@ import { AutoPoolFees } from "src/vault/libs/AutoPoolFees.sol";
 import { Numbers } from "test/echidna/fuzz/utils/Numbers.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { hevm } from "test/echidna/fuzz/utils/Hevm.sol";
-import {
-    BasePoolSetup,
-    TestDestinationVault,
-    TestSolver
-} from "test/echidna/fuzz/vault/BaseSetup.sol";
+import { BasePoolSetup, TestDestinationVault, TestSolver } from "test/echidna/fuzz/vault/BaseSetup.sol";
 
 import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 

@@ -716,7 +716,8 @@ contract GetPriceInQuote is RootPriceOracleTests {
  *
  * The test uses protocol-agnostic price oracles (TestSpotPriceOracle and TestPriceOracle) for better control.
  */
-contract CalculateReservesAndPrice is RootPriceOracleTests {
+// solhint-disable-next-line contract-name-camelcase
+contract _calculateReservesAndPrice is RootPriceOracleTests {
     TestSpotPriceOracle internal spotPriceOracle;
     TestPriceOracle internal safePriceOracle;
     address internal pool;

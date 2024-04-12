@@ -15,7 +15,7 @@ import { hevm } from "test/echidna/fuzz/utils/Hevm.sol";
 import { BasePoolSetup } from "test/echidna/fuzz/vault/BaseSetup.sol";
 import { PropertiesAsserts } from "crytic/properties/contracts/util/PropertiesHelper.sol";
 import { ERC2612 } from "test/utils/ERC2612.sol";
-import { TestERC20 } from "test/mocks/TestERC20.sol";
+import { TestWETH9, TestERC20 } from "test/mocks/TestWETH9.sol";
 
 contract TestRouter is LMPVaultRouter {
     using SafeERC20 for IERC20;
@@ -73,9 +73,12 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
     }
 
     constructor() BasePoolSetup() {
-        _vaultAsset = new TestERC20("vaultAsset", "vaultAsset");
+        _vaultAsset = new TestWETH9();
         _vaultAsset.setDecimals(18);
         initializeBaseSetup(address(_vaultAsset));
+
+        _vaultAsset.mint(address(this), 100_000);
+        _vaultAsset.approve(address(_pool), 100_000);
 
         _pool.initialize(address(_strategy), "SYMBOL", "NAME", abi.encode(""));
         _pool.setDisableNavDecreaseCheck(true);

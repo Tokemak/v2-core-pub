@@ -9,7 +9,6 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { DestinationVaultMainRewarder, MainRewarder } from "src/rewarders/DestinationVaultMainRewarder.sol";
 import { ExtraRewarder } from "src/rewarders/ExtraRewarder.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { StakeTrackingMock } from "test/mocks/StakeTrackingMock.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { BaseTest } from "test/BaseTest.t.sol";
 import { Errors } from "src/utils/Errors.sol";
@@ -23,7 +22,7 @@ import { RANDOM } from "test/utils/Addresses.sol";
 contract MainRewarderTest is BaseTest {
     address private operator;
 
-    StakeTrackingMock private stakeTracker;
+    address private stakeTracker;
     address private liquidator;
 
     event TokeLockDurationUpdated(uint256 newDuration);
@@ -59,7 +58,7 @@ contract MainRewarderTest is BaseTest {
 
         deployAccToke();
 
-        stakeTracker = new StakeTrackingMock();
+        stakeTracker = makeAddr("stakeTracker");
 
         // We use mock since this function is called not from owner and
         // SystemRegistry.addRewardToken is not accessible from the ownership perspective
@@ -69,7 +68,7 @@ contract MainRewarderTest is BaseTest {
 
         mainRewardVault = MainRewarder(
             new DestinationVaultMainRewarder(
-                systemRegistry, address(stakeTracker), address(mainReward), newRewardRatio, durationInBlock, true
+                systemRegistry, stakeTracker, address(mainReward), newRewardRatio, durationInBlock, true
             )
         );
 
@@ -131,7 +130,7 @@ contract MainRewarderTest is BaseTest {
     }
 
     function test_getAllRewards() public {
-        vm.prank(address(stakeTracker));
+        vm.prank(stakeTracker);
         mainRewardVault.stake(RANDOM, amount);
 
         vm.roll(block.number + 100);
@@ -169,7 +168,7 @@ contract MainRewarderTest is BaseTest {
         // setup toke rewarder
         MainRewarder tokeRewarder = MainRewarder(
             new DestinationVaultMainRewarder(
-                systemRegistry, address(stakeTracker), address(toke), newRewardRatio, durationInBlock, true
+                systemRegistry, stakeTracker, address(toke), newRewardRatio, durationInBlock, true
             )
         );
         vm.prank(address(operator));
@@ -207,7 +206,7 @@ contract MainRewarderTest is BaseTest {
         vm.stopPrank();
 
         // stake
-        vm.prank(address(stakeTracker));
+        vm.prank(stakeTracker);
         tokeRewarder.stake(RANDOM, amount);
 
         // let some time pass
@@ -241,7 +240,7 @@ contract MainRewarderTest is BaseTest {
     ) private {
         MainRewarder tokeRewarder = MainRewarder(
             new DestinationVaultMainRewarder(
-                systemRegistry, address(stakeTracker), address(toke), newRewardRatio, durationInBlock, true
+                systemRegistry, stakeTracker, address(toke), newRewardRatio, durationInBlock, true
             )
         );
 
@@ -258,7 +257,7 @@ contract MainRewarderTest is BaseTest {
         tokeRewarder.queueNewRewards(amount);
         vm.stopPrank();
 
-        vm.prank(address(stakeTracker));
+        vm.prank(stakeTracker);
         tokeRewarder.stake(RANDOM, amount);
 
         vm.roll(block.number + 100);

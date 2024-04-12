@@ -31,7 +31,10 @@ single_line_statement_blocks = "preserve" # can force either way
 exclude = ['lib/']
 
 [fuzz]
+
+# env FOUNDRY_FUZZ_RUNS=
 runs = 50
+# env FOUNDRY_FUZZ_MAX_TEST_REJECTS=2147483647
 # max_test_rejects = 2147483647
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
 

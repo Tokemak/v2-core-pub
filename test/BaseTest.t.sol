@@ -16,7 +16,6 @@ import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
-import { StakeTrackingMock } from "test/mocks/StakeTrackingMock.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { LMPVaultMainRewarder, MainRewarder } from "src/rewarders/LMPVaultMainRewarder.sol";
 import { LMPVault } from "src/vault/LMPVault.sol";
@@ -158,7 +157,7 @@ contract BaseTest is Test {
     }
 
     function createMainRewarder(address asset, bool allowExtras) public returns (MainRewarder) {
-        return createMainRewarder(asset, address(new StakeTrackingMock()), allowExtras);
+        return createMainRewarder(asset, makeAddr("stakeTracker"), allowExtras);
     }
 
     // solhint-disable-next-line no-unused-vars

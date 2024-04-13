@@ -331,21 +331,22 @@ contract BaseConstructionTests is LMPVaultTests {
 }
 
 contract InitializationTests is LMPVaultTests {
-    LMPVault public initTestVault;
+    address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
+
+    TestLMPVault public initTestVault;
     LMPVault public initTestVaultRestricted;
 
-    error DelegatecallFail();
-    error ValueSharesAmountMismatch(uint256 value, uint256 shares);
+    error ValueSharesMismatch(uint256 value, uint256 shares);
 
     function setUp() public virtual override {
         super.setUp();
 
-        LMPVault initTestVaultTemplate = new LMPVault(systemRegistry, address(vaultAsset), false);
+        TestLMPVault initTestVaultTemplate = new TestLMPVault(systemRegistry, address(vaultAsset));
         LMPVault initTestVaultRestrictedTemplate = new LMPVault(systemRegistry, address(vaultAsset), true);
 
-        initTestVault = LMPVault(Clones.cloneDeterministic(address(initTestVaultTemplate), "salt1"));
+        initTestVault = TestLMPVault(Clones.cloneDeterministic(address(initTestVaultTemplate), "salt1"));
         // solhint-disable-next-line max-line-length
-        initTestVaultRestricted = LMPVault(Clones.cloneDeterministic(address(initTestVaultRestrictedTemplate), "salt1"));
+        initTestVaultRestricted = LMPVault(Clones.cloneDeterministic(address(initTestVaultRestrictedTemplate), "salt2"));
 
         vaultAsset.mint(address(this), WETH_INIT_DEPOSIT);
         vaultAsset.approve(address(initTestVault), WETH_INIT_DEPOSIT);
@@ -383,13 +384,12 @@ contract InitializationTests is LMPVaultTests {
     function test_RestrictedVault_AllowsInitDeposit() public {
         uint256 vaultInitializorAssetAmountBefore = vaultAsset.balanceOf(address(this));
 
-        vm.expectEmit(true, true, false, true);
-        emit Transfer(address(initTestVaultRestricted), address(0), WETH_INIT_DEPOSIT);
         initTestVaultRestricted.initialize(lmpStrategy, "suffix", "prefix", "");
 
-        assertEq(initTestVaultRestricted.balanceOf(address(0)), WETH_INIT_DEPOSIT);
+        assertEq(initTestVaultRestricted.balanceOf(DEAD_ADDRESS), WETH_INIT_DEPOSIT);
         assertEq(initTestVaultRestricted.balanceOf(address(initTestVaultRestricted)), 0);
         assertEq(initTestVaultRestricted.balanceOf(address(this)), 0);
+        assertEq(initTestVaultRestricted.getAssetBreakdown().totalIdle, WETH_INIT_DEPOSIT);
         assertEq(vaultAsset.balanceOf(address(initTestVaultRestricted)), WETH_INIT_DEPOSIT);
         assertEq(vaultAsset.balanceOf(address(this)), vaultInitializorAssetAmountBefore - WETH_INIT_DEPOSIT);
     }
@@ -397,41 +397,25 @@ contract InitializationTests is LMPVaultTests {
     function test_NonRestrictedVault_AllowsInitDeposit() public {
         uint256 vaultInitializorAssetAmountBefore = vaultAsset.balanceOf(address(this));
 
-        vm.expectEmit(true, true, false, true);
-        emit Transfer(address(initTestVault), address(0), WETH_INIT_DEPOSIT);
         initTestVault.initialize(lmpStrategy, "suffix", "prefix", "");
 
-        assertEq(initTestVault.balanceOf(address(0)), WETH_INIT_DEPOSIT);
+        assertEq(initTestVault.balanceOf(DEAD_ADDRESS), WETH_INIT_DEPOSIT);
         assertEq(initTestVault.balanceOf(address(initTestVault)), 0);
         assertEq(initTestVault.balanceOf(address(this)), 0);
+        assertEq(initTestVault.getAssetBreakdown().totalIdle, WETH_INIT_DEPOSIT);
         assertEq(vaultAsset.balanceOf(address(initTestVault)), WETH_INIT_DEPOSIT);
         assertEq(vaultAsset.balanceOf(address(this)), vaultInitializorAssetAmountBefore - WETH_INIT_DEPOSIT);
     }
 
-    function test_zeroAddressTransfer_RevertsWhen_DelegatecallFails() public {
-        // Mocking `transferFrom` call to fail will result in deposit failing, returning false to `zeroAddressTransfer`
-        vm.mockCall(address(vaultAsset), abi.encodeWithSelector(ERC20.transferFrom.selector), abi.encode(false));
-
-        vm.expectRevert(DelegatecallFail.selector);
-        initTestVault.initialize(lmpStrategy, "suffix", "prefix", "");
-    }
-
-    function test_zeroAddressTransfer_RevertsWhen_DelegaecallReturnsNoData() public {
-        // Return empty bytes.
-        vm.mockCall(address(initTestVault), abi.encodeWithSelector(LMPVault.deposit.selector), "");
-
-        vm.expectRevert(DelegatecallFail.selector);
-        initTestVault.initialize(lmpStrategy, "suffix", "prefix", "");
-    }
-
     function test_zeroAddressTransfer_RevertsWhen_IncorrectSharesAmountReturned() public {
-        // Return incorrect amount.
-        vm.mockCall(
-            address(initTestVault), abi.encodeWithSelector(LMPVault.deposit.selector), abi.encode(WETH_INIT_DEPOSIT - 1)
-        );
+        // Set supply, assets to make shares minted not 1:1.
+        initTestVault.setTotalSupply(50_000);
+        initTestVault.setTotalIdle(75_000);
 
         vm.expectRevert(
-            abi.encodeWithSelector(ValueSharesAmountMismatch.selector, WETH_INIT_DEPOSIT, WETH_INIT_DEPOSIT - 1)
+            abi.encodeWithSelector(
+                ValueSharesMismatch.selector, WETH_INIT_DEPOSIT, initTestVault.convertToShares(100_000)
+            )
         );
         initTestVault.initialize(lmpStrategy, "suffix", "prefix", "");
     }
@@ -761,13 +745,8 @@ contract DepositTests is LMPVaultTests {
         vault.setTotalIdle(2 * multiplier + WETH_INIT_DEPOSIT);
         vault.setTotalSupply(WETH_INIT_DEPOSIT + 1);
 
-        console.log(vaultAsset.balanceOf(address(vault)));
-
         // Actually send assets to vault to match idle.
         vaultAsset.mint(address(vault), 2 * multiplier - 1);
-
-        console.log(vault.totalAssets());
-        console.log(vaultAsset.balanceOf(address(vault)));
 
         uint256 totalDeposited = 1 * multiplier;
         uint256 totalWithdrawn = 0;
@@ -800,13 +779,6 @@ contract DepositTests is LMPVaultTests {
         uint256 user2Bal = vault.balanceOf(user2);
         vm.prank(user2);
         uint256 user2Remove = vault.redeem(user2Bal, user2, user2);
-
-        console.log(user1Bal);
-        console.log(user2Bal);
-        console.log(user1TotalDeposited);
-        console.log(user2Deposit);
-        console.log(user1Remove);
-        console.log(user2Remove);
 
         // Balance of both would have been 1 in attack scenario, will be much higher now.
         assertGt(user1Bal, 1);

@@ -51,6 +51,9 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// @notice Amount of weth to be sent to vault on initialization.
     uint256 public constant WETH_INIT_DEPOSIT = 100_000;
 
+    /// @notice Dead address for init share burn.
+    address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
+
     /// =====================================================
     /// Immutable Vars
     /// =====================================================
@@ -247,20 +250,22 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         lmpStrategy = ILMPStrategy(strategy);
 
         // slither-disable-start reentrancy-no-eth
-        // Both factory and autopool need permission to use deposit functionality.
+        // Both factory and dead address need permission to use deposit functionality.
         if (_checkUsers) {
-            toggleAllowedUser(address(this));
+            toggleAllowedUser(DEAD_ADDRESS);
             toggleAllowedUser(factory);
         }
 
-        // Prevents nav / share inflation attack that can occur with very small amount of vault shares
-        // and assets that are greater than shares.
-        // slither-disable-next-line unused-return
-        AutoPoolToken.zeroAddressTransfer(_tokenData, WETH_INIT_DEPOSIT);
+        // Send 100_000 shares to dead address to prevent nav / share inflation attack that can happen
+        // with very small shares and totalAssets amount.
+        uint256 sharesMinted = deposit(WETH_INIT_DEPOSIT, DEAD_ADDRESS);
+
+        // First mint, must be 1:1
+        if (sharesMinted != WETH_INIT_DEPOSIT) revert ValueSharesMismatch(WETH_INIT_DEPOSIT, sharesMinted);
 
         // No reason to continue to have either be allowed user.
         if (_checkUsers) {
-            toggleAllowedUser(address(this));
+            toggleAllowedUser(DEAD_ADDRESS);
             toggleAllowedUser(factory);
         }
         // slither-disable-end reentrancy-no-eth

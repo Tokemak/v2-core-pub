@@ -25,6 +25,7 @@ contract LMPVaultFactoryTest is Test {
     using Clones for address;
 
     uint256 public constant WETH_INIT_DEPOSIT = 100_000;
+    address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     SystemRegistry private _systemRegistry;
     AccessController private _accessController;
@@ -107,14 +108,10 @@ contract LMPVaultFactoryTest is Test {
     }
 
     function test_createVault_CreatesVault_AddsToRegistry_SendsToZeroAddress() public {
-        // Don't have vault address, so don't check topic 1 (address from)
-        vm.expectEmit(false, true, false, true);
-        emit Transfer(makeAddr("PLACEHOLDER_VAULT_ADDRESS"), address(0), WETH_INIT_DEPOSIT);
-
         uint256 vaultCreatorBalanceBefore = address(this).balance;
         uint256 wethContractBalanceBefore = address(_asset).balance;
         uint256 factoryEthBalanceBefore = address(_lmpVaultFactory).balance;
-        uint256 assetBalanceZeroAddressBefore = _asset.balanceOf(address(0));
+        uint256 assetBalanceDeadAddressBefore = _asset.balanceOf(DEAD_ADDRESS);
 
         address newVault = _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
             _stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData
@@ -124,7 +121,7 @@ contract LMPVaultFactoryTest is Test {
         // Balance checks - vault asset
         assertEq(_asset.balanceOf(address(_lmpVaultFactory)), 0);
         assertEq(_asset.balanceOf(address(this)), 0);
-        assertEq(_asset.balanceOf(address(0)), assetBalanceZeroAddressBefore);
+        assertEq(_asset.balanceOf(DEAD_ADDRESS), assetBalanceDeadAddressBefore);
         assertEq(_asset.balanceOf(newVault), WETH_INIT_DEPOSIT);
 
         // Eth
@@ -135,7 +132,7 @@ contract LMPVaultFactoryTest is Test {
         assertEq(factoryEthBalanceBefore, address(_lmpVaultFactory).balance);
 
         // Vault token
-        assertEq(LMPVault(newVault).balanceOf(address(0)), WETH_INIT_DEPOSIT);
+        assertEq(LMPVault(newVault).balanceOf(DEAD_ADDRESS), WETH_INIT_DEPOSIT);
         assertEq(LMPVault(newVault).balanceOf(address(_lmpVaultFactory)), 0);
         assertEq(LMPVault(newVault).balanceOf(address(this)), 0);
         assertEq(LMPVault(newVault).balanceOf(newVault), 0);

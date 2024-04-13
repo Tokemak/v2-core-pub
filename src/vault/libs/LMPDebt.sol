@@ -878,7 +878,6 @@ library LMPDebt {
 
         tokenData.burn(owner, shares);
 
-        // if totalSupply is now 0, reset the high water mark
         uint256 ts = ILMPVault(address(this)).totalSupply();
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);

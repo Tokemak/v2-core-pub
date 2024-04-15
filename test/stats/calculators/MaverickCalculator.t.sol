@@ -2,11 +2,6 @@ pragma solidity 0.8.17;
 
 import { Test } from "forge-std/Test.sol";
 import { MaverickCalculator } from "src/stats/calculators/MaverickCalculator.sol";
-import { SystemRegistry } from "src/SystemRegistry.sol";
-import { AccessController } from "src/security/AccessController.sol";
-import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
-import { Roles } from "src/libs/Roles.sol";
-import { TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IReward } from "src/interfaces/external/maverick/IReward.sol";
 import { IERC20 } from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";

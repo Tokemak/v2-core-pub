@@ -3,26 +3,13 @@
 pragma solidity 0.8.17;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IBalancerPool } from "src/interfaces/external/balancer/IBalancerPool.sol";
 import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
-import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 import { Errors } from "src/utils/Errors.sol";
 
 library BalancerBeethovenAdapter {
-    event DeployLiquidity(
-        uint256[] amountsDeposited,
-        address[] tokens,
-        // 0 - lpMintAmount
-        // 1 - lpShare
-        // 2 - lpTotalSupply
-        uint256[3] lpAmounts,
-        address poolAddress,
-        bytes32 poolId
-    );
-
     event WithdrawLiquidity(
         uint256[] amountsWithdrawn,
         address[] tokens,
@@ -34,19 +21,10 @@ library BalancerBeethovenAdapter {
         bytes32 poolId
     );
 
-    error TokenPoolAssetMismatch();
     error ArraysLengthMismatch();
     error BalanceMustIncrease();
     error NoNonZeroAmountProvided();
     error InvalidBalanceChange();
-
-    enum JoinKind {
-        INIT,
-        EXACT_TOKENS_IN_FOR_BPT_OUT,
-        TOKEN_IN_FOR_EXACT_BPT_OUT,
-        ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
-        ADD_TOKEN
-    }
 
     ///@dev For StablePool and MetaStablePool
     enum ExitKind {
@@ -75,69 +53,6 @@ library BalancerBeethovenAdapter {
         address[] tokens;
         uint256[] amountsOut;
         bytes userData;
-    }
-
-    /**
-     * @notice Deploy liquidity to Balancer or Beethoven pool
-     * @dev Calls into external contract. Should be guarded with
-     * non-reentrant flags in a used contract
-     * @param vault Balancer Vault contract
-     * @param pool Balancer or Beethoven Pool to deploy liquidity to
-     * @param tokens Addresses of tokens to deploy. Should match pool tokens
-     * @param exactTokenAmounts Array of exact amounts of tokens to be deployed
-     * @param minLpMintAmount Min amount of LP tokens to mint on deposit
-     */
-    function addLiquidity(
-        IVault vault,
-        address pool,
-        address[] calldata tokens,
-        uint256[] calldata exactTokenAmounts,
-        uint256 minLpMintAmount
-    ) public {
-        uint256 nTokens = tokens.length;
-        if (nTokens == 0 || nTokens != exactTokenAmounts.length) {
-            revert ArraysLengthMismatch();
-        }
-        Errors.verifyNotZero(address(vault), "vault");
-        Errors.verifyNotZero(pool, "pool");
-        Errors.verifyNotZero(minLpMintAmount, "minLpMintAmount");
-
-        uint256[] memory assetBalancesBefore = new uint256[](nTokens);
-        bytes32 poolId = IBalancerPool(pool).getPoolId();
-
-        // verify that we're passing correct pool tokens
-        _ensureTokenOrderAndApprovals(vault, exactTokenAmounts, tokens, poolId, assetBalancesBefore);
-
-        // record BPT balances before deposit 0 - balance before; 1 - balance after
-        uint256[] memory bptBalances = new uint256[](2);
-        bptBalances[0] = IBalancerPool(pool).balanceOf(address(this));
-
-        vault.joinPool(
-            poolId,
-            address(this), // sender
-            address(this), // recipient of BPT token
-            _getJoinPoolRequest(pool, tokens, exactTokenAmounts, minLpMintAmount)
-        );
-
-        // make sure we received bpt
-        bptBalances[1] = IBalancerPool(pool).balanceOf(address(this));
-        if (bptBalances[1] < bptBalances[0] + minLpMintAmount) {
-            revert BalanceMustIncrease();
-        }
-        // make sure we spent exactly how much we wanted
-        for (uint256 i = 0; i < nTokens; ++i) {
-            //slither-disable-next-line calls-loop
-            uint256 currentBalance = IERC20(tokens[i]).balanceOf(address(this));
-
-            if (currentBalance != assetBalancesBefore[i] - exactTokenAmounts[i]) {
-                // For composable pools it might be a case that we deposit 0 LP tokens and our LP balance increases
-                if (address(tokens[i]) != address(pool)) {
-                    revert InvalidBalanceChange();
-                }
-            }
-        }
-
-        _emitDeploy(exactTokenAmounts, tokens, bptBalances, pool, poolId);
     }
 
     /**
@@ -220,25 +135,6 @@ library BalancerBeethovenAdapter {
         );
     }
 
-    /**
-     * @dev This is a helper function to avoid stack-too-deep-errors
-     */
-    function _emitDeploy(
-        uint256[] calldata exactTokenAmounts,
-        address[] calldata tokens,
-        uint256[] memory bptBalances,
-        address pool,
-        bytes32 poolId
-    ) private {
-        emit DeployLiquidity(
-            exactTokenAmounts,
-            tokens,
-            [bptBalances[1] - bptBalances[0], bptBalances[1], IERC20(pool).totalSupply()],
-            pool,
-            poolId
-        );
-    }
-
     /// @dev Helper method to avoid stack-too-deep-errors
     function _withdraw(IVault vault, WithdrawParams memory params) private returns (uint256[] memory amountsOut) {
         //slither-disable-start reentrancy-events
@@ -318,85 +214,6 @@ library BalancerBeethovenAdapter {
             poolId
         );
         //slither-disable-end reentrancy-events
-    }
-
-    /**
-     * @notice Validate that given tokens are relying to the given pool and approve spend
-     * @dev Separate function to avoid stack-too-deep errors
-     * and combine gas-costly loop operations into single loop
-     * @param amounts Amounts of corresponding tokens to approve
-     * @param poolId Balancer or Beethoven Pool ID
-     * @param assetBalancesBefore Array to record initial token balances
-     */
-    function _ensureTokenOrderAndApprovals(
-        IVault vault,
-        uint256[] calldata amounts,
-        address[] memory tokens,
-        bytes32 poolId,
-        uint256[] memory assetBalancesBefore
-    ) private {
-        // (two part verification: total number checked here, and individual match check below)
-
-        // Partial return values are intentionally ignored. This call provides the most efficient way to get the data.
-        // slither-disable-next-line unused-return
-        (IERC20[] memory poolAssets,,) = vault.getPoolTokens(poolId);
-
-        uint256 nTokens = amounts.length;
-
-        if (poolAssets.length != nTokens) {
-            revert ArraysLengthMismatch();
-        }
-
-        // run through tokens and make sure we have approvals
-        // for at least one non-zero amount (and correct token order)
-        bool hasNonZeroAmount = false;
-        for (uint256 i = 0; i < nTokens; ++i) {
-            uint256 currentAmount = amounts[i];
-            IERC20 currentToken = IERC20(tokens[i]);
-
-            // make sure asset is supported (and matches the pool's assets)
-            if (currentToken != poolAssets[i]) {
-                revert TokenPoolAssetMismatch();
-            }
-            // record previous balance for this asset
-            assetBalancesBefore[i] = currentToken.balanceOf(address(this));
-
-            // grant spending approval to balancer's Vault
-            if (currentAmount != 0) {
-                hasNonZeroAmount = true;
-                LibAdapter._approve(currentToken, address(vault), currentAmount);
-            }
-        }
-        if (!hasNonZeroAmount) {
-            revert NoNonZeroAmountProvided();
-        }
-    }
-
-    /**
-     * @notice Generate request for Balancer's Vault to join the pool
-     * @dev Separate function to avoid stack-too-deep errors
-     * @param tokens Tokens to be deposited into pool
-     * @param amounts Amounts of corresponding tokens to deposit
-     * @param poolAmountOut Expected amount of LP tokens to be minted on deposit
-     */
-    function _getJoinPoolRequest(
-        address pool,
-        address[] memory tokens,
-        uint256[] calldata amounts,
-        uint256 poolAmountOut
-    ) private view returns (IVault.JoinPoolRequest memory joinRequest) {
-        uint256[] memory amountsUser = _getUserAmounts(pool, amounts);
-
-        joinRequest = IVault.JoinPoolRequest({
-            assets: tokens,
-            maxAmountsIn: amounts, // maxAmountsIn,
-            userData: abi.encode(
-                IVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
-                amountsUser, //maxAmountsIn,
-                poolAmountOut
-                ),
-            fromInternalBalance: false
-        });
     }
 
     /**

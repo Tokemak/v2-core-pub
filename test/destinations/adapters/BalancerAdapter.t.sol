@@ -2,15 +2,14 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { Test } from "forge-std/Test.sol";
-
-import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-
 // solhint-disable max-line-length
+
+import { Test } from "forge-std/Test.sol";
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { BalancerBeethovenAdapter } from "src/destinations/adapters/BalancerBeethovenAdapter.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
-import { Errors } from "src/utils/Errors.sol";
 import {
     WETH_MAINNET,
     RETH_MAINNET,
@@ -20,6 +19,8 @@ import {
     WSTETH_ARBITRUM,
     WETH_ARBITRUM
 } from "test/utils/Addresses.sol";
+import { IBalancerPool } from "src/interfaces/external/balancer/IBalancerPool.sol";
+import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 
 contract BalancerAdapterTest is Test {
     uint256 public mainnetFork;
@@ -43,158 +44,6 @@ contract BalancerAdapterTest is Test {
         vault = IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
     }
 
-    function testAddLiquidityRevertOnZeroVault() public {
-        address poolAddress = 0x9c6d47Ff73e0F5E51BE5FD53236e3F595C5793F2;
-
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0.5 * 1e18;
-        amounts[1] = 0.5 * 1e18;
-
-        deal(address(WSTETH_MAINNET), address(this), 2 * 1e18);
-        deal(address(CBETH_MAINNET), address(this), 2 * 1e18);
-
-        uint256 minLpMintAmount = 1;
-
-        address[] memory tokens = new address[](2);
-        tokens[0] = WSTETH_MAINNET;
-        tokens[1] = CBETH_MAINNET;
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "vault"));
-        BalancerBeethovenAdapter.addLiquidity(IVault(address(0)), poolAddress, tokens, amounts, minLpMintAmount);
-    }
-
-    function testAddLiquidityRevertOnZeroPool() public {
-        address poolAddress = address(0);
-
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0.5 * 1e18;
-        amounts[1] = 0.5 * 1e18;
-
-        deal(address(WSTETH_MAINNET), address(this), 2 * 1e18);
-        deal(address(CBETH_MAINNET), address(this), 2 * 1e18);
-
-        uint256 minLpMintAmount = 1;
-
-        address[] memory tokens = new address[](2);
-        tokens[0] = WSTETH_MAINNET;
-        tokens[1] = CBETH_MAINNET;
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "pool"));
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
-    }
-
-    function testAddLiquidityRevertOnZeroAmounts() public {
-        address poolAddress = 0x9c6d47Ff73e0F5E51BE5FD53236e3F595C5793F2;
-
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0;
-        amounts[1] = 0;
-
-        deal(address(WSTETH_MAINNET), address(this), 2 * 1e18);
-        deal(address(CBETH_MAINNET), address(this), 2 * 1e18);
-
-        uint256 minLpMintAmount = 1;
-
-        address[] memory tokens = new address[](2);
-        tokens[0] = WSTETH_MAINNET;
-        tokens[1] = CBETH_MAINNET;
-
-        vm.expectRevert(abi.encodeWithSelector(BalancerBeethovenAdapter.NoNonZeroAmountProvided.selector));
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
-    }
-
-    function testAddLiquidityRevertOnTokenOrderMismatch() public {
-        address poolAddress = 0x9c6d47Ff73e0F5E51BE5FD53236e3F595C5793F2;
-
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0;
-        amounts[1] = 0;
-
-        deal(address(CBETH_MAINNET), address(this), 2 * 1e18);
-        deal(address(WSTETH_MAINNET), address(this), 2 * 1e18);
-
-        uint256 minLpMintAmount = 1;
-
-        address[] memory tokens = new address[](2);
-        tokens[0] = CBETH_MAINNET;
-        tokens[1] = WSTETH_MAINNET;
-
-        vm.expectRevert(abi.encodeWithSelector(BalancerBeethovenAdapter.TokenPoolAssetMismatch.selector));
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
-    }
-
-    function testAddLiquidityRevertOnWrongTokenInput() public {
-        address poolAddress = 0x9c6d47Ff73e0F5E51BE5FD53236e3F595C5793F2;
-
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0;
-        amounts[1] = 0;
-
-        deal(address(WSTETH_MAINNET), address(this), 2 * 1e18);
-        deal(address(RETH_MAINNET), address(this), 2 * 1e18);
-
-        uint256 minLpMintAmount = 1;
-
-        address[] memory tokens = new address[](2);
-        tokens[0] = WSTETH_MAINNET;
-        tokens[1] = RETH_MAINNET;
-
-        vm.expectRevert(abi.encodeWithSelector(BalancerBeethovenAdapter.TokenPoolAssetMismatch.selector));
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
-    }
-
-    function testAddLiquidityRevertOnZeroLpMintAmount() public {
-        address poolAddress = 0x9c6d47Ff73e0F5E51BE5FD53236e3F595C5793F2;
-
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0;
-        amounts[1] = 0;
-
-        deal(address(WSTETH_MAINNET), address(this), 2 * 1e18);
-        deal(address(CBETH_MAINNET), address(this), 2 * 1e18);
-
-        uint256 minLpMintAmount = 0;
-
-        address[] memory tokens = new address[](2);
-        tokens[0] = WSTETH_MAINNET;
-        tokens[1] = CBETH_MAINNET;
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "minLpMintAmount"));
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
-    }
-
-    function testAddLiquidityWstEthCbEth() public {
-        address poolAddress = 0x9c6d47Ff73e0F5E51BE5FD53236e3F595C5793F2;
-        IERC20 lpToken = IERC20(poolAddress);
-
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 0.5 * 1e18;
-        amounts[1] = 0.5 * 1e18;
-
-        deal(address(WSTETH_MAINNET), address(this), 2 * 1e18);
-        deal(address(CBETH_MAINNET), address(this), 2 * 1e18);
-
-        uint256 preBalance1 = IERC20(WSTETH_MAINNET).balanceOf(address(this));
-        uint256 preBalance2 = IERC20(CBETH_MAINNET).balanceOf(address(this));
-        uint256 preLpBalance = lpToken.balanceOf(address(this));
-
-        uint256 minLpMintAmount = 1;
-
-        address[] memory tokens = new address[](2);
-        tokens[0] = WSTETH_MAINNET;
-        tokens[1] = CBETH_MAINNET;
-
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
-
-        uint256 afterBalance1 = IERC20(WSTETH_MAINNET).balanceOf(address(this));
-        uint256 afterBalance2 = IERC20(CBETH_MAINNET).balanceOf(address(this));
-        uint256 afterLpBalance = lpToken.balanceOf(address(this));
-
-        assertEq(afterBalance1, preBalance1 - amounts[0]);
-        assertEq(afterBalance2, preBalance2 - amounts[1]);
-        assert(afterLpBalance > preLpBalance);
-    }
-
     function testRemoveLiquidityWstEthCbEth() public {
         address poolAddress = 0x9c6d47Ff73e0F5E51BE5FD53236e3F595C5793F2;
         IERC20 lpToken = IERC20(poolAddress);
@@ -212,7 +61,7 @@ contract BalancerAdapterTest is Test {
         tokens[0] = WSTETH_MAINNET;
         tokens[1] = CBETH_MAINNET;
 
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
+        _addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
 
         uint256 preBalance1 = IERC20(WSTETH_MAINNET).balanceOf(address(this));
         uint256 preBalance2 = IERC20(CBETH_MAINNET).balanceOf(address(this));
@@ -249,7 +98,7 @@ contract BalancerAdapterTest is Test {
         tokens[0] = WSTETH_MAINNET;
         tokens[1] = CBETH_MAINNET;
 
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
+        _addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
 
         uint256 preBalance1 = IERC20(WSTETH_MAINNET).balanceOf(address(this));
         uint256 preBalance2 = IERC20(CBETH_MAINNET).balanceOf(address(this));
@@ -292,7 +141,7 @@ contract BalancerAdapterTest is Test {
         tokens[0] = WSTETH_MAINNET;
         tokens[1] = WETH_MAINNET;
 
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
+        _addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
 
         uint256 afterBalance1 = IERC20(WSTETH_MAINNET).balanceOf(address(this));
         uint256 afterBalance2 = IERC20(WETH_MAINNET).balanceOf(address(this));
@@ -320,7 +169,7 @@ contract BalancerAdapterTest is Test {
         tokens[0] = WSTETH_MAINNET;
         tokens[1] = WETH_MAINNET;
 
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
+        _addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
 
         uint256 preBalance1 = IERC20(WSTETH_MAINNET).balanceOf(address(this));
         uint256 preBalance2 = IERC20(WETH_MAINNET).balanceOf(address(this));
@@ -358,7 +207,7 @@ contract BalancerAdapterTest is Test {
         tokens[0] = WSTETH_MAINNET;
         tokens[1] = WETH_MAINNET;
 
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
+        _addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
 
         uint256 preBalance1 = IERC20(WSTETH_MAINNET).balanceOf(address(this));
         uint256 preBalance2 = IERC20(WETH_MAINNET).balanceOf(address(this));
@@ -400,7 +249,7 @@ contract BalancerAdapterTest is Test {
         tokens[0] = RETH_MAINNET;
         tokens[1] = WETH_MAINNET;
 
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
+        _addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
 
         uint256 afterBalance1 = IERC20(RETH_MAINNET).balanceOf(address(this));
         uint256 afterBalance2 = IERC20(WETH_MAINNET).balanceOf(address(this));
@@ -428,7 +277,7 @@ contract BalancerAdapterTest is Test {
         tokens[0] = RETH_MAINNET;
         tokens[1] = WETH_MAINNET;
 
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
+        _addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
 
         uint256 preBalance1 = IERC20(RETH_MAINNET).balanceOf(address(this));
         uint256 preBalance2 = IERC20(WETH_MAINNET).balanceOf(address(this));
@@ -465,7 +314,7 @@ contract BalancerAdapterTest is Test {
         tokens[0] = RETH_MAINNET;
         tokens[1] = WETH_MAINNET;
 
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
+        _addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
 
         uint256 preBalance1 = IERC20(RETH_MAINNET).balanceOf(address(this));
         uint256 preBalance2 = IERC20(WETH_MAINNET).balanceOf(address(this));
@@ -514,7 +363,7 @@ contract BalancerAdapterTest is Test {
         tokens[2] = SFRXETH_MAINNET;
         tokens[3] = RETH_MAINNET;
 
-        BalancerBeethovenAdapter.addLiquidity(vault, address(pool), tokens, amounts, minLpMintAmount);
+        _addLiquidity(vault, address(pool), tokens, amounts, minLpMintAmount);
 
         uint256 afterBalance1 = IERC20(WSTETH_MAINNET).balanceOf(address(this));
         uint256 afterBalance2 = IERC20(SFRXETH_MAINNET).balanceOf(address(this));
@@ -550,7 +399,7 @@ contract BalancerAdapterTest is Test {
         tokens[2] = SFRXETH_MAINNET;
         tokens[3] = RETH_MAINNET;
 
-        BalancerBeethovenAdapter.addLiquidity(vault, address(pool), tokens, amounts, minLpMintAmount);
+        _addLiquidity(vault, address(pool), tokens, amounts, minLpMintAmount);
 
         uint256 preBalance1 = IERC20(WSTETH_MAINNET).balanceOf(address(this));
         uint256 preBalance2 = IERC20(SFRXETH_MAINNET).balanceOf(address(this));
@@ -599,7 +448,7 @@ contract BalancerAdapterTest is Test {
         tokens[2] = SFRXETH_MAINNET;
         tokens[3] = RETH_MAINNET;
 
-        BalancerBeethovenAdapter.addLiquidity(vault, address(pool), tokens, amounts, minLpMintAmount);
+        _addLiquidity(vault, address(pool), tokens, amounts, minLpMintAmount);
 
         uint256 preBalance1 = IERC20(WSTETH_MAINNET).balanceOf(address(this));
         uint256 preBalance2 = IERC20(SFRXETH_MAINNET).balanceOf(address(this));
@@ -649,7 +498,7 @@ contract BalancerAdapterTest is Test {
         tokens[0] = WSTETH_ARBITRUM;
         tokens[1] = WETH_ARBITRUM;
 
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
+        _addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
 
         uint256 afterBalance1 = IERC20(WSTETH_ARBITRUM).balanceOf(address(this));
         uint256 afterBalance2 = IERC20(WETH_ARBITRUM).balanceOf(address(this));
@@ -679,7 +528,7 @@ contract BalancerAdapterTest is Test {
         tokens[0] = WSTETH_ARBITRUM;
         tokens[1] = WETH_ARBITRUM;
 
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
+        _addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
 
         uint256 preBalance1 = IERC20(WSTETH_ARBITRUM).balanceOf(address(this));
         uint256 preBalance2 = IERC20(WETH_ARBITRUM).balanceOf(address(this));
@@ -718,7 +567,7 @@ contract BalancerAdapterTest is Test {
         tokens[0] = WSTETH_ARBITRUM;
         tokens[1] = WETH_ARBITRUM;
 
-        BalancerBeethovenAdapter.addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
+        _addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
 
         uint256 preBalance1 = IERC20(WSTETH_ARBITRUM).balanceOf(address(this));
         uint256 preBalance2 = IERC20(WETH_ARBITRUM).balanceOf(address(this));
@@ -737,5 +586,111 @@ contract BalancerAdapterTest is Test {
         assert(afterBalance1 > preBalance1);
         assert(afterBalance2 > preBalance2);
         assert(afterLpBalance < preLpBalance);
+    }
+
+    /**
+     * @notice Deploy liquidity to Balancer or Beethoven pool
+     * @dev Calls into external contract. Should be guarded with
+     * non-reentrant flags in a used contract
+     * @param _vault Balancer Vault contract
+     * @param pool Balancer or Beethoven Pool to deploy liquidity to
+     * @param tokens Addresses of tokens to deploy. Should match pool tokens
+     * @param exactTokenAmounts Array of exact amounts of tokens to be deployed
+     * @param minLpMintAmount Min amount of LP tokens to mint on deposit
+     */
+    function _addLiquidity(
+        IVault _vault,
+        address pool,
+        address[] memory tokens,
+        uint256[] memory exactTokenAmounts,
+        uint256 minLpMintAmount
+    ) private {
+        bytes32 poolId = IBalancerPool(pool).getPoolId();
+
+        // verify that we're passing correct pool tokens
+        _approveTokens(_vault, exactTokenAmounts, tokens);
+
+        // record BPT balances before deposit 0 - balance before; 1 - balance after
+        uint256[] memory bptBalances = new uint256[](2);
+        bptBalances[0] = IBalancerPool(pool).balanceOf(address(this));
+
+        _vault.joinPool(
+            poolId,
+            address(this), // sender
+            address(this), // recipient of BPT token
+            _getJoinPoolRequest(pool, tokens, exactTokenAmounts, minLpMintAmount)
+        );
+    }
+
+    /**
+     * @notice Validate that given tokens are relying to the given pool and approve spend
+     * @dev Separate function to avoid stack-too-deep errors
+     * and combine gas-costly loop operations into single loop
+     * @param amounts Amounts of corresponding tokens to approve
+     */
+    function _approveTokens(IVault _vault, uint256[] memory amounts, address[] memory tokens) private {
+        uint256 nTokens = amounts.length;
+
+        for (uint256 i = 0; i < nTokens; ++i) {
+            uint256 currentAmount = amounts[i];
+            IERC20 currentToken = IERC20(tokens[i]);
+
+            // grant spending approval to balancer's Vault
+            if (currentAmount != 0) {
+                LibAdapter._approve(currentToken, address(_vault), currentAmount);
+            }
+        }
+    }
+
+    /**
+     * @notice Generate request for Balancer's Vault to join the pool
+     * @dev Separate function to avoid stack-too-deep errors
+     * @param tokens Tokens to be deposited into pool
+     * @param amounts Amounts of corresponding tokens to deposit
+     * @param poolAmountOut Expected amount of LP tokens to be minted on deposit
+     */
+    function _getJoinPoolRequest(
+        address pool,
+        address[] memory tokens,
+        uint256[] memory amounts,
+        uint256 poolAmountOut
+    ) private view returns (IVault.JoinPoolRequest memory joinRequest) {
+        uint256[] memory amountsUser = _getUserAmounts(pool, amounts);
+
+        joinRequest = IVault.JoinPoolRequest({
+            assets: tokens,
+            maxAmountsIn: amounts, // maxAmountsIn,
+            userData: abi.encode(
+                IVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+                amountsUser, //maxAmountsIn,
+                poolAmountOut
+                ),
+            fromInternalBalance: false
+        });
+    }
+
+    /**
+     * @notice We should exclude BPT amount from amounts array for userData in ComposablePools
+     * @param pool Balancer or Beethoven pool address
+     * @param amountsOut array of pool token amounts that length-equal with IVault#getPoolTokens array
+     */
+    function _getUserAmounts(
+        address pool,
+        uint256[] memory amountsOut
+    ) private view returns (uint256[] memory amountsUser) {
+        if (BalancerUtilities.isComposablePool(pool)) {
+            uint256 uix = 0;
+            uint256 bptIndex = IBalancerComposableStablePool(pool).getBptIndex();
+            uint256 nTokens = amountsOut.length;
+            amountsUser = new uint256[](nTokens - 1);
+            for (uint256 i = 0; i < nTokens; i++) {
+                if (i != bptIndex) {
+                    amountsUser[uix] = amountsOut[i];
+                    uix++;
+                }
+            }
+        } else {
+            amountsUser = amountsOut;
+        }
     }
 }

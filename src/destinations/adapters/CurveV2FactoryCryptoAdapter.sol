@@ -11,16 +11,6 @@ import { Errors } from "src/utils/Errors.sol";
 
 //slither-disable-start similar-names
 library CurveV2FactoryCryptoAdapter {
-    event DeployLiquidity(
-        uint256[] amountsDeposited,
-        address[] tokens,
-        // 0 - lpMintAmount
-        // 1 - lpShare
-        // 2 - lpTotalSupply
-        uint256[3] lpAmounts,
-        address poolAddress
-    );
-
     event WithdrawLiquidity(
         uint256[] amountsWithdrawn,
         address[] tokens,
@@ -30,63 +20,6 @@ library CurveV2FactoryCryptoAdapter {
         uint256[3] lpAmounts,
         address poolAddress
     );
-
-    /**
-     * @notice Deploy liquidity to Curve pool
-     *  @dev Calls to external contract
-     *  @dev We trust sender to send a true Curve poolAddress.
-     *       If it's not the case it will fail in the remove_liquidity_one_coin part
-     *  @param amounts Amounts of coin to deploy
-     *  @param minLpMintAmount Amount of LP tokens to mint on deposit
-     *  @param poolAddress Curve pool address
-     *  @param lpTokenAddress LP token of the pool to track
-     *  @param weth WETH address on the operating chain
-     *  @param useEth A flag to whether use ETH or WETH for deployment
-     */
-    function addLiquidity(
-        uint256[] calldata amounts,
-        uint256 minLpMintAmount,
-        address poolAddress,
-        address lpTokenAddress,
-        IWETH9 weth,
-        bool useEth
-    ) public {
-        //slither-disable-start reentrancy-events
-        _validateAmounts(amounts);
-        Errors.verifyNotZero(minLpMintAmount, "minLpMintAmount");
-        Errors.verifyNotZero(poolAddress, "poolAddress");
-        Errors.verifyNotZero(lpTokenAddress, "lpTokenAddress");
-        Errors.verifyNotZero(address(weth), "weth");
-
-        uint256 nTokens = amounts.length;
-        address[] memory tokens = new address[](nTokens);
-        uint256[] memory coinsBalancesBefore = new uint256[](nTokens);
-        for (uint256 i = 0; i < nTokens; ++i) {
-            uint256 amount = amounts[i];
-            address coin = ICryptoSwapPool(poolAddress).coins(i);
-            tokens[i] = coin;
-            if (amount > 0 && coin != LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER) {
-                LibAdapter._approve(IERC20(coin), poolAddress, amount);
-            }
-            coinsBalancesBefore[i] = coin == LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER
-                ? address(this).balance
-                : IERC20(coin).balanceOf(address(this));
-        }
-
-        uint256 deployed = _runDeposit(amounts, minLpMintAmount, poolAddress, useEth);
-
-        IERC20 lpToken = IERC20(lpTokenAddress);
-
-        _updateWethAddress(tokens, address(weth));
-
-        emit DeployLiquidity(
-            _compareCoinsBalances(coinsBalancesBefore, _getCoinsBalances(tokens, weth, useEth), amounts, true),
-            tokens,
-            [deployed, lpToken.balanceOf(address(this)), lpToken.totalSupply()],
-            poolAddress
-        );
-        //slither-disable-end reentrancy-events
-    }
 
     /**
      * @notice Withdraw liquidity from Curve pool
@@ -174,22 +107,6 @@ library CurveV2FactoryCryptoAdapter {
         }
     }
 
-    /// @dev Validate to have at least one `amount` > 0 provided and `amounts` is <=4
-    function _validateAmounts(uint256[] memory amounts) internal pure {
-        uint256 nTokens = amounts.length;
-        if (nTokens > 4) {
-            revert Errors.InvalidParam("amounts");
-        }
-        bool nonZeroAmountPresent = false;
-        for (uint256 i = 0; i < nTokens; ++i) {
-            if (amounts[i] != 0) {
-                nonZeroAmountPresent = true;
-                break;
-            }
-        }
-        if (!nonZeroAmountPresent) revert LibAdapter.NoNonZeroAmountProvided();
-    }
-
     /// @dev Gets balances of pool's ERC-20 tokens or ETH
     function _getCoinsBalances(
         address[] memory tokens,
@@ -227,44 +144,6 @@ library CurveV2FactoryCryptoAdapter {
                 revert LibAdapter.InvalidBalanceChange();
             }
             balanceChange[i] = balanceDiff;
-        }
-    }
-
-    function _runDeposit(
-        uint256[] memory amounts,
-        uint256 minLpMintAmount,
-        address poolAddress,
-        bool useEth
-    ) private returns (uint256 deployed) {
-        uint256 nTokens = amounts.length;
-        ICryptoSwapPool pool = ICryptoSwapPool(poolAddress);
-        if (useEth) {
-            // slither-disable-start arbitrary-send-eth
-            if (nTokens == 2) {
-                uint256[2] memory staticParamArray = [amounts[0], amounts[1]];
-                deployed = pool.add_liquidity{ value: amounts[0] }(staticParamArray, minLpMintAmount);
-            } else if (nTokens == 3) {
-                uint256[3] memory staticParamArray = [amounts[0], amounts[1], amounts[2]];
-                deployed = pool.add_liquidity{ value: amounts[0] }(staticParamArray, minLpMintAmount);
-            } else if (nTokens == 4) {
-                uint256[4] memory staticParamArray = [amounts[0], amounts[1], amounts[2], amounts[3]];
-                deployed = pool.add_liquidity{ value: amounts[0] }(staticParamArray, minLpMintAmount);
-            }
-            // slither-disable-end arbitrary-send-eth
-        } else {
-            if (nTokens == 2) {
-                uint256[2] memory staticParamArray = [amounts[0], amounts[1]];
-                deployed = pool.add_liquidity(staticParamArray, minLpMintAmount);
-            } else if (nTokens == 3) {
-                uint256[3] memory staticParamArray = [amounts[0], amounts[1], amounts[2]];
-                deployed = pool.add_liquidity(staticParamArray, minLpMintAmount);
-            } else if (nTokens == 4) {
-                uint256[4] memory staticParamArray = [amounts[0], amounts[1], amounts[2], amounts[3]];
-                deployed = pool.add_liquidity(staticParamArray, minLpMintAmount);
-            }
-        }
-        if (deployed < minLpMintAmount) {
-            revert LibAdapter.MinLpAmountNotReached();
         }
     }
 

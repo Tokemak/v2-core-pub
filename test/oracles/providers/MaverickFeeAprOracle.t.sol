@@ -7,9 +7,7 @@ import { Test } from "forge-std/Test.sol";
 
 import { MaverickFeeAprOracle } from "src/oracles/providers/MaverickFeeAprOracle.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
-import { AccessController, IAccessController } from "src/security/AccessController.sol";
+import { AccessController } from "src/security/AccessController.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { StatsCalculatorRegistry } from "src/stats/StatsCalculatorRegistry.sol";
 import { StatsCalculatorFactory } from "src/stats/StatsCalculatorFactory.sol";

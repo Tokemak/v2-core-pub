@@ -20,8 +20,6 @@ import { AccessController } from "src/security/AccessController.sol";
 import { MaverickFeeAprOracle } from "src/oracles/providers/MaverickFeeAprOracle.sol";
 import { IMaverickFeeAprOracle } from "src/interfaces/oracles/IMaverickFeeAprOracle.sol";
 import { IPoolPositionSlim } from "src/interfaces/external/maverick/IPoolPositionSlim.sol";
-import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
-import { IStatsCalculatorRegistry } from "src/interfaces/stats/IStatsCalculatorRegistry.sol";
 import { Stats } from "src/stats/Stats.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 

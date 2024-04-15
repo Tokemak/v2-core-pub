@@ -16,8 +16,6 @@ import { ICurveV1StableSwap } from "src/interfaces/external/curve/ICurveV1Stable
 import { SystemComponent } from "src/SystemComponent.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 
-import { console } from "forge-std/console.sol";
-
 /// @title Price oracle for Curve StableSwap pools
 /// @dev getPriceEth is not a view fn to support reentrancy checks. Don't actually change state.
 contract CurveV1StableEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {

@@ -883,8 +883,7 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
     /**
      * @notice Tested against multiple v2 pools that we are not using to test validity of approach
      */
-    // TODO: Badger / wbtc,
-    function test_CurveV2Pools1() external {
+    function test_CurveV2Pools() external {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_672_343);
 
         // 1)

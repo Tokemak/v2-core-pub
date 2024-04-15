@@ -5,15 +5,12 @@ pragma solidity 0.8.17;
 // solhint-disable no-console
 // solhint-disable max-states-count
 
-import { console } from "forge-std/console.sol";
-
-import { IBalancerMetaStableFactory } from "script/interfaces/balancer/IBalancerMetaStableFactory.sol";
 import { BaseScript } from "../BaseScript.sol";
+import { console } from "forge-std/console.sol";
 import { Systems } from "../utils/Constants.sol";
-import { ERC20Mock } from "script/contracts/mocks/ERC20Mock.sol";
-import { MockRateProvider, IRateProvider } from "script/contracts/mocks/MockRateProvider.sol";
-
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import { MockRateProvider, IRateProvider } from "script/contracts/mocks/MockRateProvider.sol";
+import { IBalancerMetaStableFactory } from "script/interfaces/balancer/IBalancerMetaStableFactory.sol";
 
 contract BalancerMetaStableGoerli is BaseScript {
     // Tokens

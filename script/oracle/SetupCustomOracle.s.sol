@@ -8,7 +8,7 @@ import { console } from "forge-std/console.sol";
 
 import { BaseScript, Systems, SystemRegistry } from "script/BaseScript.sol";
 import { CustomSetOracle } from "src/oracles/providers/CustomSetOracle.sol";
-import { RootPriceOracle, IPriceOracle } from "src/oracles/RootPriceOracle.sol";
+import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { Roles } from "src/libs/Roles.sol";
 
 /**

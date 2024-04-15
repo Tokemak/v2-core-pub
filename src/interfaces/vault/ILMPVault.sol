@@ -2,12 +2,11 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { IERC4626 } from "src/interfaces/vault/IERC4626.sol";
-import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
-import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
+import { IERC4626 } from "src/interfaces/vault/IERC4626.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
+import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 
 interface ILMPVault is IERC4626, IERC20Permit {

@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-/* solhint-disable func-name-mixedcase,max-states-count,max-line-length,no-console */
+/* solhint-disable func-name-mixedcase,max-states-count,max-line-length,no-console,gas-custom-errors */
 
 import { LMPVault } from "src/vault/LMPVault.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";

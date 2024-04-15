@@ -26,7 +26,6 @@ import { AccToke } from "src/staking/AccToke.sol";
 import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
 import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { Lens } from "src/lens/Lens.sol";
-import { CustomSetOracle } from "src/oracles/providers/CustomSetOracle.sol";
 
 // Libraries
 import { Roles } from "src/libs/Roles.sol";

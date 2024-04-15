@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-/* solhint-disable func-name-mixedcase */
+/* solhint-disable func-name-mixedcase,gas-custom-errors */
 
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";

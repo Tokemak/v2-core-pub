@@ -10,7 +10,6 @@ import { BaseScript, Systems } from "script/BaseScript.sol";
 
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { ISyncSwapper } from "src/interfaces/swapper/ISyncSwapper.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
 /// @dev Sets swap route for tokens on `SwapRouter.sol` contract.
 contract SetSwapRoute is BaseScript {

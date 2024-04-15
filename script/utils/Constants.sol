@@ -2,6 +2,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+/* solhint-disable gas-custom-errors */
+
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
 /// @dev Scripting specific address file.

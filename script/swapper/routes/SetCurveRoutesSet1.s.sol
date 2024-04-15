@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 // solhint-disable no-console
 
 import { BaseScript, Systems } from "script/BaseScript.sol";
-import { console } from "forge-std/console.sol";
 
 import { SwapRouter } from "src/swapper/SwapRouter.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";

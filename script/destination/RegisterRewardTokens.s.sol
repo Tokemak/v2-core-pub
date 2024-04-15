@@ -4,15 +4,8 @@ pragma solidity 0.8.17;
 
 // solhint-disable no-console
 
-import { BaseScript, console } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
-
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
-import { Roles } from "src/libs/Roles.sol";
-
-import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
-import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
-import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
+import { BaseScript, console } from "script/BaseScript.sol";
 
 /**
  * @dev This script is used to register reward tokens in the Tokemak system.

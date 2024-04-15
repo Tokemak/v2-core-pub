@@ -8,7 +8,6 @@ import { BaseScript, console } from "../BaseScript.sol";
 import { Systems } from "../utils/Constants.sol";
 
 import { OsethLSTCalculator } from "src/stats/calculators/OsethLSTCalculator.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { StatsCalculatorFactory } from "src/stats/StatsCalculatorFactory.sol";
 import { StatsCalculatorRegistry } from "src/stats/StatsCalculatorRegistry.sol";
 import { LSTCalculatorBase } from "src/stats/calculators/base/LSTCalculatorBase.sol";

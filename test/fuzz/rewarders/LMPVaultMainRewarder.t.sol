@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved
 pragma solidity 0.8.17;
 
-/* solhint-disable func-name-mixedcase,contract-name-camelcase */
+/* solhint-disable func-name-mixedcase,contract-name-camelcase,gas-custom-errors */
 
 import { Test } from "forge-std/Test.sol";
 import { Strings } from "openzeppelin-contracts/utils/Strings.sol";
@@ -11,8 +11,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { Roles } from "src/libs/Roles.sol";
-import { Errors } from "src/utils/Errors.sol";
-import { RANDOM, WETH_MAINNET, TOKE_MAINNET } from "test/utils/Addresses.sol";
+import { WETH_MAINNET, TOKE_MAINNET } from "test/utils/Addresses.sol";
 import { LMPVaultMainRewarder } from "src/rewarders/LMPVaultMainRewarder.sol";
 
 contract LMPVaultMainRewarderTest is Test {

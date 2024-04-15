@@ -8,17 +8,11 @@ import { console } from "forge-std/console.sol";
 
 import { BaseScript, Systems } from "script/BaseScript.sol";
 
-import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
-import { ISyncSwapper } from "src/interfaces/swapper/ISyncSwapper.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { CurveV1StableEthOracle } from "src/oracles/providers/CurveV1StableEthOracle.sol";
 import { CurveV2CryptoEthOracle } from "src/oracles/providers/CurveV2CryptoEthOracle.sol";
 import { BalancerLPMetaStableEthOracle } from "src/oracles/providers/BalancerLPMetaStableEthOracle.sol";
-import { BalancerLPComposableStableEthOracle } from "src/oracles/providers/BalancerLPComposableStableEthOracle.sol";
-import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
-import { BaseOracleDenominations } from "src/oracles/providers/base/BaseOracleDenominations.sol";
 import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";

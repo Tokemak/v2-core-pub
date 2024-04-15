@@ -2,13 +2,12 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-// solhint-disable no-console,reason-string,state-visibility,max-line-length
+// solhint-disable no-console,reason-string,state-visibility,max-line-length,gas-custom-errors
 
-import { BaseScript, console } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
-
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
-import { LMPVaultFactory, ILMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
+import { BaseScript, console } from "script/BaseScript.sol";
+import { ILMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
 import { LMPStrategyConfig } from "src/strategy/LMPStrategyConfig.sol";
 
 /**

@@ -25,7 +25,7 @@ import { TestERC20 } from "test/mocks/TestERC20.sol";
 contract RootPriceOracleWrapper is RootPriceOracle {
     constructor(SystemRegistry _systemRegistry) RootPriceOracle(_systemRegistry) { }
 
-    function expose_calculateReservesAndPrice(
+    function exposeCalculateReservesAndPrice(
         address pool,
         address lpToken,
         address inQuote,
@@ -716,7 +716,7 @@ contract GetPriceInQuote is RootPriceOracleTests {
  *
  * The test uses protocol-agnostic price oracles (TestSpotPriceOracle and TestPriceOracle) for better control.
  */
-contract _calculateReservesAndPrice is RootPriceOracleTests {
+contract CalculateReservesAndPrice is RootPriceOracleTests {
     TestSpotPriceOracle internal spotPriceOracle;
     TestPriceOracle internal safePriceOracle;
     address internal pool;
@@ -835,9 +835,9 @@ contract _calculateReservesAndPrice is RootPriceOracleTests {
         spotPriceOracle.setSafeSpotPriceInfo(pool, lpToken, weth, 10_000, reserves);
 
         (uint256 totalReserves, uint256 floorPrice, uint256 totalLpSupply) =
-            _rootPriceOracle.expose_calculateReservesAndPrice(pool, lpToken, weth, false);
+            _rootPriceOracle.exposeCalculateReservesAndPrice(pool, lpToken, weth, false);
 
-        (, uint256 ceilPrice,) = _rootPriceOracle.expose_calculateReservesAndPrice(pool, lpToken, weth, true);
+        (, uint256 ceilPrice,) = _rootPriceOracle.exposeCalculateReservesAndPrice(pool, lpToken, weth, true);
 
         // Verify that totalReserves are scaled to 18 decimals
         // 1000 * 1e18 + 500 * 1e6 + 800 * 1e9 = 2300 * 1e18

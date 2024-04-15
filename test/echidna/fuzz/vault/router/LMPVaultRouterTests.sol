@@ -3,22 +3,17 @@
 pragma solidity 0.8.17;
 
 // solhint-disable func-name-mixedcase,max-states-count
+
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
-import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
-
-import { ILMPVault } from "src/vault/LMPVault.sol";
 import { LMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
 import { ISystemRegistry } from "src/vault/LMPVaultRouterBase.sol";
 import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { AsyncSwapperRegistry } from "src/liquidation/AsyncSwapperRegistry.sol";
-
 import { hevm } from "test/echidna/fuzz/utils/Hevm.sol";
 import { BasePoolSetup } from "test/echidna/fuzz/vault/BaseSetup.sol";
 import { PropertiesAsserts } from "crytic/properties/contracts/util/PropertiesHelper.sol";
-
 import { ERC2612 } from "test/utils/ERC2612.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 

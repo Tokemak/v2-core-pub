@@ -4,14 +4,12 @@ pragma solidity 0.8.17;
 
 // solhint-disable no-console
 
+import { Roles } from "src/libs/Roles.sol";
 import { console } from "forge-std/console.sol";
 import { BaseScript } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
-
-import { AsyncSwapperRegistry } from "src/liquidation/AsyncSwapperRegistry.sol";
-import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
-import { Roles } from "src/libs/Roles.sol";
 import { LiquidationRow } from "src/liquidation/LiquidationRow.sol";
+import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 
 contract SetupLiquidation is BaseScript {
     function run() external {

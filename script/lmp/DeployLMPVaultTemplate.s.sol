@@ -4,16 +4,10 @@ pragma solidity 0.8.17;
 
 // solhint-disable no-console
 
-import { BaseScript, console } from "script/BaseScript.sol";
-import { Systems } from "script/utils/Constants.sol";
-
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
-import { Roles } from "src/libs/Roles.sol";
-
-import { LMPVaultRegistry, ILMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
-import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
 import { LMPVault } from "src/vault/LMPVault.sol";
-import { LMPVaultRouter, ILMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
+import { Systems } from "script/utils/Constants.sol";
+import { BaseScript, console } from "script/BaseScript.sol";
+import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
 
 contract LMPSystem is BaseScript {
     // 🚨 Manually set variables below. 🚨

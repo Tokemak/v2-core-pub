@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-/* solhint-disable func-name-mixedcase,max-line-length,const-name-snakecase,no-console */
+/* solhint-disable func-name-mixedcase,max-line-length,const-name-snakecase,no-console,gas-custom-errors */
 
 import { IRewards } from "test/echidna/fuzz/external/convex/Interfaces.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";

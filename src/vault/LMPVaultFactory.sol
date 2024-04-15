@@ -6,7 +6,7 @@ import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSe
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ILMPVaultFactory } from "src/interfaces/vault/ILMPVaultFactory.sol";
 import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
-import { ILMPVault, LMPVault } from "src/vault/LMPVault.sol";
+import { LMPVault } from "src/vault/LMPVault.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { LMPVaultMainRewarder } from "src/rewarders/LMPVaultMainRewarder.sol";

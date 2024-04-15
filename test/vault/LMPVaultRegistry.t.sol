@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-// solhint-disable func-name-mixedcase,max-states-count
+// solhint-disable func-name-mixedcase,max-states-count,one-contract-per-file
 
 import { BaseTest } from "test/BaseTest.t.sol";
 import { Roles } from "src/libs/Roles.sol";

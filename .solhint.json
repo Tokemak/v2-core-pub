@@ -6,6 +6,8 @@
 		"no-empty-blocks": "off",
 		"func-visibility": ["warn", { "ignoreConstructors": true }],
 		"private-vars-leading-underscore": "off",
-		"not-rely-on-time": "off"
+		"not-rely-on-time": "off",
+		"one-contract-per-file": "off",
+		"immutable-vars-naming": "off"
 	}
 }

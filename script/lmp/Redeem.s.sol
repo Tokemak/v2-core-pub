@@ -4,11 +4,9 @@ pragma solidity 0.8.17;
 
 // solhint-disable no-console,no-unused-vars
 
-import { BaseScript, console } from "script/BaseScript.sol";
+import { BaseScript } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
-import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
-import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 
 //solhint-disable no-unused-vars
 contract Deposit is BaseScript {

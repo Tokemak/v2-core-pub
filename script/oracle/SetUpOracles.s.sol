@@ -11,7 +11,6 @@ import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
 
-import { SystemRegistry } from "src/SystemRegistry.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { WstETHEthOracle } from "src/oracles/providers/WstETHEthOracle.sol";
 import { EthPeggedOracle } from "src/oracles/providers/EthPeggedOracle.sol";

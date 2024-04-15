@@ -4,11 +4,9 @@ pragma solidity 0.8.17;
 
 // solhint-disable no-console
 
-import { BaseScript, console } from "../BaseScript.sol";
 import { Systems } from "../utils/Constants.sol";
-
+import { BaseScript, console } from "../BaseScript.sol";
 import { RedstoneOracle } from "src/oracles/providers/RedstoneOracle.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
 contract DeployOsethCalculator is BaseScript {
     bytes32 internal osEthTemplateId = keccak256("oseth");

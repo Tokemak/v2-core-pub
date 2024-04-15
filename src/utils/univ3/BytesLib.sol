@@ -14,8 +14,9 @@
  */
 pragma solidity 0.8.17;
 
+//solhint-disable no-inline-assembly,gas-custom-errors
+
 //slither-disable-start assembly
-//solhint-disable no-inline-assembly
 library BytesLib {
     function slice(bytes memory _bytes, uint256 _start, uint256 _length) internal pure returns (bytes memory) {
         require(_length + 31 >= _length, "slice_overflow");

@@ -4,12 +4,9 @@ pragma solidity 0.8.17;
 
 // solhint-disable no-console
 
-import { BaseScript, console } from "./BaseScript.sol";
-import { Systems } from "./utils/Constants.sol";
-
-import { CustomSetOracle } from "src/oracles/providers/CustomSetOracle.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { Lens } from "src/lens/Lens.sol";
+import { Systems } from "./utils/Constants.sol";
+import { BaseScript, console } from "./BaseScript.sol";
 
 contract DeployLens is BaseScript {
     function run() external {

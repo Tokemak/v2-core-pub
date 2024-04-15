@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-// solhint-disable reason-string
+// solhint-disable reason-string,gas-custom-errors
 
 contract WETH9 {
     string public name = "Wrapped Ether";

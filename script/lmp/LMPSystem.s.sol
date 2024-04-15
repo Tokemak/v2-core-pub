@@ -6,10 +6,7 @@ pragma solidity 0.8.17;
 
 import { BaseScript, console } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
-
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { Roles } from "src/libs/Roles.sol";
-
 import { LMPVaultRegistry, ILMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
 import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
 import { LMPVault } from "src/vault/LMPVault.sol";

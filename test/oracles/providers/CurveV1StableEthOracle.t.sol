@@ -31,7 +31,6 @@ import {
     FRAX_USDC_LP,
     FRAX_MAINNET,
     WETH9_ADDRESS,
-    STETH_ETH_CURVE_POOL,
     ST_ETH_CURVE_LP_TOKEN_MAINNET,
     STETH_MAINNET
 } from "test/utils/Addresses.sol";
@@ -167,12 +166,12 @@ contract CurveV1StableEthOracleTests is Test {
         assertEq(quote, USDC_MAINNET);
 
         // Data at block 17_379_099
-        // dy: 999187
+        // dy: 999000
         // fee: 1000000
         // FEE_PRECISION: 10000000000
-        // price: 999286
+        // price: 999099
 
-        assertEq(price, 999_286);
+        assertEq(price, 999_099);
     }
 
     function testGetSpotPriceUsdcFrax() public {
@@ -183,12 +182,12 @@ contract CurveV1StableEthOracleTests is Test {
         assertEq(quote, FRAX_MAINNET);
 
         // Data at block 17_379_099
-        // dy: 1000613407288920551
+        // dy: 1000613407295217000
         // fee: 1000000
         // FEE_PRECISION: 10000000000
-        // price: 1000713478636784229
+        // price: 1000713478643081308
 
-        assertEq(price, 1_000_713_478_636_784_229);
+        assertEq(price, 1_000_713_478_643_081_308);
     }
 
     // Testing fix for bug involving Eth being submitted as `address token` param on `getSpotPrice()`
@@ -198,12 +197,12 @@ contract CurveV1StableEthOracleTests is Test {
         (uint256 price, address actualQuote) = oracle.getSpotPrice(CURVE_ETH, STETH_ETH_CURVE_POOL, STETH_MAINNET);
 
         // Data at block 17_379_099
-        // dy: 1000032797037899490
+        // dy: 1000032902058600000
         // fee: 4000000
         // FEE_PRECISION: 1e10
-        // price: 1000432970225989885
+        // price: 1000433075288715486
 
-        assertEq(price, 1_000_432_970_225_989_885);
+        assertEq(price, 1_000_433_075_288_715_486);
         assertEq(actualQuote, STETH_MAINNET);
     }
 
@@ -218,7 +217,7 @@ contract CurveV1StableEthOracleTests is Test {
         oracle.getSafeSpotPriceInfo(FRAX_USDC, FRAX_USDC_LP, address(0));
     }
 
-    function testGetSafeSpotPriceInfo() public {
+    function testGetSafeSpotPriceInfoFraxUsdc() public {
         oracle.registerPool(FRAX_USDC, FRAX_USDC_LP, true);
 
         (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
@@ -228,10 +227,32 @@ contract CurveV1StableEthOracleTests is Test {
         assertEq(totalLPSupply, 497_913_419_719_209_769_318_641_923);
         assertEq(reserves[0].token, FRAX_MAINNET, "wrong token1");
         assertEq(reserves[0].reserveAmount, 345_763_079_333_760_512_920_948_527, "token1: invalid reserve amount");
-        assertEq(reserves[0].rawSpotPrice, 999_286, "token1: invalid spot price");
+        assertEq(reserves[0].rawSpotPrice, 999_099, "token1: invalid spot price");
         assertEq(reserves[1].token, USDC_MAINNET, "wrong token2");
         assertEq(reserves[1].reserveAmount, 152_789_951_049_354, "token2: invalid reserve amount");
-        assertEq(reserves[1].rawSpotPrice, 1_000_713_478_636_784_229, "token2: invalid spot price");
+        assertEq(reserves[1].rawSpotPrice, 1_000_713_478_643_081_308, "token2: invalid spot price");
+    }
+
+    function testGetSafeSpotPriceInfoThreePool() public {
+        oracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, true);
+
+        (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
+            oracle.getSafeSpotPriceInfo(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, USDT_MAINNET);
+
+        assertEq(reserves.length, 3);
+        assertEq(totalLPSupply, 384_818_030_963_268_482_407_003_957);
+        assertEq(reserves[0].token, DAI_MAINNET, "wrong token1");
+        assertEq(reserves[0].reserveAmount, 151_790_318_406_189_711_561_942_722, "token1: invalid reserve amount");
+        assertEq(reserves[0].rawSpotPrice, 999_099, "token1: invalid spot price");
+        assertEq(reserves[0].actualQuoteToken, USDT_MAINNET, "token1: invalid actual quote");
+        assertEq(reserves[1].token, USDC_MAINNET, "wrong token2");
+        assertEq(reserves[1].reserveAmount, 152_756_629_190_183, "token2: invalid reserve amount");
+        assertEq(reserves[1].rawSpotPrice, 999_099, "token2: invalid spot price");
+        assertEq(reserves[1].actualQuoteToken, USDT_MAINNET, "token2: invalid actual quote");
+        assertEq(reserves[2].token, USDT_MAINNET, "wrong token3");
+        assertEq(reserves[2].reserveAmount, 90_235_560_413_842, "token3: invalid reserve amount");
+        assertEq(reserves[2].rawSpotPrice, 1_000_321_887_265_214_521, "token3: invalid spot price");
+        assertEq(reserves[2].actualQuoteToken, DAI_MAINNET, "token3: invalid actual quote");
     }
 
     function mockRootPrice(address token, uint256 price) internal {

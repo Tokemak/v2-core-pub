@@ -193,12 +193,12 @@ contract CurveV2CryptoEthOracleTest is Test {
         assertEq(quote, WETH9_ADDRESS);
 
         // Data at block 17_671_884
-        // dy: 1076347103771414425
+        // dy: 1076349492658479000
         // fee: 3531140
         // FEE_PRECISION: 10000000000
-        // price: 1076727311259202406
+        // price: 1076729700990114423
 
-        assertEq(price, 1_076_727_311_259_202_406);
+        assertEq(price, 1_076_729_700_990_114_423);
     }
 
     function testGetSpotPriceWethReth() public {
@@ -210,12 +210,12 @@ contract CurveV2CryptoEthOracleTest is Test {
         assertEq(quote, RETH_MAINNET);
 
         // Data at block 17_671_884
-        // dy: 928409014372911276
+        // dy: 928410242202755000
         // fee: 3531140
         // FEE_PRECISION: 10000000000
-        // price: 928736964397357484
+        // price: 928738192660918267
 
-        assertEq(price, 928_736_964_397_357_484);
+        assertEq(price, 928_738_192_660_918_267);
     }
 
     // Tests edge case where Eth is submitted as `address token`.
@@ -227,12 +227,12 @@ contract CurveV2CryptoEthOracleTest is Test {
         assertEq(quote, CBETH_MAINNET);
 
         // Data at block 17_671_884
-        // dy: 957370368235487269
+        // dy: 957435338422750000
         // fee: 6113197
         // FEE_PRECISION: 10000000000
-        // price: 957955985601218210
+        // price: 958020995530331303
 
-        assertEq(price, 957_955_985_601_218_210);
+        assertEq(price, 958_020_995_530_331_303);
     }
 
     function testGetSpotPriceCbEthEth() public {
@@ -243,12 +243,12 @@ contract CurveV2CryptoEthOracleTest is Test {
         assertEq(quote, WETH9_ADDRESS);
 
         // Data at block 17_671_884
-        // dy: 1043111624360725300
+        // dy: 1043180213356946000
         // fee: 6113197
         // FEE_PRECISION: 10000000000
-        // price: 1043749689107545618
+        // price: 1043818320059219105
 
-        assertEq(price, 1_043_749_689_107_545_618);
+        assertEq(price, 1_043_818_320_059_219_105);
     }
 
     function tesSpotPriceRevertIfNotRegistered() public {
@@ -274,11 +274,11 @@ contract CurveV2CryptoEthOracleTest is Test {
         assertEq(totalLPSupply, 4_463_086_556_894_704_039_754, "totalLPSupply invalid");
         assertEq(reserves[0].token, WETH9_ADDRESS);
         assertEq(reserves[0].reserveAmount, 4_349_952_278_063_931_733_845, "token1: wrong reserve amount");
-        assertEq(reserves[0].rawSpotPrice, 928_736_964_397_357_484, "token1: spotPrice invalid");
+        assertEq(reserves[0].rawSpotPrice, 928_738_192_660_918_267, "token1: spotPrice invalid");
         // TODO: quote token variance
         assertEq(reserves[1].token, RETH_MAINNET, "wrong token2");
         assertEq(reserves[1].reserveAmount, 4_572_227_874_589_066_847_253, "token2: wrong reserve amount");
-        assertEq(reserves[1].rawSpotPrice, 1_076_727_311_259_202_406, "token2: spotPrice invalid");
+        assertEq(reserves[1].rawSpotPrice, 1_076_729_700_990_114_423, "token2: spotPrice invalid");
         // TODO: quote token variance check
     }
 }

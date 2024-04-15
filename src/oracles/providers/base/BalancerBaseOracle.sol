@@ -14,6 +14,8 @@ import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IAsset } from "src/interfaces/external/balancer/IAsset.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 
+import { console } from "forge-std/console.sol";
+
 abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
     /// @notice The Balancer Vault that all tokens we're resolving here should reference
     /// @dev BPTs themselves are configured with an immutable vault reference
@@ -95,8 +97,8 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
         bytes32 poolId = IBasePool(pool).getPoolId();
 
         IVault.BatchSwapStep[] memory steps = new IVault.BatchSwapStep[](1);
-        // 1 unit going in so price is in accurate decimals already
-        uint256 amountIn = 10 ** IERC20Metadata(token).decimals();
+        // Scaling price down to minimize impacts on low liquidity pools.
+        uint256 amountIn = 10 ** (IERC20Metadata(token).decimals() - 3);
         steps[0] = IVault.BatchSwapStep(poolId, 0, 1, amountIn, "");
 
         int256 tokenIndex = -1;
@@ -147,6 +149,7 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
 
         // Add swap fee to the price calculation.
         // Balancer Fee is in 1e18.
-        price = (uint256(-assetDeltas[1]) * 1e18) / (1e18 - fee);
+        // Scaling price back up to get to value representitive of one full asset swapped.
+        price = (uint256(-assetDeltas[1]) * 1e21) / (1e18 - fee);
     }
 }

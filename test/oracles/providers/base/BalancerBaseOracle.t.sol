@@ -81,18 +81,18 @@ contract BalancerBaseOracleWrapperTests is Test {
     }
 }
 
-contract GetSpotPrice is BalancerBaseOracleWrapperTests {
-    /// @dev rEth -> sfrxETH at block 17_378_951 is 1.029499830936747431.
+contract GetSpotPrice1 is BalancerBaseOracleWrapperTests {
+    /// @dev rEth -> sfrxETH at block 17_378_951 is 1029088775280746000.  This is accounting for scaling up by 1e3
     /// Pool has no WETH so it returns sfrxETH
     function test_getSpotPrice_withWETHQuote() public {
         (uint256 price, address quoteToken) =
             oracle.getSpotPrice(RETH_MAINNET, WSETH_RETH_SFRXETH_BAL_POOL, WETH_MAINNET);
 
         assertEq(quoteToken, SFRXETH_MAINNET);
-        assertEq(price, 1_029_499_830_936_747_431);
+        assertEq(price, 1_029_500_575_510_950_380);
     }
 
-    /// @dev rEth -> wstETH at block 17_378_951 is 0.952518727388269243.
+    /// @dev rEth -> wstETH at block 17_378_951 is 952138412066946000.  This is accounting for scaling up by 1e3.
     function test_getSpotPrice_withoutWETHQuote() public {
         (uint256 price, address quoteToken) = oracle.getSpotPrice(
             RETH_MAINNET, // rEth
@@ -101,7 +101,7 @@ contract GetSpotPrice is BalancerBaseOracleWrapperTests {
         );
 
         assertEq(quoteToken, WSTETH_MAINNET);
-        assertEq(price, 952_518_727_388_269_243);
+        assertEq(price, 952_519_419_834_879_951);
     }
 }
 
@@ -129,15 +129,15 @@ contract GetSafeSpotPriceInfo is BalancerBaseOracleWrapperTests {
         assertEq(totalLPSupply, 22_960_477_413_652_244_357_906);
         assertEq(reserves[0].token, WSTETH_MAINNET);
         assertEq(reserves[0].reserveAmount, 7_066_792_475_374_351_999_170);
-        assertEq(reserves[0].rawSpotPrice, 1_049_846_558_967_442_743);
+        assertEq(reserves[0].rawSpotPrice, 1_049_847_360_256_655_662);
         assertEq(reserves[0].actualQuoteToken, RETH_MAINNET);
         assertEq(reserves[1].token, SFRXETH_MAINNET);
         assertEq(reserves[1].reserveAmount, 7_687_228_718_047_274_083_418);
-        assertEq(reserves[1].rawSpotPrice, 971_344_086_447_801_818);
+        assertEq(reserves[1].rawSpotPrice, 971_344_768_870_315_126);
         assertEq(reserves[1].actualQuoteToken, RETH_MAINNET);
         assertEq(reserves[2].token, RETH_MAINNET);
         assertEq(reserves[2].reserveAmount, 6_722_248_966_013_056_226_285);
-        assertEq(reserves[2].rawSpotPrice, 1_029_499_830_936_747_431);
+        assertEq(reserves[2].rawSpotPrice, 1_029_500_575_510_950_380);
         assertEq(reserves[2].actualQuoteToken, SFRXETH_MAINNET);
     }
 
@@ -151,15 +151,15 @@ contract GetSafeSpotPriceInfo is BalancerBaseOracleWrapperTests {
         assertEq(totalLPSupply, 4_351_658_079_624_087_001_833_240, "lpSupply");
         assertEq(reserves[0].token, DAI_MAINNET, "zeroToken");
         assertEq(reserves[0].reserveAmount, 1_763_357_455_402_916_823_249_116, "zeroReserve");
-        assertEq(reserves[0].rawSpotPrice, 999_603, "zeroRaw");
+        assertEq(reserves[0].rawSpotPrice, 999_049, "zeroRaw");
         assertEq(reserves[0].actualQuoteToken, USDT_MAINNET, "zeroActual");
         assertEq(reserves[1].token, USDC_MAINNET, "oneToken");
         assertEq(reserves[1].reserveAmount, 1_644_631_949_309, "oneReserve");
-        assertEq(reserves[1].rawSpotPrice, 999_636, "oneRaw");
+        assertEq(reserves[1].rawSpotPrice, 998_049, "oneRaw");
         assertEq(reserves[1].actualQuoteToken, USDT_MAINNET, "oneActual");
         assertEq(reserves[2].token, USDT_MAINNET, "twoToken");
         assertEq(reserves[2].reserveAmount, 946_215_901_433, "twoReserve");
-        assertEq(reserves[2].rawSpotPrice, 1_000_362, "twoRaw");
+        assertEq(reserves[2].rawSpotPrice, 999_049, "twoRaw");
         assertEq(reserves[2].actualQuoteToken, USDC_MAINNET, "twoActual");
     }
 
@@ -171,11 +171,11 @@ contract GetSafeSpotPriceInfo is BalancerBaseOracleWrapperTests {
         assertEq(totalLPSupply, 18_041_051_911_925_925_865_156, "lpSupply");
         assertEq(reserves[0].token, WSTETH_MAINNET, "zeroToken");
         assertEq(reserves[0].reserveAmount, 7_153_059_635_966_264_986_141, "zeroReserve");
-        assertEq(reserves[0].rawSpotPrice, 1_089_649_280_260_059_986, "zeroRaw");
+        assertEq(reserves[0].rawSpotPrice, 1_089_652_135_532_585_034, "zeroRaw");
         assertEq(reserves[0].actualQuoteToken, CBETH_MAINNET, "zeroActual");
         assertEq(reserves[1].token, CBETH_MAINNET, "oneToken");
         assertEq(reserves[1].reserveAmount, 9_804_597_003_965_141_038_572, "oneReserve");
-        assertEq(reserves[1].rawSpotPrice, 917_721_864_937_790_959, "oneRaw");
+        assertEq(reserves[1].rawSpotPrice, 917_724_072_076_745_698, "oneRaw");
         assertEq(reserves[1].actualQuoteToken, WSTETH_MAINNET, "oneActual");
     }
 
@@ -187,11 +187,11 @@ contract GetSafeSpotPriceInfo is BalancerBaseOracleWrapperTests {
         assertEq(totalLPSupply, 41_458_365_247_894_236_652_969, "lpSupply");
         assertEq(reserves[0].token, RETH_MAINNET, "zeroToken");
         assertEq(reserves[0].reserveAmount, 19_543_079_911_395_563_931_751, "zeroReserve");
-        assertEq(reserves[0].rawSpotPrice, 1_073_057_914_192_517_589, "zeroRaw");
+        assertEq(reserves[0].rawSpotPrice, 1_073_058_978_063_340_336, "zeroRaw");
         assertEq(reserves[0].actualQuoteToken, WETH_MAINNET, "zeroActual");
         assertEq(reserves[1].token, WETH_MAINNET, "oneToken");
         assertEq(reserves[1].reserveAmount, 21_445_519_175_513_497_135_889, "oneReserve");
-        assertEq(reserves[1].rawSpotPrice, 931_914_363_128_563_237, "oneRaw");
+        assertEq(reserves[1].rawSpotPrice, 931_915_224_161_799_719, "oneRaw");
         assertEq(reserves[1].actualQuoteToken, RETH_MAINNET, "oneActual");
     }
 

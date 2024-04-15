@@ -194,7 +194,9 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
             revert NotRegistered(lpToken);
         }
 
-        uint256 dy = ICurveV2Swap(pool).get_dy(tokenIndex, quoteTokenIndex, 10 ** IERC20Metadata(token).decimals());
+        // Scale swap down by token decimals - 3 to minimize swap impact on smaller pools, scale back up after swap.
+        uint256 dy =
+            ICurveV2Swap(pool).get_dy(tokenIndex, quoteTokenIndex, 10 ** (IERC20Metadata(token).decimals() - 3)) * 1e3;
 
         /// @dev The fee is dynamically based on current balances; slight discrepancies post-calculation are acceptable
         /// for low-value swaps.

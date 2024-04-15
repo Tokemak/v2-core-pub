@@ -3,9 +3,11 @@
 pragma solidity 0.8.17;
 
 import { NavTracking } from "src/strategy/NavTracking.sol";
-import { Errors } from "src/utils/Errors.sol";
 
 library LMPStrategyConfig {
+    uint256 private constant WEIGHT_MAX = 1e6;
+    int256 private constant WEIGHT_MAX_I = 1e6;
+
     error InvalidConfig(string paramName);
 
     // TODO: switch swapCostOffset from days to seconds; possibly pauseRebalance too
@@ -84,14 +86,49 @@ library LMPStrategyConfig {
     }
 
     function validate(StrategyConfig memory config) internal pure {
+        // Swap Cost Offset Config
+
         if (
             config.swapCostOffset.initInDays < config.swapCostOffset.minInDays
                 || config.swapCostOffset.initInDays > config.swapCostOffset.maxInDays
-        ) revert InvalidConfig("swapCostOffsetPeriodInit");
-
-        if (config.swapCostOffset.maxInDays <= config.swapCostOffset.minInDays) {
-            revert InvalidConfig("swapCostOffsetPeriodMax");
+                || config.swapCostOffset.initInDays < 5 || config.swapCostOffset.initInDays > 90
+        ) {
+            revert InvalidConfig("swapCostOffset_initInDays");
         }
+
+        if (
+            config.swapCostOffset.tightenThresholdInViolations < 1
+                || config.swapCostOffset.tightenThresholdInViolations > 10
+        ) {
+            revert InvalidConfig("swapCostOffset_tightenThresholdInViolations");
+        }
+
+        if (config.swapCostOffset.tightenStepInDays < 1 || config.swapCostOffset.tightenStepInDays > 7) {
+            revert InvalidConfig("swapCostOffset_tightenStepInDays");
+        }
+
+        if (config.swapCostOffset.relaxThresholdInDays < 14 || config.swapCostOffset.relaxThresholdInDays > 90) {
+            revert InvalidConfig("swapCostOffset_relaxThresholdInDays");
+        }
+
+        if (config.swapCostOffset.relaxStepInDays < 1 || config.swapCostOffset.relaxStepInDays > 7) {
+            revert InvalidConfig("swapCostOffset_relaxStepInDays");
+        }
+
+        if (
+            config.swapCostOffset.maxInDays <= config.swapCostOffset.minInDays || config.swapCostOffset.maxInDays < 8
+                || config.swapCostOffset.maxInDays > 90
+        ) {
+            revert InvalidConfig("swapCostOffset_maxInDays");
+        }
+
+        if (config.swapCostOffset.minInDays < 7 || config.swapCostOffset.minInDays > 90) {
+            revert InvalidConfig("swapCostOffset_minInDays");
+        }
+
+        // NavLookback
+
+        _validateNotZero(config.navLookback.lookback1InDays, "navLookback_lookback1InDays");
 
         // the 91st spot holds current (0 days ago), so the farthest back that can be retrieved is 90 days ago
         if (
@@ -99,7 +136,7 @@ library LMPStrategyConfig {
                 || config.navLookback.lookback2InDays >= NavTracking.MAX_NAV_TRACKING
                 || config.navLookback.lookback3InDays > NavTracking.MAX_NAV_TRACKING
         ) {
-            revert InvalidConfig("navLookbackInDays");
+            revert InvalidConfig("navLookback_max");
         }
 
         // lookback should be configured smallest to largest and should not be equal
@@ -107,26 +144,68 @@ library LMPStrategyConfig {
             config.navLookback.lookback1InDays >= config.navLookback.lookback2InDays
                 || config.navLookback.lookback2InDays >= config.navLookback.lookback3InDays
         ) {
-            revert InvalidConfig("navLookbackInDays");
+            revert InvalidConfig("navLookback_steps");
         }
 
-        if (config.maxDiscount > 1e18) {
-            revert InvalidConfig("maxDiscount");
+        // Slippage
+
+        _validateNotZero(config.slippage.maxShutdownOperationSlippage, "slippage_maxShutdownOperationSlippage");
+        _validateNotZero(config.slippage.maxEmergencyOperationSlippage, "slippage_maxEmergencyOperationSlippage");
+        _validateNotZero(config.slippage.maxTrimOperationSlippage, "slippage_maxTrimOperationSlippage");
+        _validateNotZero(config.slippage.maxNormalOperationSlippage, "slippage_maxNormalOperationSlippage");
+
+        // Model Weights
+
+        if (config.modelWeights.baseYield > WEIGHT_MAX) {
+            revert InvalidConfig("modelWeights_baseYield");
         }
 
-        if (config.maxPremium > 1e18) {
-            revert InvalidConfig("maxPremium");
+        if (config.modelWeights.feeYield > WEIGHT_MAX) {
+            revert InvalidConfig("modelWeights_feeYield");
+        }
+
+        if (config.modelWeights.incentiveYield > WEIGHT_MAX) {
+            revert InvalidConfig("modelWeights_incentiveYield");
+        }
+
+        if (config.modelWeights.slashing > WEIGHT_MAX) {
+            revert InvalidConfig("modelWeights_slashing");
+        }
+
+        if (config.modelWeights.priceDiscountExit > WEIGHT_MAX_I) {
+            revert InvalidConfig("modelWeights_priceDiscountExit");
+        }
+
+        if (config.modelWeights.priceDiscountEnter > WEIGHT_MAX_I) {
+            revert InvalidConfig("modelWeights_priceDiscountEnter");
+        }
+
+        if (config.modelWeights.pricePremium > WEIGHT_MAX_I) {
+            revert InvalidConfig("modelWeights_pricePremium");
+        }
+
+        // Top Level Config
+
+        if (config.pauseRebalancePeriodInDays < 30 || config.pauseRebalancePeriodInDays > 90) {
+            revert InvalidConfig("pauseRebalancePeriodInDays");
         }
 
         if (config.rebalanceTimeGapInSeconds < 1 hours || config.rebalanceTimeGapInSeconds > 4 weeks) {
             revert InvalidConfig("rebalanceTimeGapInSeconds");
         }
 
-        // TODO: these will revert with a different error, possibly confusing
-        Errors.verifyNotZero(config.slippage.maxShutdownOperationSlippage, "maxShutdownOperationSlippage");
-        Errors.verifyNotZero(config.slippage.maxEmergencyOperationSlippage, "maxEmergencyOperationSlippage");
-        Errors.verifyNotZero(config.slippage.maxTrimOperationSlippage, "maxTrimOperationSlippage");
-        Errors.verifyNotZero(config.slippage.maxNormalOperationSlippage, "maxNormalOperationSlippage");
-        Errors.verifyNotZero(config.navLookback.lookback1InDays, "navLookback1");
+        if (config.maxPremium > 1e18 || config.maxPremium < 0) {
+            revert InvalidConfig("maxPremium");
+        }
+
+        if (config.maxDiscount > 1e18 || config.maxDiscount < 0) {
+            revert InvalidConfig("maxDiscount");
+        }
+    }
+
+    function _validateNotZero(uint256 val, string memory err) private pure {
+        if (val == 0) {
+            revert InvalidConfig(err);
+        }
     }
 }

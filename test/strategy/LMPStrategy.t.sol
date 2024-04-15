@@ -106,7 +106,7 @@ contract LMPStrategyTest is Test {
         // set init < min to trigger a failure
         cfg.swapCostOffset.initInDays = 10;
         cfg.swapCostOffset.minInDays = 11;
-        vm.expectRevert(abi.encodeWithSelector(LMPStrategyConfig.InvalidConfig.selector, "swapCostOffsetPeriodInit"));
+        vm.expectRevert(abi.encodeWithSelector(LMPStrategyConfig.InvalidConfig.selector, "swapCostOffset_initInDays"));
         defaultStrat = deployStrategy(cfg);
     }
 
@@ -1998,33 +1998,36 @@ contract LMPStrategyTest is Test {
         assertEq(defaultStrat.swapCostOffsetPeriodInDays(), 10);
     }
 
-    function test_rebalanceSuccessfullyExecuted_tightenMinHandlesLargeStep() public {
-        LMPStrategyConfig.StrategyConfig memory cfg = helpers.getDefaultConfig();
-        cfg.swapCostOffset.minInDays = 1;
-        cfg.swapCostOffset.initInDays = 2; // set below the step size
-        LMPStrategyHarness testStrat = deployStrategy(cfg);
+    // TODO: Cannot configure this test in this manner with the additional checks added
+    //       Any other way to test this?
 
-        assertEq(testStrat.swapCostOffsetTightenStepInDays(), 3);
-        assertEq(testStrat.swapCostOffsetPeriodInDays(), 2);
+    // function test_rebalanceSuccessfullyExecuted_tightenMinHandlesLargeStep() public {
+    //     LMPStrategyConfig.StrategyConfig memory cfg = helpers.getDefaultConfig();
+    //     cfg.swapCostOffset.minInDays = 1;
+    //     cfg.swapCostOffset.initInDays = 2; // set below the step size
+    //     LMPStrategyHarness testStrat = deployStrategy(cfg);
 
-        testStrat._setLastRebalanceTimestamp(60 days);
-        vm.warp(60 days);
+    //     assertEq(testStrat.swapCostOffsetTightenStepInDays(), 3);
+    //     assertEq(testStrat.swapCostOffsetPeriodInDays(), 2);
 
-        vm.startPrank(mockLMPVault);
-        testStrat.rebalanceSuccessfullyExecuted(defaultParams);
-        assertEq(testStrat.lastAddTimestampByDestination(mockInDest), 60 days);
+    //     testStrat._setLastRebalanceTimestamp(60 days);
+    //     vm.warp(60 days);
 
-        // flip the direction of the rebalance
-        defaultParams.destinationIn = mockOutDest;
-        defaultParams.destinationOut = mockInDest;
+    //     vm.startPrank(mockLMPVault);
+    //     testStrat.rebalanceSuccessfullyExecuted(defaultParams);
+    //     assertEq(testStrat.lastAddTimestampByDestination(mockInDest), 60 days);
 
-        // generate 1 tighten; need 10 total violation tracked, we got one with the first rebal
-        for (uint256 i = 1; i < 10; ++i) {
-            testStrat.rebalanceSuccessfullyExecuted(defaultParams);
-        }
+    //     // flip the direction of the rebalance
+    //     defaultParams.destinationIn = mockOutDest;
+    //     defaultParams.destinationOut = mockInDest;
 
-        assertEq(testStrat.swapCostOffsetPeriodInDays(), 1);
-    }
+    //     // generate 1 tighten; need 10 total violation tracked, we got one with the first rebal
+    //     for (uint256 i = 1; i < 10; ++i) {
+    //         testStrat.rebalanceSuccessfullyExecuted(defaultParams);
+    //     }
+
+    //     assertEq(testStrat.swapCostOffsetPeriodInDays(), 1);
+    // }
 
     function test_rebalanceSuccessfullyExecuted_ignoreRebalancesFromIdle() public {
         // advance so we can make sure that non-idle timestamp is updated

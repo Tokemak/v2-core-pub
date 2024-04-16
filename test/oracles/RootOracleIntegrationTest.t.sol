@@ -883,7 +883,7 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
     /**
      * @notice Tested against multiple v2 pools that we are not using to test validity of approach
      */
-    function test_CurveV2Pools() external {
+    function test_CurveV2Pools1() external {
         vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 17_672_343);
 
         // 1)
@@ -970,19 +970,22 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
 
         // 5)
 
+        // Bring safeSpot threshold to 2%
+        priceOracle.setSafeSpotPriceThreshold(BADGER_MAINNET, 2000);
+
         // Calculated WETH - 280364973000000000
         calculatedPrice = uint256(0.280364973 * 10 ** 18);
         (spotPrice, safePrice, isSpotSafe) =
             priceOracle.getRangePricesLP(WBTC_BADGER_CURVE_V2_LP, WBTC_BADGER_V2_POOL, WETH9_ADDRESS);
 
-        // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 4, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 4, isSpotSafe);
 
         // Calculated USDC - 516.998617511
         calculatedPrice = uint256(516_998_617);
         (spotPrice, safePrice, isSpotSafe) =
             priceOracle.getRangePricesLP(WBTC_BADGER_CURVE_V2_LP, WBTC_BADGER_V2_POOL, USDC_MAINNET);
 
-        // _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 4, isSpotSafe);
+        _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 4, isSpotSafe);
     }
 
     function test_EthInUsdPath() external {

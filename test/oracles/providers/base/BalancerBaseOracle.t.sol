@@ -81,7 +81,7 @@ contract BalancerBaseOracleWrapperTests is Test {
     }
 }
 
-contract GetSpotPrice1 is BalancerBaseOracleWrapperTests {
+contract GetSpotPrice is BalancerBaseOracleWrapperTests {
     /// @dev rEth -> sfrxETH at block 17_378_951 is 1029088775280746000.  This is accounting for scaling up by 1e3
     /// Pool has no WETH so it returns sfrxETH
     function test_getSpotPrice_withWETHQuote() public {

@@ -338,12 +338,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
     }
 
     // Withdraw
-    function withdraw(
-        uint256 toSeed,
-        uint256 amount,
-        uint256 maxSharesOut,
-        bool unwrapWETH
-    ) public updateUser1Balance {
+    function withdraw(uint256 toSeed, uint256 amount, uint256 maxSharesOut) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
 
         _startPrank(msg.sender);
@@ -439,7 +434,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
     }
 
     // Redeem
-    function redeem(uint256 toSeed, uint256 shares, uint256 minAmountOut, bool unwrapWETH) public updateUser1Balance {
+    function redeem(uint256 toSeed, uint256 shares, uint256 minAmountOut) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
 
         _startPrank(msg.sender);

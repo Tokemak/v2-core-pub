@@ -211,7 +211,7 @@ contract LMPVaultTests is Test {
         assertEq(ILMPVault(usage.pool()).allowance(usage.user1(), address(usage.router())), 100e18, "endAllowance");
 
         vm.startPrank(usage.user1());
-        usage.withdraw(1, 1000, 100e18, false);
+        usage.withdraw(1, 1000, 100e18);
         vm.stopPrank();
     }
 
@@ -237,7 +237,7 @@ contract LMPVaultTests is Test {
         assertEq(ILMPVault(usage.pool()).allowance(usage.user1(), address(usage.router())), 100e18, "endAllowance");
 
         vm.startPrank(usage.user1());
-        usage.withdraw(1, 1000, 100e18, false);
+        usage.withdraw(1, 1000, 100e18);
         vm.stopPrank();
     }
 
@@ -602,7 +602,7 @@ contract LMPVaultTests is Test {
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "startBalAsset");
 
         vm.startPrank(usage.user1());
-        usage.redeem(1, 100e18, 1, false);
+        usage.redeem(1, 100e18, 1);
         vm.stopPrank();
 
         assertEq(ILMPVault(usage.pool()).balanceOf(usage.user1()), 0e18, "endBalShare");
@@ -656,7 +656,7 @@ contract LMPVaultTests is Test {
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "startBalAsset");
 
         vm.startPrank(usage.user1());
-        usage.withdraw(1, 100e18, 100e18, false);
+        usage.withdraw(1, 100e18, 100e18);
         vm.stopPrank();
 
         assertEq(ILMPVault(usage.pool()).balanceOf(usage.user1()), 0e18, "endBalShare");

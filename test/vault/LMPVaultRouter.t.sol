@@ -526,6 +526,88 @@ contract LMPVaultRouterTest is BaseTest {
         assertEq(lmpVault2.balanceOf(address(this)), newSharesReceived, "Shares in vault #2 should be increased");
     }
 
+    function test_redeemMax() public {
+        uint256 amount = depositAmount;
+
+        // deposit first
+        baseAsset.approve(address(lmpVaultRouter), amount);
+        _deposit(lmpVault, amount);
+
+        uint256 baseAssetBefore = baseAsset.balanceOf(address(this));
+        uint256 sharesBefore = lmpVault.balanceOf(address(this));
+
+        lmpVault.approve(address(lmpVaultRouter), sharesBefore);
+
+        //Try to fail with an invalid minAmountOut
+        vm.expectRevert(abi.encodeWithSelector(ILMPVaultRouterBase.MinAmountError.selector));
+        uint256 amountOut = lmpVaultRouter.redeemMax(lmpVault, address(this), amount + 1);
+
+        //Do the actual redeem
+        amountOut = lmpVaultRouter.redeemMax(lmpVault, address(this), amount);
+        uint256 sharesAfter = lmpVault.balanceOf(address(this));
+
+        assertEq(amountOut, amount);
+        assertEq(sharesAfter, 0);
+    }
+
+    function test_redeemMax_lessMinAmountOut() public {
+        uint256 amount = depositAmount;
+
+        // deposit first
+        baseAsset.approve(address(lmpVaultRouter), amount);
+        _deposit(lmpVault, amount);
+
+        uint256 baseAssetBefore = baseAsset.balanceOf(address(this));
+        uint256 sharesBefore = lmpVault.balanceOf(address(this));
+
+        lmpVault.approve(address(lmpVaultRouter), sharesBefore);
+
+        //Try to fail with an invalid minAmountOut
+        vm.expectRevert(abi.encodeWithSelector(ILMPVaultRouterBase.MinAmountError.selector));
+        uint256 amountOut = lmpVaultRouter.redeemMax(lmpVault, address(this), amount + 1);
+
+        //Do the actual redeem
+        amountOut = lmpVaultRouter.redeemMax(lmpVault, address(this), 0);
+        uint256 sharesAfter = lmpVault.balanceOf(address(this));
+
+        assertEq(amountOut, amount);
+        assertEq(sharesAfter, 0);
+    }
+
+    function test_withdrawToDeposit() public {
+        uint256 amount = depositAmount;
+        lmpVault2 = _setupVault("vault2");
+
+        lmpVault2.toggleAllowedUser(address(lmpVaultRouter));
+
+        // do deposit to vault #1 first
+        uint256 sharesReceived = _deposit(lmpVault, amount);
+
+        uint256 baseAssetBefore = baseAsset.balanceOf(address(this));
+
+        uint256 minSharesExpected = lmpVault2.previewDeposit(amount);
+
+        // -- try to fail slippage first -- //
+        lmpVault.approve(address(lmpVaultRouter), sharesReceived);
+        vm.expectRevert(abi.encodeWithSelector(ILMPVaultRouterBase.MinSharesError.selector));
+        lmpVaultRouter.withdrawToDeposit(
+            lmpVault, lmpVault2, address(this), amount, sharesReceived, minSharesExpected + 1
+        );
+
+        // -- now try a successful withdrawToDeposit scenario -- //
+
+        // Do actual `withdrawToDeposit` call
+        uint256 newSharesReceived = lmpVaultRouter.withdrawToDeposit(
+            lmpVault, lmpVault2, address(this), amount, sharesReceived, minSharesExpected
+        );
+
+        // Check final state
+        assertEq(newSharesReceived, amount);
+        assertEq(baseAsset.balanceOf(address(this)), baseAssetBefore, "Base asset amount should not change");
+        assertEq(lmpVault.balanceOf(address(this)), 0, "Shares in vault #1 should be 0 after the move");
+        assertEq(lmpVault2.balanceOf(address(this)), newSharesReceived, "Shares in vault #2 should be increased");
+    }
+
     // All three rewarder based functions use same path to check for valid vault, use stake to test all.
     function test_RevertsOnInvalidVault() public {
         // No need to approve, deposit to vault, etc, revert will happen before transfer.

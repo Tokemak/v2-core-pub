@@ -20,7 +20,7 @@ import { TestWETH9, TestERC20 } from "test/mocks/TestWETH9.sol";
 contract TestRouter is LMPVaultRouter {
     using SafeERC20 for IERC20;
 
-    constructor(ISystemRegistry _systemRegistry, address _weth9) LMPVaultRouter(_systemRegistry, _weth9) { }
+    constructor(ISystemRegistry _systemRegistry) LMPVaultRouter(_systemRegistry) { }
 
     /// @notice Intentionally vulnerable. Will filter out for normal runs but used to test checks are working
     function pullTokenFrom(IERC20 token, uint256 amount, address from, address recipient) public payable {
@@ -84,7 +84,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         _pool.setDisableNavDecreaseCheck(true);
         _pool.setCryticFnsEnabled(false);
 
-        lmpVaultRouter = new TestRouter(_systemRegistry, address(_weth));
+        lmpVaultRouter = new TestRouter(_systemRegistry);
 
         _pool.toggleAllowedUser(address(this));
         _pool.toggleAllowedUser(_user1);
@@ -347,7 +347,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address to = _resolveUserFromSeed(toSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.withdraw(_pool, to, amount, maxSharesOut, unwrapWETH);
+        lmpVaultRouter.withdraw(_pool, to, amount, maxSharesOut);
         _stopPrank();
     }
 
@@ -443,7 +443,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address to = _resolveUserFromSeed(toSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.redeem(_pool, to, shares, minAmountOut, unwrapWETH);
+        lmpVaultRouter.redeem(_pool, to, shares, minAmountOut);
         _stopPrank();
     }
 

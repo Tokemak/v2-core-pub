@@ -15,16 +15,17 @@ contract LMPStrategyConfigTest is Test {
         LMPStrategyConfig.validate(config);
     }
 
-    // function test_swapCostOffsetInitInDays_Min() public {
-    //     LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+    function test_swapCostOffsetInitInDays_Min() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
 
-    //     config.swapCostOffset.initInDays = 5;
-    //     LMPStrategyConfig.validate(config);
+        config.swapCostOffset.minInDays = 7;
+        config.swapCostOffset.initInDays = 7;
+        LMPStrategyConfig.validate(config);
 
-    //     config.swapCostOffset.initInDays = 4;
-    //     vm.expectRevert();
-    //     LMPStrategyConfig.validate(config);
-    // }
+        config.swapCostOffset.initInDays = 6;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
 
     function test_swapCostOffsetInitInDays_Max() public {
         LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
@@ -218,6 +219,50 @@ contract LMPStrategyConfigTest is Test {
         LMPStrategyConfig.validate(config);
     }
 
+    function test_slippageMaxNormalOperationSlippage() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.slippage.maxNormalOperationSlippage = 0.25e18;
+        LMPStrategyConfig.validate(config);
+
+        config.slippage.maxNormalOperationSlippage += 1;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
+
+    function test_slippageMaxTrimOperationSlippage() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.slippage.maxTrimOperationSlippage = 0.25e18;
+        LMPStrategyConfig.validate(config);
+
+        config.slippage.maxTrimOperationSlippage += 1;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
+
+    function test_slippageMaxEmergencyOperationSlippage() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.slippage.maxEmergencyOperationSlippage = 0.25e18;
+        LMPStrategyConfig.validate(config);
+
+        config.slippage.maxEmergencyOperationSlippage += 1;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
+
+    function test_slippageMaxShutdownOperationSlippage() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.slippage.maxShutdownOperationSlippage = 0.25e18;
+        LMPStrategyConfig.validate(config);
+
+        config.slippage.maxShutdownOperationSlippage += 1;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
+
     function test_modelWeightsBaseYield_AllowsZero() public pure {
         LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
 
@@ -344,6 +389,134 @@ contract LMPStrategyConfigTest is Test {
         LMPStrategyConfig.validate(config);
 
         config.pauseRebalancePeriodInDays = 91;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
+
+    function test_rebalanceTimeGapInSeconds_Min() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.rebalanceTimeGapInSeconds = 1 hours;
+        LMPStrategyConfig.validate(config);
+
+        config.rebalanceTimeGapInSeconds -= 1;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
+
+    function test_rebalanceTimeGapInSeconds_Max() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.rebalanceTimeGapInSeconds = 30 days;
+        LMPStrategyConfig.validate(config);
+
+        config.rebalanceTimeGapInSeconds += 1;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
+
+    function test_maxPremium_Min() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.maxPremium = 0;
+        LMPStrategyConfig.validate(config);
+
+        config.maxPremium -= 1;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
+
+    function test_maxPremium_Max() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.maxPremium = 0.25e18;
+        LMPStrategyConfig.validate(config);
+
+        config.maxPremium += 1;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
+
+    function test_maxDiscount_Min() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.maxDiscount = 0;
+        LMPStrategyConfig.validate(config);
+
+        config.maxDiscount -= 1;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
+
+    function test_maxDiscount_Max() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.maxDiscount = 0.25e18;
+        LMPStrategyConfig.validate(config);
+
+        config.maxDiscount += 1;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
+
+    function test_staleDataToleranceInSeconds_Min() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.staleDataToleranceInSeconds = 1 hours;
+        LMPStrategyConfig.validate(config);
+
+        config.staleDataToleranceInSeconds -= 1;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
+
+    function test_staleDataToleranceInSeconds_Max() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.staleDataToleranceInSeconds = 7 days;
+        LMPStrategyConfig.validate(config);
+
+        config.staleDataToleranceInSeconds += 1;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
+
+    function test_maxAllowedDiscount_Min() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.maxAllowedDiscount = 0;
+        LMPStrategyConfig.validate(config);
+
+        config.maxAllowedDiscount -= 1;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
+
+    function test_maxAllowedDiscount_Max() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.maxAllowedDiscount = 0.5e18;
+        LMPStrategyConfig.validate(config);
+
+        config.maxAllowedDiscount += 1;
+        vm.expectRevert();
+        LMPStrategyConfig.validate(config);
+    }
+
+    function test_lstPriceGapTolerance_AllowsZero() public pure {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.lstPriceGapTolerance = 0;
+        LMPStrategyConfig.validate(config);
+    }
+
+    function test_lstPriceGapTolerance_Max() public {
+        LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
+
+        config.lstPriceGapTolerance = 0.05e18;
+        LMPStrategyConfig.validate(config);
+
+        config.lstPriceGapTolerance += 1;
         vm.expectRevert();
         LMPStrategyConfig.validate(config);
     }

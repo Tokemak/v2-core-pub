@@ -85,13 +85,15 @@ library LMPStrategyConfig {
         int256 pricePremium;
     }
 
+    // slither-disable-start cyclomatic-complexity
+
     function validate(StrategyConfig memory config) internal pure {
         // Swap Cost Offset Config
 
         if (
             config.swapCostOffset.initInDays < config.swapCostOffset.minInDays
                 || config.swapCostOffset.initInDays > config.swapCostOffset.maxInDays
-                || config.swapCostOffset.initInDays < 5 || config.swapCostOffset.initInDays > 90
+                || config.swapCostOffset.initInDays < 7 || config.swapCostOffset.initInDays > 90
         ) {
             revert InvalidConfig("swapCostOffset_initInDays");
         }
@@ -149,10 +151,10 @@ library LMPStrategyConfig {
 
         // Slippage
 
-        _validateNotZero(config.slippage.maxShutdownOperationSlippage, "slippage_maxShutdownOperationSlippage");
-        _validateNotZero(config.slippage.maxEmergencyOperationSlippage, "slippage_maxEmergencyOperationSlippage");
-        _validateNotZero(config.slippage.maxTrimOperationSlippage, "slippage_maxTrimOperationSlippage");
-        _validateNotZero(config.slippage.maxNormalOperationSlippage, "slippage_maxNormalOperationSlippage");
+        _ensureNotGt25PctE18(config.slippage.maxShutdownOperationSlippage, "slippage_maxShutdownOperationSlippage");
+        _ensureNotGt25PctE18(config.slippage.maxEmergencyOperationSlippage, "slippage_maxEmergencyOperationSlippage");
+        _ensureNotGt25PctE18(config.slippage.maxTrimOperationSlippage, "slippage_maxTrimOperationSlippage");
+        _ensureNotGt25PctE18(config.slippage.maxNormalOperationSlippage, "slippage_maxNormalOperationSlippage");
 
         // Model Weights
 
@@ -190,21 +192,42 @@ library LMPStrategyConfig {
             revert InvalidConfig("pauseRebalancePeriodInDays");
         }
 
-        if (config.rebalanceTimeGapInSeconds < 1 hours || config.rebalanceTimeGapInSeconds > 4 weeks) {
+        if (config.rebalanceTimeGapInSeconds < 1 hours || config.rebalanceTimeGapInSeconds > 30 days) {
             revert InvalidConfig("rebalanceTimeGapInSeconds");
         }
 
-        if (config.maxPremium > 1e18 || config.maxPremium < 0) {
-            revert InvalidConfig("maxPremium");
+        _ensureNotGt25PctE18OrLtZero(config.maxPremium, "maxPremium");
+        _ensureNotGt25PctE18OrLtZero(config.maxDiscount, "maxPremium");
+
+        if (config.staleDataToleranceInSeconds < 1 hours || config.staleDataToleranceInSeconds > 7 days) {
+            revert InvalidConfig("staleDataToleranceInSeconds");
         }
 
-        if (config.maxDiscount > 1e18 || config.maxDiscount < 0) {
-            revert InvalidConfig("maxDiscount");
+        if (config.maxAllowedDiscount < 0 || config.maxAllowedDiscount > 0.5e18) {
+            revert InvalidConfig("maxAllowedDiscount");
+        }
+
+        if (config.lstPriceGapTolerance > 0.05e18) {
+            revert InvalidConfig("lstPriceGapTolerance");
         }
     }
 
+    // slither-disable-end cyclomatic-complexity
+
     function _validateNotZero(uint256 val, string memory err) private pure {
         if (val == 0) {
+            revert InvalidConfig(err);
+        }
+    }
+
+    function _ensureNotGt25PctE18(uint256 value, string memory err) private pure {
+        if (value > 0.25e18) {
+            revert InvalidConfig(err);
+        }
+    }
+
+    function _ensureNotGt25PctE18OrLtZero(int256 value, string memory err) private pure {
+        if (value > 0.25e18 || value < 0) {
             revert InvalidConfig(err);
         }
     }

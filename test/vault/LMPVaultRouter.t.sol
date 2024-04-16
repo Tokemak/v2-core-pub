@@ -533,7 +533,6 @@ contract LMPVaultRouterTest is BaseTest {
         baseAsset.approve(address(lmpVaultRouter), amount);
         _deposit(lmpVault, amount);
 
-        uint256 baseAssetBefore = baseAsset.balanceOf(address(this));
         uint256 sharesBefore = lmpVault.balanceOf(address(this));
 
         lmpVault.approve(address(lmpVaultRouter), sharesBefore);
@@ -557,7 +556,6 @@ contract LMPVaultRouterTest is BaseTest {
         baseAsset.approve(address(lmpVaultRouter), amount);
         _deposit(lmpVault, amount);
 
-        uint256 baseAssetBefore = baseAsset.balanceOf(address(this));
         uint256 sharesBefore = lmpVault.balanceOf(address(this));
 
         lmpVault.approve(address(lmpVaultRouter), sharesBefore);

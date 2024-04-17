@@ -8,6 +8,7 @@ import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.so
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 import { LMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
+import { ILMPVault } from "src/vault/LMPVault.sol";
 import { ISystemRegistry } from "src/vault/LMPVaultRouterBase.sol";
 import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { AsyncSwapperRegistry } from "src/liquidation/AsyncSwapperRegistry.sol";
@@ -159,28 +160,40 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
 
     function mint(uint256 toSeed, uint256 shares, uint256 maxAmountIn) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
+        IERC20 baseAsset = IERC20(ILMPVault(_pool).asset());
 
         _startPrank(msg.sender);
+        lmpVaultRouter.pullToken(baseAsset, shares, address(lmpVaultRouter));
+        lmpVaultRouter.approve(baseAsset, address(_pool), shares);
         lmpVaultRouter.mint(_pool, to, shares, maxAmountIn);
         _stopPrank();
     }
 
     function queueMint(uint256 toSeed, uint256 shares, uint256 maxAmountIn) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
+        IERC20 baseAsset = IERC20(ILMPVault(_pool).asset());
+        queuedCalls.push(abi.encodeCall(lmpVaultRouter.pullToken, (baseAsset, shares, address(lmpVaultRouter))));
+        queuedCalls.push(abi.encodeCall(lmpVaultRouter.approve, (baseAsset, address(_pool), shares)));
         queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.mint.selector, _pool, to, shares, maxAmountIn));
     }
 
     // Deposit
     function deposit(uint256 toSeed, uint256 amount, uint256 minSharesOut) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
+        IERC20 baseAsset = IERC20(ILMPVault(_pool).asset());
 
         _startPrank(msg.sender);
+        lmpVaultRouter.pullToken(baseAsset, amount, address(lmpVaultRouter));
+        lmpVaultRouter.approve(baseAsset, address(_pool), amount);
         lmpVaultRouter.deposit(_pool, to, amount, minSharesOut);
         _stopPrank();
     }
 
     function queueDeposit(uint256 toSeed, uint256 amount, uint256 minSharesOut) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
+        IERC20 baseAsset = IERC20(ILMPVault(_pool).asset());
+        queuedCalls.push(abi.encodeCall(lmpVaultRouter.pullToken, (baseAsset, amount, address(lmpVaultRouter))));
+        queuedCalls.push(abi.encodeCall(lmpVaultRouter.approve, (baseAsset, address(_pool), amount)));
         queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.deposit.selector, _pool, to, amount, minSharesOut));
     }
 

@@ -205,11 +205,10 @@ contract MaverickCalculator is SystemComponent, SecurityBase, Initializable, IDe
             // If APR is above a threshold, increment credits based on time elapsed
             // Only give credit for whole days, so divide-before-multiply is desired
             // slither-disable-next-line divide-before-multiply
-            uint256 credits = 12 * (elapsedTime / 1 days);
-
-            uint256 newIncentiveCredits = incentiveCredits + credits;
-            /// avoids underflow errors if we miss a snapshot() for 21+ days
-            incentiveCredits = uint8(newIncentiveCredits > MAX_CREDITS ? MAX_CREDITS : newIncentiveCredits);
+            uint256 credits = 12 * (elapsedTime / 1 days); // 12 credits for each day
+            // avoids underflow errors if we miss a snapshot() for 21+ days
+            // Increment credits, but cap at MAX_CREDITS
+            incentiveCredits = uint8(Math.min(currentCredits + credits, MAX_CREDITS));
             // Update the last incentive timestamp to the current block's timestamp
             lastIncentiveTimestamp = block.timestamp;
             decayState = false;

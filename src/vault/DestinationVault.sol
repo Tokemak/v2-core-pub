@@ -512,7 +512,7 @@ abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Init
     }
 
     /// @inheritdoc IDestinationVault
-    function getStats() external virtual returns (IDexLSTStats) {
+    function getStats() external view virtual returns (IDexLSTStats) {
         return IDexLSTStats(_incentiveCalculator);
     }
 

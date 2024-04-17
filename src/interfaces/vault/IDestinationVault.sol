@@ -159,7 +159,7 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     function shutdownStatus() external view returns (VaultShutdownStatus);
 
     /// @notice Stats contract for this vault
-    function getStats() external returns (IDexLSTStats);
+    function getStats() external view returns (IDexLSTStats);
 
     /// @notice get the marketplace rewards
     /// @return rewardTokens list of reward token addresses

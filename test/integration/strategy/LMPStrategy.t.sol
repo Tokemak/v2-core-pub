@@ -573,8 +573,7 @@ contract LMPStrategyInt is Test {
         address curvePool,
         address curvePoolLpToken,
         address convexStaking,
-        uint256 convexPoolId,
-        uint256 baseAssetBurnTokenIndex
+        uint256 convexPoolId
     ) internal returns (DestinationVault) {
         // We are forked and running against a version of the calculators the destination vaults
         // don't expect. Shim the differences
@@ -587,8 +586,7 @@ contract LMPStrategyInt is Test {
         CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
             curvePool: curvePool,
             convexStaking: convexStaking,
-            convexPoolId: convexPoolId,
-            baseAssetBurnTokenIndex: baseAssetBurnTokenIndex
+            convexPoolId: convexPoolId
         });
         bytes memory initParamBytes = abi.encode(initParams);
 
@@ -614,8 +612,7 @@ contract LMPStrategyInt is Test {
             0xDC24316b9AE028F1497c275EB9192a3Ea0f67022,
             0x06325440D014e39736583c165C2963BA99fAf14E,
             0x0A760466E1B4621579a82a39CB56Dda2F4E70f03,
-            25,
-            1 // TODO double check this
+            25
         );
     }
 
@@ -626,8 +623,7 @@ contract LMPStrategyInt is Test {
             0x21E27a5E5513D6e65C4f830167390997aA84843a,
             0x21E27a5E5513D6e65C4f830167390997aA84843a,
             0x6B27D7BC63F1999D14fF9bA900069ee516669ee8,
-            177,
-            1 // TODO double check this
+            177
         );
     }
 

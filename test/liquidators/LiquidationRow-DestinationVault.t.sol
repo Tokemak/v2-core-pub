@@ -177,8 +177,7 @@ contract CurveIntegrationTest is LiquidationRowTest {
         CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
             curvePool: poolInfo.curvePool,
             convexStaking: convexStaking,
-            convexPoolId: poolInfo.convexPoolId,
-            baseAssetBurnTokenIndex: 0
+            convexPoolId: poolInfo.convexPoolId
         });
         bytes memory initParamBytes = abi.encode(initParams);
 

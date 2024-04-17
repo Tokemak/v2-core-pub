@@ -146,8 +146,7 @@ contract CurveConvexDestinationVaultTests is Test {
         CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
             curvePool: STETH_ETH_CURVE_POOL,
             convexStaking: CONVEX_STAKING,
-            convexPoolId: CONVEX_POOL_ID,
-            baseAssetBurnTokenIndex: 0
+            convexPoolId: CONVEX_POOL_ID
         });
         bytes memory initParamBytes = abi.encode(initParams);
         _testIncentiveCalculator = new TestIncentiveCalculator();
@@ -186,8 +185,7 @@ contract CurveConvexDestinationVaultTests is Test {
         CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
             curvePool: STETH_ETH_CURVE_POOL,
             convexStaking: CONVEX_STAKING,
-            convexPoolId: CONVEX_POOL_ID,
-            baseAssetBurnTokenIndex: 0
+            convexPoolId: CONVEX_POOL_ID
         });
         bytes memory initParamBytes = abi.encode(initParams);
         address payable newVault = payable(
@@ -481,8 +479,7 @@ contract ValidateCalculator is CurveConvexDestinationVaultTests {
         CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
             curvePool: STETH_ETH_CURVE_POOL,
             convexStaking: CONVEX_STAKING,
-            convexPoolId: CONVEX_POOL_ID,
-            baseAssetBurnTokenIndex: 0
+            convexPoolId: CONVEX_POOL_ID
         });
         bytes memory initParamBytes = abi.encode(initParams);
         _testIncentiveCalculator = new TestIncentiveCalculator();
@@ -515,8 +512,7 @@ contract ValidateCalculator is CurveConvexDestinationVaultTests {
         CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
             curvePool: badPool,
             convexStaking: CONVEX_STAKING,
-            convexPoolId: CONVEX_POOL_ID,
-            baseAssetBurnTokenIndex: 0
+            convexPoolId: CONVEX_POOL_ID
         });
         bytes memory initParamBytes = abi.encode(initParams);
         _testIncentiveCalculator = new TestIncentiveCalculator();
@@ -568,8 +564,7 @@ contract Initialize is CurveConvexDestinationVaultTests {
         CurveConvexDestinationVault.InitParams memory defaultInitParams = CurveConvexDestinationVault.InitParams({
             curvePool: STETH_ETH_CURVE_POOL,
             convexStaking: 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03,
-            convexPoolId: 25,
-            baseAssetBurnTokenIndex: 0
+            convexPoolId: 25
         });
 
         defaultInitParamBytes = abi.encode(defaultInitParams);
@@ -585,8 +580,7 @@ contract Initialize is CurveConvexDestinationVaultTests {
         CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
             curvePool: STETH_ETH_CURVE_POOL,
             convexStaking: zero,
-            convexPoolId: 25,
-            baseAssetBurnTokenIndex: 0
+            convexPoolId: 25
         });
         bytes memory initParamBytes = abi.encode(initParams);
 
@@ -605,8 +599,7 @@ contract Initialize is CurveConvexDestinationVaultTests {
         CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
             curvePool: zero,
             convexStaking: 0x0A760466E1B4621579a82a39CB56Dda2F4E70f03,
-            convexPoolId: 25,
-            baseAssetBurnTokenIndex: 0
+            convexPoolId: 25
         });
         bytes memory initParamBytes = abi.encode(initParams);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "curvePool"));

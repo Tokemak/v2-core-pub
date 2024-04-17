@@ -19,8 +19,7 @@ contract CurveStEthEthOriginal is CurveDestinationVaultBase {
             address curvePool,
             address curvePoolLpToken,
             address convexStaking,
-            uint256 convexPoolId,
-            uint256 baseAssetBurnTokenIndex
+            uint256 convexPoolId
         )
     {
         return (
@@ -29,8 +28,7 @@ contract CurveStEthEthOriginal is CurveDestinationVaultBase {
             0xDC24316b9AE028F1497c275EB9192a3Ea0f67022,
             0x06325440D014e39736583c165C2963BA99fAf14E,
             0x0A760466E1B4621579a82a39CB56Dda2F4E70f03,
-            25,
-            1 // TODO double check this
+            25
         );
     }
 }

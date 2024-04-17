@@ -24,15 +24,13 @@ abstract contract CurveDestinationVaultBase is BaseScript {
             address curvePool,
             address curvePoolLpToken,
             address convexStaking,
-            uint256 convexPoolId,
-            uint256 baseAssetBurnTokenIndex
+            uint256 convexPoolId
         ) = _getData();
 
         CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
             curvePool: curvePool,
             convexStaking: convexStaking,
-            convexPoolId: convexPoolId,
-            baseAssetBurnTokenIndex: baseAssetBurnTokenIndex
+            convexPoolId: convexPoolId
         });
         bytes memory initParamBytes = abi.encode(initParams);
 
@@ -62,7 +60,6 @@ abstract contract CurveDestinationVaultBase is BaseScript {
             address curvePool,
             address curvePoolLpToken,
             address convexStaking,
-            uint256 convexPoolId,
-            uint256 baseAssetBurnTokenIndex
+            uint256 convexPoolId
         );
 }

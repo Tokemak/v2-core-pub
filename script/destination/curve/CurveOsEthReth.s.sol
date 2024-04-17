@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
+// Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
 import { CurveDestinationVaultBase } from "script/destination/curve/CurveDestinationVaultBase.s.sol";
 
 /**
- * @dev This contract creates a new Destination Vault for the Curve Curve cbETH/ETH pool.
+ * @dev This contract creates a new Destination Vault for the Curve stETH/ETH ng pool.
  * It uses the 'curve-convex' template to create the vault.
  */
-contract CurveRethWstEth is CurveDestinationVaultBase {
+contract CurveOsEthReth is CurveDestinationVaultBase {
     function _getData()
         internal
         pure
@@ -23,11 +24,11 @@ contract CurveRethWstEth is CurveDestinationVaultBase {
     {
         return (
             "curve-convex",
-            0x1406311f198A72CcA5F895141238E6043e4984B6,
-            0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A,
-            0x5b6C539b224014A09B3388e51CaAA8e354c959C8,
-            0x5d02EcD9B83f1187e92aD5be3d1bd2915CA03699,
-            127
+            address(0),
+            0xe080027Bd47353b5D1639772b4a75E9Ed3658A0d,
+            0xe080027Bd47353b5D1639772b4a75E9Ed3658A0d,
+            0xBA7eBDEF7723e55c909Ac44226FB87a93625c44e,
+            268
         );
     }
 }

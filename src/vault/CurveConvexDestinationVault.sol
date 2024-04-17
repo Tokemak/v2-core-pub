@@ -28,8 +28,6 @@ contract CurveConvexDestinationVault is DestinationVault {
         address convexStaking;
         /// @notice Numeric pool id used to reference Curve pool
         uint256 convexPoolId;
-        /// @notice Coin index of token we'll perform withdrawals to
-        uint256 baseAssetBurnTokenIndex;
     }
 
     string private constant EXCHANGE_NAME = "curve";
@@ -62,9 +60,6 @@ contract CurveConvexDestinationVault is DestinationVault {
 
     /// @notice Numeric pool id used to reference Curve pool
     uint256 public convexPoolId;
-
-    /// @notice Coin index of token we'll perform withdrawals to
-    uint256 public baseAssetBurnTokenIndex;
 
     /// @dev Tokens that make up the LP token. Meta tokens not broken up
     address[] private constituentTokens;
@@ -107,7 +102,6 @@ contract CurveConvexDestinationVault is DestinationVault {
         curvePool = initParams.curvePool;
         convexStaking = initParams.convexStaking;
         convexPoolId = initParams.convexPoolId;
-        baseAssetBurnTokenIndex = initParams.baseAssetBurnTokenIndex;
 
         // Base class has the initializer() modifier to prevent double-setup
         // If you don't call the base initialize, make sure you protect this call
@@ -148,10 +142,6 @@ contract CurveConvexDestinationVault is DestinationVault {
             address token = tokens[i] == LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER ? weth : tokens[i];
             _addTrackedToken(token);
             constituentTokens.push(token);
-        }
-
-        if (baseAssetBurnTokenIndex > numTokens - 1) {
-            revert InvalidBaseTokenBurnIndex(baseAssetBurnTokenIndex, numTokens);
         }
 
         // Initialize our min amounts for withdrawals to 0 for all tokens

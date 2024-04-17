@@ -149,8 +149,7 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @return The estimated base asset amount.
     function estimateWithdrawBaseAsset(uint256 shares, address to, address account) external returns (uint256);
 
-    /// @notice Initiate the shutdown procedures for this vault
-    /// @dev Should pull back tokens from staking locations
+    /// @notice Mark this vault as shutdown so that autoPools can react
     function shutdown(VaultShutdownStatus reason) external;
 
     /// @notice True if the vault has been shutdown

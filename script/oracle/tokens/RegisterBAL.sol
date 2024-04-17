@@ -2,18 +2,17 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+// solhint-disable state-visibility,no-console,avoid-low-level-calls,gas-custom-errors
+
 import { BaseScript, console } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
 
 import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
 
-import { SystemRegistry } from "src/SystemRegistry.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { ChainlinkOracle } from "src/oracles/providers/ChainlinkOracle.sol";
 import { BaseOracleDenominations } from "src/oracles/providers/base/BaseOracleDenominations.sol";
-
-// solhint-disable state-visibility,no-console,avoid-low-level-calls
 
 contract RegisterBAL is BaseScript {
     address public constant BAL_MAINNET = 0xba100000625a3754423978a60c9317c58a424e3D;

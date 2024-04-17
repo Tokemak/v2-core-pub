@@ -1,18 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import { IERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-
-import { BaseScript, console } from "script/BaseScript.sol";
-import { BalancerAuraDestinationVaultBase } from "script/destination/balancer/BalancerAuraDestinationVaultBase.s.sol";
-import { Systems } from "script/utils/Constants.sol";
-
-import { Roles } from "src/libs/Roles.sol";
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
-
-import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
-
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
+import { BalancerAuraDestinationVaultBase } from "script/destination/balancer/BalancerAuraDestinationVaultBase.s.sol";
 
 contract BalancerAuraRethWeth is BalancerAuraDestinationVaultBase {
     function _getData()

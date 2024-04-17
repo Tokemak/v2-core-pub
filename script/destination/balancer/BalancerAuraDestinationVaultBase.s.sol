@@ -2,17 +2,10 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-// solhint-disable no-console,reason-string
-
-import { IERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
+// solhint-disable no-console,reason-string,gas-custom-errors
 
 import { BaseScript, console } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
-
-import { Roles } from "src/libs/Roles.sol";
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
-
-import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
 

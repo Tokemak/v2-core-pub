@@ -8,8 +8,7 @@ import { console } from "forge-std/console.sol";
 
 import { BaseScript, Systems, SystemRegistry } from "script/BaseScript.sol";
 import { CustomSetOracle } from "src/oracles/providers/CustomSetOracle.sol";
-import { RootPriceOracle, IPriceOracle } from "src/oracles/RootPriceOracle.sol";
-import { Roles } from "src/libs/Roles.sol";
+import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 
 /**
  * @dev Set state variables before running script against mainnet.

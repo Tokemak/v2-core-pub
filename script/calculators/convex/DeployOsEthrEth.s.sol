@@ -4,17 +4,10 @@ pragma solidity 0.8.17;
 
 // solhint-disable no-console
 
-import { BaseScript, console } from "script/BaseScript.sol";
+import { BaseScript } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
-
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
-import { Roles } from "src/libs/Roles.sol";
-
-import { ConvexCalculator } from "src/stats/calculators/ConvexCalculator.sol";
-
 import { StatsCalculatorFactory } from "src/stats/StatsCalculatorFactory.sol";
 import { StatsCalculatorRegistry } from "src/stats/StatsCalculatorRegistry.sol";
-
 import { DeployIncentiveCalculatorBase } from "script/calculators/DeployIncentiveCalculatorBase.sol";
 
 contract DeployOsEthrEth is BaseScript, DeployIncentiveCalculatorBase {
@@ -23,25 +16,26 @@ contract DeployOsEthrEth is BaseScript, DeployIncentiveCalculatorBase {
     function run() external {
         setUp(Systems.LST_GEN1_MAINNET);
 
-        vm.startBroadcast(privateKey);
+        vm.startBroadcast();
 
         StatsCalculatorFactory statsCalcFactory = StatsCalculatorFactory(
             address(StatsCalculatorRegistry(address(systemRegistry.statsCalculatorRegistry())).factory())
         );
 
-        address curveV2cbEthEthPool = 0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A;
-        address curveV2cbEthEthLpToken = 0x5b6C539b224014A09B3388e51CaAA8e354c959C8;
-        address curveV2cbEthEthCalculator = 0x177B9FB826F79a2c0d590F418AC9517E71eA4272;
-        address convexV2cbEthEthRewarder = 0x5d02EcD9B83f1187e92aD5be3d1bd2915CA03699;
+        address pool = 0xe080027Bd47353b5D1639772b4a75E9Ed3658A0d;
+        address lpToken = 0xe080027Bd47353b5D1639772b4a75E9Ed3658A0d;
+        address poolCalculator = 0x3126b72597420A61FB67f50c8f1e7b59359cfB24;
+        address rewarder = 0xBA7eBDEF7723e55c909Ac44226FB87a93625c44e;
+
         _setupIncentiveCalculatorBase(
             statsCalcFactory,
-            "Convex + Curve V2 cbETH/ETH",
+            "Convex + Curve osETH/rETH",
             convexTemplateId,
-            curveV2cbEthEthCalculator,
+            poolCalculator,
             constants.tokens.cvx,
-            convexV2cbEthEthRewarder,
-            curveV2cbEthEthLpToken,
-            curveV2cbEthEthPool
+            rewarder,
+            lpToken,
+            pool
         );
 
         vm.stopBroadcast();

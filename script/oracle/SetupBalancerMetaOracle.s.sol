@@ -6,10 +6,9 @@ pragma solidity 0.8.17;
 
 import { console } from "forge-std/console.sol";
 
-import { BaseScript, Systems, SystemRegistry } from "script/BaseScript.sol";
+import { BaseScript, Systems } from "script/BaseScript.sol";
 import { BalancerLPMetaStableEthOracle } from "src/oracles/providers/BalancerLPMetaStableEthOracle.sol";
-import { RootPriceOracle, IPriceOracle } from "src/oracles/RootPriceOracle.sol";
-import { Roles } from "src/libs/Roles.sol";
+import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 

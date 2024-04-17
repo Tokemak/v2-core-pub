@@ -6,13 +6,9 @@ pragma solidity 0.8.17;
 
 import { console } from "forge-std/console.sol";
 
-import { BaseScript, Systems, SystemRegistry } from "script/BaseScript.sol";
+import { BaseScript, Systems } from "script/BaseScript.sol";
 import { IncentivePricingStats } from "src/stats/calculators/IncentivePricingStats.sol";
-import { Roles } from "src/libs/Roles.sol";
 
-/**
- * @dev Make sure to use the checksum addresses in the RIT_ADDRS var
- */
 contract RegisterIncentiveTokens is BaseScript {
     function run() external {
         setUp(Systems.LST_GEN1_MAINNET);

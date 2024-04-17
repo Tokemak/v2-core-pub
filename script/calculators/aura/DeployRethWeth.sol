@@ -2,19 +2,12 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-// solhint-disable no-console
+// solhint-disable no-console,var-name-mixedcase
 
-import { BaseScript, console } from "script/BaseScript.sol";
+import { BaseScript } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
-
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
-import { Roles } from "src/libs/Roles.sol";
-
-import { ConvexCalculator } from "src/stats/calculators/ConvexCalculator.sol";
-
 import { StatsCalculatorFactory } from "src/stats/StatsCalculatorFactory.sol";
 import { StatsCalculatorRegistry } from "src/stats/StatsCalculatorRegistry.sol";
-
 import { DeployIncentiveCalculatorBase } from "script/calculators/DeployIncentiveCalculatorBase.sol";
 
 contract DeployRethWeth is BaseScript, DeployIncentiveCalculatorBase {

@@ -31,7 +31,6 @@ import { console } from "forge-std/console.sol";
 import { AutoPoolFees } from "src/vault/libs/AutoPoolFees.sol";
 import { LMPDestinations } from "src/vault/libs/LMPDestinations.sol";
 import { Pausable } from "src/security/Pausable.sol";
-import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 import { VmSafe } from "forge-std/Vm.sol";

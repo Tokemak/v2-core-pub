@@ -5,22 +5,16 @@ pragma solidity 0.8.17;
 // solhint-disable max-states-count
 // solhint-disable no-console
 
-import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
-
-import { SystemRegistry } from "src/SystemRegistry.sol";
-import { AccessController } from "src/security/AccessController.sol";
 import { StatsCalculatorRegistry } from "src/stats/StatsCalculatorRegistry.sol";
 import { StatsCalculatorFactory } from "src/stats/StatsCalculatorFactory.sol";
-import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 
 // Calculators
 import { CurvePoolNoRebasingCalculatorBase } from "src/stats/calculators/base/CurvePoolNoRebasingCalculatorBase.sol";
-import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 // Libraries
 import { BaseScript } from "script/BaseScript.sol";
-import { Systems, Constants } from "../../utils/Constants.sol";
+import { Systems } from "../../utils/Constants.sol";
 import { Stats } from "src/stats/Stats.sol";
 
 contract DeployOsEthReth is BaseScript {
@@ -32,16 +26,14 @@ contract DeployOsEthReth is BaseScript {
     function run() external {
         setUp(Systems.LST_GEN1_MAINNET);
 
-        privateKey = vm.envUint(constants.privateKeyEnvVar);
-
         statsRegistry = StatsCalculatorRegistry(address(systemRegistry.statsCalculatorRegistry()));
         statsFactory = StatsCalculatorFactory(address(statsRegistry.factory()));
 
         bytes32[] memory osEthrEthDepIds = new bytes32[](2);
         osEthrEthDepIds[0] = Stats.generateRawTokenIdentifier(constants.tokens.osEth);
-        osEthrEthDepIds[1] = Stats.generateRawTokenIdentifier(constants.tokens.rEth);
+        osEthrEthDepIds[1] = keccak256(abi.encode("erc20-v2-", constants.tokens.rEth));
 
-        vm.startBroadcast(privateKey);
+        vm.startBroadcast();
 
         _setupCurvePoolNoRebasingCalculatorBase(
             "osETH/rETH", curveV1PoolNRSTemplateId, osEthrEthDepIds, 0xe080027Bd47353b5D1639772b4a75E9Ed3658A0d

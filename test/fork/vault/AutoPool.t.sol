@@ -17,7 +17,6 @@ import { SwapRouter } from "src/swapper/SwapRouter.sol";
 import { STETH_MAINNET } from "test/utils/Addresses.sol";
 import { DestinationVault } from "src/vault/DestinationVault.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { TokenReturnSolver } from "test/mocks/TokenReturnSolver.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 

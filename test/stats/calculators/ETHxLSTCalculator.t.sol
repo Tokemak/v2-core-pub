@@ -15,6 +15,7 @@ import { ETHxLSTCalculator } from "src/stats/calculators/ETHxLSTCalculator.sol";
 import { IStaderOracle } from "src/interfaces/external/stader/IStaderOracle.sol";
 import { LSTCalculatorBase } from "src/stats/calculators/base/LSTCalculatorBase.sol";
 import { TOKE_MAINNET, WETH_MAINNET, ETHX_MAINNET } from "test/utils/Addresses.sol";
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 
 contract ETHxLSTCalculatorTest is Test {
     function test_calculateEthPerToken_CorrectStandardCalculation() public {
@@ -63,7 +64,7 @@ contract ETHxLSTCalculatorTest is Test {
             abi.encode(1.022651e18)
         );
 
-        ETHxLSTCalculator calculator = new ETHxLSTCalculator(systemRegistry);
+        ETHxLSTCalculator calculator = ETHxLSTCalculator(Clones.clone(address(new ETHxLSTCalculator(systemRegistry))));
         bytes32[] memory dependantAprs = new bytes32[](0);
         LSTCalculatorBase.InitData memory initData = LSTCalculatorBase.InitData({ lstTokenAddress: ETHX_MAINNET });
         calculator.initialize(dependantAprs, abi.encode(initData));

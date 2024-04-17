@@ -11,6 +11,7 @@ import { RETH_MAINNET, TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.s
 import { Roles } from "src/libs/Roles.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 
 contract RethLSTCalculatorTest is Test {
     function testStethEthPerToken() public {
@@ -39,7 +40,7 @@ contract RethLSTCalculatorTest is Test {
             abi.encode(1e18)
         );
 
-        RethLSTCalculator calculator = new RethLSTCalculator(systemRegistry);
+        RethLSTCalculator calculator = RethLSTCalculator(Clones.clone(address(new RethLSTCalculator(systemRegistry))));
         bytes32[] memory dependantAprs = new bytes32[](0);
         LSTCalculatorBase.InitData memory initData = LSTCalculatorBase.InitData({ lstTokenAddress: RETH_MAINNET });
         calculator.initialize(dependantAprs, abi.encode(initData));

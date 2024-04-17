@@ -14,6 +14,7 @@ import { Roles } from "src/libs/Roles.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 
 contract OsethLSTCalculatorTests is Test {
     AccessController private _accessController;
@@ -82,7 +83,7 @@ contract OsethLSTCalculatorTests is Test {
             abi.encode(1e18)
         );
 
-        _calculator = new OsethLSTCalculator(systemRegistry);
+        _calculator = OsethLSTCalculator(Clones.clone(address(new OsethLSTCalculator(systemRegistry))));
         bytes32[] memory dependantAprs = new bytes32[](0);
 
         LSTCalculatorBase.InitData memory initData = LSTCalculatorBase.InitData({ lstTokenAddress: OSETH_MAINNET });

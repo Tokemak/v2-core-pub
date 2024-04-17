@@ -16,6 +16,7 @@ import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 
 contract LSTCalculatorBaseTest is Test {
     SystemRegistry private systemRegistry;
@@ -92,7 +93,7 @@ contract LSTCalculatorBaseTest is Test {
         rootPriceOracle = new RootPriceOracle(systemRegistry);
         systemRegistry.setRootPriceOracle(address(rootPriceOracle));
 
-        testCalculator = new TestLSTCalculator(systemRegistry);
+        testCalculator = TestLSTCalculator(Clones.clone(address(new TestLSTCalculator(systemRegistry))));
     }
 
     function testAprInitIncreaseSnapshot() public {

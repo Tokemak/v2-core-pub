@@ -33,6 +33,7 @@ import { RethLSTCalculator } from "src/stats/calculators/RethLSTCalculator.sol";
 import { LSTCalculatorBase } from "src/stats/calculators/base/LSTCalculatorBase.sol";
 import { IBalancerMetaStablePool } from "src/interfaces/external/balancer/IBalancerMetaStablePool.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 
 contract BalancerStablePoolCalculatorBaseTest is Test {
     uint256 private constant TARGET_BLOCK = 17_580_732;
@@ -75,7 +76,7 @@ contract BalancerStablePoolCalculatorBaseTest is Test {
         rootPriceOracle = new RootPriceOracle(systemRegistry);
         systemRegistry.setRootPriceOracle(address(rootPriceOracle));
 
-        rETHStats = new RethLSTCalculator(systemRegistry);
+        rETHStats = RethLSTCalculator(Clones.clone(address(new RethLSTCalculator(systemRegistry))));
         bytes32[] memory rETHDepAprIds = new bytes32[](0);
         LSTCalculatorBase.InitData memory rETHInitData = LSTCalculatorBase.InitData({ lstTokenAddress: RETH_MAINNET });
         mockTokenPrice(RETH_MAINNET, 1e18); // required for stats init
@@ -84,7 +85,8 @@ contract BalancerStablePoolCalculatorBaseTest is Test {
         vm.prank(address(statsFactory));
         statsRegistry.register(address(rETHStats));
 
-        calculator = new TestBalancerCalculator(systemRegistry, BAL_VAULT);
+        calculator =
+            TestBalancerCalculator(Clones.clone(address(new TestBalancerCalculator(systemRegistry, BAL_VAULT))));
     }
 
     function testConstructorShouldRevertIfBalancerVaultZeroAddress() public {

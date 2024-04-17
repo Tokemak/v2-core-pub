@@ -89,7 +89,9 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
     event SlashingEventRecorded(uint256 slashingCost, uint256 slashingTimestamp);
 
-    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
+    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) {
+        _disableInitializers();
+    }
 
     /// @inheritdoc IStatsCalculator
     function initialize(bytes32[] calldata, bytes memory initData) public virtual override initializer {

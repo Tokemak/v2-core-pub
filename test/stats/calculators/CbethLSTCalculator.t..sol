@@ -11,6 +11,7 @@ import { CBETH_MAINNET, TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.
 import { Roles } from "src/libs/Roles.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 
 contract CbethLSTCalculatorTest is Test {
     function testStethEthPerToken() public {
@@ -39,7 +40,8 @@ contract CbethLSTCalculatorTest is Test {
             abi.encode(1e18)
         );
 
-        CbethLSTCalculator calculator = new CbethLSTCalculator(systemRegistry);
+        CbethLSTCalculator calculator =
+            CbethLSTCalculator(Clones.clone(address(new CbethLSTCalculator(systemRegistry))));
         bytes32[] memory dependantAprs = new bytes32[](0);
         LSTCalculatorBase.InitData memory initData = LSTCalculatorBase.InitData({ lstTokenAddress: CBETH_MAINNET });
         calculator.initialize(dependantAprs, abi.encode(initData));

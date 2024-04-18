@@ -8,7 +8,7 @@ import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCal
 import { StatsCalculatorFactory } from "src/stats/StatsCalculatorFactory.sol";
 import { console } from "forge-std/console.sol";
 
-contract DeployIncentiveCalculatorBase {
+abstract contract DeployIncentiveCalculatorBase {
     function _setupIncentiveCalculatorBase(
         StatsCalculatorFactory statsFactory,
         string memory title,

@@ -4,7 +4,6 @@ pragma solidity >=0.8.7;
 
 /* solhint-disable one-contract-per-file */
 
-import { IERC4626 } from "openzeppelin-contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 
@@ -16,7 +15,7 @@ import { AsyncSwapperRegistry } from "src/liquidation/AsyncSwapperRegistry.sol";
 import { LMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
 import { LMPVaultMainRewarder } from "src/rewarders/LMPVaultMainRewarder.sol";
 
-import { ILMPVault, LMPVault } from "src/vault/LMPVault.sol";
+import { LMPVault } from "src/vault/LMPVault.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
 import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
 import { ILMPVaultRouterBase } from "src/interfaces/vault/ILMPVaultRouter.sol";
@@ -270,7 +269,6 @@ contract LMPVaultRouterTest is BaseTest {
     }
 
     function test_swapAndDepositToVaultViaMultiCall() public {
-        address vaultAddress = address(12);
         AsyncSwapperRegistry asyncSwapperRegistry = new AsyncSwapperRegistry(systemRegistry);
         IAsyncSwapper swapper = new BaseAsyncSwapper(ZERO_EX_MAINNET);
         systemRegistry.setAsyncSwapperRegistry(address(asyncSwapperRegistry));

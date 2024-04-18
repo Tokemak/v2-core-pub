@@ -8,7 +8,7 @@ import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard
 import { Address } from "openzeppelin-contracts/utils/Address.sol";
 import { ILMPVault, ILMPVaultRouter } from "src/interfaces/vault/ILMPVaultRouter.sol";
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
-import { LMPVaultRouterBase, Errors, ISystemRegistry } from "src/vault/LMPVaultRouterBase.sol";
+import { LMPVaultRouterBase, ISystemRegistry } from "src/vault/LMPVaultRouterBase.sol";
 
 /// @title ERC4626Router contract
 contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard {

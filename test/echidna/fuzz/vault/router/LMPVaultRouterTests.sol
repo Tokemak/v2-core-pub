@@ -417,7 +417,13 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         // Mocked 1:1 swap
         _startPrank(msg.sender);
 
-        lmpVaultRouter.swapAndDepositToVault(address(swapperMock), swapParams, _pool, to, minSharesOut);
+        bytes[] memory calls = new bytes[](3);
+
+        calls[0] = abi.encodeCall(lmpVaultRouter.pullToken, (IERC20(address(_weth)), amount, address(lmpVaultRouter)));
+        calls[1] = abi.encodeCall(lmpVaultRouter.swapToken, (address(swapperMock), swapParams));
+        calls[2] = abi.encodeCall(lmpVaultRouter.depositBalance, (_pool, to, minSharesOut));
+
+        lmpVaultRouter.multicall(calls);
         _stopPrank();
     }
 
@@ -438,12 +444,11 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
 
         address to = _resolveUserFromSeed(toSeed);
 
-        // Mocked 1:1 swap
         queuedCalls.push(
-            abi.encodeWithSelector(
-                lmpVaultRouter.swapAndDepositToVault.selector, address(swapperMock), swapParams, _pool, to, minSharesOut
-            )
+            abi.encodeCall(lmpVaultRouter.pullToken, (IERC20(address(_weth)), amount, address(lmpVaultRouter)))
         );
+        queuedCalls.push(abi.encodeCall(lmpVaultRouter.swapToken, (address(swapperMock), swapParams)));
+        queuedCalls.push(abi.encodeCall(lmpVaultRouter.depositBalance, (_pool, to, minSharesOut)));
     }
 
     // Redeem

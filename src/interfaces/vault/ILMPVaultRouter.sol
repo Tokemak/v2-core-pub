@@ -16,23 +16,14 @@ interface ILMPVaultRouter is ILMPVaultRouterBase {
      */
 
     /**
-     * @notice swap and deposit max assets to a LMPVault.
-     * @dev The goal is to deposit whatever amount is received from the swap into the vault such as depositMax.
-     * Balances are checked in the swapper function.
-     * @param swapper The address of the swapper contract.
-     * @param swapParams The swap parameters.
-     * @param vault The ILMPVault contract.
-     * @param to The address to receive the deposited amount.
-     * @param minSharesOut The minimum amount of shares to be received as output.
-     * @return sharesOut The amount of shares deposited into the vault.
+     * @notice deposit available asset balance to a LMPVault.
+     * @param vault The LMPVault to deposit assets to.
+     * @param to The destination of ownership shares.
+     * @param minSharesOut The min amount of `vault` shares received by `to`.
+     * @return sharesOut the amount of shares received by `to`.
+     * @dev throws MinSharesError
      */
-    function swapAndDepositToVault(
-        address swapper,
-        SwapParams memory swapParams,
-        ILMPVault vault,
-        address to,
-        uint256 minSharesOut
-    ) external returns (uint256 sharesOut);
+    function depositBalance(ILMPVault vault, address to, uint256 minSharesOut) external returns (uint256 sharesOut);
 
     /**
      * @notice deposit max assets to a LMPVault.
@@ -99,4 +90,12 @@ interface ILMPVaultRouter is ILMPVaultRouterBase {
      * @dev throws MinAmountError
      */
     function redeemMax(ILMPVault vault, address to, uint256 minAmountOut) external returns (uint256 amountOut);
+
+    /**
+     * @notice swaps token
+     * @param swapper Address of the swapper to use
+     * @param swapParams  Parameters for the swap
+     * @return amountReceived Swap output amount
+     */
+    function swapToken(address swapper, SwapParams memory swapParams) external returns (uint256 amountReceived);
 }

@@ -34,7 +34,6 @@ import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { ERC2612 } from "test/utils/ERC2612.sol";
 import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
-import { TestERC20 } from "test/mocks/TestERC20.sol";
 
 contract LMPVaultRouterWrapper is LMPVaultRouter {
     error SomethingWentWrong();

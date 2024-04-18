@@ -28,12 +28,13 @@ import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { IAsyncSwapper, SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 
 import { BaseTest } from "test/BaseTest.t.sol";
-import { WETH_MAINNET, ZERO_EX_MAINNET, CVX_MAINNET, TREASURY } from "test/utils/Addresses.sol";
+import { WETH_MAINNET, ZERO_EX_MAINNET, CVX_MAINNET, TREASURY, WETH9_ADDRESS } from "test/utils/Addresses.sol";
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 
 import { ERC2612 } from "test/utils/ERC2612.sol";
 import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
+import { TestERC20 } from "test/mocks/TestERC20.sol";
 
 contract LMPVaultRouterWrapper is LMPVaultRouter {
     error SomethingWentWrong();
@@ -48,6 +49,20 @@ contract LMPVaultRouterWrapper is LMPVaultRouter {
 
     function doSomethingRight() public {
         emit SomethingHappened();
+    }
+}
+
+/// @dev Custom mocked swapper for testing to represent a 1:1 swap
+contract SwapperMock is BaseAsyncSwapper, BaseTest {
+    constructor(address _aggregator) BaseAsyncSwapper(_aggregator) { }
+
+    function swap(SwapParams memory params) public override returns (uint256 buyTokenAmountReceived) {
+        // Mock 1:1 swap
+
+        deal(address(this), params.buyAmount);
+        payable(WETH9_ADDRESS).call{ value: params.buyAmount }("");
+        IERC20(WETH9_ADDRESS).transfer(msg.sender, params.buyAmount);
+        return params.buyAmount;
     }
 }
 
@@ -466,6 +481,45 @@ contract LMPVaultRouterTest is BaseTest {
         assertEq(sharesOut, amount);
         assertEq(baseAsset.balanceOf(address(this)), baseAssetBefore + amount);
         assertEq(lmpVault.balanceOf(address(this)), sharesBefore - sharesOut);
+    }
+
+    function test_swap_on_withdraw() public {
+        AsyncSwapperRegistry asyncSwapperRegistry = new AsyncSwapperRegistry(systemRegistry);
+        IAsyncSwapper swapperMock = new SwapperMock(address(123));
+        systemRegistry.setAsyncSwapperRegistry(address(asyncSwapperRegistry));
+
+        accessController.grantRole(Roles.REGISTRY_UPDATER, address(this));
+        asyncSwapperRegistry.register(address(swapperMock));
+        uint256 amount = depositAmount;
+
+        // deposit first
+        baseAsset.approve(address(lmpVaultRouter), amount);
+        _deposit(lmpVault, amount);
+
+        SwapParams memory swapParams = SwapParams({
+            sellTokenAddress: address(baseAsset),
+            sellAmount: amount,
+            buyTokenAddress: WETH9_ADDRESS,
+            buyAmount: amount,
+            data: "", // no real payload since the swap is mocked
+            extraData: ""
+        });
+
+        uint256 wethBalanceBefore = IERC20(WETH9_ADDRESS).balanceOf(address(this));
+
+        bytes[] memory calls = new bytes[](3);
+
+        lmpVault.approve(address(lmpVaultRouter), type(uint256).max);
+        calls[0] =
+            abi.encodeCall(lmpVaultRouter.withdraw, (lmpVault, address(lmpVaultRouter), amount, type(uint256).max));
+        calls[1] = abi.encodeCall(lmpVaultRouter.swapToken, (address(swapperMock), swapParams));
+        calls[2] = abi.encodeCall(lmpVaultRouter.sweepToken, (IERC20(WETH9_ADDRESS), 1, address(this)));
+
+        lmpVaultRouter.multicall(calls);
+
+        uint256 wethBalanceAfter = IERC20(WETH9_ADDRESS).balanceOf(address(this));
+
+        assertGt(wethBalanceAfter, wethBalanceBefore);
     }
 
     function test_redeem() public {

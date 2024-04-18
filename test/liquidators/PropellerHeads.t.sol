@@ -2,16 +2,14 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+// solhint-disable func-name-mixedcase
+
 import { Test } from "forge-std/Test.sol";
-
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-
 import { BaseAsyncSwapper } from "../../src/liquidation/BaseAsyncSwapper.sol";
 import { IAsyncSwapper, SwapParams } from "../../src/interfaces/liquidation/IAsyncSwapper.sol";
 import { PRANK_ADDRESS, CVX_MAINNET, WETH_MAINNET, PROPELLER_HEADS_MAINNET } from "../utils/Addresses.sol";
-import { console } from "forge-std/console.sol";
 
-// solhint-disable func-name-mixedcase
 contract PropellerHeadsTest is Test {
     BaseAsyncSwapper private adapter;
 
@@ -52,7 +50,6 @@ contract PropellerHeadsTest is Test {
 
         uint256 balanceBefore = IERC20(WETH_MAINNET).balanceOf(address(adapter));
 
-        console.log(address(adapter));
         adapter.swap(SwapParams(CVX_MAINNET, 100e18, WETH_MAINNET, 80_719_887_656_811_836, data, new bytes(0)));
 
         uint256 balanceAfter = IERC20(WETH_MAINNET).balanceOf(address(adapter));

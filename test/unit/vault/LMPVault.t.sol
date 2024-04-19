@@ -16,7 +16,7 @@ import { LMPVault } from "src/vault/LMPVault.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { SystemRegistryMocks } from "test/unit/mocks/SystemRegistryMocks.t.sol";
-import { TestERC20, ERC20 } from "test/mocks/TestERC20.sol";
+import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { ISystemSecurity } from "src/interfaces/security/ISystemSecurity.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";

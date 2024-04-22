@@ -28,6 +28,7 @@ contract EethOracleTests is Test {
 
         vm.mockCall(weETH, abi.encodeWithSelector(IweETH.eETH.selector), abi.encode(eETH));
         vm.mockCall(eETH, abi.encodeWithSelector(IeETH.decimals.selector), abi.encode(18));
+        vm.mockCall(weETH, abi.encodeWithSelector(IweETH.decimals.selector), abi.encode(18));
 
         _oracle = new EethOracle(_systemRegistry, weETH);
     }
@@ -55,6 +56,13 @@ contract EethOracleTests is Test {
         vm.mockCall(eETH, abi.encodeWithSelector(IeETH.decimals.selector), abi.encode(17));
 
         vm.expectRevert(abi.encodeWithSelector(EethOracle.InvalidDecimals.selector, eETH, 17));
+        new EethOracle(_systemRegistry, weETH);
+    }
+
+    function test_constructor_RevertIf_WeethNot18Decimals() public {
+        vm.mockCall(weETH, abi.encodeWithSelector(IweETH.decimals.selector), abi.encode(17));
+
+        vm.expectRevert(abi.encodeWithSelector(EethOracle.InvalidDecimals.selector, weETH, 17));
         new EethOracle(_systemRegistry, weETH);
     }
 

@@ -18,4 +18,6 @@ interface IweETH {
     function getRate() external view returns (uint256);
 
     function eETH() external view returns (IeETH);
+
+    function decimals() external pure returns (uint8);
 }

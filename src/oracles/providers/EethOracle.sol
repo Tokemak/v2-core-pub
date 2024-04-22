@@ -32,6 +32,9 @@ contract EethOracle is SystemComponent, IPriceOracle {
         if (eETH.decimals() != 18) {
             revert InvalidDecimals(address(eETH), eETH.decimals());
         }
+        if (weETH.decimals() != 18) {
+            revert InvalidDecimals(address(weETH), weETH.decimals());
+        }
     }
 
     /// @inheritdoc IPriceOracle
@@ -45,6 +48,6 @@ contract EethOracle is SystemComponent, IPriceOracle {
 
         uint256 weETHPrice = systemRegistry.rootPriceOracle().getPriceInEth(address(weETH));
 
-        price = (weETHPrice * 1e18) / weETH.getEETHByWeETH(1 ether);
+        price = (weETHPrice * 1e18) / weETH.getEETHByWeETH(1e18);
     }
 }

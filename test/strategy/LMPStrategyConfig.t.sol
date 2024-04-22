@@ -513,7 +513,7 @@ contract LMPStrategyConfigTest is Test {
     function test_lstPriceGapTolerance_Max() public {
         LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
 
-        config.lstPriceGapTolerance = 0.05e18;
+        config.lstPriceGapTolerance = 500;
         LMPStrategyConfig.validate(config);
 
         config.lstPriceGapTolerance += 1;

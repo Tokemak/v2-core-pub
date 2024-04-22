@@ -1998,37 +1998,6 @@ contract LMPStrategyTest is Test {
         assertEq(defaultStrat.swapCostOffsetPeriodInDays(), 10);
     }
 
-    // TODO: Cannot configure this test in this manner with the additional checks added
-    //       Any other way to test this?
-
-    // function test_rebalanceSuccessfullyExecuted_tightenMinHandlesLargeStep() public {
-    //     LMPStrategyConfig.StrategyConfig memory cfg = helpers.getDefaultConfig();
-    //     cfg.swapCostOffset.minInDays = 1;
-    //     cfg.swapCostOffset.initInDays = 2; // set below the step size
-    //     LMPStrategyHarness testStrat = deployStrategy(cfg);
-
-    //     assertEq(testStrat.swapCostOffsetTightenStepInDays(), 3);
-    //     assertEq(testStrat.swapCostOffsetPeriodInDays(), 2);
-
-    //     testStrat._setLastRebalanceTimestamp(60 days);
-    //     vm.warp(60 days);
-
-    //     vm.startPrank(mockLMPVault);
-    //     testStrat.rebalanceSuccessfullyExecuted(defaultParams);
-    //     assertEq(testStrat.lastAddTimestampByDestination(mockInDest), 60 days);
-
-    //     // flip the direction of the rebalance
-    //     defaultParams.destinationIn = mockOutDest;
-    //     defaultParams.destinationOut = mockInDest;
-
-    //     // generate 1 tighten; need 10 total violation tracked, we got one with the first rebal
-    //     for (uint256 i = 1; i < 10; ++i) {
-    //         testStrat.rebalanceSuccessfullyExecuted(defaultParams);
-    //     }
-
-    //     assertEq(testStrat.swapCostOffsetPeriodInDays(), 1);
-    // }
-
     function test_rebalanceSuccessfullyExecuted_ignoreRebalancesFromIdle() public {
         // advance so we can make sure that non-idle timestamp is updated
         vm.warp(startBlockTime + 60 days);

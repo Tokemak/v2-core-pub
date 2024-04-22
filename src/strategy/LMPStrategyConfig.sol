@@ -207,7 +207,7 @@ library LMPStrategyConfig {
             revert InvalidConfig("maxAllowedDiscount");
         }
 
-        if (config.lstPriceGapTolerance > 0.05e18) {
+        if (config.lstPriceGapTolerance > 500) {
             revert InvalidConfig("lstPriceGapTolerance");
         }
     }

@@ -63,10 +63,6 @@ contract TestDestinationVault is DestinationVault {
         return address(_baseAsset);
     }
 
-    function debtValue() public view override returns (uint256 value) {
-        return _debtVault;
-    }
-
     function exchangeName() external pure override returns (string memory) {
         return "test";
     }

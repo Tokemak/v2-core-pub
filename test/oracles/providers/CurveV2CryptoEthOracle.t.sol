@@ -86,36 +86,36 @@ contract CurveV2CryptoEthOracleTest is Test {
     function test_RevertNonOwnerRegister() external {
         vm.prank(address(1));
         vm.expectRevert(Errors.AccessDenied.selector);
-        curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP, false);
+        curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP);
     }
 
     function test_RevertZeroAddressCurvePool() external {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "curvePool"));
-        curveOracle.registerPool(address(0), CRV_ETH_CURVE_V2_LP, false);
+        curveOracle.registerPool(address(0), CRV_ETH_CURVE_V2_LP);
     }
 
     function test_ZeroAddressLpTokenRegistration() external {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "curveLpToken"));
-        curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, address(0), false);
+        curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, address(0));
     }
 
     function test_LpTokenAlreadyRegistered() external {
-        curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP, false);
+        curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AlreadyRegistered.selector, CRV_ETH_CURVE_V2_POOL));
-        curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP, false);
+        curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP);
     }
 
     function test_InvalidTokenNumber() external {
         vm.expectRevert(abi.encodeWithSelector(CurveV2CryptoEthOracle.InvalidNumTokens.selector, 3));
-        curveOracle.registerPool(THREE_CURVE_MAINNET, CRV_ETH_CURVE_V2_LP, false);
+        curveOracle.registerPool(THREE_CURVE_MAINNET, CRV_ETH_CURVE_V2_LP);
     }
 
     function test_NotCryptoPool() external {
         vm.expectRevert(
             abi.encodeWithSelector(CurveV2CryptoEthOracle.NotCryptoPool.selector, STETH_WETH_CURVE_POOL_CONCENTRATED)
         );
-        curveOracle.registerPool(STETH_WETH_CURVE_POOL_CONCENTRATED, CRV_ETH_CURVE_V2_LP, false);
+        curveOracle.registerPool(STETH_WETH_CURVE_POOL_CONCENTRATED, CRV_ETH_CURVE_V2_LP);
     }
 
     function test_LpTokenMistmatch() external {
@@ -124,19 +124,17 @@ contract CurveV2CryptoEthOracleTest is Test {
                 CurveV2CryptoEthOracle.ResolverMismatch.selector, CVX_ETH_CURVE_V2_LP, CRV_ETH_CURVE_V2_LP
             )
         );
-        curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CVX_ETH_CURVE_V2_LP, false);
+        curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CVX_ETH_CURVE_V2_LP);
     }
 
     function test_ProperRegistration() external {
         vm.expectEmit(false, false, false, true);
         emit TokenRegistered(CRV_ETH_CURVE_V2_LP);
 
-        curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP, false);
+        curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP);
 
-        (address pool, uint8 reentrancy, address priceToken, address tokenFromPrice) =
-            curveOracle.lpTokenToPool(CRV_ETH_CURVE_V2_LP);
+        (address pool, address priceToken, address tokenFromPrice) = curveOracle.lpTokenToPool(CRV_ETH_CURVE_V2_LP);
         assertEq(pool, CRV_ETH_CURVE_V2_POOL);
-        assertEq(reentrancy, 0);
         assertEq(priceToken, CRV_MAINNET);
         assertEq(tokenFromPrice, WETH9_ADDRESS);
         // Verify pool to lp token
@@ -162,17 +160,15 @@ contract CurveV2CryptoEthOracleTest is Test {
 
     function test_ProperUnRegister() external {
         // Register first
-        curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP, false);
+        curveOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP);
 
         vm.expectEmit(false, false, false, true);
         emit TokenUnregistered(CRV_ETH_CURVE_V2_LP);
 
         curveOracle.unregister(CRV_ETH_CURVE_V2_LP);
 
-        (address pool, uint8 reentrancy, address tokenToPrice, address tokenFromPrice) =
-            curveOracle.lpTokenToPool(CRV_ETH_CURVE_V2_LP);
+        (address pool, address tokenToPrice, address tokenFromPrice) = curveOracle.lpTokenToPool(CRV_ETH_CURVE_V2_LP);
         assertEq(pool, address(0));
-        assertEq(reentrancy, 0);
         assertEq(tokenToPrice, address(0));
         assertEq(tokenFromPrice, address(0));
         // Verify pool to lp token
@@ -185,7 +181,7 @@ contract CurveV2CryptoEthOracleTest is Test {
     }
 
     function testGetSpotPriceRethWeth() public {
-        curveOracle.registerPool(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP, true);
+        curveOracle.registerPool(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP);
 
         (uint256 price, address quote) = curveOracle.getSpotPrice(RETH_MAINNET, RETH_WETH_CURVE_POOL, WETH9_ADDRESS);
 
@@ -202,7 +198,7 @@ contract CurveV2CryptoEthOracleTest is Test {
     }
 
     function testGetSpotPriceWethReth() public {
-        curveOracle.registerPool(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP, true);
+        curveOracle.registerPool(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP);
 
         (uint256 price, address quote) = curveOracle.getSpotPrice(WETH9_ADDRESS, RETH_WETH_CURVE_POOL, RETH_MAINNET);
 
@@ -220,7 +216,7 @@ contract CurveV2CryptoEthOracleTest is Test {
 
     // Tests edge case where Eth is submitted as `address token`.
     function testGetSpotPriceEthCbEth() public {
-        curveOracle.registerPool(CBETH_ETH_V2_POOL, CBETH_ETH_V2_POOL_LP, true);
+        curveOracle.registerPool(CBETH_ETH_V2_POOL, CBETH_ETH_V2_POOL_LP);
 
         (uint256 price, address quote) = curveOracle.getSpotPrice(CURVE_ETH, CBETH_ETH_V2_POOL, CBETH_MAINNET);
 
@@ -236,7 +232,7 @@ contract CurveV2CryptoEthOracleTest is Test {
     }
 
     function testGetSpotPriceCbEthEth() public {
-        curveOracle.registerPool(CBETH_ETH_V2_POOL, CBETH_ETH_V2_POOL_LP, true);
+        curveOracle.registerPool(CBETH_ETH_V2_POOL, CBETH_ETH_V2_POOL_LP);
 
         (uint256 price, address quote) = curveOracle.getSpotPrice(CBETH_MAINNET, CBETH_ETH_V2_POOL, WETH9_ADDRESS);
 
@@ -265,7 +261,7 @@ contract CurveV2CryptoEthOracleTest is Test {
     }
 
     function testGetSafeSpotPriceInfo() public {
-        curveOracle.registerPool(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP, true);
+        curveOracle.registerPool(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP);
 
         (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
             curveOracle.getSafeSpotPriceInfo(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP, WETH9_ADDRESS);

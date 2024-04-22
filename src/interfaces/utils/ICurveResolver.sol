@@ -6,7 +6,6 @@ pragma solidity 0.8.17;
 interface ICurveResolver {
     /// @notice Resolve details of a Curve pool regardless of type or version
     /// @dev This resolves tokens without unwrapping to underlying in the case of meta pools.
-    /// If you need a dynamic array of tokens use Arrays.convertFixedCurveTokenArrayToDynamic(tokens,numTokens)
     /// @param poolAddress pool address to lookup
     /// @return tokens tokens that make up the pool
     /// @return numTokens the number of tokens. tokens are not unwrapped.
@@ -18,7 +17,6 @@ interface ICurveResolver {
 
     /// @notice Resolve details of a Curve pool regardless of type or version
     /// @dev This resolves tokens without unwrapping to underlying in the case of meta pools.
-    /// If you need a dynamic array of tokens use Arrays.convertFixedCurveTokenArrayToDynamic(tokens,numTokens)
     /// @param poolAddress pool address to lookup
     /// @return tokens tokens that make up the pool
     /// @return numTokens the number of tokens. tokens are not unwrapped

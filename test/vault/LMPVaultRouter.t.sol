@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity >=0.8.7;
 
-/* solhint-disable one-contract-per-file */
+/* solhint-disable one-contract-per-file,avoid-low-level-calls */
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { IERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draft-IERC20Permit.sol";

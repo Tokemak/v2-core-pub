@@ -96,11 +96,6 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
         bytes memory params_
     ) external;
 
-    /// @notice Calculates the current value of our debt
-    /// @dev Queries the current value of all tokens we have deployed, whether its a single place, multiple, staked, etc
-    /// @return value The current value of our debt in terms of the baseAsset
-    function debtValue() external returns (uint256 value);
-
     function getRangePricesLP() external returns (uint256 spotPrice, uint256 safePrice, bool isSpotSafe);
 
     /// @notice Calculates the current value of a portion of the debt based on shares
@@ -139,15 +134,6 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @param to destination of the base asset
     /// @return amount base asset amount 'to' received
     function withdrawBaseAsset(uint256 shares, address to) external returns (uint256 amount);
-
-    /// @notice Estimate the base asset amount that can be withdrawn given a certain number of shares. This function
-    /// performs a "simulation" of the withdrawal process. It will actually execute the withdrawal, but will then revert
-    /// the transaction, returning the estimated amount in the revert reason.
-    /// @param shares The number of shares to be used in the estimation.
-    /// @param to The address to receive the withdrawn amount.
-    /// @param account Address involved in the withdrawal; Must be set to address(0).
-    /// @return The estimated base asset amount.
-    function estimateWithdrawBaseAsset(uint256 shares, address to, address account) external returns (uint256);
 
     /// @notice Mark this vault as shutdown so that autoPools can react
     function shutdown(VaultShutdownStatus reason) external;

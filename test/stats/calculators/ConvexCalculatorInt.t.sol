@@ -91,7 +91,7 @@ contract ConvexCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
             abi.encode(1e18, 1e18, true)
         );
 
-        _curveV1Oracle.registerPool(curvePool, curveLpToken, true);
+        _curveV1Oracle.registerPool(curvePool, curveLpToken);
 
         // Using fake base Curve stats
         _curveStats = IDexLSTStats(vm.addr(1012));

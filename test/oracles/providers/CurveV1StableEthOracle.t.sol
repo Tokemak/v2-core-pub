@@ -63,7 +63,7 @@ contract CurveV1StableEthOracleTests is Test {
     }
 
     function testUnregisterSecurity() public {
-        oracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, false);
+        oracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP);
 
         address testUser1 = vm.addr(34_343);
         vm.prank(testUser1);
@@ -73,7 +73,7 @@ contract CurveV1StableEthOracleTests is Test {
     }
 
     function testUnregisterMustExist() public {
-        oracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, false);
+        oracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP);
 
         address notRegisteredToken = vm.addr(33);
         vm.expectRevert(abi.encodeWithSelector(CurveV1StableEthOracle.NotRegistered.selector, notRegisteredToken));
@@ -81,10 +81,10 @@ contract CurveV1StableEthOracleTests is Test {
     }
 
     function testUnregister() public {
-        oracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, true);
+        oracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP);
 
         address[] memory tokens = oracle.getLpTokenToUnderlying(THREE_CURVE_POOL_MAINNET_LP);
-        (address pool, uint8 checkReentrancy) = oracle.lpTokenToPool(THREE_CURVE_POOL_MAINNET_LP);
+        (address pool) = oracle.lpTokenToPool(THREE_CURVE_POOL_MAINNET_LP);
         address poolToLpToken = oracle.poolToLpToken(THREE_CURVE_MAINNET);
 
         assertEq(tokens.length, 3);
@@ -92,18 +92,16 @@ contract CurveV1StableEthOracleTests is Test {
         assertEq(tokens[1], USDC_MAINNET);
         assertEq(tokens[2], USDT_MAINNET);
         assertEq(pool, THREE_CURVE_MAINNET);
-        assertEq(checkReentrancy, 1);
         assertEq(poolToLpToken, THREE_CURVE_POOL_MAINNET_LP);
 
         oracle.unregister(THREE_CURVE_POOL_MAINNET_LP);
 
         address[] memory afterTokens = oracle.getLpTokenToUnderlying(THREE_CURVE_POOL_MAINNET_LP);
-        (address afterPool, uint8 afterCheckReentrancy) = oracle.lpTokenToPool(THREE_CURVE_POOL_MAINNET_LP);
+        (address afterPool) = oracle.lpTokenToPool(THREE_CURVE_POOL_MAINNET_LP);
         address afterPoolToLpToken = oracle.poolToLpToken(THREE_CURVE_MAINNET);
 
         assertEq(afterTokens.length, 0);
         assertEq(afterPool, address(0));
-        assertEq(afterCheckReentrancy, 0);
         assertEq(afterPoolToLpToken, address(0));
     }
 
@@ -115,7 +113,7 @@ contract CurveV1StableEthOracleTests is Test {
         vm.prank(testUser1);
 
         vm.expectRevert(abi.encodeWithSelector(IAccessController.AccessDenied.selector));
-        oracle.registerPool(mockPool, matchingLP, true);
+        oracle.registerPool(mockPool, matchingLP);
     }
 
     function testPoolRegistration() public {
@@ -137,7 +135,7 @@ contract CurveV1StableEthOracleTests is Test {
             new CurveV1StableEthOracle(systemRegistry, CurveResolverMainnet(mockResolver));
 
         vm.expectRevert(abi.encodeWithSelector(CurveV1StableEthOracle.NotStableSwap.selector, mockPool));
-        localOracle.registerPool(mockPool, matchingLP, true);
+        localOracle.registerPool(mockPool, matchingLP);
 
         // stable swap but not matching
         vm.mockCall(
@@ -149,7 +147,7 @@ contract CurveV1StableEthOracleTests is Test {
         vm.expectRevert(
             abi.encodeWithSelector(CurveV1StableEthOracle.ResolverMismatch.selector, matchingLP, nonMatchingLP)
         );
-        localOracle.registerPool(mockPool, matchingLP, true);
+        localOracle.registerPool(mockPool, matchingLP);
     }
 
     function testGetSpotPriceRevertIfPoolIsZeroAddress() public {
@@ -158,7 +156,7 @@ contract CurveV1StableEthOracleTests is Test {
     }
 
     function testGetSpotPriceFraxUsdc() public {
-        oracle.registerPool(FRAX_USDC, FRAX_USDC_LP, true);
+        oracle.registerPool(FRAX_USDC, FRAX_USDC_LP);
 
         (uint256 price, address quote) = oracle.getSpotPrice(FRAX_MAINNET, FRAX_USDC, WETH9_ADDRESS);
 
@@ -175,7 +173,7 @@ contract CurveV1StableEthOracleTests is Test {
     }
 
     function testGetSpotPriceUsdcFrax() public {
-        oracle.registerPool(FRAX_USDC, FRAX_USDC_LP, true);
+        oracle.registerPool(FRAX_USDC, FRAX_USDC_LP);
 
         (uint256 price, address quote) = oracle.getSpotPrice(USDC_MAINNET, FRAX_USDC, FRAX_MAINNET);
 
@@ -192,7 +190,7 @@ contract CurveV1StableEthOracleTests is Test {
 
     // Testing fix for bug involving Eth being submitted as `address token` param on `getSpotPrice()`
     function testGetSpotPriceWorksWithEthAsToken() external {
-        oracle.registerPool(STETH_ETH_CURVE_POOL, ST_ETH_CURVE_LP_TOKEN_MAINNET, false);
+        oracle.registerPool(STETH_ETH_CURVE_POOL, ST_ETH_CURVE_LP_TOKEN_MAINNET);
 
         (uint256 price, address actualQuote) = oracle.getSpotPrice(CURVE_ETH, STETH_ETH_CURVE_POOL, STETH_MAINNET);
 
@@ -217,8 +215,8 @@ contract CurveV1StableEthOracleTests is Test {
         oracle.getSafeSpotPriceInfo(FRAX_USDC, FRAX_USDC_LP, address(0));
     }
 
-    function testGetSafeSpotPriceInfoFraxUsdc() public {
-        oracle.registerPool(FRAX_USDC, FRAX_USDC_LP, true);
+    function testGetSafeSpotPriceInfo() public {
+        oracle.registerPool(FRAX_USDC, FRAX_USDC_LP);
 
         (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
             oracle.getSafeSpotPriceInfo(FRAX_USDC, FRAX_USDC_LP, WETH9_ADDRESS);
@@ -234,7 +232,7 @@ contract CurveV1StableEthOracleTests is Test {
     }
 
     function testGetSafeSpotPriceInfoThreePool() public {
-        oracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, true);
+        oracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP);
 
         (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
             oracle.getSafeSpotPriceInfo(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, USDT_MAINNET);

@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import { IERC20, SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-import { Path } from "src/utils/univ3/Path.sol";
+import { Path } from "src/external/univ3/Path.sol";
 
 import { IUniswapV3SwapRouter } from "src/interfaces/external/uniswap/IUniswapV3SwapRouter.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";

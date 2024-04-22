@@ -7,7 +7,7 @@
 
 pragma solidity 0.8.17;
 
-import { BytesLib } from "src/utils/univ3/BytesLib.sol";
+import { BytesLib } from "src/external/univ3/BytesLib.sol";
 
 /// @title Functions for manipulating path data for multihop swaps
 library Path {

@@ -170,11 +170,6 @@ abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Init
     }
 
     /// @inheritdoc IDestinationVault
-    function debtValue() public virtual override returns (uint256 value) {
-        value = _debtValue(balanceOfUnderlyingDebt());
-    }
-
-    /// @inheritdoc IDestinationVault
     function debtValue(uint256 shares) external virtual returns (uint256 value) {
         value = _debtValue(shares);
     }
@@ -282,67 +277,6 @@ abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Init
     function withdrawBaseAsset(uint256 shares, address to) external returns (uint256 amount) {
         return _withdrawBaseAsset(msg.sender, shares, to);
     }
-
-    /// @inheritdoc IDestinationVault
-    //slither-disable-start assembly
-    function estimateWithdrawBaseAsset(uint256 shares, address to, address account) public returns (uint256) {
-        // Check if the function is being called from an external source and not recursively.
-        if (msg.sender != address(this)) {
-            // If `account` is not the zero address during an external call, there's a logic flaw.
-            // External calls to this function must always provide `account` as the zero address.
-            // Only during the recursive call will the `account` be provided.
-            if (account != address(0)) {
-                revert LogicDefect();
-            }
-
-            // Perform a recursive call to this function. The intention is to reach the "else" block.
-            // solhint-disable avoid-low-level-calls
-            // slither-disable-next-line missing-zero-check,low-level-calls
-            (bool success, bytes memory returnData) = address(this).call(
-                abi.encodeWithSelector(this.estimateWithdrawBaseAsset.selector, shares, to, msg.sender)
-            );
-            // solhint-enable avoid-low-level-calls
-
-            // If the recursive call is successful, it means an unintended code path was taken.
-            if (success) {
-                revert Errors.UnreachableError();
-            }
-
-            // Extract the error signature (first 4 bytes) from the revert reason.
-            bytes4 errorSignature;
-            // solhint-disable no-inline-assembly
-            assembly {
-                errorSignature := mload(add(returnData, 0x20))
-            }
-
-            bytes4 balanceAmountSig = bytes4(keccak256("BaseAmountReceived(uint256)"));
-
-            // If the error matches the expected signature, extract the amount from the revert reason and return.
-            if (errorSignature == balanceAmountSig) {
-                // Extract subsequent 32 bytes for uint256
-                uint256 amount;
-                assembly {
-                    amount := mload(add(returnData, 0x24))
-                }
-                return amount;
-            } else {
-                // If the error is not the expected one, forward the original revert reason.
-                assembly {
-                    revert(add(32, returnData), mload(returnData))
-                }
-            }
-            // solhint-enable no-inline-assembly
-        }
-        // This branch is taken during the recursive call.
-        else {
-            // Perform the actual withdrawal logic to compute the amount. This will be reverted to simulate the action.
-            uint256 amount = _withdrawBaseAsset(account, shares, to);
-
-            // Revert with the computed amount as an error.
-            revert BaseAmountReceived(amount);
-        }
-    }
-    //slither-disable-end assembly
 
     /// @notice Burn the specified amount of underlyer for the constituent tokens
     /// @dev May return one or multiple assets. Be as efficient as you can here.

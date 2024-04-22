@@ -11,26 +11,6 @@ import { IBalancerMetaStablePool } from "src/interfaces/external/balancer/IBalan
 import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 
 library BalancerUtilities {
-    error BalancerVaultReentrancy();
-
-    // 400 is Balancers Vault REENTRANCY error code
-    bytes32 internal constant REENTRANCY_ERROR_HASH = keccak256(abi.encodeWithSignature("Error(string)", "BAL#400"));
-
-    /**
-     * @notice Verifies reentrancy to the Balancer Vault
-     * @dev Reverts if gets BAL#400 error
-     */
-    function checkReentrancy(address balancerVault) external view {
-        // solhint-disable max-line-length
-        // https://github.com/balancer/balancer-v2-monorepo/blob/227683919a7031615c0bc7f144666cdf3883d212/pkg/pool-utils/contracts/lib/VaultReentrancyLib.sol
-        (, bytes memory returnData) = balancerVault.staticcall{ gas: 10_000 }(
-            abi.encodeWithSelector(IVault.manageUserBalance.selector, new IVault.UserBalanceOp[](0))
-        );
-        if (keccak256(returnData) == REENTRANCY_ERROR_HASH) {
-            revert BalancerVaultReentrancy();
-        }
-    }
-
     /**
      * @notice Checks if a given address is Balancer Composable pool
      * @dev Using the presence of a getBptIndex() fn as an indicator of pool type

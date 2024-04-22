@@ -357,23 +357,23 @@ contract RootOracleIntegrationTest is Test {
         );
 
         // Curve V1 pool setup
-        curveStableOracle.registerPool(STETH_ETH_CURVE_POOL, ST_ETH_CURVE_LP_TOKEN_MAINNET, true);
-        curveStableOracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP, false);
-        curveStableOracle.registerPool(STETH_STABLESWAP_NG_POOL, STETH_STABLESWAP_NG_POOL, false);
-        curveStableOracle.registerPool(RETH_WSTETH_CURVE_POOL, RETH_WSTETH_CURVE_POOL_LP, false);
-        curveStableOracle.registerPool(USDC_STABLESWAP_NG_POOL, USDC_STABLESWAP_NG_POOL, false);
-        curveStableOracle.registerPool(USDT_STABLESWAP_NG_POOL, USDT_STABLESWAP_NG_POOL, false);
-        curveStableOracle.registerPool(TUSD_STABLESWAP_NG_POOL, TUSD_STABLESWAP_NG_POOL, false);
-        curveStableOracle.registerPool(USDP_STABLESWAP_NG_POOL, USDP_STABLESWAP_NG_POOL, false);
-        curveStableOracle.registerPool(FRAX_STABLESWAP_NG_POOL, FRAX_STABLESWAP_NG_POOL, false);
+        curveStableOracle.registerPool(STETH_ETH_CURVE_POOL, ST_ETH_CURVE_LP_TOKEN_MAINNET);
+        curveStableOracle.registerPool(THREE_CURVE_MAINNET, THREE_CURVE_POOL_MAINNET_LP);
+        curveStableOracle.registerPool(STETH_STABLESWAP_NG_POOL, STETH_STABLESWAP_NG_POOL);
+        curveStableOracle.registerPool(RETH_WSTETH_CURVE_POOL, RETH_WSTETH_CURVE_POOL_LP);
+        curveStableOracle.registerPool(USDC_STABLESWAP_NG_POOL, USDC_STABLESWAP_NG_POOL);
+        curveStableOracle.registerPool(USDT_STABLESWAP_NG_POOL, USDT_STABLESWAP_NG_POOL);
+        curveStableOracle.registerPool(TUSD_STABLESWAP_NG_POOL, TUSD_STABLESWAP_NG_POOL);
+        curveStableOracle.registerPool(USDP_STABLESWAP_NG_POOL, USDP_STABLESWAP_NG_POOL);
+        curveStableOracle.registerPool(FRAX_STABLESWAP_NG_POOL, FRAX_STABLESWAP_NG_POOL);
 
         // Curve V2 pool setup
-        curveCryptoOracle.registerPool(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP, false);
-        curveCryptoOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP, false);
-        curveCryptoOracle.registerPool(LDO_ETH_CURVE_V2_POOL, LDO_ETH_CURVE_V2_LP, false);
-        curveCryptoOracle.registerPool(STG_USDC_V2_POOL, STG_USDC_CURVE_V2_LP, false);
-        curveCryptoOracle.registerPool(WBTC_BADGER_V2_POOL, WBTC_BADGER_CURVE_V2_LP, false);
-        curveCryptoOracle.registerPool(CBETH_ETH_V2_POOL, CBETH_ETH_V2_POOL_LP, false);
+        curveCryptoOracle.registerPool(RETH_WETH_CURVE_POOL, RETH_ETH_CURVE_LP);
+        curveCryptoOracle.registerPool(CRV_ETH_CURVE_V2_POOL, CRV_ETH_CURVE_V2_LP);
+        curveCryptoOracle.registerPool(LDO_ETH_CURVE_V2_POOL, LDO_ETH_CURVE_V2_LP);
+        curveCryptoOracle.registerPool(STG_USDC_V2_POOL, STG_USDC_CURVE_V2_LP);
+        curveCryptoOracle.registerPool(WBTC_BADGER_V2_POOL, WBTC_BADGER_CURVE_V2_LP);
+        curveCryptoOracle.registerPool(CBETH_ETH_V2_POOL, CBETH_ETH_V2_POOL_LP);
 
         // Custom oracle setup
         address[] memory tokens = new address[](2);
@@ -863,7 +863,7 @@ contract GetRangePricesLP is RootOracleIntegrationTest {
         _verifySafePriceByPercentTolerance(calculatedPrice, safePrice, spotPrice, 2, isSpotSafe);
 
         // 7)
-        curveStableOracle.registerPool(SUSD_STABLESWAP_NG_POOL, SUSD_STABLESWAP_NG_POOL, false);
+        curveStableOracle.registerPool(SUSD_STABLESWAP_NG_POOL, SUSD_STABLESWAP_NG_POOL);
 
         // Calculated WETH - 539909058000000
         calculatedPrice = uint256(0.000539909058 * 10 ** 18);
@@ -1073,8 +1073,8 @@ contract GetFloorCeilingPrice is RootOracleIntegrationTest {
     function setUp() public override {
         super.setUp();
 
-        curveStableOracle.registerPool(FRAX_USDC, FRAX_USDC_LP, false);
-        curveStableOracle.registerPool(STETH_WETH_CURVE_POOL_CONCENTRATED, STETH_WETH_CURVE_POOL_CONCENTRATED_LP, false);
+        curveStableOracle.registerPool(FRAX_USDC, FRAX_USDC_LP);
+        curveStableOracle.registerPool(STETH_WETH_CURVE_POOL_CONCENTRATED, STETH_WETH_CURVE_POOL_CONCENTRATED_LP);
         priceOracle.registerMapping(SFRXETH_MAINNET, IPriceOracle(address(customSetOracle)));
         priceOracle.registerPoolMapping(FRAX_USDC, ISpotPriceOracle(curveStableOracle));
         priceOracle.registerPoolMapping(WSETH_RETH_SFRXETH_BAL_POOL, ISpotPriceOracle(balancerComposableOracle));

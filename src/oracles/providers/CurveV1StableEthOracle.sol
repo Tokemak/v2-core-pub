@@ -27,7 +27,6 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
 
     struct PoolData {
         address pool;
-        uint8 checkReentrancy;
     }
 
     event TokenRegistered(address lpToken);
@@ -64,8 +63,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
     /// @dev Pool containing Eth, Weth, ERC-677, ERC-777 tokens should all be registered for reentrancy checks.
     /// @param curvePool address of the Curve pool related to the LP token
     /// @param curveLpToken address of the LP token we'll be looking up prices for
-    /// @param checkReentrancy whether or not we should check for read-only reentrancy
-    function registerPool(address curvePool, address curveLpToken, bool checkReentrancy) external onlyOwner {
+    function registerPool(address curvePool, address curveLpToken) external onlyOwner {
         Errors.verifyNotZero(curvePool, "curvePool");
         Errors.verifyNotZero(curveLpToken, "curveLpToken");
 
@@ -97,7 +95,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
             }
         }
         // Reverse mapping setup
-        lpTokenToPool[lpToken] = PoolData({ pool: curvePool, checkReentrancy: checkReentrancy ? 1 : 0 });
+        lpTokenToPool[lpToken] = PoolData({ pool: curvePool });
         // Direct mapping setup
         poolToLpToken[curvePool] = curveLpToken;
 

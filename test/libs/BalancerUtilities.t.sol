@@ -118,18 +118,6 @@ contract BalancerUtilitiesTest is Test {
 
         assertEq(virtualPrice, 1_028_137_102_910_976_515);
     }
-
-    function test_ReentrancyGasUsage() external {
-        uint256 gasLeftBeforeReentrancy = gasleft();
-        BalancerUtilities.checkReentrancy(BAL_VAULT);
-        uint256 gasleftAfterReentrancy = gasleft();
-
-        /**
-         *  20k gives ample buffer for other operations outside of staticcall to balancer vault, which
-         *        is given 10k gas.  Operation above should take ~17k gas total.
-         */
-        assertLt(gasLeftBeforeReentrancy - gasleftAfterReentrancy, 20_000);
-    }
 }
 
 contract Noop { }

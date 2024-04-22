@@ -742,13 +742,13 @@ contract LMPStrategyInt is Test {
         address curveV2RethEthPool = 0x0f3159811670c117c372428D4E69AC32325e4D0F;
         address curveV2RethEthLpToken = 0x6c38cE8984a890F5e46e6dF6117C26b3F1EcfC9C;
 
-        curveV2Oracle.registerPool(curveV2RethEthPool, curveV2RethEthLpToken, true);
+        curveV2Oracle.registerPool(curveV2RethEthPool, curveV2RethEthLpToken);
         rootPriceOracle.registerPoolMapping(curveV2RethEthPool, curveV2Oracle);
 
         address curveV2cbEthEthPool = 0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A;
         address curveV2cbEthEthLpToken = 0x5b6C539b224014A09B3388e51CaAA8e354c959C8;
 
-        curveV2Oracle.registerPool(curveV2cbEthEthPool, curveV2cbEthEthLpToken, true);
+        curveV2Oracle.registerPool(curveV2cbEthEthPool, curveV2cbEthEthLpToken);
         rootPriceOracle.registerPoolMapping(curveV2cbEthEthPool, curveV2Oracle);
     }
 
@@ -756,25 +756,25 @@ contract LMPStrategyInt is Test {
         address curveStEthOriginalPool = 0xDC24316b9AE028F1497c275EB9192a3Ea0f67022;
         address curveStEthOriginalLpToken = 0x06325440D014e39736583c165C2963BA99fAf14E;
 
-        curveV1Oracle.registerPool(curveStEthOriginalPool, curveStEthOriginalLpToken, true);
+        curveV1Oracle.registerPool(curveStEthOriginalPool, curveStEthOriginalLpToken);
         rootPriceOracle.registerPoolMapping(curveStEthOriginalPool, curveV1Oracle);
 
         address curveStEthConcentratedPool = 0x828b154032950C8ff7CF8085D841723Db2696056;
         address curveStEthConcentratedLpToken = 0x828b154032950C8ff7CF8085D841723Db2696056;
 
-        curveV1Oracle.registerPool(curveStEthConcentratedPool, curveStEthConcentratedLpToken, false);
+        curveV1Oracle.registerPool(curveStEthConcentratedPool, curveStEthConcentratedLpToken);
         rootPriceOracle.registerPoolMapping(curveStEthConcentratedPool, curveV1Oracle);
 
         address curveStEthNgPool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
         address curveStEthNgLpToken = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
 
-        curveV1Oracle.registerPool(curveStEthNgPool, curveStEthNgLpToken, false);
+        curveV1Oracle.registerPool(curveStEthNgPool, curveStEthNgLpToken);
         rootPriceOracle.registerPoolMapping(curveStEthNgPool, curveV1Oracle);
 
         address curveRethWstethPool = 0x447Ddd4960d9fdBF6af9a790560d0AF76795CB08;
         address curveRethWstethLpToken = 0x447Ddd4960d9fdBF6af9a790560d0AF76795CB08;
 
-        curveV1Oracle.registerPool(curveRethWstethPool, curveRethWstethLpToken, false);
+        curveV1Oracle.registerPool(curveRethWstethPool, curveRethWstethLpToken);
         rootPriceOracle.registerPoolMapping(curveRethWstethPool, curveV1Oracle);
     }
 }

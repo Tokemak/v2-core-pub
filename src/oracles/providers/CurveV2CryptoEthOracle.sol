@@ -24,13 +24,11 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
     /**
      * @notice Struct for necessary information for single Curve pool.
      * @param pool The address of the curve pool.
-     * @param checkReentrancy uint8 representing a boolean.  0 for false, 1 for true.
      * @param tokenToPrice Address of the token being priced in the Curve pool.
      * @param tokenFromPrice Address of the token being used to price the token in the Curve pool.
      */
     struct PoolData {
         address pool;
-        uint8 checkReentrancy;
         address tokenToPrice;
         address tokenFromPrice;
     }
@@ -104,10 +102,8 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
      *      the `coins` array returns weth address.  Still have a check for future proofing.
      * @param curvePool Address of CurveV2 pool.
      * @param curveLpToken Address of LP token associated with v2 pool.
-     * @param checkReentrancy Whether to check read-only reentrancy on pool.  Set to true for pools containing
-     *      ETH or WETH.
      */
-    function registerPool(address curvePool, address curveLpToken, bool checkReentrancy) external onlyOwner {
+    function registerPool(address curvePool, address curveLpToken) external onlyOwner {
         Errors.verifyNotZero(curvePool, "curvePool");
         Errors.verifyNotZero(curveLpToken, "curveLpToken");
         if (lpTokenToPool[curveLpToken].pool != address(0) || poolToLpToken[curvePool] != address(0)) {
@@ -130,7 +126,6 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
          */
         lpTokenToPool[lpToken] = PoolData({
             pool: curvePool,
-            checkReentrancy: checkReentrancy ? 1 : 0,
             tokenToPrice: tokens[1] != LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER ? tokens[1] : WETH,
             tokenFromPrice: tokens[0] != LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER ? tokens[0] : WETH
         });

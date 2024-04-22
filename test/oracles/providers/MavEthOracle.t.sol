@@ -20,7 +20,7 @@ import {
 
 import { MavEthOracle } from "src/oracles/providers/MavEthOracle.sol";
 import { SystemRegistry, ISystemRegistry } from "src/SystemRegistry.sol";
-import { AccessController, IAccessController } from "src/security/AccessController.sol";
+import { AccessController } from "src/security/AccessController.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { Errors } from "src/utils/Errors.sol";
@@ -28,7 +28,6 @@ import { Errors } from "src/utils/Errors.sol";
 // solhint-disable func-name-mixedcase
 
 contract MavEthOracleTest is Test {
-    event MaxTotalBinWidthSet(uint256 newMaxBinWidth);
     event PoolInformationSet(address poolInformation);
 
     SystemRegistry public registry;
@@ -76,28 +75,6 @@ contract MavEthOracleTest is Test {
 
     function test_ProperlySetsState() external {
         assertEq(mavOracle.getSystemRegistry(), address(registry));
-    }
-
-    // Test setMaxTotalBinWidth
-    function test_OnlyOwner() external {
-        vm.prank(address(1));
-        vm.expectRevert(IAccessController.AccessDenied.selector);
-
-        mavOracle.setMaxTotalBinWidth(60);
-    }
-
-    function test_RevertZero() external {
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "_maxTotalbinWidth"));
-
-        mavOracle.setMaxTotalBinWidth(0);
-    }
-
-    function test_ProperlySetsMax() external {
-        vm.expectEmit(false, false, false, true);
-        emit MaxTotalBinWidthSet(60);
-
-        mavOracle.setMaxTotalBinWidth(60);
-        assertEq(mavOracle.maxTotalBinWidth(), 60);
     }
 
     // Test setPoolInformation error case
@@ -190,7 +167,6 @@ contract GetSafeSpotPriceInfo is MavEthOracleTest {
         vm.selectFork(anotherFork);
 
         _setUp();
-        mavOracle.setMaxTotalBinWidth(100);
 
         (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
             mavOracle.getSafeSpotPriceInfo(MAV_GHO_USDC_POOL, MAV_GHO_USDC_BOOSTED_POS, USDC_MAINNET);

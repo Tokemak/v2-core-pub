@@ -16,9 +16,6 @@ import { IPoolInformation } from "src/interfaces/external/maverick/IPoolInformat
 
 //slither-disable-start similar-names
 contract MavEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
-    /// @notice Emitted when new maximum bin width is set.
-    event MaxTotalBinWidthSet(uint256 newMaxBinWidth);
-
     /// @notice Emitted when Maverick PoolInformation contract is set.
     event PoolInformationSet(address poolInformation);
 
@@ -27,9 +24,6 @@ contract MavEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
 
     /// @notice Thrown when token is not in pool.
     error InvalidToken();
-
-    // 100 = 1% spacing, 10 = .1% spacing, 1 = .01% spacing etc.
-    uint256 public maxTotalBinWidth = 50;
 
     /// @notice The PoolInformation Maverick contract.
     IPoolInformation public poolInformation;
@@ -42,17 +36,6 @@ contract MavEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
 
         Errors.verifyNotZero(_poolInformation, "_poolInformation");
         poolInformation = IPoolInformation(_poolInformation);
-    }
-
-    /**
-     * @notice Gives ability to set total bin width to system owner.
-     * @param _maxTotalBinWidth New max bin width.
-     */
-    function setMaxTotalBinWidth(uint256 _maxTotalBinWidth) external onlyOwner {
-        Errors.verifyNotZero(_maxTotalBinWidth, "_maxTotalbinWidth");
-        maxTotalBinWidth = _maxTotalBinWidth;
-
-        emit MaxTotalBinWidthSet(_maxTotalBinWidth);
     }
 
     /// @notice Gives ability to set PoolInformation contract to system owner

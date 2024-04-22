@@ -25,10 +25,6 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
     // solhint-disable-next-line var-name-mixedcase
     address public immutable WETH;
 
-    struct PoolData {
-        address pool;
-    }
-
     event TokenRegistered(address lpToken);
     event TokenUnregistered(address lpToken);
 
@@ -41,7 +37,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
     mapping(address => address[]) public lpTokenToUnderlying;
 
     /// @notice Reverse mapping of LP token to pool info
-    mapping(address => PoolData) public lpTokenToPool;
+    mapping(address => address) public lpTokenToPool;
 
     /// @notice Mapping of pool address to it's LP token
     mapping(address => address) public poolToLpToken;
@@ -70,7 +66,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
         (address[8] memory tokens, uint256 numTokens, address lpToken, bool isStableSwap) =
             curveResolver.resolveWithLpToken(curvePool);
 
-        if (lpTokenToPool[lpToken].pool != address(0) || poolToLpToken[curvePool] != address(0)) {
+        if (lpTokenToPool[lpToken] != address(0) || poolToLpToken[curvePool] != address(0)) {
             revert Errors.AlreadyRegistered(curvePool);
         }
 
@@ -95,7 +91,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
             }
         }
         // Reverse mapping setup
-        lpTokenToPool[lpToken] = PoolData({ pool: curvePool });
+        lpTokenToPool[lpToken] = curvePool;
         // Direct mapping setup
         poolToLpToken[curvePool] = curveLpToken;
 
@@ -115,7 +111,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
             revert NotRegistered(curveLpToken);
         }
 
-        address curvePool = lpTokenToPool[curveLpToken].pool;
+        address curvePool = lpTokenToPool[curveLpToken];
         delete poolToLpToken[curvePool];
 
         delete lpTokenToUnderlying[curveLpToken];

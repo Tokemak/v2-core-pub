@@ -19,9 +19,6 @@ contract MavEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
     /// @notice Emitted when Maverick PoolInformation contract is set.
     event PoolInformationSet(address poolInformation);
 
-    /// @notice Thrown when the total width of all bins being priced exceeds the max.
-    error TotalBinWidthExceedsMax();
-
     /// @notice Thrown when token is not in pool.
     error InvalidToken();
 

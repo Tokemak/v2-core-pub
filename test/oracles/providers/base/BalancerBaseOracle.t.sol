@@ -39,6 +39,10 @@ contract BalancerBaseOracleWrapper is BalancerBaseOracle {
         IVault _balancerVault
     ) BalancerBaseOracle(_systemRegistry, _balancerVault) { }
 
+    function getDescription() external pure override returns (string memory) {
+        return "balancerBase";
+    }
+
     function getTotalSupply_(address lpToken) internal virtual override returns (uint256 totalSupply) {
         totalSupply = BalancerUtilities.isComposablePool(lpToken)
             ? IBalancerComposableStablePool(lpToken).getActualSupply()

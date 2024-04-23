@@ -51,4 +51,10 @@ interface ISpotPriceOracle {
         address lpToken,
         address quoteToken
     ) external returns (uint256 totalLPSupply, ReserveItemInfo[] memory reserves);
+
+    /**
+     * @notice Retrieve the description of the oracle
+     * @return description
+     */
+    function getDescription() external view returns (string memory);
 }

@@ -51,6 +51,11 @@ contract CustomSetOracle is SystemComponent, SecurityBase, IPriceOracle {
         _setMaxAge(_maxAge);
     }
 
+    /// @inheritdoc IPriceOracle
+    function getDescription() external pure override returns (string memory) {
+        return "customSet";
+    }
+
     /// @notice Change the max allowable per-token age
     /// @param age New allowed age
     function setMaxAge(uint256 age) external hasRole(Roles.ORACLE_MANAGER_ROLE) {

@@ -38,6 +38,11 @@ contract MavEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
         poolInformation = IPoolInformation(_poolInformation);
     }
 
+    /// @inheritdoc ISpotPriceOracle
+    function getDescription() external pure override returns (string memory) {
+        return "mav";
+    }
+
     /// @notice Gives ability to set PoolInformation contract to system owner
     function setPoolInformation(address _poolInformation) external onlyOwner {
         Errors.verifyNotZero(_poolInformation, "_poolInformation");

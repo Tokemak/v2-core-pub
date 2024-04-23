@@ -91,6 +91,11 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
         WETH = address(_systemRegistry.weth());
     }
 
+    /// @inheritdoc ISpotPriceOracle
+    function getDescription() external pure override returns (string memory) {
+        return "curveV2";
+    }
+
     /**
      * @notice Allows owner of system to register a pool.
      * @dev While the reentrancy check implemented in this contact can technically be used with any token,

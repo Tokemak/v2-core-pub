@@ -19,6 +19,10 @@ contract TestSpotPriceOracle is SystemComponent, ISpotPriceOracle {
 
     constructor(ISystemRegistry _systemRegistry) SystemComponent(_systemRegistry) { }
 
+    function getDescription() external pure override returns (string memory) {
+        return "spot";
+    }
+
     /**
      * @dev Use this function to manually set the spot price
      * @param token The token address to set the spot price for

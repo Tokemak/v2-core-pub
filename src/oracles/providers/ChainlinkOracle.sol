@@ -8,6 +8,7 @@ import {
     ISystemRegistry
 } from "src/oracles/providers/base/BaseAggregatorV3OracleInformation.sol";
 import { IOffchainAggregator } from "src/interfaces/external/chainlink/IOffchainAggregator.sol";
+import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 
 /**
  * @title Gets the value of tokens that Chainlink provides a feed for.
@@ -16,6 +17,11 @@ import { IOffchainAggregator } from "src/interfaces/external/chainlink/IOffchain
  */
 contract ChainlinkOracle is BaseAggregatorV3OracleInformation {
     constructor(ISystemRegistry _systemRegistry) BaseAggregatorV3OracleInformation(_systemRegistry) { }
+
+    /// @inheritdoc IPriceOracle
+    function getDescription() external pure override returns (string memory) {
+        return "chainlink";
+    }
 
     /**
      * @notice Validates the price returned by oracle.

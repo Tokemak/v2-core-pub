@@ -25,7 +25,7 @@ import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { WETH_MAINNET, TOKE_MAINNET, RANDOM } from "test/utils/Addresses.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
-import { TestOracle } from "test/mocks/TestOracle.sol";
+import { TestPriceOracle } from "test/mocks/TestPriceOracle.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
@@ -111,7 +111,7 @@ contract LiquidationRowTest is Test {
     LiquidationRowWrapper internal liquidationRow;
     AsyncSwapperMock internal asyncSwapper;
     RootPriceOracle internal rootPriceOracle;
-    TestOracle internal testOracle;
+    TestPriceOracle internal testOracle;
 
     address internal baseAsset;
     address internal underlyer;
@@ -214,7 +214,7 @@ contract LiquidationRowTest is Test {
         asyncSwapper = new AsyncSwapperMock(vm.addr(100), address(liquidationRow));
 
         // Set up oracle mappings
-        testOracle = new TestOracle(systemRegistry);
+        testOracle = new TestPriceOracle(systemRegistry);
 
         rootPriceOracle.registerMapping(address(baseAsset), testOracle);
         rootPriceOracle.registerMapping(address(rewardToken), testOracle);

@@ -7,6 +7,7 @@ import {
     BaseAggregatorV3OracleInformation,
     ISystemRegistry
 } from "src/oracles/providers/base/BaseAggregatorV3OracleInformation.sol";
+import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 
 /**
  * @title Gets the value of tokens that Redstone provides a feed for.
@@ -15,6 +16,11 @@ import {
  */
 contract RedstoneOracle is BaseAggregatorV3OracleInformation {
     constructor(ISystemRegistry _systemRegistry) BaseAggregatorV3OracleInformation(_systemRegistry) { }
+
+    /// @inheritdoc IPriceOracle
+    function getDescription() external pure override returns (string memory) {
+        return "redstone";
+    }
 
     /**
      * @notice Fetches the price of a token in ETH denomination.

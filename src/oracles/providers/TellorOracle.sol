@@ -5,7 +5,11 @@ pragma solidity 0.8.17;
 
 import { SafeCast } from "openzeppelin-contracts/utils/math/SafeCast.sol";
 
-import { BaseOracleDenominations, ISystemRegistry } from "src/oracles/providers/base/BaseOracleDenominations.sol";
+import {
+    BaseOracleDenominations,
+    ISystemRegistry,
+    IPriceOracle
+} from "src/oracles/providers/base/BaseOracleDenominations.sol";
 import { Errors } from "src/utils/Errors.sol";
 
 import { UsingTellor } from "usingtellor/UsingTellor.sol";
@@ -70,6 +74,11 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
         BaseOracleDenominations(_systemRegistry)
     {
         Errors.verifyNotZero(_tellorOracleAddress, "tellor");
+    }
+
+    /// @inheritdoc IPriceOracle
+    function getDescription() external pure override returns (string memory) {
+        return "tellor";
     }
 
     /**

@@ -17,6 +17,11 @@ contract TestPriceOracle is SystemComponent, IPriceOracle {
     constructor(ISystemRegistry _systemRegistry) SystemComponent(_systemRegistry) { }
 
     /// @inheritdoc IPriceOracle
+    function getDescription() external pure override returns (string memory) {
+        return "price";
+    }
+
+    /// @inheritdoc IPriceOracle
     function getPriceInEth(address token) external view returns (uint256) {
         return priceInEth[token];
     }

@@ -40,7 +40,7 @@ import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegi
 
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
-import { TestOracle } from "test/mocks/TestOracle.sol";
+import { TestPriceOracle } from "test/mocks/TestPriceOracle.sol";
 
 /**
  * @notice This file is a test to ensure that the flow from DestinationVault to LiquidationRow to BaseAsyncSwapper works
@@ -67,7 +67,7 @@ contract LiquidationRowTest is Test {
     BaseAsyncSwapper internal swapper;
     TestIncentiveCalculator internal testIncentiveCalculator;
     RootPriceOracle internal rootPriceOracle;
-    TestOracle internal testOracle;
+    TestPriceOracle internal testOracle;
 
     /**
      * @notice Set up the minimal system for the tests
@@ -122,7 +122,7 @@ contract LiquidationRowTest is Test {
         liquidationRow.addToWhitelist(address(swapper));
 
         // Set up default prices for the tokens
-        testOracle = new TestOracle(systemRegistry);
+        testOracle = new TestPriceOracle(systemRegistry);
     }
 }
 

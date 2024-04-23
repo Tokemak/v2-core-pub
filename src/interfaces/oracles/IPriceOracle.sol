@@ -10,4 +10,8 @@ interface IPriceOracle {
     /// @param token Token to get the price of
     /// @return price The price of the token in ETH
     function getPriceInEth(address token) external returns (uint256 price);
+
+    /// @notice Retrieve the description of the oracle
+    /// @return description
+    function getDescription() external view returns (string memory);
 }

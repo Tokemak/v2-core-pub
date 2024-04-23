@@ -54,6 +54,11 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
         WETH = address(_systemRegistry.weth());
     }
 
+    /// @inheritdoc ISpotPriceOracle
+    function getDescription() external pure override returns (string memory) {
+        return "curveV1";
+    }
+
     /// @notice Register a Curve LP token to this oracle
     /// @dev Double checks pool+lp against on-chain query. Only use with StableSwap pools.
     /// @dev Pool containing Eth, Weth, ERC-677, ERC-777 tokens should all be registered for reentrancy checks.

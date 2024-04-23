@@ -97,6 +97,10 @@ interface ILMPVault is IERC4626, IERC20Permit {
     error WithdrawalIncomplete();
     error ValueSharesMismatch(uint256 value, uint256 shares);
 
+    /// @notice A full unit of this pool
+    // solhint-disable-next-line func-name-mixedcase
+    function ONE() external view returns (uint256);
+
     /// @notice Query the type of vault
     function vaultType() external view returns (bytes32);
 

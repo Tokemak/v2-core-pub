@@ -62,6 +62,10 @@ abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Init
     /// @dev The reason for shutdown (or `Active` if not shutdown)
     VaultShutdownStatus internal _shutdownStatus;
 
+    /// @notice A full unit of this vault
+    // solhint-disable-next-line var-name-mixedcase
+    uint256 public ONE;
+
     constructor(ISystemRegistry sysRegistry)
         SystemComponent(sysRegistry)
         SecurityBase(address(sysRegistry.accessController()))
@@ -100,6 +104,8 @@ abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Init
         _name = string.concat("Tokemak-", baseAsset_.name(), "-", underlyer_.name());
         _symbol = string.concat("toke-", baseAsset_.symbol(), "-", underlyer_.symbol());
         _underlyingDecimals = underlyer_.decimals();
+
+        ONE = 10 ** _underlyingDecimals;
 
         _baseAsset = address(baseAsset_);
         _underlying = address(underlyer_);

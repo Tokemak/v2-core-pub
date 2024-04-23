@@ -364,14 +364,13 @@ library LMPDebt {
         destInfo.ownedShares = currentShares;
     }
 
-    function _totalAssetsTimeChecked(
+    function totalAssetsTimeChecked(
         StructuredLinkedList.List storage debtReportQueue,
         mapping(address => LMPDebt.DestinationInfo) storage destinationInfo,
         ILMPVault.TotalAssetPurpose purpose
     ) external returns (uint256) {
         IDestinationVault destVault = IDestinationVault(debtReportQueue.peekHead());
         uint256 recalculatedTotalAssets = ILMPVault(address(this)).totalAssets(purpose);
-        uint256 divisor = 10 ** ILMPVault(address(this)).decimals();
 
         while (address(destVault) != address(0)) {
             uint256 lastReport = destinationInfo[address(destVault)].lastReport;
@@ -414,7 +413,7 @@ library LMPDebt {
                 // Back out our stale debt, add in its new value
                 // Our goal is to find the most conservative value in each situation. If the current
                 // value we have represents that, then use it. Otherwise, use the new one.
-                uint256 newValue = (currentShares * extremePrice) / divisor;
+                uint256 newValue = (currentShares * extremePrice) / destVault.ONE();
 
                 if (purpose == ILMPVault.TotalAssetPurpose.Deposit && staleDebt > newValue) {
                     newValue = staleDebt;
@@ -663,18 +662,6 @@ library LMPDebt {
             }
 
             info.assetsToPull -= pulledAssets;
-
-            // // Any deficiency in the amount we received is slippage. debtDecrease is what we expected
-            // // to receive. If we received any extra, that's great we'll roll it forward so we burn
-            // // less on the next loop.
-            // uint256 pulled = Math.max(debtMinDecrease, pulledAssets);
-            // if (pulled >= info.assetsToPull) {
-            //     // We either have enough assets, or we've burned the max debt we're allowed
-            //     info.assetsToPull = 0;
-            //     break;
-            // } else {
-            //     info.assetsToPull -= pulled;
-            // }
         }
 
         // info.assetsToPull isn't safe to use past this point.

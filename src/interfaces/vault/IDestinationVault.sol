@@ -22,6 +22,10 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /* View                             */
     /* ******************************** */
 
+    /// @notice A full unit of this vault
+    // solhint-disable-next-line func-name-mixedcase
+    function ONE() external view returns (uint256);
+
     /// @notice The asset that is deposited into the vault
     function underlying() external view returns (address);
 

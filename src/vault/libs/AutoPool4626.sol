@@ -6,6 +6,7 @@ pragma solidity 0.8.17;
 import { Errors } from "src/utils/Errors.sol";
 import { AutoPoolFees } from "src/vault/libs/AutoPoolFees.sol";
 import { AutoPoolToken } from "src/vault/libs/AutoPoolToken.sol";
+import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
 import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
@@ -66,13 +67,14 @@ library AutoPool4626 {
     }
 
     function maxMint(
-        ILMPVault.AssetBreakdown storage assetBreakdown,
         AutoPoolToken.TokenData storage tokenData,
         ILMPVault.ProfitUnlockSettings storage profitUnlockSettings,
+        StructuredLinkedList.List storage debtReportQueue,
+        mapping(address => LMPDebt.DestinationInfo) storage destinationInfo,
         address,
         bool paused,
         bool shutdown
-    ) public view returns (uint256) {
+    ) public returns (uint256) {
         // If we are temporarily paused, or in full shutdown mode,
         // no new shares are able to be minted
         if (paused || shutdown) {
@@ -80,17 +82,20 @@ library AutoPool4626 {
         }
 
         // First deposit
-        if (totalSupply(tokenData, profitUnlockSettings) == 0) {
+        uint256 ts = totalSupply(tokenData, profitUnlockSettings);
+        if (ts == 0) {
             return type(uint112).max;
         }
 
         // We know totalSupply greater than zero now so if totalAssets is zero
         // the vault is in an invalid state and users would be able to mint shares for free
-        if (totalAssets(assetBreakdown, ILMPVault.TotalAssetPurpose.Global) == 0) {
+        uint256 ta =
+            LMPDebt.totalAssetsTimeChecked(debtReportQueue, destinationInfo, ILMPVault.TotalAssetPurpose.Deposit);
+        if (ta == 0) {
             return 0;
         }
 
-        return type(uint112).max;
+        return type(uint112).max - ts;
     }
 
     /// @notice Returns the amount of tokens in existence.

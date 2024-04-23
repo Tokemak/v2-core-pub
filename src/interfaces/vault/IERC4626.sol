@@ -63,7 +63,7 @@ interface IERC4626 is IERC20Metadata {
     /// - MUST return a limited value if receiver is subject to some deposit limit.
     /// - MUST return 2 ** 256 - 1 if there is no limit on the maximum amount of assets that may be deposited.
     /// - MUST NOT revert.
-    function maxDeposit(address receiver) external view returns (uint256 maxAssets);
+    function maxDeposit(address receiver) external returns (uint256 maxAssets);
 
     /// @notice Allows an on-chain or off-chain user to simulate the effects of their deposit at the current block,
     /// given
@@ -79,7 +79,7 @@ interface IERC4626 is IERC20Metadata {
     ///
     /// NOTE: any unfavorable discrepancy between convertToShares and previewDeposit SHOULD be considered slippage in
     /// share price or some other type of condition, meaning the depositor will lose assets by depositing.
-    function previewDeposit(uint256 assets) external view returns (uint256 shares);
+    function previewDeposit(uint256 assets) external returns (uint256 shares);
 
     /// @notice Mints shares Vault shares to receiver by depositing exactly amount of underlying tokens.
     /// @dev
@@ -97,7 +97,7 @@ interface IERC4626 is IERC20Metadata {
     /// - MUST return a limited value if receiver is subject to some mint limit.
     /// - MUST return 2 ** 256 - 1 if there is no limit on the maximum amount of shares that may be minted.
     /// - MUST NOT revert.
-    function maxMint(address receiver) external view returns (uint256 maxShares);
+    function maxMint(address receiver) external returns (uint256 maxShares);
 
     /// @notice Allows an on-chain or off-chain user to simulate the effects of their mint at the current block, given
     /// current on-chain conditions.
@@ -112,7 +112,7 @@ interface IERC4626 is IERC20Metadata {
     ///
     /// NOTE: any unfavorable discrepancy between convertToAssets and previewMint SHOULD be considered slippage in
     /// share price or some other type of condition, meaning the depositor will lose assets by minting.
-    function previewMint(uint256 shares) external view returns (uint256 assets);
+    function previewMint(uint256 shares) external returns (uint256 assets);
 
     /// @notice Mints exactly shares Vault shares to receiver by depositing amount of underlying tokens.
     /// @dev
@@ -166,7 +166,7 @@ interface IERC4626 is IERC20Metadata {
     /// - MUST return a limited value if owner is subject to some withdrawal limit or timelock.
     /// - MUST return balanceOf(owner) if owner is not subject to any withdrawal limit or timelock.
     /// - MUST NOT revert.
-    function maxRedeem(address owner) external view returns (uint256 maxShares);
+    function maxRedeem(address owner) external returns (uint256 maxShares);
 
     /// @notice Allows an on-chain or off-chain user to simulate the effects of their redeemption at the current block,
     /// given current on-chain conditions.

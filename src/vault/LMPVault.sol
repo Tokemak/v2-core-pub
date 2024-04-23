@@ -61,6 +61,8 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// @notice Overarching baseAsset type
     bytes32 public immutable vaultType = VaultTypes.LST;
 
+    uint256 public immutable ONE;
+
     /// @notice Instance of this system this vault is tied to
     /// @dev Exposed via `getSystemRegistry()`
     ISystemRegistry internal immutable _systemRegistry;
@@ -216,10 +218,12 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
         uint8 dec = IERC20Metadata(_vaultAsset).decimals();
 
+        ONE = 10 ** dec;
+
         _baseAssetDecimals = dec;
         _baseAsset = IERC20Metadata(_vaultAsset);
-        _symbol = string(abi.encodePacked("lmp", IERC20Metadata(_vaultAsset).symbol()));
-        _name = string(abi.encodePacked(IERC20Metadata(_vaultAsset).name(), " Pool Token"));
+        _symbol = string(abi.encodePacked("autoPool", IERC20Metadata(_vaultAsset).symbol(), "Template"));
+        _name = string(abi.encodePacked(_symbol, " Token"));
 
         _checkUsers = checkUsers;
 
@@ -294,7 +298,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
             revert ERC4626DepositExceedsMax(assets, maxDeposit(receiver));
         }
 
-        uint256 ta = LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Deposit);
+        uint256 ta = _totalAssetsTimeChecked(TotalAssetPurpose.Deposit);
         shares = convertToShares(assets, ta, totalSupply(), Math.Rounding.Down);
 
         Errors.verifyNotZero(shares, "shares");
@@ -321,7 +325,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
             revert ERC4626MintExceedsMax(shares, maxMint(receiver));
         }
 
-        uint256 ta = LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Deposit);
+        uint256 ta = _totalAssetsTimeChecked(TotalAssetPurpose.Deposit);
         assets = convertToAssets(shares, ta, totalSupply(), Math.Rounding.Up);
 
         _transferAndMint(assets, shares, receiver);
@@ -348,7 +352,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         //slither-disable-next-line unused-return
         (uint256 actualAssets, uint256 actualShares,) = LMPDebt.withdraw(
             assets,
-            LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Withdraw),
+            _totalAssetsTimeChecked(TotalAssetPurpose.Withdraw),
             _assetBreakdown,
             _withdrawalQueue,
             _destinationInfo
@@ -356,9 +360,6 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
         shares = actualShares;
 
-        // TODO: Pretty sure we can just pass assets here instead of actualAssets.
-        // We know it can't be less because of check above, and _withdraw will ensure
-        // its not more.
         _completeWithdrawal(actualAssets, shares, owner, receiver);
     }
 
@@ -383,7 +384,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
             revert ERC4626ExceededMaxRedeem(owner, shares, maxShares);
         }
 
-        uint256 ta = LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Withdraw);
+        uint256 ta = _totalAssetsTimeChecked(TotalAssetPurpose.Withdraw);
         uint256 possibleAssets = convertToAssets(shares, ta, totalSupply(), Math.Rounding.Down);
         Errors.verifyNotZero(possibleAssets, "possibleAssets");
 
@@ -673,40 +674,48 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
     /// @notice Returns the maximum amount of the underlying asset that can be
     /// deposited into the Vault for the receiver, through a deposit call
-    function maxDeposit(address wallet) public view virtual override returns (uint256 maxAssets) {
-        maxAssets =
-            convertToAssets(maxMint(wallet), totalAssets(TotalAssetPurpose.Deposit), totalSupply(), Math.Rounding.Up);
+    function maxDeposit(address wallet) public virtual override returns (uint256 maxAssets) {
+        uint256 ta = _totalAssetsTimeChecked(TotalAssetPurpose.Deposit);
+        maxAssets = _maxDeposit(wallet, ta);
+    }
+
+    function _maxDeposit(address wallet, uint256 aptTotalAssets) private returns (uint256) {
+        uint256 mintAmt = maxMint(wallet);
+        return convertToAssets(mintAmt, aptTotalAssets, totalSupply(), Math.Rounding.Up);
     }
 
     /// @notice Simulate the effects of the deposit at the current block, given current on-chain conditions.
-    function previewDeposit(uint256 assets) public view virtual returns (uint256 shares) {
-        shares = convertToShares(assets, totalAssets(TotalAssetPurpose.Deposit), totalSupply(), Math.Rounding.Down);
+    function previewDeposit(uint256 assets) public virtual returns (uint256 shares) {
+        shares = convertToShares(
+            assets, _totalAssetsTimeChecked(TotalAssetPurpose.Deposit), totalSupply(), Math.Rounding.Down
+        );
     }
 
     /// @notice Returns the maximum amount of the Vault shares that
     /// can be minted for the receiver, through a mint call.
-    function maxMint(address wallet) public view virtual override returns (uint256 maxShares) {
-        maxShares =
-            AutoPool4626.maxMint(_assetBreakdown, _tokenData, _profitUnlockSettings, wallet, paused(), _shutdown);
+    function maxMint(address wallet) public virtual override returns (uint256 maxShares) {
+        maxShares = AutoPool4626.maxMint(
+            _tokenData, _profitUnlockSettings, _debtReportQueue, _destinationInfo, wallet, paused(), _shutdown
+        );
     }
 
     /// @notice Returns the maximum amount of the underlying asset that can
     /// be withdrawn from the owner balance in the Vault, through a withdraw call
     function maxWithdraw(address owner) public virtual returns (uint256 maxAssets) {
         uint256 ownerShareBalance = balanceOf(owner);
-        if (paused() || ownerShareBalance == 0) {
+        uint256 taChecked = _totalAssetsTimeChecked(TotalAssetPurpose.Withdraw);
+
+        if (paused() || ownerShareBalance == 0 || taChecked == 0) {
             return 0;
         }
 
-        uint256 totalAssetsTimeChecked =
-            LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Withdraw);
-        uint256 convertedAssets =
-            convertToAssets(ownerShareBalance, totalAssetsTimeChecked, totalSupply(), Math.Rounding.Down);
+        uint256 convertedAssets = convertToAssets(ownerShareBalance, taChecked, totalSupply(), Math.Rounding.Down);
+
         // slither-disable-next-line unused-return
         (maxAssets,) = LMPDebt.preview(
             true,
             convertedAssets,
-            totalAssetsTimeChecked,
+            taChecked,
             abi.encodeWithSelector(this.previewWithdraw.selector, convertedAssets),
             _assetBreakdown,
             _withdrawalQueue,
@@ -716,13 +725,22 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
     /// @notice Returns the maximum amount of Vault shares that can be redeemed
     /// from the owner balance in the Vault, through a redeem call
-    function maxRedeem(address owner) public view virtual returns (uint256 maxShares) {
-        maxShares = _maxRedeem(owner);
+    function maxRedeem(address owner) public virtual returns (uint256 maxShares) {
+        uint256 ta = _totalAssetsTimeChecked(TotalAssetPurpose.Withdraw);
+        // If total assets are zero then we are considered uncollateralized and all redeem's will fail
+        if (ta > 0) {
+            maxShares = paused() ? 0 : balanceOf(owner);
+        }
+    }
+
+    function _totalAssetsTimeChecked(TotalAssetPurpose purpose) private returns (uint256) {
+        return LMPDebt.totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, purpose);
     }
 
     /// @notice Simulate the effects of a mint at the current block, given current on-chain conditions
-    function previewMint(uint256 shares) public view virtual returns (uint256 assets) {
-        assets = convertToAssets(shares, totalAssets(TotalAssetPurpose.Deposit), totalSupply(), Math.Rounding.Up);
+    function previewMint(uint256 shares) public virtual returns (uint256 assets) {
+        uint256 ta = _totalAssetsTimeChecked(TotalAssetPurpose.Deposit);
+        assets = convertToAssets(shares, ta, totalSupply(), Math.Rounding.Up);
     }
 
     /// @notice Simulate the effects of their withdrawal at the current block, given current on-chain conditions.
@@ -731,7 +749,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         (, shares) = LMPDebt.preview(
             true,
             assets,
-            LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Withdraw),
+            _totalAssetsTimeChecked(TotalAssetPurpose.Withdraw),
             abi.encodeWithSelector(this.previewWithdraw.selector, assets),
             _assetBreakdown,
             _withdrawalQueue,
@@ -745,8 +763,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         uint256 applicableTotalAssets = 0;
         uint256 convertedAssets = 0;
         if (msg.sender == address(this)) {
-            applicableTotalAssets =
-                LMPDebt._totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, TotalAssetPurpose.Withdraw);
+            applicableTotalAssets = _totalAssetsTimeChecked(TotalAssetPurpose.Withdraw);
             convertedAssets = convertToAssets(shares, applicableTotalAssets, totalSupply(), Math.Rounding.Down);
         }
 
@@ -787,10 +804,6 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         emit Shutdown(reason);
     }
 
-    function _maxRedeem(address owner) internal view virtual returns (uint256 maxShares) {
-        maxShares = paused() ? 0 : balanceOf(owner);
-    }
-
     function _transferAndMint(uint256 assets, uint256 shares, address receiver) internal virtual {
         AutoPool4626.transferAndMint(
             _baseAsset, _assetBreakdown, _tokenData, _profitUnlockSettings, assets, shares, receiver
@@ -823,7 +836,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
         uint256 newTotalSupply = _feeAndProfitHandling(newIdle + newDebt, startingIdle + startingDebt, true);
 
-        lmpStrategy.navUpdate((newIdle + newDebt) * 10 ** decimals() / totalSupply());
+        lmpStrategy.navUpdate((newIdle + newDebt) * ONE / totalSupply());
 
         emit Nav(newIdle, newDebt, newTotalSupply);
     }
@@ -937,7 +950,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         // and it can gather its final state/stats
         lmpStrategy.rebalanceSuccessfullyExecuted(rebalanceParams);
 
-        lmpStrategy.navUpdate((idle + debt) * 10 ** decimals() / totalSupply());
+        lmpStrategy.navUpdate((idle + debt) * ONE / totalSupply());
 
         emit Nav(idle, debt, newTotalSupply);
     }

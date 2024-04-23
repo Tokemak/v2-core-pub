@@ -763,8 +763,7 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
             // which means its not an LP token so we use this pricing fn
             return pricer.getPriceInEth(token);
         } else {
-            // Otherwise we know its a real destination and so we can get the price directly
-            // from there
+            // Otherwise we know its a real destination and so we can get the price directly from there
             return IDestinationVault(destination).getValidatedSafePrice();
         }
     }

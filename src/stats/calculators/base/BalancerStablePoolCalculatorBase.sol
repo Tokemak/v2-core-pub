@@ -268,7 +268,9 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
         // to ensure that we always report the value in ETH as 18 decimals
         uint256 divisor = 10 ** IERC20Metadata(token).decimals();
 
-        // the pricer handles the reentrancy issues
+        // We are using the balances directly here which can be manipulated but these values are
+        // only used in the strategy where we do additional checks to ensure the pool
+        // is a good state
         // slither-disable-next-line reentrancy-benign,reentrancy-no-eth
         return pricer.getPriceInEth(token) * balances[index] / divisor;
     }

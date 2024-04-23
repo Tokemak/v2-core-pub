@@ -146,6 +146,10 @@ abstract contract CurvePoolNoRebasingCalculatorBase is IDexLSTStats, BaseStatsCa
             // the price oracle is always 18 decimals, so divide by the decimals of the token
             // to ensure that we always report the value in ETH as 18 decimals
             uint256 priceDivisor = 10 ** CurveUtils.getDecimals(token);
+
+            // We are using the balances directly here which can be manipulated but these values are
+            // only used in the strategy where we do additional checks to ensure the pool
+            // is a good state
             reservesInEth[i] = pricer.getPriceInEth(token) * IPool(poolAddress).balances(i) / priceDivisor;
 
             if (address(lstStats[i]) != address(0)) {

@@ -246,7 +246,9 @@ abstract contract CurvePoolRebasingCalculatorBase is IDexLSTStats, BaseStatsCalc
         // to ensure that we always report the value in ETH as 18 decimals
         uint256 divisor = 10 ** CurveUtils.getDecimals(token);
 
-        // the pricer handles the reentrancy issue for curve
+        // We are using the balances directly here which can be manipulated but these values are
+        // only used in the strategy where we do additional checks to ensure the pool
+        // is a good state
         // slither-disable-next-line reentrancy-benign
         return pricer.getPriceInEth(token) * IPool(poolAddress).balances(index) / divisor;
     }

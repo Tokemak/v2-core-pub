@@ -19,7 +19,6 @@ import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
-import { IERC1271 } from "openzeppelin-contracts/interfaces/IERC1271.sol";
 
 contract DestinationVaultBaseTests is Test {
     using Clones for address;

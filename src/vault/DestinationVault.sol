@@ -181,12 +181,6 @@ abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Init
     }
 
     /// @inheritdoc IDestinationVault
-    function exchangeName() external view virtual override returns (string memory);
-
-    /// @inheritdoc IDestinationVault
-    function underlyingTokens() external view virtual override returns (address[] memory);
-
-    /// @inheritdoc IDestinationVault
     function collectRewards()
         external
         virtual

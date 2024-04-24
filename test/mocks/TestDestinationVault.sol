@@ -67,6 +67,14 @@ contract TestDestinationVault is DestinationVault {
         return "test";
     }
 
+    function poolType() external pure override returns (string memory) {
+        return "test";
+    }
+
+    function poolDealInEth() external pure override returns (bool) {
+        return false;
+    }
+
     function underlyingTokens() external view override returns (address[] memory tokens) {
         tokens = new address[](1);
         tokens[0] = _underlying;

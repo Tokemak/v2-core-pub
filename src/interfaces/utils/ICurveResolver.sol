@@ -17,6 +17,7 @@ interface ICurveResolver {
 
     /// @notice Resolve details of a Curve pool regardless of type or version
     /// @dev This resolves tokens without unwrapping to underlying in the case of meta pools.
+    /// @dev Use the isStableSwap value to differentiate between StableSwap (V1) and CryptoSwap (V2) pools.
     /// @param poolAddress pool address to lookup
     /// @return tokens tokens that make up the pool
     /// @return numTokens the number of tokens. tokens are not unwrapped

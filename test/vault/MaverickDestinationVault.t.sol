@@ -183,6 +183,15 @@ contract MaverickDestinationVaultTests is Test {
         assertEq(_destVault.exchangeName(), "maverick");
     }
 
+    function test_poolType_ReturnsMaverick() public {
+        assertEq(_destVault.poolType(), "maverick");
+    }
+
+    // @dev Maverick destination vaults do not handle pool with ETH yet
+    function test_poolDealInEth_ReturnsFalse() public {
+        assertFalse(_destVault.poolDealInEth());
+    }
+
     function test_underlyingTokens_ReturnsPoolTokens() public {
         address[] memory tokens = _destVault.underlyingTokens();
 

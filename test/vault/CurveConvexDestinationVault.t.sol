@@ -43,7 +43,8 @@ import {
     CRV_MAINNET,
     STETH_MAINNET,
     LDO_MAINNET,
-    CURVE_STETH_ETH_WHALE
+    CURVE_STETH_ETH_WHALE,
+    RETH_WETH_CURVE_POOL
 } from "test/utils/Addresses.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
@@ -71,7 +72,8 @@ contract CurveConvexDestinationVaultTests is Test {
 
     TestIncentiveCalculator private _testIncentiveCalculator;
     CurveResolverMainnet internal _curveResolver;
-    CurveConvexDestinationVault private _destVault;
+    CurveConvexDestinationVault internal _destVault;
+    CurveConvexDestinationVault internal _destVault2;
 
     SwapRouter private swapRouter;
     CurveV1StableSwap private curveSwapper;
@@ -167,6 +169,32 @@ contract CurveConvexDestinationVaultTests is Test {
         vm.label(newVault, "destVault");
 
         _destVault = CurveConvexDestinationVault(newVault);
+
+        // Begin deployment of a second calculator and vault for a CurveV2 pool with an ETH token
+        TestIncentiveCalculator testIncentiveCalculator2 = new TestIncentiveCalculator();
+        testIncentiveCalculator2.setLpToken(address(_underlyer));
+        testIncentiveCalculator2.setPoolAddress(address(RETH_WETH_CURVE_POOL));
+
+        initParams = CurveConvexDestinationVault.InitParams({
+            curvePool: RETH_WETH_CURVE_POOL,
+            convexStaking: 0x65C8aa24db76e870DEDfC35701eff84de405D1ba,
+            convexPoolId: 154
+        });
+        initParamBytes = abi.encode(initParams);
+        address payable newVault2 = payable(
+            _destinationVaultFactory.create(
+                "template",
+                address(_asset),
+                address(_underlyer),
+                address(testIncentiveCalculator2),
+                additionalTrackedTokens,
+                keccak256("destVault2"),
+                initParamBytes
+            )
+        );
+        _destVault2 = CurveConvexDestinationVault(newVault2);
+        vm.label(newVault2, "destVault2");
+        // Complete deployment of a second calculator and vault for a CurveV2 pool with an ETH token
 
         _rootPriceOracle = IRootPriceOracle(vm.addr(34_399));
         vm.label(address(_rootPriceOracle), "rootPriceOracle");
@@ -682,5 +710,29 @@ contract Initialize is CurveConvexDestinationVaultTests {
             additionalTrackedTokens,
             defaultInitParamBytes
         );
+    }
+}
+
+contract PoolType is CurveConvexDestinationVaultTests {
+    // STETH_ETH_CURVE_POOL is a CurveV1 pool
+    function test_handleCurveV1() public {
+        assertEq(_destVault.poolType(), "curveV1");
+    }
+
+    // RETH_WETH_CURVE_POOL is a CurveV2 pool
+    function test_handleCurveV2() public {
+        assertEq(_destVault2.poolType(), "curveV2");
+    }
+}
+
+contract PoolDealInEth is CurveConvexDestinationVaultTests {
+    // STETH_ETH_CURVE_POOL deals in ETH
+    function test_detectsPoolDealInEth() public {
+        assertEq(_destVault.poolDealInEth(), true);
+    }
+
+    // RETH_WETH_CURVE_POOL does not deal in ETH
+    function test_detectsPoolDealNotInEth() public {
+        assertEq(_destVault2.poolDealInEth(), false);
     }
 }

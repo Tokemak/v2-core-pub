@@ -209,6 +209,14 @@ contract TestDestinationVault is DestinationVault, Numbers {
         return "test";
     }
 
+    function poolType() external pure override returns (string memory) {
+        return "test";
+    }
+
+    function poolDealInEth() external pure override returns (bool) {
+        return false;
+    }
+
     function _ensureLocalUnderlyingBalance(uint256 amount) internal virtual override { }
 
     function burn(address account, uint256 amount) public {

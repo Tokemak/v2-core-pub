@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import { Errors } from "src/utils/Errors.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
-import { DestinationVault } from "src/vault/DestinationVault.sol";
+import { DestinationVault, IDestinationVault } from "src/vault/DestinationVault.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
@@ -61,6 +61,15 @@ contract CurveConvexDestinationVault is DestinationVault {
     /// @notice Numeric pool id used to reference Curve pool
     uint256 public convexPoolId;
 
+    /// @notice True for Curve V1 (StableSwap), false for V2 (CryptoSwap).
+    bool public isStableSwap;
+
+    /// @notice Whether the pool deals in ETH
+    /// @dev false by default
+    /// @dev Exposed via `poolDealInEth()`
+    /// @dev Set in `initialize()`
+    bool private _poolDealInEth;
+
     /// @dev Tokens that make up the LP token. Meta tokens not broken up
     address[] private constituentTokens;
 
@@ -114,7 +123,7 @@ contract CurveConvexDestinationVault is DestinationVault {
         // Setup pool tokens as tracked. If we want to handle meta pools and their tokens
         // we will pass them in as additional, not currently a use case
         // slither-disable-next-line unused-return
-        (address[8] memory tokens, uint256 numTokens, address curveQueriedLpToken,) =
+        (address[8] memory tokens, uint256 numTokens, address curveQueriedLpToken, bool queriedIsStableSwap) =
             curveResolver.resolveWithLpToken(initParams.curvePool);
 
         Errors.verifyNotZero(numTokens, "numTokens");
@@ -137,12 +146,19 @@ contract CurveConvexDestinationVault is DestinationVault {
             revert Errors.InvalidParam("crvRewards");
         }
 
+        bool memoryPoolDealInEth = false;
         for (uint256 i = 0; i < numTokens; ++i) {
             address weth = address(systemRegistry.weth());
-            address token = tokens[i] == LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER ? weth : tokens[i];
+            address token = tokens[i];
+            if (!memoryPoolDealInEth && tokens[i] == LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER) {
+                token = weth;
+                memoryPoolDealInEth = true;
+            }
+
             _addTrackedToken(token);
             constituentTokens.push(token);
         }
+        _poolDealInEth = memoryPoolDealInEth;
 
         // Initialize our min amounts for withdrawals to 0 for all tokens
         minAmounts = new uint256[](numTokens);
@@ -150,6 +166,8 @@ contract CurveConvexDestinationVault is DestinationVault {
         // Checked above
         // slither-disable-next-line missing-zero-check
         curveLpToken = lpToken;
+
+        isStableSwap = queriedIsStableSwap;
     }
 
     /// @inheritdoc DestinationVault
@@ -170,12 +188,22 @@ contract CurveConvexDestinationVault is DestinationVault {
         return IBaseRewardPool(convexStaking).balanceOf(address(this));
     }
 
-    /// @inheritdoc DestinationVault
+    /// @inheritdoc IDestinationVault
     function exchangeName() external pure override returns (string memory) {
         return EXCHANGE_NAME;
     }
 
-    /// @inheritdoc DestinationVault
+    /// @inheritdoc IDestinationVault
+    function poolType() external view override returns (string memory) {
+        return isStableSwap ? "curveV1" : "curveV2";
+    }
+
+    /// @inheritdoc IDestinationVault
+    function poolDealInEth() external view override returns (bool) {
+        return _poolDealInEth;
+    }
+
+    /// @inheritdoc IDestinationVault
     function underlyingTokens() external view override returns (address[] memory result) {
         uint256 len = constituentTokens.length;
         result = new address[](len);

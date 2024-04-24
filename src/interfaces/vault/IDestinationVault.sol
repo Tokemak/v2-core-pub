@@ -61,6 +61,12 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @notice Exchange this destination vault points to
     function exchangeName() external view returns (string memory);
 
+    /// @notice The type of pool associated with this vault
+    function poolType() external view returns (string memory);
+
+    /// @notice If the pool deals in ETH
+    function poolDealInEth() external view returns (bool);
+
     /// @notice Tokens that base asset can be swapped into
     function underlyingTokens() external view returns (address[] memory);
 

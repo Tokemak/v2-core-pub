@@ -205,8 +205,17 @@ contract BalancerDestinationVaultComposableTests is Test {
         assertTrue(DestinationVault(newVault).underlyingTokens().length > 0);
     }
 
+    /// @dev Balancer pools do not deal in ETH
+    function test_poolDealInEth_ReturnsFalse() public {
+        assertFalse(_destVault.poolDealInEth());
+    }
+
     function test_isComposable_TrueForComposableValues() public {
         assertTrue(_destVault.isComposable());
+    }
+
+    function test_poolType_Returns() public {
+        assertEq(_destVault.poolType(), "balCompStable");
     }
 
     function test_exchangeName_Returns() public {

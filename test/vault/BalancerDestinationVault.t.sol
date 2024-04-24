@@ -173,6 +173,15 @@ contract BalancerDestinationVaultTests is Test {
         assertTrue(DestinationVault(newVault).underlyingTokens().length > 0);
     }
 
+    function test_poolType_Returns() public {
+        assertEq(_destVault.poolType(), "balMetaStable");
+    }
+
+    /// @dev Balancer pools do not deal in ETH
+    function test_poolDealInEth_ReturnsFalse() public {
+        assertFalse(_destVault.poolDealInEth());
+    }
+
     function test_exchangeName_Returns() public {
         assertEq(_destVault.exchangeName(), "balancer");
     }

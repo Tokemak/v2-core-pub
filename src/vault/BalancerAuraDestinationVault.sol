@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import { Errors } from "src/utils/Errors.sol";
-import { DestinationVault } from "src/vault/DestinationVault.sol";
+import { DestinationVault, IDestinationVault } from "src/vault/DestinationVault.sol";
 import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -134,12 +134,23 @@ contract BalancerAuraDestinationVault is DestinationVault {
         return IERC20(auraStaking).balanceOf(address(this));
     }
 
-    /// @inheritdoc DestinationVault
+    /// @inheritdoc IDestinationVault
     function exchangeName() external pure override returns (string memory) {
         return EXCHANGE_NAME;
     }
 
-    /// @inheritdoc DestinationVault
+    /// @inheritdoc IDestinationVault
+    function poolType() external view override returns (string memory) {
+        return isComposable ? "balCompStable" : "balMetaStable";
+    }
+
+    /// @inheritdoc IDestinationVault
+    /// @notice This contract only deals in LP tokens
+    function poolDealInEth() external pure override returns (bool) {
+        return false;
+    }
+
+    /// @inheritdoc IDestinationVault
     function underlyingTokens() external view override returns (address[] memory ret) {
         if (isComposable) {
             uint256 len = poolTokens.length;

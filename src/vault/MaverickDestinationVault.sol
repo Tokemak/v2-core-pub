@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import { Errors } from "src/utils/Errors.sol";
-import { DestinationVault } from "src/vault/DestinationVault.sol";
+import { DestinationVault, IDestinationVault } from "src/vault/DestinationVault.sol";
 import { IPool } from "src/interfaces/external/maverick/IPool.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IRouter } from "src/interfaces/external/maverick/IRouter.sol";
@@ -118,12 +118,23 @@ contract MaverickDestinationVault is DestinationVault {
         return maverickRewarder.balanceOf(address(this));
     }
 
-    /// @inheritdoc DestinationVault
+    /// @inheritdoc IDestinationVault
     function exchangeName() external pure override returns (string memory) {
         return EXCHANGE_NAME;
     }
 
-    /// @inheritdoc DestinationVault
+    /// @inheritdoc IDestinationVault
+    function poolType() external pure override returns (string memory) {
+        return "maverick";
+    }
+
+    /// @inheritdoc IDestinationVault
+    /// @notice This contract do not support ETH pool
+    function poolDealInEth() external pure override returns (bool) {
+        return false;
+    }
+
+    /// @inheritdoc IDestinationVault
     function underlyingTokens() external view override returns (address[] memory result) {
         result = new address[](2);
         for (uint256 i = 0; i < 2; ++i) {

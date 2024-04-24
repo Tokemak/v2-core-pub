@@ -17,8 +17,16 @@ import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSe
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
+import { IERC1271 } from "openzeppelin-contracts/interfaces/IERC1271.sol";
 
-abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Initializable, IDestinationVault {
+abstract contract DestinationVault is
+    SecurityBase,
+    SystemComponent,
+    ERC20,
+    Initializable,
+    IDestinationVault,
+    IERC1271
+{
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -65,6 +73,8 @@ abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Init
     /// @notice A full unit of this vault
     // solhint-disable-next-line var-name-mixedcase
     uint256 public ONE;
+
+    mapping(bytes32 => bool) public signedMessages;
 
     constructor(ISystemRegistry sysRegistry)
         SystemComponent(sysRegistry)
@@ -465,4 +475,21 @@ abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Init
 
     /// @notice Validates incentive calculator for the destination vault
     function _validateCalculator(address calculator) internal virtual;
+
+    function setMessage(bytes32 hash, bool flag) external hasRole(Roles.DESTINATION_VAULTS_UPDATER) {
+        signedMessages[hash] = flag;
+
+        emit UpdateSignedMessage(hash, flag);
+    }
+
+    function isValidSignature(
+        bytes32 hash,
+        bytes memory _signature
+    ) external view override returns (bytes4 magicValue) {
+        if (signedMessages[hash]) {
+            magicValue = IERC1271.isValidSignature.selector;
+        } else {
+            magicValue = 0xFFFFFFFF;
+        }
+    }
 }

@@ -78,6 +78,7 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     event Withdraw(
         uint256 target, uint256 actual, uint256 debtLoss, uint256 claimLoss, uint256 fromIdle, uint256 fromDebt
     );
+    event UpdateSignedMessage(bytes32 hash, bool flag);
 
     /* ******************************** */
     /* Errors                           */

@@ -9,6 +9,7 @@ library Client {
         uint256 amount; // Amount of tokens.
     }
 
+    /// @dev CCIP receivers use this struct to parse the received message
     struct Any2EVMMessage {
         bytes32 messageId; // MessageId corresponding to ccipSend on source.
         uint64 sourceChainSelector; // Source chain selector.
@@ -18,10 +19,11 @@ library Client {
     }
 
     // If extraArgs is empty bytes, the default is 200k gas limit.
+    /// @dev CCIP senders use this struct to build message.
     struct EVM2AnyMessage {
         bytes receiver; // abi.encode(receiver address) for dest EVM chains
         bytes data; // Data payload
-        EVMTokenAmount[] tokenAmounts; // Token transfers
+        EVMTokenAmount[] tokenAmounts; // Token transfers.  Empty array for no tokens transferred.
         address feeToken; // Address of feeToken. address(0) means you will send msg.value.
         bytes extraArgs; // Populate this with _argsToBytes(EVMExtraArgsV1)
     }

@@ -19,6 +19,7 @@ import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
+import { IERC1271 } from "openzeppelin-contracts/interfaces/IERC1271.sol";
 
 contract DestinationVaultBaseTests is Test {
     using Clones for address;
@@ -399,6 +400,37 @@ contract DestinationVaultBaseTests is Test {
         uint256 ceilingPrice = testVault.getUnderlyerCeilingPrice();
 
         assertEq(ceilingPrice, 7, "ceilingPrice");
+    }
+
+    function test_setMessage() public {
+        bytes32 testHash = keccak256("TEST HASH GENERATION");
+        accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));
+
+        testVault.setMessage(testHash, true);
+
+        assertEq(testVault.signedMessages(testHash), true);
+    }
+
+    function test_setMessageInvalidRole() public {
+        bytes32 testHash = keccak256("TEST HASH GENERATION");
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        testVault.setMessage(testHash, true);
+        assertEq(testVault.signedMessages(testHash), false);
+    }
+
+    function test_isValidSignature() public {
+        bytes4 magicValue = 0x1626ba7e;
+        bytes32 testHash = keccak256("TEST HASH GENERATION");
+        accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));
+
+        testVault.setMessage(testHash, true);
+        bytes4 returnedValue = testVault.isValidSignature(testHash, bytes(""));
+        assertEq(returnedValue, magicValue);
+
+        testVault.setMessage(testHash, false);
+        returnedValue = testVault.isValidSignature(testHash, bytes(""));
+        assertEq(returnedValue, bytes4(0xFFFFFFFF));
     }
 
     function mockSystemBound(address addr, address systemRegistry_) internal {

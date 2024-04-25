@@ -482,10 +482,7 @@ abstract contract DestinationVault is
         emit UpdateSignedMessage(hash, flag);
     }
 
-    function isValidSignature(
-        bytes32 hash,
-        bytes memory 
-    ) external view override returns (bytes4 magicValue) {
+    function isValidSignature(bytes32 hash, bytes memory) external view override returns (bytes4 magicValue) {
         if (signedMessages[hash]) {
             magicValue = IERC1271.isValidSignature.selector;
         } else {

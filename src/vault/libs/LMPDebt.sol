@@ -507,11 +507,13 @@ library LMPDebt {
     function _initiateWithdrawInfo(
         uint256 assets,
         ILMPVault.AssetBreakdown storage assetBreakdown
-    ) private view returns (WithdrawInfo memory info) {
+    ) private view returns (WithdrawInfo memory) {
         uint256 idle = assetBreakdown.totalIdle;
-        info = WithdrawInfo({
+        WithdrawInfo memory info = WithdrawInfo({
             currentIdle: idle,
-            assetsFromIdle: assets >= idle ? idle : assets,
+            // If idle can cover the full amount, then we want to pull all assets from there
+            // Otherwise, we want to pull from the market and only get idle if we exhaust the market
+            assetsFromIdle: assets > idle ? 0 : assets,
             totalAssetsToPull: 0,
             assetsToPull: 0,
             assetsPulled: 0,
@@ -526,11 +528,18 @@ library LMPDebt {
         });
 
         info.totalAssetsToPull = assets - info.assetsFromIdle;
+
+        // This var we use to track our progress later
         info.assetsToPull = assets - info.assetsFromIdle;
 
-        if (info.totalAssetsToPull > info.totalMinDebt) {
+        // Idle + minDebt is the maximum amount of assets/debt we could burn during a withdraw.
+        // If the user is request more than that (like during a withdraw) we can just revert
+        // early without trying
+        if (info.totalAssetsToPull > info.currentIdle + info.totalMinDebt) {
             revert TooFewAssets(assets, info.currentIdle + info.totalMinDebt);
         }
+
+        return info;
     }
 
     function withdraw(
@@ -542,8 +551,7 @@ library LMPDebt {
     ) public returns (uint256 actualAssets, uint256 actualShares, uint256 debtBurned) {
         WithdrawInfo memory info = _initiateWithdrawInfo(assets, assetBreakdown);
 
-        // If not enough funds in idle, then pull what we need from the destinations in
-        // the while loop below
+        // Pull the market if there aren't enough funds in idle to cover the entire amount
 
         // This flow is not bounded by a set number of shares. The user has requested X assets
         // and a variable number of shares to burn so we don't have easy break out points like we do
@@ -609,7 +617,6 @@ library LMPDebt {
             }
 
             // Destination Vaults always burn the exact amount we instruct them to
-
             uint256 pulledAssets = destVault.withdrawBaseAsset(dvSharesToBurn, address(this));
 
             info.assetsPulled += pulledAssets;
@@ -666,6 +673,18 @@ library LMPDebt {
 
         // info.assetsToPull isn't safe to use past this point.
         // It may or may not be accurate from the previous loop
+
+        // We didn't get enough assets from the debt pull
+        // See if we can get the rest from idle
+        if (info.assetsPulled < assets && info.currentIdle > 0) {
+            uint256 remaining = assets - info.assetsPulled;
+            if (remaining <= info.currentIdle) {
+                info.assetsFromIdle = remaining;
+            }
+            // We don't worry about the else case because if currentIdle can't
+            // cover remaining then we'll fail the `actualAssets < assets`
+            // check below and revert
+        }
 
         debtBurned = info.assetsFromIdle + info.debtMinDecrease;
         actualAssets = info.assetsFromIdle + info.assetsPulled;
@@ -799,12 +818,25 @@ library LMPDebt {
         // info.totalAssetsToPull isn't safe to use past this point.
         // It may or may not be accurate from the previous loop
 
+        // We didn't get enough assets from the debt pull
+        // See if we can get the rest from idle
+        // Check the debt burned though to ensure that we don't try to make up
+        // slippage incurred out of idle
+        if (info.assetsPulled < assets && info.debtMinDecrease < assets && info.currentIdle > 0) {
+            uint256 remaining = assets - Math.max(info.assetsPulled, info.debtMinDecrease);
+            if (remaining < info.currentIdle) {
+                info.assetsFromIdle = remaining;
+            } else {
+                info.assetsFromIdle = info.currentIdle;
+            }
+        }
+
         debtBurned = info.assetsFromIdle + info.debtMinDecrease;
+        actualAssets = info.assetsFromIdle + info.assetsPulled;
 
         actualShares = ILMPVault(address(this)).convertToShares(
             debtBurned, applicableTotalAssets, ILMPVault(address(this)).totalSupply(), Math.Rounding.Up
         );
-        actualAssets = info.assetsFromIdle + info.assetsPulled;
 
         // Subtract what's taken out of idle from totalIdle
         // We may also have some increase to account for it we over pulled

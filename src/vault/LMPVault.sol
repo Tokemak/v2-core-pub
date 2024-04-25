@@ -834,7 +834,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
         uint256 newTotalSupply = _feeAndProfitHandling(newIdle + newDebt, startingIdle + startingDebt, true);
 
-        lmpStrategy.navUpdate((newIdle + newDebt) * ONE / totalSupply());
+        _updateStrategyNav(newIdle + newDebt, newTotalSupply);
 
         emit Nav(newIdle, newDebt, newTotalSupply);
     }
@@ -948,9 +948,13 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         // and it can gather its final state/stats
         lmpStrategy.rebalanceSuccessfullyExecuted(rebalanceParams);
 
-        lmpStrategy.navUpdate((idle + debt) * ONE / totalSupply());
+        _updateStrategyNav(idle + debt, newTotalSupply);
 
         emit Nav(idle, debt, newTotalSupply);
+    }
+
+    function _updateStrategyNav(uint256 assets, uint256 supply) internal virtual {
+        lmpStrategy.navUpdate(assets * ONE / supply);
     }
 
     function _processRebalance(

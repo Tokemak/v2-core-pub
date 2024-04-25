@@ -1272,7 +1272,7 @@ contract PreviewMintTests is LMPVaultTests {
     }
 }
 
-contract WithdrawTests is LMPVaultTests {
+contract Withdraw is LMPVaultTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -1766,6 +1766,151 @@ contract WithdrawTests is LMPVaultTests {
         assertEq(vaultAsset.balanceOf(user), 1e9, "newBal");
     }
 
+    function test_PullFromIdleIfItCoversFullAssets() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(5e9);
+
+        // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
+        // Prices are still 1:1
+
+        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(assets.totalIdle, 5e9, "startingIdle");
+        assertEq(assets.totalDebt, 10e9, "startingDebt");
+
+        vm.prank(user);
+        vault.withdraw(2e9, user, user);
+
+        assets = vault.getAssetBreakdown();
+        assertEq(assets.totalIdle, 3e9, "newIdle");
+        assertEq(assets.totalDebt, 10e9, "sameDebt");
+
+        vm.prank(user);
+        vault.withdraw(3e9, user, user);
+
+        assets = vault.getAssetBreakdown();
+        assertEq(assets.totalIdle, 0, "newIdleZero");
+        assertEq(assets.totalDebt, 10e9, "sameDebtZero");
+    }
+
+    function test_PullFromMarketIfIdleCantCoverFullAmount() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(5e9);
+
+        // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
+        // Prices are still 1:1
+
+        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(assets.totalIdle, 5e9, "startingIdle");
+        assertEq(assets.totalDebt, 10e9, "startingDebt");
+
+        vm.prank(user);
+        vault.withdraw(6e9, user, user);
+
+        assets = vault.getAssetBreakdown();
+        assertEq(assets.totalIdle, 5e9, "sameIdle");
+        assertEq(assets.totalDebt, 4e9, "newDebt");
+    }
+
+    function test_IdleAssetsUsedWhenMarketCantCoverFullAmount() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(5e9);
+
+        // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
+        // Prices are still 1:1
+
+        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(assets.totalIdle, 5e9, "startingIdle");
+        assertEq(assets.totalDebt, 10e9, "startingDebt");
+
+        vm.prank(user);
+        uint256 sharesBurned = vault.withdraw(12e9, user, user);
+
+        assets = vault.getAssetBreakdown();
+        assertEq(sharesBurned, 12e9, "sharesBurned");
+        assertEq(assets.totalIdle, 3e9, "newIdle");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_IncurredMarketSlippageNotFilledInByIdle() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(5e9);
+
+        // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
+        // Prices are still 1:1
+
+        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(assets.totalIdle, 5e9, "startingIdle");
+        assertEq(assets.totalDebt, 10e9, "startingDebt");
+
+        // We get 1 unit of slippage from the pull so while we'll burn 10 debt, we only get 9
+        dv1.setWithdrawBaseAssetSlippage(1e9);
+
+        vm.prank(user);
+        uint256 sharesBurned = vault.withdraw(12e9, user, user);
+
+        // Withdraw 12 assets
+        // We get 9 from the market, burning 10
+        // That means we still have 3 to get to satisfy the 12
+        // That 3 comes from idle, burning 13 total
+
+        assets = vault.getAssetBreakdown();
+        assertEq(sharesBurned, 13e9, "sharesBurned");
+        assertEq(assets.totalIdle, 2e9, "newIdle");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
     function test_RevertIf_NavDecreases() public {
         address user = makeAddr("user");
         _depositFor(user, 2e18);
@@ -1986,7 +2131,7 @@ contract MaxWithdrawTests is LMPVaultTests {
     }
 }
 
-contract RedeemTests is LMPVaultTests {
+contract Redeem is LMPVaultTests {
     using WithdrawalQueue for StructuredLinkedList.List;
 
     function setUp() public virtual override {
@@ -2453,6 +2598,146 @@ contract RedeemTests is LMPVaultTests {
         vault.redeem(1e9, user, user);
 
         assertEq(vaultAsset.balanceOf(user), 1e9, "newBal");
+    }
+
+    function test_PullFromIdleIfItCoversFullAssets() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(5e9);
+
+        // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
+        // Prices are still 1:1
+
+        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(assets.totalIdle, 5e9, "startingIdle");
+        assertEq(assets.totalDebt, 10e9, "startingDebt");
+
+        vm.prank(user);
+        vault.redeem(2e9, user, user);
+
+        assets = vault.getAssetBreakdown();
+        assertEq(assets.totalIdle, 3e9, "newIdle");
+        assertEq(assets.totalDebt, 10e9, "sameDebt");
+
+        vm.prank(user);
+        vault.redeem(3e9, user, user);
+
+        assets = vault.getAssetBreakdown();
+        assertEq(assets.totalIdle, 0, "newIdleZero");
+        assertEq(assets.totalDebt, 10e9, "sameDebtZero");
+    }
+
+    function test_PullFromMarketIfIdleCantCoverFullAmount() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(5e9);
+
+        // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
+        // Prices are still 1:1
+
+        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(assets.totalIdle, 5e9, "startingIdle");
+        assertEq(assets.totalDebt, 10e9, "startingDebt");
+
+        vm.prank(user);
+        vault.redeem(6e9, user, user);
+
+        assets = vault.getAssetBreakdown();
+        assertEq(assets.totalIdle, 5e9, "sameIdle");
+        assertEq(assets.totalDebt, 4e9, "newDebt");
+    }
+
+    function test_IdleAssetsUsedWhenMarketCantCoverFullAmount() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(5e9);
+
+        // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
+        // Prices are still 1:1
+
+        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(assets.totalIdle, 5e9, "startingIdle");
+        assertEq(assets.totalDebt, 10e9, "startingDebt");
+
+        vm.prank(user);
+        uint256 userRedeemed = vault.redeem(12e9, user, user);
+
+        assets = vault.getAssetBreakdown();
+        assertEq(userRedeemed, 12e9, "userRedeemed");
+        assertEq(assets.totalIdle, 3e9, "newIdle");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_IncurredMarketSlippageNotFilledInByIdle() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(5e9);
+
+        // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
+        // Prices are still 1:1
+
+        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(assets.totalIdle, 5e9, "startingIdle");
+        assertEq(assets.totalDebt, 10e9, "startingDebt");
+
+        // We get 1 unit of slippage from the pull so while we'll burn 10 debt, we only get 9
+        dv1.setWithdrawBaseAssetSlippage(1e9);
+
+        vm.prank(user);
+        uint256 userRedeemed = vault.redeem(12e9, user, user);
+
+        assets = vault.getAssetBreakdown();
+        assertEq(userRedeemed, 11e9, "userRedeemed");
+        assertEq(assets.totalIdle, 3e9, "newIdle");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
     }
 
     function test_RevertIf_NavDecreases() public {
@@ -4792,6 +5077,7 @@ contract UpdateDebtReportingTests is LMPVaultTests {
         assertEq(vault.getAssetBreakdown().totalDebt, 7.5e9, "stage4Debt");
         assertEq(vault.getAssetBreakdown().totalDebtMin, 6.75e9, "stage4DebtMin");
         assertEq(vault.getAssetBreakdown().totalDebtMax, 8.25e9, "stage4DebtMax");
+        assertEq(vault.totalSupply(), 5e9, "stage4TotalSupply");
         assertEq(vault.getDestinationInfo(address(dv1)).cachedDebtValue, 2.5e9, "stage4Dv1Debt");
         assertEq(vault.getDestinationInfo(address(dv1)).cachedMinDebtValue, 2.25e9, "stage4Dv1MinDebt");
         assertEq(vault.getDestinationInfo(address(dv1)).cachedMaxDebtValue, 2.75e9, "stage4Dv1MaxDebt");
@@ -4804,14 +5090,18 @@ contract UpdateDebtReportingTests is LMPVaultTests {
         vm.stopPrank();
 
         // Total asset are currently worth 7.5 on withdraw (.75 + 6.75) and we burned 80% of the shares
-        // so we tried to get 6 assets. .75 came from idle. 5.25 left. Burned everthing in dv1 and
-        // received 2.5. 2.75 left. DV2 min value is 4.5 so we have to burn 61.11% to cover.
-        // DV2 has 5 shares so we burn 3.055 of them. They're worth 1:1 so we pulled an
-        // extra 0.3055 which drops into idle. Cached values don't change, only totals
-        assertEq(vault.getAssetBreakdown().totalIdle, 0.305555555e9, "stage5Idle");
-        assertEq(vault.getAssetBreakdown().totalDebt, 1.944444445e9, "stage5Debt");
-        assertEq(vault.getAssetBreakdown().totalDebtMin, 1.75e9, "stage5DebtMin");
-        assertEq(vault.getAssetBreakdown().totalDebtMax, 2.138888889e9, "stage5DebtMax");
+        // so we tried to get 6 assets.
+
+        // We pull none from idle because the 6 can fully come from debt. Burned everything in dv1 and
+        // received 2.5. 3.5 left. DV2 min value is 4.5 so we have to burn 77.778% to cover.
+        // DV2 has 5 shares so we burn 3.889 of them. They're worth 1:1 so we pulled an
+        // extra 0.3889 which drops into idle. Cached values don't change, only totals
+
+        ILMPVault.AssetBreakdown memory s5 = vault.getAssetBreakdown();
+        assertEq(s5.totalIdle, 1.138888888e9, /* .75 + .3889*/ "stage5Idle");
+        assertEq(s5.totalDebt, 1.111111112e9, /* 1.11111111 shares left @ 1 */ "stage5Debt");
+        assertEq(s5.totalDebtMin, 1e9, /* 1.11111111 shares left @ .9 */ "stage5DebtMin");
+        assertEq(s5.totalDebtMax, 1.222222223e9, /* 1.11111111 shares left @ 1.1 */ "stage5DebtMax");
         assertEq(vault.getDestinationInfo(address(dv1)).cachedDebtValue, 2.5e9, "stage5Dv1Debt");
         assertEq(vault.getDestinationInfo(address(dv1)).cachedMinDebtValue, 2.25e9, "stage5Dv1MinDebt");
         assertEq(vault.getDestinationInfo(address(dv1)).cachedMaxDebtValue, 2.75e9, "stage5Dv1MaxDebt");
@@ -4819,23 +5109,57 @@ contract UpdateDebtReportingTests is LMPVaultTests {
         assertEq(vault.getDestinationInfo(address(dv2)).cachedMinDebtValue, 4.5e9, "stage5Dv2MinDebt");
         assertEq(vault.getDestinationInfo(address(dv2)).cachedMaxDebtValue, 5.5e9, "stage5Dv2MaxDebt");
 
-        // TODO: Revisit
+        // Double the price of DV2 to ensure its picked up when combined with a share deduction
+        _mockDestVaultRangePricesLP(address(dv2), 0.9e9 * 2, 1.1e9 * 2, true);
+        vault.updateDebtReporting(4);
 
-        // // Double the price of DV2 to ensure its picked up when combined with a share deduction
-        // _mockDestVaultRangePricesLP(address(dv2), 0.9e9 * 2, 1.1e9 * 2, true);
-        // vault.updateDebtReporting(4);
+        // Reflect exhausted DV1 and updated cached DV2
+        ILMPVault.AssetBreakdown memory s6 = vault.getAssetBreakdown();
+        assertEq(s6.totalIdle, 1.138888888e9, "stage6Idle");
+        assertEq(s6.totalDebt, 2.222222224e9, "stage6Debt");
+        assertEq(s6.totalDebtMin, 2.000000001e9, "stage6DebtMin");
+        assertEq(s6.totalDebtMax, 2.444444446e9, "stage6DebtMax");
+        assertEq(vault.getDestinationInfo(address(dv1)).cachedDebtValue, 0, "stage6Dv1Debt");
+        assertEq(vault.getDestinationInfo(address(dv1)).cachedMinDebtValue, 0, "stage6Dv1MinDebt");
+        assertEq(vault.getDestinationInfo(address(dv1)).cachedMaxDebtValue, 0, "stage6Dv1MaxDebt");
+        assertEq(vault.getDestinationInfo(address(dv2)).cachedDebtValue, 2.222222224e9, "stage6Dv2Debt");
+        assertEq(vault.getDestinationInfo(address(dv2)).cachedMinDebtValue, 2.000000001e9, "stage6Dv2MinDebt");
+        assertEq(vault.getDestinationInfo(address(dv2)).cachedMaxDebtValue, 2.444444446e9, "stage6Dv2MaxDebt");
 
-        // // Reflect exhausted DV1 and updated cached DV2
-        // assertEq(vault.getAssetBreakdown().totalIdle, 0.305555555e9, "stage6Idle");
-        // assertEq(vault.getAssetBreakdown().totalDebt, 1.944444445e9 * 2, "stage6Debt");
-        // assertEq(vault.getAssetBreakdown().totalDebtMin, 1.75e9 * 2, "stage6DebtMin");
-        // assertEq(vault.getAssetBreakdown().totalDebtMax, 2.138888889e9 * 2, "stage6DebtMax");
-        // assertEq(vault.getDestinationInfo(address(dv1)).cachedDebtValue, 0, "stage6Dv1Debt");
-        // assertEq(vault.getDestinationInfo(address(dv1)).cachedMinDebtValue, 0, "stage6Dv1MinDebt");
-        // assertEq(vault.getDestinationInfo(address(dv1)).cachedMaxDebtValue, 0, "stage6Dv1MaxDebt");
-        // assertEq(vault.getDestinationInfo(address(dv2)).cachedDebtValue, 1.944444445e9 * 2, "stage6Dv2Debt");
-        // assertEq(vault.getDestinationInfo(address(dv2)).cachedMinDebtValue, 1.75e9 * 2, "stage6Dv2MinDebt");
-        // assertEq(vault.getDestinationInfo(address(dv2)).cachedMaxDebtValue, 2.138888889e9 * 2, "stage6Dv2MaxDebt");
+        // Pull all shares and ensure we get our idle back
+
+        vm.startPrank(user);
+        uint256 assets = vault.redeem(1e9, user, user);
+        vm.stopPrank();
+
+        ILMPVault.AssetBreakdown memory s7 = vault.getAssetBreakdown();
+        assertEq(vault.totalSupply(), 0, "stage7TotalSupply");
+        assertEq(assets, 2.25e9, /* totalIdle + remaining dv2 @ 1:1 price from stage6 */ "stage7AssetsRet");
+        assertEq(s7.totalIdle, 0, "stage7Idle");
+        assertEq(s7.totalDebt, 0, "stage7Debt");
+        assertEq(s7.totalDebtMin, 0, "stage7DebtMin");
+        assertEq(s7.totalDebtMax, 0, "stage7DebtMax");
+        assertEq(vault.getDestinationInfo(address(dv1)).cachedDebtValue, 0, "stage7Dv1Debt");
+        assertEq(vault.getDestinationInfo(address(dv1)).cachedMinDebtValue, 0, "stage7Dv1MinDebt");
+        assertEq(vault.getDestinationInfo(address(dv1)).cachedMaxDebtValue, 0, "stage7Dv1MaxDebt");
+        assertEq(vault.getDestinationInfo(address(dv2)).cachedDebtValue, 2.222222224e9, "stage7Dv2Debt");
+        assertEq(vault.getDestinationInfo(address(dv2)).cachedMinDebtValue, 2.000000001e9, "stage7Dv2MinDebt");
+        assertEq(vault.getDestinationInfo(address(dv2)).cachedMaxDebtValue, 2.444444446e9, "stage7Dv2MaxDebt");
+
+        // Final debt reporting that should clear out the remaining cached values
+        vault.updateDebtReporting(4);
+
+        ILMPVault.AssetBreakdown memory s8 = vault.getAssetBreakdown();
+        assertEq(s8.totalIdle, 0, "stage8Idle");
+        assertEq(s8.totalDebt, 0, "stage8Debt");
+        assertEq(s8.totalDebtMin, 0, "stage8DebtMin");
+        assertEq(s8.totalDebtMax, 0, "stage8DebtMax");
+        assertEq(vault.getDestinationInfo(address(dv1)).cachedDebtValue, 0, "stage8Dv1Debt");
+        assertEq(vault.getDestinationInfo(address(dv1)).cachedMinDebtValue, 0, "stage8Dv1MinDebt");
+        assertEq(vault.getDestinationInfo(address(dv1)).cachedMaxDebtValue, 0, "stage8Dv1MaxDebt");
+        assertEq(vault.getDestinationInfo(address(dv2)).cachedDebtValue, 0, "stage8Dv2Debt");
+        assertEq(vault.getDestinationInfo(address(dv2)).cachedMinDebtValue, 0, "stage8Dv2MinDebt");
+        assertEq(vault.getDestinationInfo(address(dv2)).cachedMaxDebtValue, 0, "stage8Dv2MaxDebt");
     }
 
     function _setupDestinationWithRewarder(
@@ -5243,6 +5567,15 @@ contract FeeAndProfitTestVault is TestLMPVault {
     bool private _useRealCollectFees;
 
     constructor(ISystemRegistry _systemRegistry, address _vaultAsset) TestLMPVault(_systemRegistry, _vaultAsset) { }
+
+    function _updateStrategyNav(uint256 assets, uint256 supply) internal override {
+        // If these tests we have 0'd total supply. This can't happen under normal circumstances
+        if (supply == 0) {
+            lmpStrategy.navUpdate(0);
+            return;
+        }
+        super._updateStrategyNav(assets, supply);
+    }
 
     function useRealCollectFees() public {
         _useRealCollectFees = true;

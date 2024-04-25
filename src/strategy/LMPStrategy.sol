@@ -672,8 +672,6 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
     }
 
     function verifyIdleUpOperation(IStrategy.RebalanceParams memory params) internal view returns (bool) {
-        IDestinationVault outDest = IDestinationVault(params.destinationOut);
-
         LMPDebt.DestinationInfo memory destInfo = lmpVault.getDestinationInfo(params.destinationOut);
         // revert if information is too old
         ensureNotStaleData("DestInfo", destInfo.lastReport);

@@ -143,6 +143,19 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
     /// For ex. f = 0.02 means a position < 0.02 will be treated as a dust position
     uint256 public dustPositionPortions;
 
+    /// @notice Idle Threshold Low
+    /// @dev Fractional value < 1.0 represented in 18 decimals
+    /// For ex. a value = 4e16 means 4% of total assets in the vault
+    uint256 public idleLowThreshold;
+
+    /// @notice Idle Threshold High
+    /// @dev Fractional value < 1.0 represented in 18 decimals
+    /// For ex. a value = 7e16 means 7% of total assets in the vault
+    /// Low & high idle thresholds trigger different behaviors. When idle is less than low threshold, idle level must be
+    /// brought up to high threshold. Any amount > high threshold is free to be deployed to destinations. When idle lies
+    /// between low & high threshold, it does not trigger new idle to be added.
+    uint256 public idleHighThreshold;
+
     /// @notice The LMPVault that this strategy is associated with
     ILMPVault public lmpVault;
 
@@ -173,6 +186,7 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         TrimDustPosition,
         DestinationIsQueuedForRemoval,
         DestinationViolatedConstraint,
+        ReplenishIdlePosition,
         UnknownReason
     }
 
@@ -210,6 +224,7 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
 
     event LstPriceGapSet(uint256 newPriceGap);
     event DustPositionPortionSet(uint256 newValue);
+    event IdleThresholdsSet(uint256 newLowValue, uint256 newHighValue);
 
     /* ******************************** */
     /* Errors                           */
@@ -232,6 +247,7 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
     error SystemRegistryMismatch();
     error UnregisteredDestination(address dest);
     error LSTPriceGapToleranceExceeded();
+    error InconsistentIdleThresholds();
 
     struct InterimStats {
         uint256 baseApr;
@@ -317,6 +333,8 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         _swapCostOffsetPeriod = swapCostOffsetInit;
         lstPriceGapTolerance = defaultLstPriceGapTolerance;
         dustPositionPortions = 50;
+        idleLowThreshold = 3e16;
+        idleHighThreshold = 7e16;
     }
 
     /// @notice Sets the LST price gap tolerance to the provided value
@@ -326,11 +344,28 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         emit LstPriceGapSet(priceGapTolerance);
     }
 
-    /// @notice Sets the LST price gap tolerance to the provided value
+    /// @notice Sets the dust position portions to the provided value
     function setDustPositionPortions(uint256 newValue) external hasRole(Roles.AUTO_POOL_ADMIN) {
         dustPositionPortions = newValue;
 
         emit DustPositionPortionSet(newValue);
+    }
+
+    /// @notice Sets the Idle low/high threshold
+    function setIdleThresholds(uint256 newLowValue, uint256 newHighValue) external hasRole(Roles.AUTO_POOL_ADMIN) {
+        idleLowThreshold = newLowValue;
+        idleHighThreshold = newHighValue;
+
+        // Check for consistency in values i.e. low threshold should be strictly < high threshold
+        if (((idleLowThreshold > 0 && idleHighThreshold > 0)) && (idleLowThreshold >= idleHighThreshold)) {
+            revert InconsistentIdleThresholds();
+        }
+        // Setting both thresholds to 0 allows no minimum requirement for idle
+        if ((idleLowThreshold == 0 && idleHighThreshold != 0) || (idleLowThreshold != 0 && idleHighThreshold == 0)) {
+            revert InconsistentIdleThresholds();
+        }
+
+        emit IdleThresholdsSet(newLowValue, newHighValue);
     }
 
     /// @inheritdoc ILMPStrategy
@@ -577,19 +612,25 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
             maxSlippage = maxShutdownOperationSlippage;
         }
 
-        // Scenario 3: position is a dust position and should be trimmed
+        // Scenario 3: Replenishing Idle requires trimming destination
+        if (verifyIdleUpOperation(params) && maxNormalOperationSlippage > maxSlippage) {
+            reason = RebalanceToIdleReasonEnum.ReplenishIdlePosition;
+            maxSlippage = maxNormalOperationSlippage;
+        }
+
+        // Scenario 4: position is a dust position and should be trimmed
         if (verifyCleanUpOperation(params) && maxNormalOperationSlippage > maxSlippage) {
             reason = RebalanceToIdleReasonEnum.TrimDustPosition;
             maxSlippage = maxNormalOperationSlippage;
         }
 
-        // Scenario 4: the destination has been moved out of the LMPs active destinations
+        // Scenario 5: the destination has been moved out of the LMPs active destinations
         if (lmpVault.isDestinationQueuedForRemoval(params.destinationOut) && maxNormalOperationSlippage > maxSlippage) {
             reason = RebalanceToIdleReasonEnum.DestinationIsQueuedForRemoval;
             maxSlippage = maxNormalOperationSlippage;
         }
 
-        // Scenario 5: the destination needs to be trimmed because it violated a constraint
+        // Scenario 6: the destination needs to be trimmed because it violated a constraint
         if (maxTrimOperationSlippage > maxSlippage) {
             reason = RebalanceToIdleReasonEnum.DestinationViolatedConstraint;
             uint256 trimAmount = getDestinationTrimAmount(outDest); // this is expensive, can it be refactored?
@@ -625,6 +666,30 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         // slither-disable-next-line divide-before-multiply
         if ((currentDebt * 1e18) < ((lmpVault.totalAssets() * 1e18) / dustPositionPortions)) {
             return true;
+        }
+
+        return false;
+    }
+
+    function verifyIdleUpOperation(IStrategy.RebalanceParams memory params) internal view returns (bool) {
+        IDestinationVault outDest = IDestinationVault(params.destinationOut);
+
+        LMPDebt.DestinationInfo memory destInfo = lmpVault.getDestinationInfo(params.destinationOut);
+        // revert if information is too old
+        ensureNotStaleData("DestInfo", destInfo.lastReport);
+        uint256 currentIdle = lmpVault.getAssetBreakdown().totalIdle;
+        uint256 newIdle = currentIdle + params.amountIn;
+        uint256 totalAssets = lmpVault.totalAssets();
+        // If idle is below low threshold, then allow replinishing Idle. New idle after rebalance should be above high
+        // threshold. While totalAssets after this rebalance will be lower by swap loss, the ratio idle / total assets
+        // as used is conservative.
+        // Idle thresholds (both low & high) use 18 decimals
+        // slither-disable-next-line divide-before-multiply
+        if ((currentIdle * 1e18) / totalAssets < idleLowThreshold) {
+            // Allow small margin to exceed high threshold to avoid precision issues & pricing differences
+            if ((newIdle * 1e18) / totalAssets < idleHighThreshold + 1e16) {
+                return true;
+            }
         }
 
         return false;

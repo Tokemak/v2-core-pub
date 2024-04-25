@@ -58,6 +58,7 @@ contract LMPStrategyTest is Test {
 
     event LstPriceGapSet(uint256 newPriceGap);
     event DustPositionPortionSet(uint256 newValue);
+    event IdleThresholdsSet(uint256 newLowValue, uint256 newHighValue);
 
     function setUp() public {
         vm.warp(startBlockTime);
@@ -272,6 +273,50 @@ contract LMPStrategyTest is Test {
 
         (bool success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
         assertTrue(success);
+    }
+
+    function test_verifyRebalance_returnTrueOnValidRebalanceToIdleIdleUp() public {
+        // make the strategy paused to ensure that rebalances to idle can still occur
+        setDestinationIsShutdown(mockOutDest, false); // force trim
+        setLmpVaultIsShutdown(false); // ensure lmp is not shutdown
+        setLmpDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from LMP
+        IDexLSTStats.DexLSTStatsData memory result;
+        setStatsCurrent(mockOutStats, result);
+
+        // set the destination to be 29% of the portfolio
+        uint256 startingBalance = 90e18;
+        LMPDebt.DestinationInfo memory info = LMPDebt.DestinationInfo({
+            cachedDebtValue: 99e18, // implied price of 1.1
+            cachedMinDebtValue: 99e18, // implied price of 1.1
+            cachedMaxDebtValue: 99e18, // implied price of 1.1
+            lastReport: startBlockTime,
+            ownedShares: 90e18 // set higher than starting balance to handle withdraw scenario
+         });
+
+        defaultParams.amountOut = 40e18;
+        defaultParams.amountIn = 40e18;
+        setLmpTotalAssets(1000e18);
+        setLmpIdle(15e18);
+        setLmpDestInfo(mockOutDest, info);
+        setLmpDestinationBalanceOf(mockOutDest, startingBalance);
+        setDestinationDebtValue(mockOutDest, 90e18, 99e18);
+
+        // set the in token to idle
+        defaultParams.destinationIn = mockLMPVault;
+        defaultParams.tokenIn = mockBaseAsset;
+
+        // Successful rebalance to Idle
+        bool success;
+        // Expect success to be true since idle is currently 1.5% and low idle threshold is 3%, high is 7%
+        (success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
+        assertTrue(success);
+
+        // AmountOut results in excess Idle
+        defaultParams.amountOut = 85e18;
+        defaultParams.amountIn = 85e18;
+        // Expect error in rebalance check since we are trying to 8.5% when high threshold is 7%
+        vm.expectRevert(abi.encodeWithSelector(LMPStrategy.InvalidRebalanceToIdle.selector));
+        (success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
     function test_verifyRebalance_returnTrueOnValidRebalanceToIdle() public {
@@ -2036,6 +2081,51 @@ contract LMPStrategyTest is Test {
         vm.expectEmit(true, true, true, true);
         emit DustPositionPortionSet(100);
         defaultStrat.setDustPositionPortions(100);
+    }
+
+    /* **************************************** */
+    /* setIdleThreshold Tests            */
+    /* **************************************** */
+
+    function test_setIdleThreshold_OnlyCallableByRole() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        defaultStrat.setIdleThresholds(4e16, 6e16);
+
+        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+
+        defaultStrat.setIdleThresholds(4e16, 6e16);
+    }
+
+    function test_setIdleThresholdError() public {
+        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+        // Low > High
+        vm.expectRevert(abi.encodeWithSelector(LMPStrategy.InconsistentIdleThresholds.selector));
+        defaultStrat.setIdleThresholds(6e16, 3e16);
+        // Only one of low & high is set to 0
+        vm.expectRevert(abi.encodeWithSelector(LMPStrategy.InconsistentIdleThresholds.selector));
+        defaultStrat.setIdleThresholds(0, 3e16);
+    }
+
+    function test_setIdleThresholds_UpdatesValue() public {
+        uint256 originalLowValue = defaultStrat.idleLowThreshold();
+        uint256 originalHighValue = defaultStrat.idleHighThreshold();
+
+        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+
+        defaultStrat.setIdleThresholds(5e16, 8e16);
+
+        assertTrue(originalLowValue != 5e16, "originalValue");
+        assertEq(defaultStrat.idleLowThreshold(), 5e16, "newValue");
+        assertTrue(originalHighValue != 8e16, "originalValue");
+        assertEq(defaultStrat.idleHighThreshold(), 8e16, "newValue");
+    }
+
+    function test_setIdleThresholds_EmitsEvent() public {
+        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+
+        vm.expectEmit(true, true, true, true);
+        emit IdleThresholdsSet(4e16, 7e16);
+        defaultStrat.setIdleThresholds(4e16, 7e16);
     }
 
     /* **************************************** */

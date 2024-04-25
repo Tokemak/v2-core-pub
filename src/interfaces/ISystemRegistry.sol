@@ -79,16 +79,6 @@ interface ISystemRegistry {
     /// @return resolver instance of the curve resolver for this system
     function curveResolver() external view returns (ICurveResolver resolver);
 
-    /// @notice Register given address as a Reward Token
-    /// @dev Reverts if address is 0 or token was already registered
-    /// @param rewardToken token address to add
-    function addRewardToken(address rewardToken) external;
-
-    /// @notice Removes given address from Reward Token list
-    /// @dev Reverts if address was not registered
-    /// @param rewardToken token address to remove
-    function removeRewardToken(address rewardToken) external;
-
     /// @notice Verify if given address is registered as Reward Token
     /// @param rewardToken token address to verify
     /// @return bool that indicates true if token is registered and false if not

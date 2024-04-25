@@ -3,7 +3,18 @@
 
 pragma solidity 0.8.17;
 
-// solhint-disable max-states-count
+//
+//                   ▓▓
+//                   ▓▓
+//                   ▓▓
+//                   ▓▓
+//                   ▓▓
+//       ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+//                                 ▓▓
+//                                 ▓▓
+//                                 ▓▓
+//                                 ▓▓
+//                                 ▓▓
 
 import { Errors } from "src/utils/Errors.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
@@ -11,6 +22,7 @@ import { Ownable2Step } from "src/access/Ownable2Step.sol";
 import { IAccToke } from "src/interfaces/staking/IAccToke.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
+import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
 import { ILMPVaultRouter } from "src/interfaces/vault/ILMPVaultRouter.sol";
 import { ILMPVaultFactory } from "src/interfaces/vault/ILMPVaultFactory.sol";
@@ -19,12 +31,14 @@ import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
+import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { IDestinationRegistry } from "src/interfaces/destinations/IDestinationRegistry.sol";
 import { IStatsCalculatorRegistry } from "src/interfaces/stats/IStatsCalculatorRegistry.sol";
 import { IAsyncSwapperRegistry } from "src/interfaces/liquidation/IAsyncSwapperRegistry.sol";
 import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
-import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
+// solhint-disable max-states-count
 
 /// @notice Root contract of the system instance.
 /// @dev All contracts in this instance of the system should be reachable from this contract
@@ -32,12 +46,20 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    /* ******************************** */
-    /* State Variables                  */
-    /* ******************************** */
+    /// =====================================================
+    /// Immutable Vars
+    /// =====================================================
 
+    /// @notice TOKE token
     IERC20Metadata public immutable toke;
+
+    /// @notice WETH token
     IWETH9 public immutable weth;
+
+    /// =====================================================
+    /// Private Vars
+    /// =====================================================
+
     IAccToke private _accToke;
     ILMPVaultRegistry private _lmpVaultRegistry;
     IDestinationVaultRegistry private _destinationVaultRegistry;
@@ -50,15 +72,14 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     ICurveResolver private _curveResolver;
     IIncentivesPricingStats private _incentivePricingStats;
     ISystemSecurity private _systemSecurity;
-
     mapping(bytes32 => ILMPVaultFactory) private _lmpVaultFactoryByType;
     EnumerableSet.Bytes32Set private _lmpVaultFactoryTypes;
     IStatsCalculatorRegistry private _statsCalculatorRegistry;
     EnumerableSet.AddressSet private _rewardTokens;
 
-    /* ******************************** */
-    /* Events                           */
-    /* ******************************** */
+    /// =====================================================
+    /// Events
+    /// =====================================================
 
     event AccTokeSet(address newAddress);
     event LMPVaultRegistrySet(address newAddress);
@@ -78,16 +99,16 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     event IncentivePricingStatsSet(address incentivePricingStats);
     event SystemSecuritySet(address security);
 
-    /* ******************************** */
-    /* Errors                           */
-    /* ******************************** */
+    /// =====================================================
+    /// Errors
+    /// =====================================================
 
     error InvalidContract(address addr);
     error DuplicateSet(address addr);
 
-    /* ******************************** */
-    /* Constructor                           */
-    /* ******************************** */
+    /// =====================================================
+    /// Functions - Constructor
+    /// =====================================================
 
     constructor(address _toke, address _weth) {
         Errors.verifyNotZero(address(_toke), "_toke");
@@ -97,96 +118,17 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
         weth = IWETH9(_weth);
     }
 
-    /* ******************************** */
-    /* Views                            */
-    /* ******************************** */
-
-    /// @inheritdoc ISystemRegistry
-    function gpToke() external view returns (IAccToke) {
-        return _accToke;
-    }
-
-    /// @inheritdoc ISystemRegistry
-    function lmpVaultRegistry() external view returns (ILMPVaultRegistry) {
-        return _lmpVaultRegistry;
-    }
-
-    /// @inheritdoc ISystemRegistry
-    function destinationVaultRegistry() external view returns (IDestinationVaultRegistry) {
-        return _destinationVaultRegistry;
-    }
-
-    /// @inheritdoc ISystemRegistry
-    function accessController() external view returns (IAccessController) {
-        return _accessController;
-    }
-
-    /// @inheritdoc ISystemRegistry
-    function destinationTemplateRegistry() external view returns (IDestinationRegistry) {
-        return _destinationTemplateRegistry;
-    }
-
-    /// @inheritdoc ISystemRegistry
-    function lmpVaultRouter() external view returns (ILMPVaultRouter router) {
-        return _lmpVaultRouter;
-    }
-
-    /// @inheritdoc ISystemRegistry
-    function getLMPVaultFactoryByType(bytes32 vaultType) external view returns (ILMPVaultFactory vaultFactory) {
-        if (!_lmpVaultFactoryTypes.contains(vaultType)) {
-            revert Errors.ItemNotFound();
-        }
-
-        return _lmpVaultFactoryByType[vaultType];
-    }
-
-    /// @inheritdoc ISystemRegistry
-    function statsCalculatorRegistry() external view returns (IStatsCalculatorRegistry) {
-        return _statsCalculatorRegistry;
-    }
-
-    /// @inheritdoc ISystemRegistry
-    function rootPriceOracle() external view returns (IRootPriceOracle) {
-        return _rootPriceOracle;
-    }
-
-    /// @inheritdoc ISystemRegistry
-    function asyncSwapperRegistry() external view returns (IAsyncSwapperRegistry) {
-        return _asyncSwapperRegistry;
-    }
-
-    /// @inheritdoc ISystemRegistry
-    function swapRouter() external view returns (ISwapRouter) {
-        return _swapRouter;
-    }
-
-    /// @inheritdoc ISystemRegistry
-    function curveResolver() external view returns (ICurveResolver) {
-        return _curveResolver;
-    }
-
-    /// @inheritdoc ISystemRegistry
-    function systemSecurity() external view returns (ISystemSecurity) {
-        return _systemSecurity;
-    }
-
-    /// @inheritdoc ISystemRegistry
-    function incentivePricing() external view returns (IIncentivesPricingStats) {
-        return _incentivePricingStats;
-    }
-
-    /* ******************************** */
-    /* Function                         */
-    /* ******************************** */
+    /// =====================================================
+    /// Functions - External
+    /// =====================================================
 
     /// @notice Set the AccToke for this instance of the system
-    /// @dev Should only be able to set this value one time
     /// @param newAccToke Address of the accToke contract
     function setAccToke(address newAccToke) external onlyOwner {
         Errors.verifyNotZero(newAccToke, "newAccToke");
 
-        if (address(_accToke) != address(0)) {
-            revert Errors.AlreadySet("accToke");
+        if (address(_accToke) == newAccToke) {
+            revert DuplicateSet(newAccToke);
         }
 
         _accToke = IAccToke(newAccToke);
@@ -384,7 +326,9 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
         // to verifySystemsAgree
     }
 
-    /// @inheritdoc ISystemRegistry
+    /// @notice Register given address as a Reward Token
+    /// @dev Reverts if address is 0 or token was already registered
+    /// @param rewardToken token address to add
     function addRewardToken(address rewardToken) external onlyOwner {
         Errors.verifyNotZero(rewardToken, "rewardToken");
         bool success = _rewardTokens.add(rewardToken);
@@ -394,7 +338,9 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
         emit RewardTokenAdded(rewardToken);
     }
 
-    /// @inheritdoc ISystemRegistry
+    /// @notice Removes given address from Reward Token list
+    /// @dev Reverts if address was not registered
+    /// @param rewardToken token address to remove
     function removeRewardToken(address rewardToken) external onlyOwner {
         Errors.verifyNotZero(rewardToken, "rewardToken");
         bool success = _rewardTokens.remove(rewardToken);
@@ -404,19 +350,13 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
         emit RewardTokenRemoved(rewardToken);
     }
 
-    /// @inheritdoc ISystemRegistry
-    function isRewardToken(address rewardToken) external view returns (bool) {
-        return _rewardTokens.contains(rewardToken);
-    }
-
-    /* ******************************** */
-    /* LMP Vault Factories              */
-    /* ******************************** */
+    /// @notice Configure an AutoPool factory for type
+    /// @param vaultType Type of AutoPool to configure
     function setLMPVaultFactory(bytes32 vaultType, address factoryAddress) external onlyOwner {
         Errors.verifyNotZero(factoryAddress, "factoryAddress");
         Errors.verifyNotZero(vaultType, "vaultType");
 
-        // set the factory (note: slither exception due to us hard setting it regardless / no diff use case)
+        // We don't care if the type already exists in the list
         // slither-disable-next-line unused-return
         _lmpVaultFactoryTypes.add(vaultType);
 
@@ -427,6 +367,8 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
         _verifySystemsAgree(factoryAddress);
     }
 
+    /// @notice Remove a previously configured AutoPool factory
+    /// @param vaultType AutoPool type to remove the factory for
     function removeLMPVaultFactory(bytes32 vaultType) external onlyOwner {
         Errors.verifyNotZero(vaultType, "vaultType");
         address factoryAddress = address(_lmpVaultFactoryByType[vaultType]);
@@ -458,13 +400,97 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
         _verifySystemsAgree(security);
     }
 
+    /// @inheritdoc ISystemRegistry
+    function gpToke() external view returns (IAccToke) {
+        return _accToke;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function lmpVaultRegistry() external view returns (ILMPVaultRegistry) {
+        return _lmpVaultRegistry;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function destinationVaultRegistry() external view returns (IDestinationVaultRegistry) {
+        return _destinationVaultRegistry;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function accessController() external view returns (IAccessController) {
+        return _accessController;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function destinationTemplateRegistry() external view returns (IDestinationRegistry) {
+        return _destinationTemplateRegistry;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function lmpVaultRouter() external view returns (ILMPVaultRouter router) {
+        return _lmpVaultRouter;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function getLMPVaultFactoryByType(bytes32 vaultType) external view returns (ILMPVaultFactory vaultFactory) {
+        if (!_lmpVaultFactoryTypes.contains(vaultType)) {
+            revert Errors.ItemNotFound();
+        }
+
+        return _lmpVaultFactoryByType[vaultType];
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function statsCalculatorRegistry() external view returns (IStatsCalculatorRegistry) {
+        return _statsCalculatorRegistry;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function rootPriceOracle() external view returns (IRootPriceOracle) {
+        return _rootPriceOracle;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function asyncSwapperRegistry() external view returns (IAsyncSwapperRegistry) {
+        return _asyncSwapperRegistry;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function swapRouter() external view returns (ISwapRouter) {
+        return _swapRouter;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function curveResolver() external view returns (ICurveResolver) {
+        return _curveResolver;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function systemSecurity() external view returns (ISystemSecurity) {
+        return _systemSecurity;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function incentivePricing() external view returns (IIncentivesPricingStats) {
+        return _incentivePricingStats;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function isRewardToken(address rewardToken) external view returns (bool) {
+        return _rewardTokens.contains(rewardToken);
+    }
+
+    /// =====================================================
+    /// Private Helpers
+    /// =====================================================
+
     /// @notice Verifies that a system bound contract matches this contract
     /// @dev All system bound contracts must match a registry contract. Will revert on mismatch
     /// @param dep The contract to check
-    function _verifySystemsAgree(address dep) internal view {
+    function _verifySystemsAgree(address dep) private view {
         // slither-disable-start low-level-calls
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory data) = dep.staticcall(abi.encodeWithSignature("getSystemRegistry()"));
+        (bool success, bytes memory data) =
+            dep.staticcall(abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector));
         // slither-disable-end low-level-calls
         if (success && data.length > 0) {
             address depRegistry = abi.decode(data, (address));

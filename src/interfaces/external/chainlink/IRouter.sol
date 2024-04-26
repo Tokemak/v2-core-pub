@@ -3,6 +3,8 @@ pragma solidity 0.8.17;
 
 import { Client } from "src/external/chainlink/ccip/Client.sol";
 
+// slither-disable-start shadowing-local
+
 interface IRouter {
     error OnlyOffRamp();
 
@@ -33,3 +35,5 @@ interface IRouter {
     /// @param offRamp The address of the offRamp to check.
     function isOffRamp(uint64 sourceChainSelector, address offRamp) external view returns (bool isOffRamp);
 }
+
+// slither-disable-stop shadowing-local

@@ -2,17 +2,23 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { Errors } from "src/utils/Errors.sol";
-import { IRouterClient } from "src/interfaces/external/chainlink/IRouterClient.sol";
-import { IMessageProxy } from "src/interfaces/messageProxy/IMessageProxy.sol";
-import { Client } from "src/external/chainlink/ccip/Client.sol";
-import { SystemSecurity, ISystemRegistry } from "src/security/SystemSecurity.sol";
 import { Roles } from "src/libs/Roles.sol";
+import { Errors } from "src/utils/Errors.sol";
+import { SecurityBase } from "src/security/SecurityBase.sol";
+import { Client } from "src/external/chainlink/ccip/Client.sol";
+import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { IMessageProxy } from "src/interfaces/messageProxy/IMessageProxy.sol";
+import { IRouterClient } from "src/interfaces/external/chainlink/IRouterClient.sol";
 
-import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
+/// @title Proxy contract, sits in from of Chainlink CCIP and routes messages to various chains
+contract MessageProxy is IMessageProxy, SecurityBase {
+    /// =====================================================
+    /// Constant Vars
+    /// =====================================================
 
-/// @title Proxy contract, sits in from of Chainlink ccip and routes messages to various destinations on L2
-contract MessageProxy is IMessageProxy, SystemSecurity {
+    /// @notice Version of the messages being sent to our receivers
+    uint256 public constant VERSION = 1;
+
     /// =====================================================
     /// Immutable Vars
     /// =====================================================
@@ -44,10 +50,20 @@ contract MessageProxy is IMessageProxy, SystemSecurity {
     /// Structs
     /// =====================================================
 
+    /// @notice Data structure going across the wire to destination chain.
+    /// Encoded and stored in `data` field of EVM2AnyMessage Chainlink struct.
+    struct Message {
+        address sender;
+        uint256 version;
+        uint256 messageTimestamp;
+        bytes32 messageType;
+        bytes message;
+    }
+
     /// @notice Destination chain to send a message to and the gas required for that chain
     struct MessageRouteConfig {
         uint64 destinationChainSelector;
-        uint192 gasL2;
+        uint192 gas;
     }
 
     /// @notice Arguments used to resend the last message for a sender + type
@@ -63,11 +79,14 @@ contract MessageProxy is IMessageProxy, SystemSecurity {
     /// Errors
     /// =====================================================
 
-    /// @notice Thrown when not enough fee is left for L2 send.
+    /// @notice Thrown when not enough fee is left for send.
     error NotEnoughFee(uint256 available, uint256 needed);
 
     /// @notice Thrown when message data is different on retry, resulting in mismatch hash.
     error MismatchMessageHash(bytes32 storedHash, bytes32 currentHash);
+
+    /// @notice Thrown when registering routes and the given chain id isn't supported CCIP
+    error ChainNotSupported(uint64 chainId);
 
     /// =====================================================
     /// Events
@@ -81,17 +100,20 @@ contract MessageProxy is IMessageProxy, SystemSecurity {
     /// @notice Emitted when a message is sent.
     event MessageSent(uint64 destChainSelector, bytes32 messageHash, bytes32 ccipMessageId);
 
-    /// @notice Emitted when a receiver contract is added for a destination.
-    event RecieverAdded(uint64 destinationChainSelector, address destinationChainReceiver);
+    /// @notice Emitted when a receiver contract is set for a destination chain
+    event ReceiverSet(uint64 destChainSelector, address destinationChainReceiver);
 
     /// @notice Emitted when a receiver contract is removed
-    event ReceiverRemoved(uint64 destinationChainSelector, address destinationChainReceiver);
+    event ReceiverRemoved(uint64 destChainSelector, address destinationChainReceiver);
 
     /// @notice Emitted when a message route is added
-    event MessageRouteAdded(address sender, bytes32 messageType, uint256 destChainSelector);
+    event MessageRouteAdded(address sender, bytes32 messageType, uint64 destChainSelector);
 
     /// @notice Emitted when a message route is removed
-    event MessageRouteDeleted(address sender, bytes32 messageType, uint256 destChainSelector);
+    event MessageRouteDeleted(address sender, bytes32 messageType, uint64 destChainSelector);
+
+    /// @notice Emitted when we update the gas sent for a message to a chain
+    event GasUpdated(address sender, bytes32 messageType, uint64 destChainSelector, uint192 gas);
 
     /// =====================================================
     /// Events - Failure
@@ -105,160 +127,32 @@ contract MessageProxy is IMessageProxy, SystemSecurity {
     event MessageFailedFee(uint64 destChainId, bytes32 messageHash, uint256 currentBalance, uint256 feeNeeded);
 
     /// @notice Emitted when a destination chain is not registered
-    event DestinationChainNotRegisteredEvent(uint256 destChainId);
+    event DestinationChainNotRegisteredEvent(uint256 destChainId, bytes32 messageHash);
 
     /// @notice Emitted when message sent in by calculator does not exist
     event MessageZeroLength(address messageSender, bytes32 messageType);
 
     /// =====================================================
-    /// Modifiers
-    /// =====================================================
-
-    /// @notice Checks to ensure that caller is calculator registered in system.
-    modifier onlyCalculator() {
-        bytes32 aprId = IStatsCalculator(msg.sender).getAprId();
-        // No check needed, reverts on zero address in StatsCalculatorRegistry
-        address(systemRegistry.statsCalculatorRegistry().getCalculator(aprId));
-        _;
-    }
-
-    /// =====================================================
     /// Functions - Constructor
     /// =====================================================
 
-    constructor(IRouterClient ccipRouter, ISystemRegistry _systemRegistry) SystemSecurity(_systemRegistry) {
-        Errors.verifyNotZero(address(ccipRouter), "router");
+    constructor(
+        ISystemRegistry _systemRegistry,
+        IRouterClient ccipRouter
+    ) SecurityBase(address(_systemRegistry.accessController())) {
+        Errors.verifyNotZero(address(ccipRouter), "ccipRouter");
 
         routerClient = ccipRouter;
-    }
-
-    /// =====================================================
-    /// Functions - Setters
-    /// =====================================================
-
-    /// @notice Sets destinations on L2s.  Handles both adds and removes
-    function setDestinationChainReceivers(
-        uint64 destinationChainSelector,
-        address destinationChainReceiver,
-        bool add
-    ) external hasRole(Roles.MESSAGE_PROXY_ADMIN) {
-        Errors.verifyNotZero(destinationChainSelector, "destinationChainSelector");
-
-        if (add) {
-            Errors.verifyNotZero(destinationChainReceiver, "destinationChainReceiver");
-
-            // Ensure that we are not overwriting anything
-            if (destinationChainReceivers[destinationChainSelector] != address(0)) {
-                revert Errors.MustBeZero();
-            }
-
-            emit RecieverAdded(destinationChainSelector, destinationChainReceiver);
-            destinationChainReceivers[destinationChainSelector] = destinationChainReceiver;
-        } else {
-            // Store to avoid multiple storage reads.
-            address receiverToRemove = destinationChainReceivers[destinationChainSelector];
-            // Ensure that something exists for us to delete
-            if (receiverToRemove == address(0)) {
-                revert Errors.MustBeSet();
-            }
-
-            emit ReceiverRemoved(destinationChainSelector, receiverToRemove);
-            delete destinationChainReceivers[destinationChainSelector];
-        }
-    }
-
-    /**
-     * NOTES
-     *  Think that delete path here may be able to be optimized a bit, something around if two currentStored and
-     *    routes is same length we don't have to fill in other elements, can just pop.  Still needs checks for
-     *    correct route etc.
-     *
-     * QUESTIONS
-     *  Any issue with lengths of currentStored and routes on remove? One being greater than other etc.
-     *  Check for routes length > storage length? This will already revert because item will not exist, so maybe not
-     */
-    /// @notice Sets message routes for sender / messageType.  Handles both adds and removes
-    function setMessageRoutes(
-        address sender,
-        bytes32 messageType,
-        MessageRouteConfig[] memory routes,
-        bool add
-    ) external hasRole(Roles.MESSAGE_PROXY_ADMIN) {
-        Errors.verifyNotZero(sender, "sender");
-        Errors.verifyNotZero(messageType, "messageType");
-
-        uint256 routesLength = routes.length;
-        Errors.verifyNotZero(routesLength, "routesLength");
-
-        if (add) {
-            for (uint256 i = 0; i < routes.length; ++i) {
-                uint256 currentDestChainSelector = routes[i].destinationChainSelector;
-
-                Errors.verifyNotZero(currentDestChainSelector, "currentRouteDestChainSelector");
-                Errors.verifyNotZero(uint256(routes[i].gasL2), "routes[i].gas");
-
-                // Check that overwrite is not happening.
-                MessageRouteConfig[] memory currentStoredRoutes = _messageRoutes[sender][messageType];
-                for (uint256 j = 0; j < currentStoredRoutes.length; ++j) {
-                    if (currentStoredRoutes[j].destinationChainSelector == currentDestChainSelector) {
-                        revert Errors.ItemExists();
-                    }
-                }
-
-                emit MessageRouteAdded(sender, messageType, currentDestChainSelector);
-                _messageRoutes[sender][messageType].push(routes[i]);
-            }
-        } else {
-            MessageRouteConfig[] storage currentStoredRoutes = _messageRoutes[sender][messageType];
-
-            // Store indexes deleted in storage array for replacement later.
-            uint256[] memory deletedIxs = new uint256[](routes.length);
-
-            for (uint256 i = 0; i < routes.length; ++i) {
-                // For each route we want to remove, loop through stored routes.
-                for (uint256 j = 0; j < currentStoredRoutes.length; ++j) {
-                    // If route to add is equal to a stored route, remove.
-                    if (routes[i].destinationChainSelector == currentStoredRoutes[j].destinationChainSelector) {
-                        emit MessageRouteDeleted(sender, messageType, routes[i].destinationChainSelector);
-
-                        // For each route, record index of storage array that was deleted.
-                        deletedIxs[i] = j;
-                        delete currentStoredRoutes[j];
-
-                        // Can only have one message route per dest chain selector, when we find it break for loop.
-                        break;
-                    }
-
-                    // If we get to the end of the currentStoredRoutes array, item to be deleted does not exist.
-                    if (j == currentStoredRoutes.length - 1) {
-                        revert Errors.ItemNotFound();
-                    }
-                }
-            }
-
-            // Fill in empty slots in storage.
-            for (uint256 i = 0; i < deletedIxs.length; ++i) {
-                // Array is shrinking and storage updating as loop iterates, - 1 will always give the last element.
-                uint256 elementToShiftIx = currentStoredRoutes.length - 1;
-
-                // If element to shift is not zeroed, move to deleted ix.  Implicitly does not move but deletes zeroed
-                // elements at elementToShiftIx.
-                if (currentStoredRoutes[elementToShiftIx].destinationChainSelector != 0) {
-                    currentStoredRoutes[deletedIxs[i]] = currentStoredRoutes[elementToShiftIx];
-                }
-                currentStoredRoutes.pop();
-            }
-        }
     }
 
     /// =====================================================
     /// Functions - External
     /// =====================================================
 
-    /// @notice Sends message to L2
+    /// @notice Sends message to destination chain(s)
     /// @dev Can only be called by calculator.
-    /// @dev Can not revert, do not want ability to interrupt calculator snapshotting on L1
-    function sendMessage(bytes32 messageType, bytes memory message) external override onlyCalculator {
+    /// @dev Can not revert, do not want ability to interrupt calculator snap-shotting on L1
+    function sendMessage(bytes32 messageType, bytes memory message) external override {
         // Lookup message routes from _messageRoutes
         MessageRouteConfig[] memory configs = _messageRoutes[msg.sender][messageType];
         uint256 configsLength = configs.length;
@@ -266,16 +160,13 @@ contract MessageProxy is IMessageProxy, SystemSecurity {
         // If there are zero routes, then just return, nothing to do
         // Routes act as our security
         if (configsLength == 0) return;
-        if (message.length == 0) {
-            emit MessageZeroLength(msg.sender, messageType);
-            return;
-        }
 
         uint256 messageTimestamp = block.timestamp;
 
         // Encode and hash message, set hash to last message for sender and messageType
-        bytes memory encodedMessage = abi.encode(Message(msg.sender, 1, messageTimestamp, messageType, message));
+        bytes memory encodedMessage = encodeMessage(msg.sender, VERSION, messageTimestamp, messageType, message);
         bytes32 messageHash = keccak256(encodedMessage);
+
         lastMessageSent[msg.sender][messageType] = messageHash;
 
         emit MessageData(messageHash, messageTimestamp, msg.sender, messageType, message);
@@ -287,20 +178,23 @@ contract MessageProxy is IMessageProxy, SystemSecurity {
 
             // Covers both selector and receiver, cannot set address for zero selector.
             if (destChainReceiver == address(0)) {
-                emit DestinationChainNotRegisteredEvent(destChainSelector);
+                emit DestinationChainNotRegisteredEvent(destChainSelector, messageHash);
                 continue;
             }
 
             // Build ccip message
-            Client.EVM2AnyMessage memory ccipMessage = _ccipBuild(destChainReceiver, configs[i].gasL2, encodedMessage);
+            Client.EVM2AnyMessage memory ccipMessage = _ccipBuild(destChainReceiver, configs[i].gas, encodedMessage);
 
             uint256 fee = routerClient.getFee(destChainSelector, ccipMessage);
             uint256 addressBalance = address(this).balance;
             // If we have the balance, try ccip message
+
+            // slither-disable-next-line timestamp
             if (addressBalance >= fee) {
                 // Catch any errors thrown from L1 ccip, emit event with information on success or failure
                 try routerClient.ccipSend{ value: fee }(destChainSelector, ccipMessage) returns (bytes32 ccipMessageId)
                 {
+                    // slither-disable-next-line reentrancy-events
                     emit MessageSent(destChainSelector, messageHash, ccipMessageId);
                 } catch {
                     emit MessageFailed(destChainSelector, messageHash);
@@ -312,20 +206,9 @@ contract MessageProxy is IMessageProxy, SystemSecurity {
         }
     }
 
-    /**
-     * QUESTIONS
-     * Does `lastMessageSent` need to be cleared? Don't think that there is any reason to unless we want to stop
-     *    messages from being resent.  However, any message resent would have to be exactly the same, makes delete feel
-     *    like waste
-     * If it does, need to account for a half done situation where some dest chains receive message and others don't
-     *
-     * Checks needed for `currentRetry`? Think we're covered by hash and message route setting flow.
-     *
-     * Do we want to move towards standard reverting here? Idea behind current is that we get some messages off,
-     *    others do not
-     */
     /// @notice Retry for multiple messages to multiple destinations per message.
     /// @dev Caller must send in ETH to cover router fees. Cannot use contract balance
+    /// @dev Excess ETH is not refunded, use getFee() to calculate needed amount
     function resendLastMessage(RetryArgs[] memory args) external payable hasRole(Roles.MESSAGE_PROXY_ADMIN) {
         // Tracking for fee
         uint256 feeLeft = msg.value;
@@ -334,24 +217,20 @@ contract MessageProxy is IMessageProxy, SystemSecurity {
         for (uint256 i = 0; i < args.length; ++i) {
             // Store vars with multiple usages locally.  `messageRetryTimestamp` not stored due to stack too deep
             RetryArgs memory currentRetry = args[i];
-            address calculatorMessageSender = currentRetry.msgSender;
+            address msgSender = currentRetry.msgSender;
             bytes32 messageType = currentRetry.messageType;
             bytes memory message = currentRetry.message;
 
             // Get hash from data passed in, hash from last message, revert if they are not equal.
             bytes32 currentMessageHash = keccak256(
-                abi.encode(
-                    Message(calculatorMessageSender, 1, currentRetry.messageRetryTimestamp, messageType, message)
-                )
+                abi.encode(Message(msgSender, VERSION, currentRetry.messageRetryTimestamp, messageType, message))
             );
-            bytes32 storedMessageHash = lastMessageSent[calculatorMessageSender][messageType];
-            if (currentMessageHash != storedMessageHash) {
-                revert MismatchMessageHash(storedMessageHash, currentMessageHash);
+            {
+                bytes32 storedMessageHash = lastMessageSent[msgSender][messageType];
+                if (currentMessageHash != storedMessageHash) {
+                    revert MismatchMessageHash(storedMessageHash, currentMessageHash);
+                }
             }
-
-            emit MessageData(
-                currentMessageHash, currentRetry.messageRetryTimestamp, calculatorMessageSender, messageType, message
-            );
 
             // Loop through and send off to destinations in specific RetryArgs struct, fee dependent.
             for (uint256 j = 0; j < currentRetry.configs.length; ++j) {
@@ -362,15 +241,13 @@ contract MessageProxy is IMessageProxy, SystemSecurity {
                 Errors.verifyNotZero(destChainReceiver, "destChainReceiver");
 
                 Client.EVM2AnyMessage memory ccipMessage =
-                    _ccipBuild(destChainReceiver, currentRetry.configs[j].gasL2, message);
+                    _ccipBuild(destChainReceiver, currentRetry.configs[j].gas, message);
 
                 uint256 fee = routerClient.getFee(currentDestChainSelector, ccipMessage);
 
-                // If feeLeft less than fee, emit message, set fee to 0 to break outer loop, break inner loop.
+                // slither-disable-next-line timestamp
                 if (feeLeft < fee) {
-                    emit MessageFailedFee(currentDestChainSelector, currentMessageHash, feeLeft, fee);
-                    feeLeft = 0;
-                    break;
+                    revert NotEnoughFee(feeLeft, fee);
                 }
 
                 // Checked above
@@ -378,14 +255,151 @@ contract MessageProxy is IMessageProxy, SystemSecurity {
                     feeLeft -= fee;
                 }
 
+                // slither-disable-next-line arbitrary-send-eth
                 bytes32 ccipMessageId = routerClient.ccipSend{ value: fee }(currentDestChainSelector, ccipMessage);
+
+                // slither-disable-next-line reentrancy-events
                 emit MessageSent(currentDestChainSelector, currentMessageHash, ccipMessageId);
             }
-            // If no fee left, exit loop
-            if (feeLeft == 0) {
+        }
+    }
+
+    /// @notice Sets our receiver on the destination chain
+    /// @param destinationChainSelector CCIP chain id
+    /// @param destinationChainReceiver Our receiver contract on the destination chain
+    function setDestinationChainReceiver(
+        uint64 destinationChainSelector,
+        address destinationChainReceiver
+    ) external hasRole(Roles.MESSAGE_PROXY_ADMIN) {
+        // Check that we aren't doing cleanup if a chain is deprecated
+        if (destinationChainReceiver != address(0)) {
+            _verifyValidChain(destinationChainSelector);
+        }
+
+        emit ReceiverSet(destinationChainSelector, destinationChainReceiver);
+
+        destinationChainReceivers[destinationChainSelector] = destinationChainReceiver;
+    }
+
+    /// @notice Add message routes for sender / messageType
+    function addMessageRoutes(
+        address sender,
+        bytes32 messageType,
+        MessageRouteConfig[] memory routes
+    ) external hasRole(Roles.MESSAGE_PROXY_ADMIN) {
+        Errors.verifyNotZero(sender, "sender");
+        Errors.verifyNotZero(messageType, "messageType");
+
+        uint256 routesLength = routes.length;
+        Errors.verifyNotZero(routesLength, "routesLength");
+
+        for (uint256 i = 0; i < routesLength; ++i) {
+            uint64 currentDestChainSelector = routes[i].destinationChainSelector;
+
+            _verifyValidChain(currentDestChainSelector);
+
+            Errors.verifyNotZero(uint256(routes[i].gas), "gas");
+
+            // Check that overwrite is not happening.
+            MessageRouteConfig[] memory currentStoredRoutes = _messageRoutes[sender][messageType];
+            uint256 currentLen = currentStoredRoutes.length;
+            for (uint256 j = 0; j < currentLen; ++j) {
+                if (currentStoredRoutes[j].destinationChainSelector == currentDestChainSelector) {
+                    revert Errors.ItemExists();
+                }
+            }
+
+            emit MessageRouteAdded(sender, messageType, currentDestChainSelector);
+            _messageRoutes[sender][messageType].push(routes[i]);
+        }
+    }
+
+    /// @notice Remove message routes for sender / messageType
+    function removeMessageRoutes(
+        address sender,
+        bytes32 messageType,
+        uint64[] calldata chainSelectors
+    ) external hasRole(Roles.MESSAGE_PROXY_ADMIN) {
+        Errors.verifyNotZero(sender, "sender");
+        Errors.verifyNotZero(messageType, "messageType");
+
+        uint256 chainLength = chainSelectors.length;
+        Errors.verifyNotZero(chainLength, "chainLength");
+
+        MessageRouteConfig[] storage currentStoredRoutes = _messageRoutes[sender][messageType];
+
+        for (uint256 i = 0; i < chainLength; ++i) {
+            uint256 currentLen = currentStoredRoutes.length;
+            if (currentLen == 0) {
+                revert Errors.ItemNotFound();
+            }
+            // For each route we want to remove, loop through stored routes.
+            uint256 j = 0;
+            for (; j < currentLen; ++j) {
+                // If route to add is equal to a stored route, remove.
+                if (chainSelectors[i] == currentStoredRoutes[j].destinationChainSelector) {
+                    emit MessageRouteDeleted(sender, messageType, chainSelectors[i]);
+
+                    // For each route, record index of storage array that was deleted.
+                    currentStoredRoutes[j] = currentStoredRoutes[currentStoredRoutes.length - 1];
+                    currentStoredRoutes.pop();
+
+                    // Can only have one message route per dest chain selector, when we find it break for loop.
+                    break;
+                }
+            }
+
+            // If we get to the end of the currentStoredRoutes array, item to be deleted does not exist.
+            if (j == currentLen) {
+                revert Errors.ItemNotFound();
+            }
+        }
+    }
+
+    /// @notice Updates the gas we'll send for this message route
+    function setGasForRoute(
+        address messageSender,
+        bytes32 messageType,
+        uint64 chainId,
+        uint192 gas
+    ) external hasRole(Roles.MESSAGE_PROXY_ADMIN) {
+        Errors.verifyNotZero(messageSender, "sender");
+        Errors.verifyNotZero(messageType, "messageType");
+        Errors.verifyNotZero(gas, "gas");
+
+        MessageRouteConfig[] storage currentStoredRoutes = _messageRoutes[messageSender][messageType];
+        uint256 routeLength = currentStoredRoutes.length;
+
+        uint256 i = 0;
+        for (; i < routeLength; ++i) {
+            if (currentStoredRoutes[i].destinationChainSelector == chainId) {
+                currentStoredRoutes[i].gas = gas;
+                emit GasUpdated(messageSender, messageType, chainId, gas);
                 break;
             }
         }
+
+        if (i == routeLength) {
+            revert Errors.ItemNotFound();
+        }
+    }
+
+    function encodeMessage(
+        address sender,
+        uint256 version,
+        uint256 messageTimestamp,
+        bytes32 messageType,
+        bytes memory message
+    ) public pure returns (bytes memory) {
+        return abi.encode(
+            Message({
+                sender: sender,
+                version: version,
+                messageTimestamp: messageTimestamp,
+                messageType: messageType,
+                message: message
+            })
+        );
     }
 
     /// @notice Estimate fees off-chain for purpose of retries
@@ -393,28 +407,24 @@ contract MessageProxy is IMessageProxy, SystemSecurity {
         address messageSender,
         bytes32 messageType,
         bytes memory message
-    ) external view returns (uint64[] memory chainId, uint256[] memory gas) {
+    ) external view returns (uint64[] memory chains, uint256[] memory fees) {
         MessageRouteConfig[] memory configs = _messageRoutes[messageSender][messageType];
-        uint256 configsLength = configs.length;
+        uint256 len = configs.length;
 
-        Errors.verifyNotZero(configsLength, "configsLength");
-        Errors.verifyNotZero(message.length, "message.length");
+        chains = new uint64[](len);
+        fees = new uint256[](len);
 
-        bytes memory encodedMessage = abi.encode(Message(messageSender, 1, block.timestamp, messageType, message));
+        bytes memory encodedMessage = encodeMessage(messageSender, VERSION, block.timestamp, messageType, message);
 
-        for (uint256 i = 0; i < configsLength; ++i) {
+        for (uint256 i = 0; i < len; ++i) {
             uint64 destChainSelector = configs[i].destinationChainSelector;
             address destChainReceiver = destinationChainReceivers[destChainSelector];
 
-            Errors.verifyNotZero(destChainReceiver, "destChainReceiver");
-
-            chainId[i] = destChainSelector;
-
             // Build message for fee.
-            Client.EVM2AnyMessage memory ccipFeeMessage =
-                _ccipBuild(destChainReceiver, configs[i].gasL2, encodedMessage);
+            Client.EVM2AnyMessage memory ccipFeeMessage = _ccipBuild(destChainReceiver, configs[i].gas, encodedMessage);
 
-            gas[i] = routerClient.getFee(destChainSelector, ccipFeeMessage);
+            chains[i] = destChainSelector;
+            fees[i] = routerClient.getFee(destChainSelector, ccipFeeMessage);
         }
     }
 
@@ -437,21 +447,29 @@ contract MessageProxy is IMessageProxy, SystemSecurity {
     receive() external payable { }
 
     /// =====================================================
-    /// Functions - Private
+    /// Functions - Private Helpers
     /// =====================================================
 
-    /// @notice Builds Chainlink specified message to send to L2.
+    /// @notice Builds Chainlink specified message to send to destination chain.
     function _ccipBuild(
         address destinationChainReceiver,
-        uint256 gasLimitL2,
+        uint256 gas,
         bytes memory message
-    ) private pure returns (Client.EVM2AnyMessage memory) {
+    ) internal pure returns (Client.EVM2AnyMessage memory) {
         return Client.EVM2AnyMessage({
             receiver: abi.encode(destinationChainReceiver),
             data: message, // Encoded Message struct
             tokenAmounts: new Client.EVMTokenAmount[](0),
             feeToken: address(0), // Native Eth
-            extraArgs: Client._argsToBytes(Client.EVMExtraArgsV1({ gasLimit: gasLimitL2 }))
+            extraArgs: Client._argsToBytes(Client.EVMExtraArgsV1({ gasLimit: gas }))
         });
+    }
+
+    /// @notice Verify the given chain id is valid in CCIP
+    /// @dev Reverts when not valid
+    function _verifyValidChain(uint64 chain) private view {
+        if (!routerClient.isChainSupported(chain)) {
+            revert ChainNotSupported(chain);
+        }
     }
 }

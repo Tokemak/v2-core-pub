@@ -248,6 +248,7 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
     error UnregisteredDestination(address dest);
     error LSTPriceGapToleranceExceeded();
     error InconsistentIdleThresholds();
+    error IdleHighThresholdViolated();
 
     struct InterimStats {
         uint256 baseApr;
@@ -397,6 +398,20 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         // ensure that we're not exceeding top-level max slippage
         if (valueStats.slippage > maxNormalOperationSlippage) {
             revert MaxSlippageExceeded();
+        }
+
+        // ensure that idle is not depleted below the high threshold if we are pulling from Idle assets
+        // totalAssets will be reduced by swap cost amount.
+        if (params.destinationOut == address(lmpVault)) {
+            uint256 totalAssets = lmpVault.totalAssets().subSaturate(valueStats.swapCost);
+            if (lmpVault.getAssetBreakdown().totalIdle < valueStats.outEthValue) {
+                revert IdleHighThresholdViolated();
+            } else if (
+                (lmpVault.getAssetBreakdown().totalIdle - valueStats.outEthValue)
+                    < ((totalAssets * idleHighThreshold) / 1e18)
+            ) {
+                revert IdleHighThresholdViolated();
+            }
         }
 
         IStrategy.SummaryStats memory inSummary = getRebalanceInSummaryStats(params);

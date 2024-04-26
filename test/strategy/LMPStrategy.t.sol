@@ -160,6 +160,58 @@ contract LMPStrategyTest is Test {
         assertTrue(success);
     }
 
+    /* **************************************** */
+    /* verifyRebalance Tests                    */
+    /* **************************************** */
+    function test_verifyRebalance_IdleThresholds() public {
+        vm.warp(181 days);
+        defaultStrat._setLastRebalanceTimestamp(180 days);
+
+        // ensure the vault has enough assets
+        setLmpTotalAssets(1000e18);
+        setLmpIdle(400e18);
+        defaultParams.destinationOut = mockLMPVault;
+        defaultParams.tokenOut = mockBaseAsset;
+
+        // 0.50% slippage
+        defaultParams.amountIn = 199e18; // 199 eth
+        defaultParams.amountOut = 200e18; // 200 eth
+
+        // 4% composite return
+        IDexLSTStats.DexLSTStatsData memory inStats;
+        inStats.lastSnapshotTimestamp = 180 days;
+        inStats.feeApr = 0.095656855707106964e18; // calculated manually
+        setStatsCurrent(mockInStats, inStats);
+
+        // 3% composite return
+        IDexLSTStats.DexLSTStatsData memory outStats;
+        outStats.lastSnapshotTimestamp = 180 days;
+        outStats.feeApr = 0;
+        setStatsCurrent(mockOutStats, outStats);
+
+        // verify the swapCostOffset period
+        // the compositeReturns have been configured specifically for a 28 day offset
+        assertEq(defaultStrat.swapCostOffsetPeriodInDays(), 28);
+
+        bool success;
+        (success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
+        assertTrue(success);
+
+        // 0.25% slippage
+        defaultParams.amountIn = 399e18;
+        defaultParams.amountOut = 400e18;
+        // Expect error in rebalance check since we are trying to draw down Idle below High threshold (7%)
+        vm.expectRevert(abi.encodeWithSelector(LMPStrategy.IdleHighThresholdViolated.selector));
+        (success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
+
+        // 0.29% slippage
+        defaultParams.amountIn = 339e18;
+        defaultParams.amountOut = 340e18;
+        // Expect error in rebalance check since we are trying to draw down Idle below High threshold (7%)
+        vm.expectRevert(abi.encodeWithSelector(LMPStrategy.IdleHighThresholdViolated.selector));
+        (success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
+    }
+
     function test_verifyLSTPriceGap_Revert() public {
         // this test verifies that revert logic is followed based on tolerance
         // of safe-spot price for LST

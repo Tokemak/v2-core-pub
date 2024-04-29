@@ -188,7 +188,7 @@ library LMPStrategyConfig {
 
         // Top Level Config
 
-        if (config.pauseRebalancePeriodInDays < 30 || config.pauseRebalancePeriodInDays > 90) {
+        if (config.pauseRebalancePeriodInDays < 7 || config.pauseRebalancePeriodInDays > 90) {
             revert InvalidConfig("pauseRebalancePeriodInDays");
         }
 

@@ -374,10 +374,10 @@ contract LMPStrategyConfigTest is Test {
     function test_PauseRebalancePeriodInDays_Min() public {
         LMPStrategyConfig.StrategyConfig memory config = LMPStrategyTestHelpers.getDefaultConfig();
 
-        config.pauseRebalancePeriodInDays = 30;
+        config.pauseRebalancePeriodInDays = 7;
         LMPStrategyConfig.validate(config);
 
-        config.pauseRebalancePeriodInDays = 29;
+        config.pauseRebalancePeriodInDays = 6;
         vm.expectRevert();
         LMPStrategyConfig.validate(config);
     }

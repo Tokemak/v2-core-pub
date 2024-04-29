@@ -80,6 +80,12 @@ contract LMPStrategyTest is Test {
         setLmpDefaultMocks();
 
         defaultStrat = deployStrategy(helpers.getDefaultConfig());
+        // Set Idle thresholds
+        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+        defaultStrat.setIdleThresholds(3e16, 7e16);
+        // Revoke since we will test access in other tests
+        accessController.revokeRole(Roles.AUTO_POOL_ADMIN, address(this));
+
         defaultParams = getDefaultRebalanceParams();
 
         setInDestDefaultMocks();

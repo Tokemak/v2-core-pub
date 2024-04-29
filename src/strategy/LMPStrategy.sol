@@ -334,8 +334,8 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         _swapCostOffsetPeriod = swapCostOffsetInit;
         lstPriceGapTolerance = defaultLstPriceGapTolerance;
         dustPositionPortions = 50;
-        idleLowThreshold = 3e16;
-        idleHighThreshold = 7e16;
+        idleLowThreshold = 0;
+        idleHighThreshold = 0;
     }
 
     /// @notice Sets the LST price gap tolerance to the provided value

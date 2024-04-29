@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { IERC20, SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { ICurveV2Swap } from "src/interfaces/external/curve/ICurveV2Swap.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
@@ -10,8 +10,6 @@ import { BaseAdapter, ISyncSwapper } from "src/swapper/adapters/BaseAdapter.sol"
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 
 contract CurveV2Swap is BaseAdapter {
-    using SafeERC20 for IERC20;
-
     constructor(address _router) BaseAdapter(_router) { }
 
     /// @inheritdoc ISyncSwapper

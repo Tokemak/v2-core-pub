@@ -19,11 +19,8 @@ import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 import { WETH_MAINNET } from "test/utils/Addresses.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
-import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 
 contract LMPVaultFactoryTest is Test {
-    using Clones for address;
-
     uint256 public constant WETH_INIT_DEPOSIT = 100_000;
     address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 

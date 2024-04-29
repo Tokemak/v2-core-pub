@@ -15,8 +15,6 @@ import { SystemComponent } from "src/SystemComponent.sol";
 import { Roles } from "src/libs/Roles.sol";
 
 contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
-    using Math for uint256;
-
     address private immutable _weth;
 
     mapping(address => IPriceOracle) public tokenMappings;

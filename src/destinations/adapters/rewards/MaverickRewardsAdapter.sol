@@ -3,16 +3,14 @@
 
 pragma solidity 0.8.17;
 
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+
 import { Errors } from "src/utils/Errors.sol";
 import { IReward } from "src/interfaces/external/maverick/IReward.sol";
-import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { RewardAdapter } from "src/destinations/adapters/rewards/RewardAdapter.sol";
 
 //slither-disable-next-line missing-inheritance
 library MaverickRewardsAdapter {
-    using SafeERC20 for IERC20;
-
     /// @notice Claim rewards for Maverick Boosted Position LP tokens staked in their rewarder
     /// @param rewarder the Maverick rewarder contract
     /// @return amounts the amount of each token that was claimed

@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { IERC20, SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { Errors } from "src/utils/Errors.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
@@ -12,8 +12,6 @@ import { IBasePool } from "src/interfaces/external/balancer/IBasePool.sol";
 import { BaseAdapter, ISyncSwapper } from "src/swapper/adapters/BaseAdapter.sol";
 
 contract BalancerV2Swap is BaseAdapter {
-    using SafeERC20 for IERC20;
-
     IVault public immutable vault;
 
     constructor(address _router, address _balancerVault) BaseAdapter(_router) {

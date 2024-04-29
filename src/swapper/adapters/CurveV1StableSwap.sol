@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { IERC20, SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { ICurveV1StableSwap } from "src/interfaces/external/curve/ICurveV1StableSwap.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
@@ -11,8 +11,6 @@ import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 
 contract CurveV1StableSwap is BaseAdapter {
-    using SafeERC20 for IERC20;
-
     IWETH9 public immutable weth;
 
     constructor(address _router, address _weth) BaseAdapter(_router) {

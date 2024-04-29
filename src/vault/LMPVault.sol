@@ -25,7 +25,6 @@ import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { StructuredLinkedList } from "src/strategy/StructuredLinkedList.sol";
-import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -34,7 +33,6 @@ import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC315
 contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, SecurityBase, Pausable, NonReentrant {
     using EnumerableSet for EnumerableSet.AddressSet;
     using Math for uint256;
-    using SafeERC20 for IERC20Metadata;
     using WithdrawalQueue for StructuredLinkedList.List;
     using AutoPoolToken for AutoPoolToken.TokenData;
 

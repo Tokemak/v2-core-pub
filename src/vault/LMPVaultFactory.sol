@@ -19,7 +19,6 @@ import { Roles } from "src/libs/Roles.sol";
 
 contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
     using Clones for address;
-    using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// =====================================================

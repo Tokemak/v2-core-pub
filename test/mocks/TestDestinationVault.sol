@@ -4,12 +4,10 @@ pragma solidity 0.8.17;
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { DestinationVault } from "src/vault/DestinationVault.sol";
-import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
+
 import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 
 contract TestDestinationVault is DestinationVault {
-    using EnumerableSet for EnumerableSet.AddressSet;
-
     uint256 private _debtVault;
     uint256 private _claimVested;
     uint256 private _reclaimDebtAmount;

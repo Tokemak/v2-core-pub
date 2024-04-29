@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 
 import { Errors } from "src/utils/Errors.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
-import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { IStatsCalculatorFactory } from "src/interfaces/stats/IStatsCalculatorFactory.sol";
@@ -13,8 +12,6 @@ import { SystemComponent } from "src/SystemComponent.sol";
 import { Roles } from "src/libs/Roles.sol";
 
 contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, SecurityBase {
-    using Clones for address;
-
     /// @notice Currently registered factory. Only thing can register new calculators
     IStatsCalculatorFactory public factory;
 

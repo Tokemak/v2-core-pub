@@ -7,6 +7,7 @@ import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard
 
 import { Address } from "openzeppelin-contracts/utils/Address.sol";
 import { ILMPVault, ILMPVaultRouter } from "src/interfaces/vault/ILMPVaultRouter.sol";
+import { IRewards } from "src/interfaces/IRewards.sol";
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 import { LMPVaultRouterBase, ISystemRegistry } from "src/vault/LMPVaultRouterBase.sol";
 
@@ -94,5 +95,16 @@ contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard 
         uint256 maxRedeem = vault.maxRedeem(msg.sender);
         uint256 amountShares = maxRedeem < shareBalance ? maxRedeem : shareBalance;
         return redeem(vault, to, amountShares, minAmountOut);
+    }
+
+    /// @inheritdoc ILMPVaultRouter
+    function claimRewards(
+        IRewards rewarder,
+        IRewards.Recipient calldata recipient,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public override returns (uint256) {
+        return rewarder.claimFor(recipient, v, r, s);
     }
 }

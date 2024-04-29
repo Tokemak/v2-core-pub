@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 
 import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
 import { ILMPVaultRouterBase } from "src/interfaces/vault/ILMPVaultRouterBase.sol";
+import { IRewards } from "src/interfaces/IRewards.sol";
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 
 /**
@@ -98,4 +99,18 @@ interface ILMPVaultRouter is ILMPVaultRouterBase {
      * @return amountReceived Swap output amount
      */
     function swapToken(address swapper, SwapParams memory swapParams) external returns (uint256 amountReceived);
+
+    /**
+     * @notice claims vault token rewards
+     * @param rewarder Address of the rewarder to claim from
+     * @param recipient Struct containing recipient details
+     * @return amountReceived Swap output amount
+     */
+    function claimRewards(
+        IRewards rewarder,
+        IRewards.Recipient calldata recipient,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external returns (uint256);
 }

@@ -22,12 +22,12 @@ contract BalancerLPMetaStableEthOracle is BalancerBaseOracle {
         return "balMetaStable";
     }
 
-    function getTotalSupply_(address lpToken) internal virtual override returns (uint256 totalSupply) {
+    function getTotalSupply(address lpToken) public virtual override returns (uint256 totalSupply) {
         totalSupply = IERC20(lpToken).totalSupply();
     }
 
-    function getPoolTokens_(address pool)
-        internal
+    function getPoolTokens(address pool)
+        public
         virtual
         override
         returns (IERC20[] memory tokens, uint256[] memory balances)

@@ -15,8 +15,8 @@ abstract contract BaseStatsCalculator is IStatsCalculator, SecurityBase {
     ISystemRegistry public immutable systemRegistry;
 
     modifier onlyStatsSnapshot() {
-        if (!_hasRole(Roles.STATS_SNAPSHOT_ROLE, msg.sender)) {
-            revert Errors.MissingRole(Roles.STATS_SNAPSHOT_ROLE, msg.sender);
+        if (!_hasRole(Roles.STATS_SNAPSHOT_EXECUTOR, msg.sender)) {
+            revert Errors.MissingRole(Roles.STATS_SNAPSHOT_EXECUTOR, msg.sender);
         }
         _;
     }
@@ -34,7 +34,7 @@ abstract contract BaseStatsCalculator is IStatsCalculator, SecurityBase {
     }
 
     /// @notice Capture stat data about this setup
-    /// @dev This is protected by the STATS_SNAPSHOT_ROLE
+    /// @dev This is protected by the STATS_SNAPSHOT_EXECUTOR
     function _snapshot() internal virtual;
 
     /// @inheritdoc IStatsCalculator

@@ -82,6 +82,13 @@ contract LiquidationRowTest is Test {
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
 
+        accessController.grantRole(Roles.REWARD_LIQUIDATION_MANAGER, address(this));
+        accessController.grantRole(Roles.REWARD_LIQUIDATION_EXECUTOR, address(this));
+        accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
+        accessController.grantRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, address(this));
+        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(this));
+        accessController.grantRole(Roles.ORACLE_MANAGER, address(this));
+
         destinationTemplateRegistry = new DestinationRegistry(systemRegistry);
         systemRegistry.setDestinationTemplateRegistry(address(destinationTemplateRegistry));
 
@@ -98,17 +105,12 @@ contract LiquidationRowTest is Test {
         systemRegistry.setCurveResolver(address(curveResolver));
 
         liquidationRow = new LiquidationRow(systemRegistry);
+        accessController.grantRole(Roles.LIQUIDATOR_MANAGER, address(liquidationRow));
 
         // Set up Root Price Oracle
         rootPriceOracle = new RootPriceOracle(systemRegistry);
 
         systemRegistry.setRootPriceOracle(address(rootPriceOracle));
-
-        accessController.grantRole(Roles.REWARD_LIQUIDATION_MANAGER, address(this));
-        accessController.grantRole(Roles.REWARD_LIQUIDATION_EXECUTOR, address(this));
-        accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(liquidationRow));
-        accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
-        accessController.grantRole(Roles.REGISTRY_UPDATER, address(this));
 
         // This contract (address(this)) will be calling the destination vaults as a Vault.
         // We don't want to implement IVault in this contract, so we just mock this part of the system.

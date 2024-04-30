@@ -15,6 +15,7 @@ import { ISyncSwapper } from "src/interfaces/swapper/ISyncSwapper.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { IDestinationVaultRegistry, DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 import {
     TOKE_MAINNET, WSTETH_MAINNET, STETH_MAINNET, WETH_MAINNET, FRXETH_MAINNET, RANDOM
@@ -42,6 +43,8 @@ contract SwapRouterTest is Test {
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
         destinationVaultRegistry = new DestinationVaultRegistry(systemRegistry);
+
+        accessController.grantRole(Roles.SWAP_ROUTER_MANAGER, address(this));
 
         systemRegistry.setDestinationVaultRegistry(address(destinationVaultRegistry));
 

@@ -101,6 +101,9 @@ contract BalancerAuraDestinationVaultTests is Test {
         vm.label(address(swapRouter), "swapRouter");
         vm.label(address(balSwapper), "balSwapper");
 
+        _accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
+        _accessController.grantRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, address(this));
+
         // Setup the Destination system
 
         _destinationVaultRegistry = new DestinationVaultRegistry(_systemRegistry);
@@ -122,8 +125,6 @@ contract BalancerAuraDestinationVaultTests is Test {
         address[] memory dvAddresses = new address[](1);
         dvAddresses[0] = address(dvTemplate);
         _destinationTemplateRegistry.register(dvTypes, dvAddresses);
-
-        _accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
 
         BalancerAuraDestinationVault.InitParams memory initParams = BalancerAuraDestinationVault.InitParams({
             balancerPool: WSETH_WETH_BAL_POOL,
@@ -308,7 +309,7 @@ contract BalancerAuraDestinationVaultTests is Test {
         IERC20 bal = IERC20(BAL_MAINNET);
         IERC20 aura = IERC20(AURA_MAINNET);
 
-        _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
+        _accessController.grantRole(Roles.LIQUIDATOR_MANAGER, address(this));
 
         uint256 preBalBAL = bal.balanceOf(address(this));
         uint256 preBalAURA = aura.balanceOf(address(this));
@@ -495,8 +496,8 @@ contract BalancerAuraDestinationVaultTests is Test {
     function test_recoverUnderlying_RunsProperly_RecoverExternal() external {
         address recoveryAddress = vm.addr(1);
 
-        // Give contract TOKEN_RECOVERY_ROLE.
-        _accessController.setupRole(Roles.TOKEN_RECOVERY_ROLE, address(this));
+        // Give contract TOKEN_RECOVERY_MANAGER.
+        _accessController.setupRole(Roles.TOKEN_RECOVERY_MANAGER, address(this));
 
         // Transfer tokens to this contract.
         vm.prank(LP_TOKEN_WHALE);
@@ -530,8 +531,8 @@ contract BalancerAuraDestinationVaultTests is Test {
     function test_recoverUnderlying_RunsProperly_ExternalDebt() external {
         address recoveryAddress = vm.addr(1);
 
-        // Give contract TOKEN_RECOVERY_ROLE.
-        _accessController.setupRole(Roles.TOKEN_RECOVERY_ROLE, address(this));
+        // Give contract TOKEN_RECOVERY_MANAGER.
+        _accessController.setupRole(Roles.TOKEN_RECOVERY_MANAGER, address(this));
 
         // Transfer tokens to this contract.
         vm.prank(LP_TOKEN_WHALE);
@@ -572,8 +573,8 @@ contract BalancerAuraDestinationVaultTests is Test {
         uint256 internalBalance = 444;
         uint256 externalbalance = 555;
 
-        // Give contract TOKEN_RECOVERY_ROLE.
-        _accessController.setupRole(Roles.TOKEN_RECOVERY_ROLE, address(this));
+        // Give contract TOKEN_RECOVERY_MANAGER.
+        _accessController.setupRole(Roles.TOKEN_RECOVERY_MANAGER, address(this));
 
         // Transfer tokens to this contract.
         vm.prank(LP_TOKEN_WHALE);

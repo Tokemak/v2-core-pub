@@ -15,6 +15,7 @@ import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 import { TestSpotPriceOracle } from "test/mocks/TestSpotPriceOracle.sol";
 import { TestPriceOracle } from "test/mocks/TestPriceOracle.sol";
@@ -63,6 +64,8 @@ contract RootPriceOracleTests is Test {
         _accessController = new AccessController(address(_systemRegistry));
         _systemRegistry.setAccessController(address(_accessController));
         _rootPriceOracle = new RootPriceOracleWrapper(_systemRegistry);
+
+        _accessController.grantRole(Roles.ORACLE_MANAGER, address(this));
 
         _pool = makeAddr("_pool");
         _token = makeAddr("_token");

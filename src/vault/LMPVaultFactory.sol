@@ -15,6 +15,7 @@ import { Errors } from "src/utils/Errors.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
     using Clones for address;
@@ -48,7 +49,7 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
     /// =====================================================
 
     modifier onlyVaultCreator() {
-        if (!_hasRole(Roles.CREATE_POOL_ROLE, msg.sender)) {
+        if (!_hasRole(Roles.LMP_VAULT_FACTORY_VAULT_CREATOR, msg.sender)) {
             revert Errors.AccessDenied();
         }
         _;
@@ -95,7 +96,7 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
     /// Functions - External
     /// =====================================================
 
-    function addStrategyTemplate(address strategyTemplate) external onlyOwner {
+    function addStrategyTemplate(address strategyTemplate) external hasRole(Roles.LMP_VAULT_FACTORY_MANAGER) {
         if (!_strategyTemplates.add(strategyTemplate)) {
             revert Errors.ItemExists();
         }
@@ -103,7 +104,7 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
         emit StrategyTemplateAdded(strategyTemplate);
     }
 
-    function removeStrategyTemplate(address strategyTemplate) external onlyOwner {
+    function removeStrategyTemplate(address strategyTemplate) external hasRole(Roles.LMP_VAULT_FACTORY_MANAGER) {
         if (!_strategyTemplates.remove(strategyTemplate)) {
             revert Errors.ItemNotFound();
         }
@@ -111,11 +112,11 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
         emit StrategyTemplateRemoved(strategyTemplate);
     }
 
-    function setDefaultRewardRatio(uint256 rewardRatio) external onlyOwner {
+    function setDefaultRewardRatio(uint256 rewardRatio) external hasRole(Roles.LMP_VAULT_FACTORY_MANAGER) {
         _setDefaultRewardRatio(rewardRatio);
     }
 
-    function setDefaultRewardBlockDuration(uint256 blockDuration) external onlyOwner {
+    function setDefaultRewardBlockDuration(uint256 blockDuration) external hasRole(Roles.LMP_VAULT_FACTORY_MANAGER) {
         _setDefaultRewardBlockDuration(blockDuration);
     }
 

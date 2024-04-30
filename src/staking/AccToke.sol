@@ -20,6 +20,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBase {
     using SafeERC20 for IERC20Metadata;
@@ -237,7 +238,7 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
     }
 
     /// @notice Update max stake duration allowed
-    function setMaxStakeDuration(uint256 _maxStakeDuration) external onlyOwner {
+    function setMaxStakeDuration(uint256 _maxStakeDuration) external hasRole(Roles.ACC_TOKE_MANAGER) {
         uint256 old = maxStakeDuration;
 
         maxStakeDuration = _maxStakeDuration;
@@ -245,11 +246,11 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
         emit SetMaxStakeDuration(old, _maxStakeDuration);
     }
 
-    function pause() external onlyOwner {
+    function pause() external hasRole(Roles.ACC_TOKE_MANAGER) {
         _pause();
     }
 
-    function unpause() external onlyOwner {
+    function unpause() external hasRole(Roles.ACC_TOKE_MANAGER) {
         _unpause();
     }
 

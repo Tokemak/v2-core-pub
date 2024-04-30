@@ -40,14 +40,14 @@ contract LiquidationRowTest is Test {
         AsyncSwapperRegistry asyncSwapperRegistry = new AsyncSwapperRegistry(_systemRegistry);
         _systemRegistry.setAsyncSwapperRegistry(address(asyncSwapperRegistry));
 
-        _accessController.grantRole(Roles.REGISTRY_UPDATER, V2_DEPLOYER);
+        _accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, V2_DEPLOYER);
         BaseAsyncSwapper zeroExSwapper = new BaseAsyncSwapper(ZERO_EX_PROXY);
         asyncSwapperRegistry.register(address(zeroExSwapper));
         _asyncSwapper = address(zeroExSwapper);
 
         _liquidationRow = new LiquidationRow(_systemRegistry);
 
-        _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(_liquidationRow));
+        _accessController.grantRole(Roles.LIQUIDATOR_MANAGER, address(_liquidationRow));
         _accessController.grantRole(Roles.REWARD_LIQUIDATION_MANAGER, V2_DEPLOYER);
         _accessController.grantRole(Roles.REWARD_LIQUIDATION_EXECUTOR, V2_DEPLOYER);
 

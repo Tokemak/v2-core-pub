@@ -15,6 +15,7 @@ import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { ICurveV2Swap } from "src/interfaces/external/curve/ICurveV2Swap.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
     uint256 public constant FEE_PRECISION = 1e10;
@@ -108,7 +109,7 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
      * @param curvePool Address of CurveV2 pool.
      * @param curveLpToken Address of LP token associated with v2 pool.
      */
-    function registerPool(address curvePool, address curveLpToken) external onlyOwner {
+    function registerPool(address curvePool, address curveLpToken) external hasRole(Roles.ORACLE_MANAGER) {
         Errors.verifyNotZero(curvePool, "curvePool");
         Errors.verifyNotZero(curveLpToken, "curveLpToken");
         if (lpTokenToPool[curveLpToken].pool != address(0) || poolToLpToken[curvePool] != address(0)) {
@@ -142,7 +143,7 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
      * @notice Allows owner of system to unregister curve pool.
      * @param curveLpToken Address of CurveV2 lp token to unregister.
      */
-    function unregister(address curveLpToken) external onlyOwner {
+    function unregister(address curveLpToken) external hasRole(Roles.ORACLE_MANAGER) {
         Errors.verifyNotZero(curveLpToken, "curveLpToken");
 
         address curvePool = lpTokenToPool[curveLpToken].pool;

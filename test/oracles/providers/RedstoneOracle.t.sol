@@ -14,6 +14,7 @@ import { AccessController } from "src/security/AccessController.sol";
 import { RedstoneOracle } from "src/oracles/providers/RedstoneOracle.sol";
 import { BaseOracleDenominations } from "src/oracles/providers/base/BaseOracleDenominations.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
 
@@ -34,6 +35,8 @@ contract RedstoneOracleTest is Test {
         IRootPriceOracle rootPriceOracle = IRootPriceOracle(vm.addr(324));
         generateSystemRegistry(address(registry), address(accessControl), address(rootPriceOracle));
         _oracle = new RedstoneOracle(registry);
+
+        accessControl.grantRole(Roles.ORACLE_MANAGER, address(this));
     }
 
     // Test `registerOracle()`

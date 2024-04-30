@@ -159,7 +159,9 @@ contract StatsCalculatorFactoryTests is Test {
     function ensureTemplateManagerRole() internal {
         vm.mockCall(
             address(accessController),
-            abi.encodeWithSelector(IAccessControl.hasRole.selector, Roles.STATS_CALC_TEMPLATE_MGMT_ROLE, address(this)),
+            abi.encodeWithSelector(
+                IAccessControl.hasRole.selector, Roles.STATS_CALC_FACTORY_TEMPLATE_MANAGER, address(this)
+            ),
             abi.encode(true)
         );
     }
@@ -167,7 +169,7 @@ contract StatsCalculatorFactoryTests is Test {
     function ensureCalcCreatorRole() internal {
         vm.mockCall(
             address(accessController),
-            abi.encodeWithSelector(IAccessControl.hasRole.selector, Roles.CREATE_STATS_CALC_ROLE, address(this)),
+            abi.encodeWithSelector(IAccessControl.hasRole.selector, Roles.STATS_CALC_FACTORY_MANAGER, address(this)),
             abi.encode(true)
         );
     }

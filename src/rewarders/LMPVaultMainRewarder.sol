@@ -32,7 +32,7 @@ contract LMPVaultMainRewarder is MainRewarder {
             _rewardToken,
             _newRewardRatio,
             _durationInBlock,
-            Roles.LMP_REWARD_MANAGER_ROLE,
+            Roles.LMP_VAULT_REWARD_MANAGER,
             _allowExtraReward
         )
     {

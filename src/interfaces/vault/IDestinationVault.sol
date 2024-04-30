@@ -109,13 +109,13 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     function debtValue(uint256 shares) external returns (uint256 value);
 
     /// @notice Collects any earned rewards from staking, incentives, etc. Transfers to sender
-    /// @dev Should be limited to LIQUIDATOR_ROLE. Rewards must be collected before claimed
+    /// @dev Should be limited to LIQUIDATOR_MANAGER. Rewards must be collected before claimed
     /// @return amounts amount of rewards claimed for each token
     /// @return tokens tokens claimed
     function collectRewards() external returns (uint256[] memory amounts, address[] memory tokens);
 
     /// @notice Pull any non-tracked token to the specified destination
-    /// @dev Should be limited to TOKEN_RECOVERY_ROLE
+    /// @dev Should be limited to TOKEN_RECOVERY_MANAGER
     function recover(address[] calldata tokens, uint256[] calldata amounts, address[] calldata destinations) external;
 
     /// @notice Recovers any extra underlying both in DV and staked externally not tracked as debt.

@@ -106,7 +106,7 @@ contract DestinationVaultFactoryBaseTests is Test {
 
     function testOnlyVaultCreatorCanCallCreate() public {
         vm.expectRevert(
-            abi.encodeWithSelector(Errors.MissingRole.selector, Roles.CREATE_DESTINATION_VAULT_ROLE, address(this))
+            abi.encodeWithSelector(Errors.MissingRole.selector, Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this))
         );
         _factory.create(
             "x",
@@ -121,7 +121,7 @@ contract DestinationVaultFactoryBaseTests is Test {
         bytes32 key = keccak256(abi.encode("x"));
         address template = vm.addr(6);
         _registerTemplate(_templateRegistry, key, template);
-        _accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
+        _accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
         _factory.create(
             "x",
             address(8),
@@ -134,7 +134,7 @@ contract DestinationVaultFactoryBaseTests is Test {
     }
 
     function testVaultTypeMustBeRegistered() public {
-        _accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
+        _accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
 
         // Fails when it gets address(0)
         bytes32 badKey = keccak256(abi.encode("y"));
@@ -164,7 +164,7 @@ contract DestinationVaultFactoryBaseTests is Test {
     }
 
     function testCallsInitializeWithProvidedParams() public {
-        _accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
+        _accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
 
         // Fails when it gets address(0)
         bytes32 badKey = keccak256(abi.encode("y"));
@@ -193,7 +193,7 @@ contract DestinationVaultFactoryBaseTests is Test {
     }
 
     function testAddsToRegistry() public {
-        _accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
+        _accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
 
         bytes32 badKey = keccak256(abi.encode("y"));
         bytes32 salt = keccak256("abc");
@@ -213,7 +213,7 @@ contract DestinationVaultFactoryBaseTests is Test {
     }
 
     function testRewarderEndsUpWithCorrectStakeToken() public {
-        _accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
+        _accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
         bytes32 salt = keccak256("abc");
         bytes32 key = keccak256(abi.encode("y"));
         TestVault tv = new TestVault(_systemRegistry);

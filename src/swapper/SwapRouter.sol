@@ -12,6 +12,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 contract SwapRouter is SystemComponent, ISwapRouter, SecurityBase, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -32,7 +33,10 @@ contract SwapRouter is SystemComponent, ISwapRouter, SecurityBase, ReentrancyGua
     { }
 
     /// @inheritdoc ISwapRouter
-    function setSwapRoute(address assetToken, SwapData[] calldata _swapRoute) external onlyOwner {
+    function setSwapRoute(
+        address assetToken,
+        SwapData[] calldata _swapRoute
+    ) external hasRole(Roles.SWAP_ROUTER_MANAGER) {
         Errors.verifyNotZero(assetToken, "assetToken");
 
         uint256 length = _swapRoute.length;

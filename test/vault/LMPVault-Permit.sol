@@ -62,7 +62,7 @@ contract PermitTests is Test {
         uint256 lmpInitDeposit = template.WETH_INIT_DEPOSIT();
 
         _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, address(template), 800, 100);
-        _accessController.grantRole(Roles.REGISTRY_UPDATER, address(_lmpVaultFactory));
+        _accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(_lmpVaultFactory));
 
         bytes memory initData = abi.encode("");
 

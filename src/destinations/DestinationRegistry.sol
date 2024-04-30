@@ -9,6 +9,7 @@ import { SecurityBase } from "src/security/SecurityBase.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IDestinationAdapter } from "src/interfaces/destinations/IDestinationAdapter.sol";
 import { IDestinationRegistry } from "src/interfaces/destinations/IDestinationRegistry.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 contract DestinationRegistry is SystemComponent, SecurityBase, IDestinationRegistry {
     mapping(bytes32 => IDestinationAdapter) public destinations;
@@ -19,7 +20,10 @@ contract DestinationRegistry is SystemComponent, SecurityBase, IDestinationRegis
         SecurityBase(address(_systemRegistry.accessController()))
     { }
 
-    function register(bytes32[] calldata destinationTypes, address[] calldata targets) public override onlyOwner {
+    function register(
+        bytes32[] calldata destinationTypes,
+        address[] calldata targets
+    ) public override hasRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER) {
         Errors.verifyArrayLengths(destinationTypes.length, targets.length, "types+targets");
         for (uint256 i = 0; i < destinationTypes.length; ++i) {
             bytes32 destination = destinationTypes[i];
@@ -37,7 +41,10 @@ contract DestinationRegistry is SystemComponent, SecurityBase, IDestinationRegis
         emit Register(destinationTypes, targets);
     }
 
-    function replace(bytes32[] calldata destinationTypes, address[] calldata targets) public override onlyOwner {
+    function replace(
+        bytes32[] calldata destinationTypes,
+        address[] calldata targets
+    ) public override hasRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER) {
         Errors.verifyArrayLengths(destinationTypes.length, targets.length, "types+targets");
         for (uint256 i = 0; i < destinationTypes.length; ++i) {
             address target = targets[i];
@@ -55,7 +62,11 @@ contract DestinationRegistry is SystemComponent, SecurityBase, IDestinationRegis
         emit Replace(destinationTypes, targets);
     }
 
-    function unregister(bytes32[] calldata destinationTypes) public override onlyOwner {
+    function unregister(bytes32[] calldata destinationTypes)
+        public
+        override
+        hasRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER)
+    {
         for (uint256 i = 0; i < destinationTypes.length; ++i) {
             bytes32 destination = destinationTypes[i];
             Errors.verifyNotZero(address(destinations[destination]), "destAddress");
@@ -70,7 +81,11 @@ contract DestinationRegistry is SystemComponent, SecurityBase, IDestinationRegis
         Errors.verifyNotZero(address(target), "target");
     }
 
-    function addToWhitelist(bytes32[] calldata destinationTypes) external override onlyOwner {
+    function addToWhitelist(bytes32[] calldata destinationTypes)
+        external
+        override
+        hasRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER)
+    {
         for (uint256 i = 0; i < destinationTypes.length; ++i) {
             if (allowedTypes[destinationTypes[i]]) {
                 revert DestinationAlreadySet();
@@ -80,7 +95,11 @@ contract DestinationRegistry is SystemComponent, SecurityBase, IDestinationRegis
         emit Whitelist(destinationTypes);
     }
 
-    function removeFromWhitelist(bytes32[] calldata destinationTypes) external override onlyOwner {
+    function removeFromWhitelist(bytes32[] calldata destinationTypes)
+        external
+        override
+        hasRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER)
+    {
         for (uint256 i = 0; i < destinationTypes.length; ++i) {
             bytes32 destination = destinationTypes[i];
             if (!allowedTypes[destination]) {

@@ -162,6 +162,7 @@ contract RootOracleIntegrationTest is Test {
         // Set up system level contracts.
         systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH9_ADDRESS);
         accessControl = new AccessController(address(systemRegistry));
+        accessControl.grantRole(Roles.ORACLE_MANAGER, address(this));
 
         systemRegistry.setAccessController(address(accessControl));
         priceOracle = new RootPriceOracle(systemRegistry);
@@ -384,7 +385,7 @@ contract RootOracleIntegrationTest is Test {
         maxAges[0] = 50 weeks;
         maxAges[1] = 50 weeks;
 
-        accessControl.setupRole(Roles.ORACLE_MANAGER_ROLE, address(this));
+        accessControl.setupRole(Roles.ORACLE_MANAGER, address(this));
         accessControl.setupRole(Roles.CUSTOM_ORACLE_EXECUTOR, address(this));
 
         customSetOracle.registerTokens(tokens, maxAges);

@@ -123,7 +123,7 @@ contract DeploySystem is BaseScript {
             systemRegistry, address(lmpVaultTemplate), defaultRewardRatioLmp, defaultRewardBlockDurationLmp
         );
         systemRegistry.setLMPVaultFactory(lmpVaultType, address(lmpFactory));
-        accessController.setupRole(Roles.REGISTRY_UPDATER, address(lmpFactory));
+        accessController.setupRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(lmpFactory));
         console.log("LMP Factory address: ", address(lmpFactory));
 
         // Initial LMP Vault creation.
@@ -188,11 +188,11 @@ contract DeploySystem is BaseScript {
         }
 
         // Setup the 0x swapper
-        accessController.grantRole(Roles.REGISTRY_UPDATER, owner);
+        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, owner);
         BaseAsyncSwapper zeroExSwapper = new BaseAsyncSwapper(constants.ext.zeroExProxy);
         asyncSwapperRegistry.register(address(zeroExSwapper));
         console.log("Base Async Swapper: ", address(zeroExSwapper));
-        accessController.revokeRole(Roles.REGISTRY_UPDATER, owner);
+        accessController.revokeRole(Roles.LMP_VAULT_REGISTRY_UPDATER, owner);
 
         // Lens
         Lens lens = new Lens(systemRegistry);

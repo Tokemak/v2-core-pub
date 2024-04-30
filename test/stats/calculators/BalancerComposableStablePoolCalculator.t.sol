@@ -71,7 +71,7 @@ contract BalancerComposableStablePoolCalculatorTest is Test {
         AccessController accessController = new AccessController(address(systemRegistry));
 
         systemRegistry.setAccessController(address(accessController));
-        accessController.grantRole(Roles.STATS_SNAPSHOT_ROLE, address(this));
+        accessController.grantRole(Roles.STATS_SNAPSHOT_EXECUTOR, address(this));
 
         StatsCalculatorRegistry statsRegistry = new StatsCalculatorRegistry(systemRegistry);
         systemRegistry.setStatsCalculatorRegistry(address(statsRegistry));

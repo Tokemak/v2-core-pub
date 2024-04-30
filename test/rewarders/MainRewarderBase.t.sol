@@ -67,18 +67,18 @@ contract MainRewarderTest is Test {
         systemRegistry.setAccessController(address(accessController));
         rewardToken = new ERC20Mock("MAIN_REWARD", "MAIN_REWARD", address(this), 0);
         rewarder = new MainRewarderNotAbstract(
-            systemRegistry, address(rewardToken), newRewardRatio, durationInBlock, Roles.LMP_REWARD_MANAGER_ROLE, true
+            systemRegistry, address(rewardToken), newRewardRatio, durationInBlock, Roles.LMP_VAULT_REWARD_MANAGER, true
         );
 
-        accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
-        accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
+        accessController.grantRole(Roles.LIQUIDATOR_MANAGER, address(this));
+        accessController.grantRole(Roles.LMP_VAULT_REWARD_MANAGER, address(this));
     }
 }
 
 contract AddExtraReward is MainRewarderTest {
     function test_RevertIf_ExtraRewardNotAllowed() public {
         MainRewarderNotAbstract mainReward = new MainRewarderNotAbstract(
-            systemRegistry, address(rewardToken), newRewardRatio, durationInBlock, Roles.LMP_REWARD_MANAGER_ROLE, false
+            systemRegistry, address(rewardToken), newRewardRatio, durationInBlock, Roles.LMP_VAULT_REWARD_MANAGER, false
         );
 
         vm.expectRevert(abi.encodeWithSignature("ExtraRewardsNotAllowed()"));

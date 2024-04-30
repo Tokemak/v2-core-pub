@@ -188,7 +188,7 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
     }
 
     /// @notice Capture stat data about this setup
-    /// @dev This is protected by the STATS_SNAPSHOT_ROLE
+    /// @dev This is protected by the STATS_SNAPSHOT_EXECUTOR
     function _snapshot() internal override {
         IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
 

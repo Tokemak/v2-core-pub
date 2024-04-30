@@ -11,6 +11,7 @@ import { AccessController } from "src/security/AccessController.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { StatsCalculatorRegistry } from "src/stats/StatsCalculatorRegistry.sol";
 import { StatsCalculatorFactory } from "src/stats/StatsCalculatorFactory.sol";
+import { Errors } from "src/utils/Errors.sol";
 
 import { TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
 
@@ -34,7 +35,9 @@ contract MaverickFeeAprOracleTest is Test {
         systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
-        accessController.grantRole(Roles.MAVERICK_FEE_ORACLE_MANAGER, address(this));
+        accessController.grantRole(Roles.MAVERICK_FEE_ORACLE_EXECUTOR, address(this));
+        accessController.grantRole(Roles.ORACLE_MANAGER, address(this));
+        accessController.grantRole(Roles.STATS_CALC_REGISTRY_MANAGER, address(this));
 
         statsRegistry = new StatsCalculatorRegistry(systemRegistry);
         systemRegistry.setStatsCalculatorRegistry(address(statsRegistry));
@@ -47,8 +50,10 @@ contract MaverickFeeAprOracleTest is Test {
 
         oracle = new MaverickFeeAprOracle(systemRegistry);
     }
+}
 
-    function test_setFeeApr() public {
+contract SetFeeApr is MaverickFeeAprOracleTest {
+    function test_SetFeeApr() public {
         oracle.setFeeApr(boostedPosition0, 100, block.timestamp);
         uint256 feeApr0 = oracle.getFeeApr(boostedPosition0);
         assertEq(feeApr0, 100);
@@ -58,22 +63,42 @@ contract MaverickFeeAprOracleTest is Test {
         assertEq(feeApr1, 200);
     }
 
-    function test_getFeeAprRevertIfFeeAprNotSet() public {
-        vm.expectRevert();
-        oracle.getFeeApr(boostedPosition0);
+    function test_RevertIfUnauthorized() public {
+        vm.prank(makeAddr("fake"));
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        oracle.setFeeApr(boostedPosition0, 100, block.timestamp);
     }
 
-    function test_setFeeAprRevertIfFeeAprQueriedTimestampInTheFuture() public {
+    function test_RevertIfFeeAprQueriedTimestampInTheFuture() public {
         vm.expectRevert();
         oracle.setFeeApr(boostedPosition0, 100, block.timestamp + 1);
     }
 
-    function test_setFeeAprRevertIfFeeAprToHigh() public {
+    function test_RevertIfFeeAprToHigh() public {
         vm.expectRevert();
         oracle.setFeeApr(boostedPosition0, 300e50, block.timestamp);
     }
 
-    function test_getFeeAprRevertIfFeeAprExpired() public {
+    function test_RevertIfCallerDoesNotHaveRole() public {
+        vm.prank(vm.addr(333));
+        vm.expectRevert();
+        oracle.setFeeApr(boostedPosition0, 100, block.timestamp);
+    }
+
+    function test_RevertIfWritingOlderValue() public {
+        oracle.setFeeApr(boostedPosition0, 100, block.timestamp);
+        vm.expectRevert();
+        oracle.setFeeApr(boostedPosition0, 100, block.timestamp - 1);
+    }
+}
+
+contract GetFeeApr is MaverickFeeAprOracleTest {
+    function test_RevertIfFeeAprNotSet() public {
+        vm.expectRevert();
+        oracle.getFeeApr(boostedPosition0);
+    }
+
+    function test_RevertIfFeeAprExpired() public {
         oracle.setFeeApr(boostedPosition0, 100, block.timestamp);
         oracle.getFeeApr(boostedPosition0);
 
@@ -82,7 +107,7 @@ contract MaverickFeeAprOracleTest is Test {
         oracle.getFeeApr(boostedPosition0);
     }
 
-    function test_getFeeAprRevertIfFeeAprExpiredNewFeeAprLatency() public {
+    function test_RevertIfFeeAprExpiredNewFeeAprLatency() public {
         oracle.setFeeApr(boostedPosition0, 100, block.timestamp);
 
         oracle.setMaxFeeAprLatency(3 days);
@@ -93,26 +118,29 @@ contract MaverickFeeAprOracleTest is Test {
         vm.expectRevert();
         oracle.getFeeApr(boostedPosition0);
     }
+}
 
-    function test_setFeeAprRevertIfCallerDoesNotHaveRole() public {
-        vm.prank(vm.addr(333));
-        vm.expectRevert();
-        oracle.setFeeApr(boostedPosition0, 100, block.timestamp);
+contract SetMaxFeeAprLatency is MaverickFeeAprOracleTest {
+    function test_RevertIfUnauthorized() public {
+        vm.prank(makeAddr("fake"));
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        oracle.setMaxFeeAprLatency(uint256(type(uint32).max));
     }
 
-    function test_setFeeAprRevertIfWritingOlderValue() public {
-        oracle.setFeeApr(boostedPosition0, 100, block.timestamp);
-        vm.expectRevert();
-        oracle.setFeeApr(boostedPosition0, 100, block.timestamp - 1);
+    function test_SetMaxFeeAprLatency() public {
+        uint256 val = uint256(type(uint32).max);
+        oracle.setMaxFeeAprLatency(val);
+
+        assertEq(oracle.maxFeeAprLatency(), val);
     }
 
-    function test_setFeeAprLatencyRevertIfMaxFeeAprLatencyTooHigh() public {
+    function test_RevertIfMaxFeeAprLatencyTooHigh() public {
         oracle.setMaxFeeAprLatency(uint256(type(uint32).max));
         vm.expectRevert();
         oracle.setMaxFeeAprLatency(uint256(type(uint32).max) + 1);
     }
 
-    function test_setFeeAprLatencyRevertIfCallerDoesNotHaveRole() public {
+    function test_RevertIfCallerDoesNotHaveRole() public {
         vm.prank(vm.addr(333));
         vm.expectRevert();
         oracle.setMaxFeeAprLatency(uint256(type(uint32).max));

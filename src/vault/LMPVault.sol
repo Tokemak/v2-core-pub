@@ -401,42 +401,42 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
     /// @notice Enable or disable the high water mark on the rebalance fee
     /// @dev Will revert if set to the same value
-    function setRebalanceFeeHighWaterMarkEnabled(bool enabled) external hasRole(Roles.LMP_FEE_SETTER_ROLE) {
+    function setRebalanceFeeHighWaterMarkEnabled(bool enabled) external hasRole(Roles.LMP_VAULT_FEE_UPDATER) {
         AutoPoolFees.setRebalanceFeeHighWaterMarkEnabled(_feeSettings, enabled);
     }
 
     /// @notice Set the fee that will be taken when profit is realized
     /// @dev Resets the high water to current value
     /// @param fee Percent. 100% == 10000
-    function setStreamingFeeBps(uint256 fee) external nonReentrant hasRole(Roles.LMP_FEE_SETTER_ROLE) {
+    function setStreamingFeeBps(uint256 fee) external nonReentrant hasRole(Roles.LMP_VAULT_FEE_UPDATER) {
         AutoPoolFees.setStreamingFeeBps(_feeSettings, fee);
     }
 
     /// @notice Set the periodic fee taken.
     /// @dev Depending on time until next fee take, may update periodicFeeBps directly or queue fee.
     /// @param fee Fee to update periodic fee to.
-    function setPeriodicFeeBps(uint256 fee) external hasRole(Roles.LMP_PERIODIC_FEE_SETTER_ROLE) {
+    function setPeriodicFeeBps(uint256 fee) external hasRole(Roles.LMP_VAULT_PERIODIC_FEE_UPDATER) {
         AutoPoolFees.setPeriodicFeeBps(_feeSettings, fee);
     }
 
     /// @notice Set the address that will receive fees
     /// @param newFeeSink Address that will receive fees
-    function setFeeSink(address newFeeSink) external hasRole(Roles.LMP_FEE_SETTER_ROLE) {
+    function setFeeSink(address newFeeSink) external hasRole(Roles.LMP_VAULT_FEE_UPDATER) {
         AutoPoolFees.setFeeSink(_feeSettings, newFeeSink);
     }
 
     /// @notice Sets the address that will receive periodic fees.
     /// @dev Zero address allowable.  Disables fees.
     /// @param newPeriodicFeeSink New periodic fee address.
-    function setPeriodicFeeSink(address newPeriodicFeeSink) external hasRole(Roles.LMP_PERIODIC_FEE_SETTER_ROLE) {
+    function setPeriodicFeeSink(address newPeriodicFeeSink) external hasRole(Roles.LMP_VAULT_PERIODIC_FEE_UPDATER) {
         AutoPoolFees.setPeriodicFeeSink(_feeSettings, newPeriodicFeeSink);
     }
 
-    function setProfitUnlockPeriod(uint48 newUnlockPeriodSeconds) external hasRole(Roles.AUTO_POOL_ADMIN) {
+    function setProfitUnlockPeriod(uint48 newUnlockPeriodSeconds) external hasRole(Roles.AUTO_POOL_MANAGER) {
         AutoPoolFees.setProfitUnlockPeriod(_profitUnlockSettings, _tokenData, newUnlockPeriodSeconds);
     }
 
-    function toggleAllowedUser(address user) public hasRole(Roles.AUTO_POOL_ADMIN) {
+    function toggleAllowedUser(address user) public hasRole(Roles.AUTO_POOL_MANAGER) {
         allowedUsers[user] = !allowedUsers[user];
     }
 
@@ -444,7 +444,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// @param _rewarder Address of new rewarder.
     function setRewarder(address _rewarder) external {
         // Factory needs to be able to call for vault creation.
-        if (msg.sender != factory && !_hasRole(Roles.LMP_REWARD_MANAGER_ROLE, msg.sender)) {
+        if (msg.sender != factory && !_hasRole(Roles.LMP_VAULT_REWARD_MANAGER, msg.sender)) {
             revert Errors.AccessDenied();
         }
 
@@ -480,7 +480,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     function setSymbolAndDescAfterShutdown(
         string memory newSymbol,
         string memory newName
-    ) external hasRole(Roles.AUTO_POOL_ADMIN) {
+    ) external hasRole(Roles.AUTO_POOL_MANAGER) {
         Errors.verifyNotEmpty(newSymbol, "newSymbol");
         Errors.verifyNotEmpty(newName, "newName");
 
@@ -788,12 +788,12 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         address[] calldata tokens,
         uint256[] calldata amounts,
         address[] calldata destinations
-    ) external virtual override hasRole(Roles.TOKEN_RECOVERY_ROLE) {
+    ) external virtual override hasRole(Roles.TOKEN_RECOVERY_MANAGER) {
         AutoPool4626.recover(tokens, amounts, destinations);
     }
 
     /// @inheritdoc ILMPVault
-    function shutdown(VaultShutdownStatus reason) external hasRole(Roles.AUTO_POOL_ADMIN) {
+    function shutdown(VaultShutdownStatus reason) external hasRole(Roles.AUTO_POOL_MANAGER) {
         if (reason == VaultShutdownStatus.Active) {
             revert InvalidShutdownStatus(reason);
         }
@@ -813,7 +813,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     function updateDebtReporting(uint256 numToProcess)
         external
         nonReentrant
-        hasRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE)
+        hasRole(Roles.LMP_DEBT_REPORTING_EXECUTOR)
         trackNavOps
     {
         // Persist our change in idle and debt
@@ -893,11 +893,11 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         return _destinations.contains(destination);
     }
 
-    function addDestinations(address[] calldata destinations) public hasRole(Roles.DESTINATION_VAULTS_UPDATER) {
+    function addDestinations(address[] calldata destinations) public hasRole(Roles.LMP_VAULT_DESTINATION_UPDATER) {
         LMPDestinations.addDestinations(_removalQueue, _destinations, destinations, _systemRegistry);
     }
 
-    function removeDestinations(address[] calldata destinations) public hasRole(Roles.DESTINATION_VAULTS_UPDATER) {
+    function removeDestinations(address[] calldata destinations) public hasRole(Roles.LMP_VAULT_DESTINATION_UPDATER) {
         LMPDestinations.removeDestinations(_removalQueue, _destinations, destinations);
     }
 
@@ -905,7 +905,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         return _removalQueue.values();
     }
 
-    function removeFromRemovalQueue(address vaultToRemove) public override hasRole(Roles.REBALANCER_ROLE) {
+    function removeFromRemovalQueue(address vaultToRemove) public override hasRole(Roles.REBALANCER) {
         LMPDestinations.removeFromRemovalQueue(_removalQueue, vaultToRemove);
     }
 
@@ -919,7 +919,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         IERC3156FlashBorrower receiver,
         RebalanceParams memory rebalanceParams,
         bytes calldata data
-    ) public whenNotPaused nonReentrant hasRole(Roles.SOLVER_ROLE) trackNavOps {
+    ) public whenNotPaused nonReentrant hasRole(Roles.SOLVER) trackNavOps {
         LMPDebt.IdleDebtUpdates memory result = _processRebalance(receiver, rebalanceParams, data);
 
         uint256 idle = _assetBreakdown.totalIdle;

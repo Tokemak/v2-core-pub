@@ -19,14 +19,14 @@ contract SetupLiquidation is BaseScript {
 
         vm.startBroadcast(privateKey);
 
-        accessController.grantRole(Roles.REGISTRY_UPDATER, owner);
+        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, owner);
         BaseAsyncSwapper zeroExSwapper = new BaseAsyncSwapper(constants.ext.zeroExProxy);
         console.log("Base Async Swapper: ", address(zeroExSwapper));
 
         LiquidationRow lr = new LiquidationRow(systemRegistry);
         console.log("Liquidation Row:", address(lr));
 
-        accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(lr));
+        accessController.grantRole(Roles.LIQUIDATOR_MANAGER, address(lr));
         accessController.grantRole(Roles.REWARD_LIQUIDATION_MANAGER, owner);
         accessController.grantRole(Roles.REWARD_LIQUIDATION_EXECUTOR, owner);
 

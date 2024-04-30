@@ -27,7 +27,7 @@ contract ExtraRewarder is AbstractRewarder, IExtraRewarder, ReentrancyGuard {
         uint256 _durationInBlock
     )
         // solhint-disable-next-line max-line-length
-        AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock, Roles.EXTRA_REWARD_MANAGER_ROLE)
+        AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock, Roles.EXTRA_REWARD_MANAGER)
     {
         Errors.verifyNotZero(_mainReward, "_mainReward");
 

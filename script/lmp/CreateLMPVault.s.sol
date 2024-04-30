@@ -28,7 +28,7 @@ contract CreateLMPVault is BaseScript {
 
         LMPVaultFactory lmpFactory = LMPVaultFactory(address(systemRegistry.getLMPVaultFactoryByType(lmpVaultType)));
 
-        accessController.setupRole(Roles.REGISTRY_UPDATER, address(lmpFactory));
+        accessController.setupRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(lmpFactory));
 
         bool isTemplate = lmpFactory.isStrategyTemplate(strategyTemplateAddress);
 

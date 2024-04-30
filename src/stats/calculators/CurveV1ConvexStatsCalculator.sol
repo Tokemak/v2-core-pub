@@ -116,7 +116,7 @@ contract CurveV1ConvexStatsCalculator is IDexLSTStats, BaseStatsCalculator, Init
     }
 
     /// @notice Capture stat data about this setup
-    /// @dev This is protected by the STATS_SNAPSHOT_ROLE
+    /// @dev This is protected by the STATS_SNAPSHOT_EXECUTOR
     function _snapshot() internal override {
         lastSnapshotTimestamp = block.timestamp;
     }

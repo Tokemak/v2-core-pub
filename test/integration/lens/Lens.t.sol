@@ -212,9 +212,9 @@ contract LensIntTest5 is LensInt {
         AccessController access = AccessController(address(ISystemRegistry(SYSTEM_REGISTRY).accessController()));
 
         vm.startPrank(admin);
-        access.grantRole(Roles.LMP_FEE_SETTER_ROLE, admin);
-        access.grantRole(Roles.LMP_PERIODIC_FEE_SETTER_ROLE, admin);
-        access.grantRole(Roles.AUTO_POOL_ADMIN, admin);
+        access.grantRole(Roles.LMP_VAULT_FEE_UPDATER, admin);
+        access.grantRole(Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, admin);
+        access.grantRole(Roles.AUTO_POOL_MANAGER, admin);
 
         // LMPVault(autoPool).setStreamingFeeBps(streamingFee);
         // LMPVault(autoPool).setPeriodicFeeBps(periodicFee);

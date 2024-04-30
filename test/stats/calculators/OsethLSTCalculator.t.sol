@@ -72,7 +72,7 @@ contract OsethLSTCalculatorTests is Test {
         SystemRegistry systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
         _accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(_accessController));
-        _accessController.grantRole(Roles.STATS_SNAPSHOT_ROLE, address(this));
+        _accessController.grantRole(Roles.STATS_SNAPSHOT_EXECUTOR, address(this));
 
         // required for initialization, but not part of test surface area
         RootPriceOracle rootPriceOracle = new RootPriceOracle(systemRegistry);

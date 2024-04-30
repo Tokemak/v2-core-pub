@@ -18,7 +18,8 @@ import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
  * - Deploys and registers the `DestinationRegistry` for managing destination templates.
  * - Deploys and registers the `DestinationVaultRegistry` for tracking destination vaults.
  * - Deploys and sets up the `DestinationVaultFactory` with specified reward configurations.
- * - Grants the `CREATE_DESTINATION_VAULT_ROLE` role to the deploying wallet, enabling the creation of new destination
+ * - Grants the `DESTINATION_VAULT_FACTORY_MANAGER` role to the deploying wallet, enabling the creation of new
+ * destination
  * vaults.
  */
 contract DestinationSystem is BaseScript {
@@ -48,7 +49,7 @@ contract DestinationSystem is BaseScript {
         destVaultRegistry.setVaultFactory(address(destVaultFactory));
         console.log("Destination Vault Factory: %s", address(destVaultFactory));
 
-        accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, owner);
+        accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, owner);
 
         vm.stopBroadcast();
     }

@@ -12,6 +12,7 @@ import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     using Math for uint256;
@@ -53,7 +54,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     /// @dev May require additional registration in the oracle itself
     /// @param token address of the token to register
     /// @param oracle address of the oracle to use to lookup price
-    function registerMapping(address token, IPriceOracle oracle) external onlyOwner {
+    function registerMapping(address token, IPriceOracle oracle) external hasRole(Roles.ORACLE_MANAGER) {
         Errors.verifyNotZero(token, "token");
         Errors.verifyNotZero(address(oracle), "oracle");
         Errors.verifySystemsMatch(address(this), address(oracle));
@@ -74,7 +75,11 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     /// @param token address of the token to register
     /// @param oldOracle existing oracle address
     /// @param newOracle new oracle address
-    function replaceMapping(address token, IPriceOracle oldOracle, IPriceOracle newOracle) external onlyOwner {
+    function replaceMapping(
+        address token,
+        IPriceOracle oldOracle,
+        IPriceOracle newOracle
+    ) external hasRole(Roles.ORACLE_MANAGER) {
         Errors.verifyNotZero(token, "token");
         Errors.verifyNotZero(address(oldOracle), "oldOracle");
         Errors.verifyNotZero(address(newOracle), "newOracle");
@@ -100,7 +105,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     /// @notice Remove a token to oracle mapping
     /// @dev Must exist. Does not remove any additional configuration from the oracle itself
     /// @param token address of the token that is registered
-    function removeMapping(address token) external onlyOwner {
+    function removeMapping(address token) external hasRole(Roles.ORACLE_MANAGER) {
         Errors.verifyNotZero(token, "token");
 
         // If you're trying to remove something that doesn't exist then
@@ -118,7 +123,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     /// @dev May require additional registration in the oracle itself
     /// @param pool address of the liquidity pool
     /// @param oracle address of the LP oracle
-    function registerPoolMapping(address pool, ISpotPriceOracle oracle) external onlyOwner {
+    function registerPoolMapping(address pool, ISpotPriceOracle oracle) external hasRole(Roles.ORACLE_MANAGER) {
         Errors.verifyNotZero(pool, "pool");
         Errors.verifyNotZero(address(oracle), "oracle");
         Errors.verifySystemsMatch(address(this), address(oracle));
@@ -141,7 +146,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         address pool,
         ISpotPriceOracle oldOracle,
         ISpotPriceOracle newOracle
-    ) external onlyOwner {
+    ) external hasRole(Roles.ORACLE_MANAGER) {
         Errors.verifyNotZero(pool, "pool");
         Errors.verifyNotZero(address(oldOracle), "oldOracle");
         Errors.verifyNotZero(address(newOracle), "newOracle");
@@ -160,7 +165,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     /// @notice Remove an existing oracle for a specified liquidity pool
     /// @dev Must exist. Does not remove any additional configuration from the oracle itself
     /// @param pool address of the liquidity pool that needs oracle removal
-    function removePoolMapping(address pool) external onlyOwner {
+    function removePoolMapping(address pool) external hasRole(Roles.ORACLE_MANAGER) {
         Errors.verifyNotZero(pool, "pool");
 
         if (address(poolMappings[pool]) == address(0)) revert MappingDoesNotExist(pool);
@@ -173,7 +178,7 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
     /// @notice Set a threshold for a token spot price discrepancy to be considered safe
     /// @param token address of the token to set the threshold for
     /// @param threshold threshold to set (precision to 2 decimal places, i.e. 10000 = 100.00%)
-    function setSafeSpotPriceThreshold(address token, uint256 threshold) external onlyOwner {
+    function setSafeSpotPriceThreshold(address token, uint256 threshold) external hasRole(Roles.ORACLE_MANAGER) {
         Errors.verifyNotZero(token, "token");
         Errors.verifyNotZero(threshold, "threshold");
 

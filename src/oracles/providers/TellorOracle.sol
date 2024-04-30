@@ -11,6 +11,7 @@ import {
     IPriceOracle
 } from "src/oracles/providers/base/BaseOracleDenominations.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 import { UsingTellor } from "usingtellor/UsingTellor.sol";
 
@@ -94,7 +95,7 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
         bytes32 _queryId,
         Denomination denomination,
         uint32 pricingTimeout
-    ) external onlyOwner {
+    ) external hasRole(Roles.ORACLE_MANAGER) {
         Errors.verifyNotZero(token, "tokenForQueryId");
         Errors.verifyNotZero(_queryId, "queryId");
         if (tellorQueryInfo[token].queryId != bytes32(0)) revert Errors.MustBeZero();
@@ -111,7 +112,7 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
      * @dev Also removes any cached pricing.
      * @param token Token to remove TellorInfo struct for.
      */
-    function removeTellorRegistration(address token) external onlyOwner {
+    function removeTellorRegistration(address token) external hasRole(Roles.ORACLE_MANAGER) {
         Errors.verifyNotZero(token, "tokenToRemoveRegistration");
         bytes32 queryIdBeforeDeletion = tellorQueryInfo[token].queryId;
         Errors.verifyNotZero(queryIdBeforeDeletion, "queryIdBeforeDeletion");

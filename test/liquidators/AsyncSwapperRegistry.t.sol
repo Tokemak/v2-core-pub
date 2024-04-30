@@ -20,7 +20,7 @@ contract AsyncSwapperRegistryTest is Test {
         systemRegistry.setAccessController(address(accessController));
         registry = new AsyncSwapperRegistry(systemRegistry);
 
-        accessController.grantRole(Roles.REGISTRY_UPDATER, address(this));
+        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(this));
     }
 
     function test_Revert_register_IfAccessDenied() public {

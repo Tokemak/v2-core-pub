@@ -73,7 +73,7 @@ contract LMPStrategyTest is Test {
         systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
-        accessController.grantRole(Roles.STATS_SNAPSHOT_ROLE, address(this));
+        accessController.grantRole(Roles.STATS_SNAPSHOT_EXECUTOR, address(this));
         rootPriceOracle = new RootPriceOracle(systemRegistry);
         systemRegistry.setRootPriceOracle(address(rootPriceOracle));
 
@@ -2085,7 +2085,7 @@ contract LMPStrategyTest is Test {
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         defaultStrat.setLstPriceGapTolerance(100);
 
-        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
 
         defaultStrat.setLstPriceGapTolerance(100);
     }
@@ -2093,7 +2093,7 @@ contract LMPStrategyTest is Test {
     function test_setLstPriceGapTolerance_UpdatesValue() public {
         uint256 originalValue = defaultStrat.lstPriceGapTolerance();
 
-        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
 
         defaultStrat.setLstPriceGapTolerance(100);
 
@@ -2102,7 +2102,7 @@ contract LMPStrategyTest is Test {
     }
 
     function test_setLstPriceGapTolerance_EmitsEvent() public {
-        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
 
         vm.expectEmit(true, true, true, true);
         emit LstPriceGapSet(100);
@@ -2117,7 +2117,7 @@ contract LMPStrategyTest is Test {
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         defaultStrat.setDustPositionPortions(100);
 
-        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
 
         defaultStrat.setDustPositionPortions(100);
     }
@@ -2125,7 +2125,7 @@ contract LMPStrategyTest is Test {
     function test_setDustPositionPortions_UpdatesValue() public {
         uint256 originalValue = defaultStrat.dustPositionPortions();
 
-        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
 
         defaultStrat.setDustPositionPortions(100);
 
@@ -2134,7 +2134,7 @@ contract LMPStrategyTest is Test {
     }
 
     function test_setDustPositionPortions_EmitsEvent() public {
-        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
 
         vm.expectEmit(true, true, true, true);
         emit DustPositionPortionSet(100);

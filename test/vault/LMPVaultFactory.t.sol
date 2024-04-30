@@ -75,7 +75,7 @@ contract LMPVaultFactoryTest is Test {
         _template = address(new LMPVault(_systemRegistry, address(_asset), false));
 
         _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, _template, 800, 100);
-        _accessController.grantRole(Roles.REGISTRY_UPDATER, address(_lmpVaultFactory));
+        _accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(_lmpVaultFactory));
 
         lmpVaultInitData = abi.encode("");
 

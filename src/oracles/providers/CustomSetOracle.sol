@@ -58,17 +58,14 @@ contract CustomSetOracle is SystemComponent, SecurityBase, IPriceOracle {
 
     /// @notice Change the max allowable per-token age
     /// @param age New allowed age
-    function setMaxAge(uint256 age) external hasRole(Roles.ORACLE_MANAGER_ROLE) {
+    function setMaxAge(uint256 age) external hasRole(Roles.ORACLE_MANAGER) {
         _setMaxAge(age);
     }
 
     /// @notice Register tokens that should be resolvable through this oracle
     /// @param tokens addresses of tokens to register
     /// @param maxAges the max allowed age of a tokens price before it will revert on retrieval
-    function registerTokens(
-        address[] memory tokens,
-        uint256[] memory maxAges
-    ) external hasRole(Roles.ORACLE_MANAGER_ROLE) {
+    function registerTokens(address[] memory tokens, uint256[] memory maxAges) external hasRole(Roles.ORACLE_MANAGER) {
         _registerTokens(tokens, maxAges, false);
     }
 
@@ -78,13 +75,13 @@ contract CustomSetOracle is SystemComponent, SecurityBase, IPriceOracle {
     function updateTokenMaxAges(
         address[] memory tokens,
         uint256[] memory maxAges
-    ) external hasRole(Roles.ORACLE_MANAGER_ROLE) {
+    ) external hasRole(Roles.ORACLE_MANAGER) {
         _registerTokens(tokens, maxAges, true);
     }
 
     /// @notice Unregister tokens that have been previously configured
     /// @param tokens addresses of the tokens to unregister
-    function unregisterTokens(address[] memory tokens) external hasRole(Roles.ORACLE_MANAGER_ROLE) {
+    function unregisterTokens(address[] memory tokens) external hasRole(Roles.ORACLE_MANAGER) {
         uint256 len = tokens.length;
         Errors.verifyNotZero(len, "len");
 

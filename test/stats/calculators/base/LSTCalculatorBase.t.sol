@@ -89,7 +89,7 @@ contract LSTCalculatorBaseTest is Test {
         systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
-        accessController.grantRole(Roles.STATS_SNAPSHOT_ROLE, address(this));
+        accessController.grantRole(Roles.STATS_SNAPSHOT_EXECUTOR, address(this));
         rootPriceOracle = new RootPriceOracle(systemRegistry);
         systemRegistry.setRootPriceOracle(address(rootPriceOracle));
 

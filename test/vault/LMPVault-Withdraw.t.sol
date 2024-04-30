@@ -230,7 +230,7 @@ pragma solidity >=0.8.7;
 // //     }
 
 // //     function test_updateDebtReporting_OnlyCallableByRole() external {
-// //         assertEq(_accessController.hasRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this)), false);
+// //         assertEq(_accessController.hasRole(Roles.LMP_DEBT_REPORTING_EXECUTOR, address(this)), false);
 
 // //         address[] memory fakeDestinations = new address[](1);
 // //         fakeDestinations[0] = vm.addr(1);
@@ -240,9 +240,9 @@ pragma solidity >=0.8.7;
 // //     }
 
 // //     function test_updateDebtReporting_FeesAreTakenWithoutDoubleDipping() public {
-// //         _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
-// //         _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
-// //         _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
+// //         _accessController.grantRole(Roles.SOLVER, address(this));
+// //         _accessController.grantRole(Roles.LMP_VAULT_FEE_UPDATER, address(this));
+// //         _accessController.grantRole(Roles.LMP_DEBT_REPORTING_EXECUTOR, address(this));
 
 // //         // User is going to deposit 1000 asset
 // //         _asset.mint(address(this), 1000);
@@ -369,8 +369,8 @@ pragma solidity >=0.8.7;
 // //     }
 
 // //     function test_updateDebtReporting_HighNavMarkResetWhenVaultEmpties() public {
-// //         _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
-// //         _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
+// //         _accessController.grantRole(Roles.SOLVER, address(this));
+// //         _accessController.grantRole(Roles.LMP_VAULT_FEE_UPDATER, address(this));
 
 // //         // 1. User 1 deposits 1000
 
@@ -412,7 +412,7 @@ pragma solidity >=0.8.7;
 // //         _mockRootPrice(address(_underlyerOne), 6e18);
 
 // //         // 4. Debt report
-// //         _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
+// //         _accessController.grantRole(Roles.LMP_DEBT_REPORTING_EXECUTOR, address(this));
 // //         _lmpVault.updateDebtReporting(_destinations);
 
 // //         // No change in idle
@@ -472,9 +472,9 @@ pragma solidity >=0.8.7;
 // //     }
 
 // //     function test_updateDebtReporting_FlashRebalanceFeesAreTakenWithoutDoubleDipping() public {
-// //         _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
-// //         _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
-// //         _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
+// //         _accessController.grantRole(Roles.SOLVER, address(this));
+// //         _accessController.grantRole(Roles.LMP_VAULT_FEE_UPDATER, address(this));
+// //         _accessController.grantRole(Roles.LMP_DEBT_REPORTING_EXECUTOR, address(this));
 
 // //         FlashRebalancer rebalancer = new FlashRebalancer();
 
@@ -609,8 +609,8 @@ pragma solidity >=0.8.7;
 // //     }
 
 // //     function test_updateDebtReporting_EarnedRewardsAreFactoredIn() public {
-// //         _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
-// //         _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
+// //         _accessController.grantRole(Roles.LMP_VAULT_FEE_UPDATER, address(this));
+// //         _accessController.grantRole(Roles.LMP_DEBT_REPORTING_EXECUTOR, address(this));
 
 // //         // Going to work with two users for this one to test partial ownership
 // //         // Both users get 1000 asset initially
@@ -659,7 +659,7 @@ pragma solidity >=0.8.7;
 // //         // Going to perform multiple rebalances. 400 asset to DV1 350 to DV2.
 // //         // So that'll be 200 Underlyer 1 (U1) and 250 Underlyer 2 (U2) back (U1 is 2:1 price)
 // //         address solver = vm.addr(34_343);
-// //         _accessController.grantRole(Roles.SOLVER_ROLE, solver);
+// //         _accessController.grantRole(Roles.SOLVER, solver);
 // //         vm.label(solver, "solver");
 // //         _underlyerOne.mint(solver, 200);
 // //         _underlyerTwo.mint(solver, 350);
@@ -792,7 +792,7 @@ pragma solidity >=0.8.7;
 
 // //         // Now lets introduce reward value. Deposit rewards, something normally
 // //         // only the liquidator will do, into the DV1's rewarder
-// //         _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
+// //         _accessController.grantRole(Roles.LIQUIDATOR_MANAGER, address(this));
 // //         _asset.mint(address(this), 10_000);
 // //         _asset.approve(address(_destVaultOne.rewarder()), 10_000);
 // //         IMainRewarder(_destVaultOne.rewarder()).queueNewRewards(10_000);
@@ -864,8 +864,8 @@ pragma solidity >=0.8.7;
 
 // //     /// Based on @dev https://github.com/Tokemak/2023-06-sherlock-judging/blob/main/invalid/675.md
 // //     function test_updateDebtReporting_debtDecreaseRoundingNoUnderflow() public {
-// //         _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
-// //         _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
+// //         _accessController.grantRole(Roles.SOLVER, address(this));
+// //         _accessController.grantRole(Roles.LMP_VAULT_FEE_UPDATER, address(this));
 
 // //         // 1) Value DV1 @ 1e18
 // //         _mockRootPrice(address(_underlyerOne), 1e18);
@@ -889,14 +889,14 @@ pragma solidity >=0.8.7;
 
 // //         _mockRootPrice(address(_underlyerOne), 1.1e18);
 
-// //         _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
+// //         _accessController.grantRole(Roles.LMP_DEBT_REPORTING_EXECUTOR, address(this));
 // //         _lmpVault.updateDebtReporting(_destinations);
 
 // //         _lmpVault.redeem(100_000_000_000_000_001, address(this), address(this));
 
 // //         _lmpVault.redeem(100_000_000_000_000_001, address(this), address(this));
 
-// //         _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
+// //         _accessController.grantRole(Roles.LMP_DEBT_REPORTING_EXECUTOR, address(this));
 // //         _lmpVault.updateDebtReporting(_destinations);
 // //     }
 
@@ -906,8 +906,8 @@ pragma solidity >=0.8.7;
 // //         address user02 = vm.addr(102);
 // //         vm.label(user01, "user01");
 // //         vm.label(user02, "user02");
-// //         _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
-// //         _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
+// //         _accessController.grantRole(Roles.SOLVER, address(this));
+// //         _accessController.grantRole(Roles.LMP_VAULT_FEE_UPDATER, address(this));
 
 // //         // Setting a sink
 // //         address feeSink = vm.addr(555);
@@ -933,8 +933,8 @@ pragma solidity >=0.8.7;
 // //         vm.stopPrank();
 
 // //         // Queue up some Destination Vault rewards
-// //         _accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
-// //         _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
+// //         _accessController.grantRole(Roles.LMP_VAULT_REWARD_MANAGER, address(this));
+// //         _accessController.grantRole(Roles.LIQUIDATOR_MANAGER, address(this));
 
 // //         // At time of writing LMPVault always returned true for verifyRebalance
 // //         // Rebalance 500 baseAsset for 250 underlyerOne+destVaultOne
@@ -1003,7 +1003,7 @@ pragma solidity >=0.8.7;
 // //         assertEq(_lmpVault.rewarder().balanceOf(address(this)), 0);
 
 // //         // Add rewarder to the system
-// //         _accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
+// //         _accessController.grantRole(Roles.LMP_VAULT_REWARD_MANAGER, address(this));
 // //         _lmpVault.rewarder().addToWhitelist(address(this));
 
 // //         // Hal-04: Adding 100 TOKE as vault rewards and waiting until they are claimable.
@@ -1073,7 +1073,7 @@ pragma solidity >=0.8.7;
 // //     }
 
 //     function test_flashRebalance_IdleCantLeaveIfShutdown() public {
-//         _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
+//         _accessController.grantRole(Roles.SOLVER, address(this));
 //         FlashRebalancer rebalancer = new FlashRebalancer();
 
 //         _asset.mint(address(this), 1000);
@@ -1131,8 +1131,8 @@ pragma solidity >=0.8.7;
 //     }
 
 //     function test_updateDebtReporting_FlashRebalanceEarnedRewardsAreFactoredIn() public {
-//         _accessController.grantRole(Roles.LMP_FEE_SETTER_ROLE, address(this));
-//         _accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, address(this));
+//         _accessController.grantRole(Roles.LMP_VAULT_FEE_UPDATER, address(this));
+//         _accessController.grantRole(Roles.LMP_DEBT_REPORTING_EXECUTOR, address(this));
 //         FlashRebalancer rebalancer = new FlashRebalancer();
 
 //         // Going to work with two users for this one to test partial ownership
@@ -1182,7 +1182,7 @@ pragma solidity >=0.8.7;
 //         // Going to perform multiple rebalances. 400 asset to DV1 350 to DV2.
 //         // So that'll be 200 Underlyer 1 (U1) and 250 Underlyer 2 (U2) back (U1 is 2:1 price)
 //         address solver = vm.addr(34_343);
-//         _accessController.grantRole(Roles.SOLVER_ROLE, solver);
+//         _accessController.grantRole(Roles.SOLVER, solver);
 //         vm.label(solver, "solver");
 //         _underlyerOne.mint(solver, 200);
 //         _underlyerTwo.mint(solver, 350);

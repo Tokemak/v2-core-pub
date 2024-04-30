@@ -86,9 +86,8 @@ contract LMPVaultRouterTest is BaseTest {
         forkBlock = 16_731_638;
         super.setUp();
 
-        accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));
-        accessController.grantRole(Roles.SET_WITHDRAWAL_QUEUE_ROLE, address(this));
-        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+        accessController.grantRole(Roles.LMP_VAULT_DESTINATION_UPDATER, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
 
         // We use mock since this function is called not from owner and
         vm.mockCall(
@@ -287,7 +286,7 @@ contract LMPVaultRouterTest is BaseTest {
         IAsyncSwapper swapper = new BaseAsyncSwapper(ZERO_EX_MAINNET);
         systemRegistry.setAsyncSwapperRegistry(address(asyncSwapperRegistry));
 
-        accessController.grantRole(Roles.REGISTRY_UPDATER, address(this));
+        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(this));
         asyncSwapperRegistry.register(address(swapper));
 
         uint256 amount = 1e26;
@@ -487,7 +486,7 @@ contract LMPVaultRouterTest is BaseTest {
         IAsyncSwapper swapperMock = new SwapperMock(address(123));
         systemRegistry.setAsyncSwapperRegistry(address(asyncSwapperRegistry));
 
-        accessController.grantRole(Roles.REGISTRY_UPDATER, address(this));
+        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(this));
         asyncSwapperRegistry.register(address(swapperMock));
         uint256 amount = depositAmount;
 
@@ -722,7 +721,7 @@ contract LMPVaultRouterTest is BaseTest {
         );
         vm.mockCall(
             address(accessController),
-            abi.encodeWithSignature("hasRole(bytes32,address)", Roles.LMP_REWARD_MANAGER_ROLE, address(this)),
+            abi.encodeWithSignature("hasRole(bytes32,address)", Roles.LMP_VAULT_REWARD_MANAGER, address(this)),
             abi.encode(true)
         );
         lmpVault.setRewarder(newRewarder);
@@ -781,7 +780,7 @@ contract LMPVaultRouterTest is BaseTest {
 
         // Grant liquidator role to treasury to allow queueing of Toke rewards.
         // Neccessary because rewarder uses Toke as reward token.
-        accessController.grantRole(Roles.LIQUIDATOR_ROLE, TREASURY);
+        accessController.grantRole(Roles.LIQUIDATOR_MANAGER, TREASURY);
 
         // Make sure Toke is not going to be sent to GPToke contract.
         assertEq(lmpRewarder.tokeLockDuration(), 0);
@@ -844,7 +843,7 @@ contract LMPVaultRouterTest is BaseTest {
         uint256 localStakeAmount = 1000;
 
         // Grant treasury liquidator role, allows queueing of rewards.
-        accessController.grantRole(Roles.LIQUIDATOR_ROLE, TREASURY);
+        accessController.grantRole(Roles.LIQUIDATOR_MANAGER, TREASURY);
 
         // Check Toke lock duration.
         assertEq(lmpRewarder.tokeLockDuration(), 0);
@@ -878,7 +877,7 @@ contract LMPVaultRouterTest is BaseTest {
         );
         vm.mockCall(
             address(accessController),
-            abi.encodeWithSignature("hasRole(bytes32,address)", Roles.LMP_REWARD_MANAGER_ROLE, address(this)),
+            abi.encodeWithSignature("hasRole(bytes32,address)", Roles.LMP_VAULT_REWARD_MANAGER, address(this)),
             abi.encode(true)
         );
         lmpVault.setRewarder(address(newRewarder));
@@ -904,7 +903,7 @@ contract LMPVaultRouterTest is BaseTest {
 
         // Grant liquidator role to treasury to allow queueing of Toke rewards.
         // Neccessary because rewarder uses Toke as reward token.
-        accessController.grantRole(Roles.LIQUIDATOR_ROLE, TREASURY);
+        accessController.grantRole(Roles.LIQUIDATOR_MANAGER, TREASURY);
 
         // Make sure Toke is not going to be sent to GPToke contract.
         assertEq(lmpRewarder.tokeLockDuration(), 0);
@@ -1138,7 +1137,7 @@ contract LMPVaultRouterTest is BaseTest {
         lmpVaultTemplate = address(new LMPVault(systemRegistry, address(weth), false));
         lmpVaultFactory = new LMPVaultFactory(systemRegistry, lmpVaultTemplate, 800, 100);
         // NOTE: deployer grants factory permission to update the registry
-        accessController.grantRole(Roles.REGISTRY_UPDATER, address(lmpVaultFactory));
+        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(lmpVaultFactory));
         systemRegistry.setLMPVaultFactory(VaultTypes.LST, address(lmpVaultFactory));
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));

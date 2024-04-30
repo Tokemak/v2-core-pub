@@ -58,14 +58,13 @@ contract LMPVaultBaseTest is BaseTest {
         destinationVault = _createDestinationVault(address(baseAsset), keccak256("salt1"));
         destinationVault2 = _createDestinationVault(address(baseAsset), keccak256("salt2"));
 
-        accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));
-        accessController.grantRole(Roles.SET_WITHDRAWAL_QUEUE_ROLE, address(this));
-        accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
+        accessController.grantRole(Roles.LMP_VAULT_DESTINATION_UPDATER, address(this));
+        accessController.grantRole(Roles.LMP_VAULT_REWARD_MANAGER, address(this));
 
         // create test lmpVault
         ILMPVaultFactory vaultFactory = systemRegistry.getLMPVaultFactoryByType(VaultTypes.LST);
         vaultFactory.addStrategyTemplate(lmpStrategy);
-        accessController.grantRole(Roles.CREATE_POOL_ROLE, address(vaultFactory));
+        accessController.grantRole(Roles.LMP_VAULT_FACTORY_VAULT_CREATOR, address(vaultFactory));
 
         // We use mock since this function is called not from owner and
         // SystemRegistry.addRewardToken is not accessible from the ownership perspective
@@ -183,7 +182,7 @@ contract LMPVaultBaseTest is BaseTest {
         vm.startPrank(notRoleOrFactory);
 
         assertTrue(notRoleOrFactory != address(lmpVaultFactory));
-        assertTrue(!accessController.hasRole(Roles.LMP_REWARD_MANAGER_ROLE, notRoleOrFactory));
+        assertTrue(!accessController.hasRole(Roles.LMP_VAULT_REWARD_MANAGER, notRoleOrFactory));
 
         vm.expectRevert(Errors.AccessDenied.selector);
         lmpVault.setRewarder(makeAddr("REWARDER"));
@@ -210,7 +209,7 @@ contract LMPVaultBaseTest is BaseTest {
     }
 
     function test_LMPRewardManagerRole_CanSetRewarder() public {
-        assertTrue(accessController.hasRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this)));
+        assertTrue(accessController.hasRole(Roles.LMP_VAULT_REWARD_MANAGER, address(this)));
 
         address rewarder = makeAddr("REWARDER");
         address oldRewarder = address(lmpVault.rewarder());

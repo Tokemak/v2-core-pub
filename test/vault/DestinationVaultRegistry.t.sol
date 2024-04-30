@@ -10,6 +10,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
 import { TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 contract DestinationVaultRegistryBaseTests is Test {
     address private testUser2;
@@ -28,6 +29,9 @@ contract DestinationVaultRegistryBaseTests is Test {
         systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
+
+        accessController.grantRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, address(this));
+
         registry = new DestinationVaultRegistry(systemRegistry);
         factory = generateFactory(systemRegistry);
         registry.setVaultFactory(factory);

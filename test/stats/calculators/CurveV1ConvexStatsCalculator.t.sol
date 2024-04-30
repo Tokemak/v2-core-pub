@@ -50,9 +50,9 @@ contract CurveV1ConvexStatsCalculatorTests is Test {
         statsRegistry.setCalculatorFactory(address(statsFactory));
 
         // Setup permissions we can do everything
-        accessController.grantRole(Roles.CREATE_STATS_CALC_ROLE, address(this));
-        accessController.grantRole(Roles.STATS_CALC_TEMPLATE_MGMT_ROLE, address(this));
-        accessController.grantRole(Roles.STATS_SNAPSHOT_ROLE, address(this));
+        accessController.grantRole(Roles.STATS_CALC_FACTORY_MANAGER, address(this));
+        accessController.grantRole(Roles.STATS_CALC_FACTORY_TEMPLATE_MANAGER, address(this));
+        accessController.grantRole(Roles.STATS_SNAPSHOT_EXECUTOR, address(this));
 
         // setup curve resolver in system systemRegistry
         curveResolver = new CurveResolverMainnet(ICurveMetaRegistry(CURVE_META_REGISTRY_MAINNET));

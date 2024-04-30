@@ -10,6 +10,7 @@ import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { IStatsCalculatorFactory } from "src/interfaces/stats/IStatsCalculatorFactory.sol";
 import { IStatsCalculatorRegistry } from "src/interfaces/stats/IStatsCalculatorRegistry.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, SecurityBase {
     using Clones for address;
@@ -65,9 +66,7 @@ contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, S
         emit StatCalculatorRegistered(aprId, calculator, msg.sender);
     }
 
-    function setCalculatorFactory(address calculatorFactory) external onlyOwner {
-        // TODO: Switch to specific access role
-
+    function setCalculatorFactory(address calculatorFactory) external hasRole(Roles.STATS_CALC_REGISTRY_MANAGER) {
         Errors.verifyNotZero(address(calculatorFactory), "factory");
 
         factory = IStatsCalculatorFactory(calculatorFactory);

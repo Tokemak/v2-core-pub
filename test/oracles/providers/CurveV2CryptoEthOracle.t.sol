@@ -35,6 +35,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 contract CurveV2CryptoEthOracleTest is Test {
     SystemRegistry public registry;
@@ -61,6 +62,8 @@ contract CurveV2CryptoEthOracleTest is Test {
         curveResolver = new CurveResolverMainnet(ICurveMetaRegistry(CURVE_META_REGISTRY_MAINNET));
         curveOracle =
             new CurveV2CryptoEthOracle(ISystemRegistry(address(registry)), ICurveResolver(address(curveResolver)));
+
+        accessControl.grantRole(Roles.ORACLE_MANAGER, address(this));
     }
 
     // Constructor

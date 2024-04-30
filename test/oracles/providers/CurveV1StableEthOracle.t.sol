@@ -16,6 +16,8 @@ import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegi
 import { CurveV1StableEthOracle } from "src/oracles/providers/CurveV1StableEthOracle.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { Roles } from "src/libs/Roles.sol";
+
 import {
     STETH_ETH_CURVE_POOL,
     CURVE_META_REGISTRY_MAINNET,
@@ -58,8 +60,7 @@ contract CurveV1StableEthOracleTests is Test {
         curveResolver = new CurveResolverMainnet(ICurveMetaRegistry(CURVE_META_REGISTRY_MAINNET));
         oracle = new CurveV1StableEthOracle(systemRegistry, curveResolver);
 
-        // Ensure the onlyOwner call passes
-        accessController.grantRole(0x00, address(this));
+        accessController.grantRole(Roles.ORACLE_MANAGER, address(this));
     }
 
     function testUnregisterSecurity() public {

@@ -191,7 +191,7 @@ abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Init
         external
         virtual
         override
-        hasRole(Roles.LIQUIDATOR_ROLE)
+        hasRole(Roles.LIQUIDATOR_MANAGER)
         returns (uint256[] memory amounts, address[] memory tokens)
     {
         (amounts, tokens) = _collectRewards();
@@ -203,7 +203,7 @@ abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Init
     function _collectRewards() internal virtual returns (uint256[] memory amounts, address[] memory tokens);
 
     /// @inheritdoc IDestinationVault
-    function shutdown(VaultShutdownStatus reason) external onlyOwner {
+    function shutdown(VaultShutdownStatus reason) external hasRole(Roles.DESTINATION_VAULT_MANAGER) {
         if (reason == VaultShutdownStatus.Active) {
             revert InvalidShutdownStatus(reason);
         }
@@ -298,7 +298,7 @@ abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Init
         address[] calldata tokens,
         uint256[] calldata amounts,
         address[] calldata destinations
-    ) external override hasRole(Roles.TOKEN_RECOVERY_ROLE) {
+    ) external override hasRole(Roles.TOKEN_RECOVERY_MANAGER) {
         uint256 length = tokens.length;
         if (length == 0 || length != amounts.length || length != destinations.length) {
             revert ArrayLengthMismatch();
@@ -339,7 +339,7 @@ abstract contract DestinationVault is SecurityBase, SystemComponent, ERC20, Init
     }
 
     /// @inheritdoc IDestinationVault
-    function recoverUnderlying(address destination) external override hasRole(Roles.TOKEN_RECOVERY_ROLE) {
+    function recoverUnderlying(address destination) external override hasRole(Roles.TOKEN_RECOVERY_MANAGER) {
         Errors.verifyNotZero(destination, "destination");
 
         uint256 externalAmount = externalQueriedBalance() - externalDebtBalance();

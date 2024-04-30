@@ -10,9 +10,10 @@ import { TELLOR_ORACLE } from "test/utils/Addresses.sol";
 
 import { TellorOracle, BaseOracleDenominations, UsingTellor } from "src/oracles/providers/TellorOracle.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { AccessController } from "src/security/AccessController.sol";
+import { AccessController, IAccessController } from "src/security/AccessController.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 import { TellorPlayground } from "lib/usingtellor/contracts/TellorPlayground.sol";
 
@@ -26,7 +27,6 @@ contract TellorOracleTest is Test {
     ISystemRegistry public systemRegistry;
     TellorOracle public _oracle;
 
-    error AccessDenied();
     error InvalidPricingTimeout(uint256 pricingTimeout);
 
     event TellorRegistrationAdded(address token, BaseOracleDenominations.Denomination, bytes32 _queryId);
@@ -43,11 +43,13 @@ contract TellorOracleTest is Test {
 
         vm.makePersistent(address(systemRegistry));
         vm.makePersistent(address(accessControl));
+
+        accessControl.grantRole(Roles.ORACLE_MANAGER, address(this));
     }
 
     // Test `addTellorRegistration()`.
     function test_RevertNonOwnerQueryId() external {
-        vm.expectRevert(AccessDenied.selector);
+        vm.expectRevert(abi.encodeWithSelector(IAccessController.AccessDenied.selector));
         vm.prank(address(3));
 
         _oracle.addTellorRegistration(address(1), bytes32("Test Bytes"), BaseOracleDenominations.Denomination.ETH, 0);
@@ -93,7 +95,7 @@ contract TellorOracleTest is Test {
     // Test `removeTellorRegistration()`
     function test_RevertNonOwner() external {
         vm.prank(address(2));
-        vm.expectRevert(AccessDenied.selector);
+        vm.expectRevert(abi.encodeWithSelector(IAccessController.AccessDenied.selector));
 
         _oracle.removeTellorRegistration(address(1));
     }

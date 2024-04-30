@@ -32,7 +32,7 @@ contract CustomSetOracleTest is Test {
 
         _oracle = new CustomSetOracle(_systemRegistry, maxAge);
 
-        _accessController.grantRole(Roles.ORACLE_MANAGER_ROLE, address(this));
+        _accessController.grantRole(Roles.ORACLE_MANAGER, address(this));
         _accessController.grantRole(Roles.CUSTOM_ORACLE_EXECUTOR, address(this));
     }
 
@@ -113,7 +113,7 @@ contract CustomSetOracleTest is Test {
         _oracle.registerTokens(tokens, ages);
         vm.stopPrank();
 
-        _accessController.grantRole(Roles.ORACLE_MANAGER_ROLE, caller);
+        _accessController.grantRole(Roles.ORACLE_MANAGER, caller);
 
         vm.startPrank(caller);
         _oracle.registerTokens(tokens, ages);
@@ -207,7 +207,7 @@ contract CustomSetOracleTest is Test {
         _oracle.setMaxAge(10_000);
         vm.stopPrank();
 
-        _accessController.grantRole(Roles.ORACLE_MANAGER_ROLE, caller);
+        _accessController.grantRole(Roles.ORACLE_MANAGER, caller);
 
         vm.startPrank(caller);
         _oracle.setMaxAge(10_000);
@@ -300,7 +300,7 @@ contract CustomSetOracleTest is Test {
         _oracle.updateTokenMaxAges(tokens, ages);
         vm.stopPrank();
 
-        _accessController.grantRole(Roles.ORACLE_MANAGER_ROLE, caller);
+        _accessController.grantRole(Roles.ORACLE_MANAGER, caller);
 
         vm.startPrank(caller);
         _oracle.updateTokenMaxAges(tokens, ages);
@@ -443,7 +443,7 @@ contract CustomSetOracleTest is Test {
         _oracle.unregisterTokens(tokens);
         vm.stopPrank();
 
-        _accessController.grantRole(Roles.ORACLE_MANAGER_ROLE, caller);
+        _accessController.grantRole(Roles.ORACLE_MANAGER, caller);
 
         vm.startPrank(caller);
         _oracle.unregisterTokens(tokens);

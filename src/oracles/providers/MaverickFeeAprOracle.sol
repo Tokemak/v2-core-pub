@@ -44,7 +44,7 @@ contract MaverickFeeAprOracle is SystemComponent, SecurityBase, IMaverickFeeAprO
         address boostedPosition,
         uint256 feeApr,
         uint256 queriedTimestamp
-    ) external hasRole(Roles.MAVERICK_FEE_ORACLE_MANAGER) {
+    ) external hasRole(Roles.MAVERICK_FEE_ORACLE_EXECUTOR) {
         // feeApr can be zero because there can be no swaps in the recent past
         // slither-disable-next-line timestamp
         if (queriedTimestamp > block.timestamp) {
@@ -82,7 +82,7 @@ contract MaverickFeeAprOracle is SystemComponent, SecurityBase, IMaverickFeeAprO
         emit MaxFeeAprLatencySet(_maxFeeAprLatency);
     }
 
-    function setMaxFeeAprLatency(uint256 _maxFeeAprLatency) external hasRole(Roles.MAVERICK_FEE_ORACLE_MANAGER) {
+    function setMaxFeeAprLatency(uint256 _maxFeeAprLatency) external hasRole(Roles.ORACLE_MANAGER) {
         _setMaxFeeAprLatency(_maxFeeAprLatency);
     }
 }

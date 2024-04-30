@@ -35,8 +35,8 @@ contract IncentivePricingStats is IIncentivesPricingStats, SystemComponent, Secu
     mapping(address => TokenSnapshotInfo) private tokenSnapshotInfo;
 
     modifier onlyStatsSnapshot() {
-        if (!_hasRole(Roles.STATS_SNAPSHOT_ROLE, msg.sender)) {
-            revert Errors.MissingRole(Roles.STATS_SNAPSHOT_ROLE, msg.sender);
+        if (!_hasRole(Roles.STATS_SNAPSHOT_EXECUTOR, msg.sender)) {
+            revert Errors.MissingRole(Roles.STATS_SNAPSHOT_EXECUTOR, msg.sender);
         }
         _;
     }

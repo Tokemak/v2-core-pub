@@ -43,8 +43,8 @@ contract LMPVaultMainRewarderTest is Test {
         rewarder = new LMPVaultMainRewarder(
             systemRegistry, address(rewardToken), newRewardRatio, durationInBlock, true, address(stakingToken)
         );
-        accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
-        accessController.grantRole(Roles.LMP_REWARD_MANAGER_ROLE, address(this));
+        accessController.grantRole(Roles.LIQUIDATOR_MANAGER, address(this));
+        accessController.grantRole(Roles.LMP_VAULT_REWARD_MANAGER, address(this));
     }
 
     /// @notice Tests that users can't withdraw more than their staked amount.

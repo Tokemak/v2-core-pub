@@ -39,6 +39,9 @@ contract RedeemTests is AutoPoolTests {
 
         _systemRegistry = SystemRegistry(SYSTEM_REGISTRY);
 
+        AccessController accessController = AccessController(address(_systemRegistry.accessController()));
+        accessController.grantRole(Roles.SWAP_ROUTER_MANAGER, V2_DEPLOYER);
+
         SwapRouter swapRouter = new SwapRouter(_systemRegistry);
         _systemRegistry.setSwapRouter(address(swapRouter));
 
@@ -69,7 +72,7 @@ contract RedeemTests is AutoPoolTests {
         uint256 sharesToBurn = pool.balanceOf(sharesHolder);
 
         AccessController accessController = AccessController(address(_systemRegistry.accessController()));
-        accessController.grantRole(Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, V2_DEPLOYER);
+        accessController.grantRole(Roles.LMP_DEBT_REPORTING_EXECUTOR, V2_DEPLOYER);
 
         uint256 assets = pool.redeem(sharesToBurn, V2_DEPLOYER, sharesHolder);
 
@@ -90,6 +93,7 @@ contract ShutdownDestination is AutoPoolTests {
     }
 
     function test_DestinationShutdownReleasesAssetsAndCanRemove() public {
+        AccessController accessController = AccessController(address(_systemRegistry.accessController()));
         // stETH/ETH-ng
         DestinationVault destinationToShutdown = DestinationVault(0xba1a495630a948f0942081924a5682f4f55E3e82);
         IWETH9 baseAsset = _systemRegistry.weth();
@@ -99,7 +103,7 @@ contract ShutdownDestination is AutoPoolTests {
         // Shutdown Vault
         vm.startPrank(V2_DEPLOYER);
         destinationToShutdown.shutdown(IDestinationVault.VaultShutdownStatus.Deprecated);
-        AccessController(address(_systemRegistry.accessController())).grantRole(Roles.SOLVER_ROLE, address(this));
+        accessController.grantRole(Roles.SOLVER, address(this));
         vm.stopPrank();
 
         uint256 amountWethFromRebalance = 26.35e18;

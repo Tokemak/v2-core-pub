@@ -171,7 +171,7 @@ abstract contract CurvePoolNoRebasingCalculatorBase is IDexLSTStats, BaseStatsCa
     }
 
     /// @notice Capture stat data about this setup
-    /// @dev This is protected by the STATS_SNAPSHOT_ROLE
+    /// @dev This is protected by the STATS_SNAPSHOT_EXECUTOR
     function _snapshot() internal override {
         uint256 currentVirtualPrice = getVirtualPrice();
 

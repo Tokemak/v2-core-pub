@@ -141,7 +141,7 @@ contract LMPVaultTests is
         vault.setTotalIdle(0);
         vault.setTotalSupply(0);
 
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
         vault.toggleAllowedUser(address(this));
         vault.toggleAllowedUser(makeAddr("user"));
         vault.toggleAllowedUser(makeAddr("user1"));
@@ -261,11 +261,11 @@ contract BaseConstructionTests is LMPVaultTests {
 
     function test_setFeeSink_RevertIf_CallerMissingFeeSetterRole() public {
         // This test is allowed
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_FEE_SETTER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
 
         // notAdmin is not allowed
         address notAdmin = makeAddr("notAdmin");
-        _mockAccessControllerHasRole(accessController, notAdmin, Roles.LMP_FEE_SETTER_ROLE, false);
+        _mockAccessControllerHasRole(accessController, notAdmin, Roles.LMP_VAULT_FEE_UPDATER, false);
 
         address feeSink = makeAddr("feeSink");
 
@@ -283,11 +283,11 @@ contract BaseConstructionTests is LMPVaultTests {
         vault.setTotalSupply(WETH_INIT_DEPOSIT);
 
         // This test is allowed
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_FEE_SETTER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
 
         // notAdmin is not allowed
         address notAdmin = makeAddr("notAdmin");
-        _mockAccessControllerHasRole(accessController, notAdmin, Roles.LMP_FEE_SETTER_ROLE, false);
+        _mockAccessControllerHasRole(accessController, notAdmin, Roles.LMP_VAULT_FEE_UPDATER, false);
 
         vm.startPrank(notAdmin);
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
@@ -299,11 +299,11 @@ contract BaseConstructionTests is LMPVaultTests {
 
     function test_setPeriodicFeeSink_RevertIf_CallerMissingMgmtFeeSetterRole() public {
         // This test is allowed
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
 
         // notAdmin is not allowed
         address notAdmin = makeAddr("notAdmin");
-        _mockAccessControllerHasRole(accessController, notAdmin, Roles.LMP_PERIODIC_FEE_SETTER_ROLE, false);
+        _mockAccessControllerHasRole(accessController, notAdmin, Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, false);
 
         address feeSink = makeAddr("feeSink");
 
@@ -317,11 +317,11 @@ contract BaseConstructionTests is LMPVaultTests {
 
     function test_setPeriodicFeeBps_RevertIf_CallerMissingMgmtFeeSetterRole() public {
         // This test is allowed
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
 
         // notAdmin is not allowed
         address notAdmin = makeAddr("notAdmin");
-        _mockAccessControllerHasRole(accessController, notAdmin, Roles.LMP_PERIODIC_FEE_SETTER_ROLE, false);
+        _mockAccessControllerHasRole(accessController, notAdmin, Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, false);
 
         vm.startPrank(notAdmin);
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
@@ -332,7 +332,7 @@ contract BaseConstructionTests is LMPVaultTests {
     }
 
     function test_setPeriodicFeeBps_RevertIf_FeeIsGreaterThanTenPercent() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
 
         vm.expectRevert(abi.encodeWithSelector(AutoPoolFees.InvalidFee.selector, 1001));
         vault.setPeriodicFeeBps(1001);
@@ -341,7 +341,7 @@ contract BaseConstructionTests is LMPVaultTests {
     }
 
     function test_setPeriodicFeeSink_SetsAndEmitsAddress() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
 
         address runOne = makeAddr("runOne");
         vm.expectEmit(false, false, false, true);
@@ -674,7 +674,7 @@ contract DepositTests is LMPVaultTests {
         vaultAsset.mint(address(this), 1e18);
         vaultAsset.approve(address(vault), 1e18);
 
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
         vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
 
         vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626DepositExceedsMax.selector, 1000, 0));
@@ -1553,8 +1553,8 @@ contract WithdrawTests is LMPVaultTests {
     }
 
     function test_UserReceivesNoMoreThanCachedValueIfValueIncreases() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_FEE_SETTER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
 
         address user = makeAddr("user");
         uint256 amount = 1000e9;
@@ -1628,8 +1628,8 @@ contract WithdrawTests is LMPVaultTests {
     }
 
     function test_UserReceivesLessAssetsIfPricesDrops() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_FEE_SETTER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
 
         address user = makeAddr("user");
         uint256 amount = 1000e9;
@@ -1715,8 +1715,8 @@ contract WithdrawTests is LMPVaultTests {
     }
 
     function test_StaleDestinationIsRepriced() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_FEE_SETTER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
 
         address user = makeAddr("user");
         uint256 amount = 1000e9;
@@ -1755,7 +1755,7 @@ contract WithdrawTests is LMPVaultTests {
         address user = makeAddr("user");
         _depositFor(user, 2e9);
 
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
         vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
 
         assertEq(vaultAsset.balanceOf(user), 0, "prevBal");
@@ -1782,7 +1782,7 @@ contract WithdrawTests is LMPVaultTests {
         address user = makeAddr("user");
         _depositFor(user, 2e9);
 
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
         vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
 
         assertEq(vaultAsset.balanceOf(user), 0, "prevBal");
@@ -2258,8 +2258,8 @@ contract RedeemTests is LMPVaultTests {
     }
 
     function test_UserReceivesNoMoreThanCachedValueIfValueIncreases() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_FEE_SETTER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
 
         address user = makeAddr("user");
         uint256 amount = 1000e9;
@@ -2333,8 +2333,8 @@ contract RedeemTests is LMPVaultTests {
     }
 
     function test_UserReceivesLessAssetsIfPricesDrops() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_FEE_SETTER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
 
         address user = makeAddr("user");
         uint256 amount = 1000e9;
@@ -2404,8 +2404,8 @@ contract RedeemTests is LMPVaultTests {
     }
 
     function test_StaleDestinationIsRepriced() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_FEE_SETTER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
 
         address user = makeAddr("user");
         uint256 amount = 1000e9;
@@ -2444,7 +2444,7 @@ contract RedeemTests is LMPVaultTests {
         address user = makeAddr("user");
         _depositFor(user, 2e9);
 
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
         vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
 
         assertEq(vaultAsset.balanceOf(user), 0, "prevBal");
@@ -2474,7 +2474,7 @@ contract RedeemTests is LMPVaultTests {
         address user = makeAddr("user");
         _depositFor(user, 2e9);
 
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
         vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
 
         assertEq(vaultAsset.balanceOf(user), 0, "prevBal");
@@ -2648,7 +2648,7 @@ contract ShutdownTests is LMPVaultTests {
     }
 
     function test_SetsIsShutdownToTrue() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
         assertEq(vault.isShutdown(), false, "before");
 
@@ -2658,7 +2658,7 @@ contract ShutdownTests is LMPVaultTests {
     }
 
     function test_SetsShutdownStatusToProvidedValue() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
         assertEq(uint256(vault.shutdownStatus()), uint256(ILMPVault.VaultShutdownStatus.Active), "before");
 
@@ -2668,32 +2668,32 @@ contract ShutdownTests is LMPVaultTests {
     }
 
     function test_EmitsEventDeprecated() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
         emit Shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
         vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
     }
 
     function test_EmitsEventExploit() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
         emit Shutdown(ILMPVault.VaultShutdownStatus.Exploit);
         vault.shutdown(ILMPVault.VaultShutdownStatus.Exploit);
     }
 
     function test_RevertIf_NotCalledByAdmin() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, false);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, false);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
 
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
         vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
     }
 
     function test_RevertIf_TriedToSetToActiveStatus() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
         vm.expectRevert(
             abi.encodeWithSelector(ILMPVault.InvalidShutdownStatus.selector, ILMPVault.VaultShutdownStatus.Active)
@@ -2708,7 +2708,7 @@ contract RecoverTests is LMPVaultTests {
     }
 
     function test_SendsSpecifiedTokenAmountsToDestinations() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.TOKEN_RECOVERY_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.TOKEN_RECOVERY_MANAGER, true);
 
         address receiverOne = makeAddr("receiverOne");
         address receiverTwo = makeAddr("receiverTwo");
@@ -2744,7 +2744,7 @@ contract RecoverTests is LMPVaultTests {
     }
 
     function test_EmitsEvent() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.TOKEN_RECOVERY_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.TOKEN_RECOVERY_MANAGER, true);
 
         address receiverOne = makeAddr("receiverOne");
         address receiverTwo = makeAddr("receiverTwo");
@@ -2773,7 +2773,7 @@ contract RecoverTests is LMPVaultTests {
     }
 
     function test_RevertIf_TokenLengthIsZero() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.TOKEN_RECOVERY_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.TOKEN_RECOVERY_MANAGER, true);
 
         address[] memory zeroAddr = new address[](0);
         uint256[] memory oneNum = new uint256[](1);
@@ -2784,7 +2784,7 @@ contract RecoverTests is LMPVaultTests {
     }
 
     function test_RevertIf_CallerIsNotTokenRecoveryRole() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.TOKEN_RECOVERY_ROLE, false);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.TOKEN_RECOVERY_MANAGER, false);
 
         address[] memory oneAddr = new address[](1);
         uint256[] memory oneNum = new uint256[](1);
@@ -2794,7 +2794,7 @@ contract RecoverTests is LMPVaultTests {
     }
 
     function test_RevertIf_ArrayLengthMismatch() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.TOKEN_RECOVERY_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.TOKEN_RECOVERY_MANAGER, true);
 
         address[] memory oneAddr = new address[](1);
         uint256[] memory oneNum = new uint256[](1);
@@ -2817,7 +2817,7 @@ contract RecoverTests is LMPVaultTests {
     // TODO: Remove tmp code and enable tests
 
     // function test_RevertIf_BaseAssetIsAttempted() public {
-    //     _mockAccessControllerHasRole(accessController, address(this), Roles.TOKEN_RECOVERY_ROLE, true);
+    //     _mockAccessControllerHasRole(accessController, address(this), Roles.TOKEN_RECOVERY_MANAGER, true);
 
     //     address[] memory tokens = new address[](1);
     //     uint256[] memory amounts = new uint256[](1);
@@ -2832,7 +2832,7 @@ contract RecoverTests is LMPVaultTests {
     // }
 
     // function test_RevertIf_DestinationVaultIsAttempted() public {
-    //     _mockAccessControllerHasRole(accessController, address(this), Roles.TOKEN_RECOVERY_ROLE, true);
+    //     _mockAccessControllerHasRole(accessController, address(this), Roles.TOKEN_RECOVERY_MANAGER, true);
 
     //     address[] memory tokens = new address[](1);
     //     uint256[] memory amounts = new uint256[](1);
@@ -2874,14 +2874,14 @@ contract PeriodicFees is LMPVaultTests {
     }
 
     function test_CannotSetPeriodicFee_OverMax() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
         vm.expectRevert(abi.encodeWithSignature("InvalidFee(uint256)", 1e18));
 
         vault.setPeriodicFeeBps(1e18);
     }
 
     function test_ProperlySetsFee_EmitsEvent() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
 
         vm.expectEmit(false, false, false, true);
         emit PeriodicFeeSet(500);
@@ -2891,8 +2891,8 @@ contract PeriodicFees is LMPVaultTests {
 
     function test_CollectsPeriodicFeeCorrectly() public {
         // Grant roles
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_PERIODIC_FEE_SETTER_ROLE, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
 
         //
         // First fee take set up, execution, and checks.
@@ -3020,7 +3020,7 @@ contract PeriodicFees is LMPVaultTests {
 
     function test_LastPeriodicFeeTake_StillUpdatedWhen_FeeNotTaken() public {
         // Grant roles
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
 
         // Local vars.
         uint256 warpAmount = block.timestamp + 10 days;
@@ -3100,7 +3100,7 @@ contract SetSymbolAndDescTests is LMPVaultTests {
     }
 
     function test_EmitsEvent() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
         vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
 
         vm.expectEmit(true, true, true, true);
@@ -3109,7 +3109,7 @@ contract SetSymbolAndDescTests is LMPVaultTests {
     }
 
     function test_SetsNewSymbolAndName() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
         vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
 
         string memory newSymbol = "A";
@@ -3127,19 +3127,19 @@ contract SetSymbolAndDescTests is LMPVaultTests {
     }
 
     function test_RevertIf_NotCalledByAdmin() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, false);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, false);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         vault.setSymbolAndDescAfterShutdown("A", "B");
 
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
         vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
         vault.setSymbolAndDescAfterShutdown("A", "B");
     }
 
     function test_RevertIf_VaultIsNotShutdown() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
         vm.expectRevert(
             abi.encodeWithSelector(ILMPVault.InvalidShutdownStatus.selector, ILMPVault.VaultShutdownStatus.Active)
@@ -3152,7 +3152,7 @@ contract SetSymbolAndDescTests is LMPVaultTests {
     }
 
     function test_RevertIf_NewSymbolIsBlank() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
         vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "newSymbol"));
         vault.setSymbolAndDescAfterShutdown("", "B");
@@ -3160,7 +3160,7 @@ contract SetSymbolAndDescTests is LMPVaultTests {
     }
 
     function test_RevertIf_NewNameIsBlank() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
         vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "newName"));
         vault.setSymbolAndDescAfterShutdown("A", "");
@@ -3988,7 +3988,7 @@ contract FlashRebalanceTests is LMPVaultTests {
 
     function test_IdleAssetsCanRebalanceOut() public {
         address user = makeAddr("user");
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
         _mockSucessfulRebalance();
 
         _depositFor(user, 100e9);
@@ -4015,7 +4015,7 @@ contract FlashRebalanceTests is LMPVaultTests {
 
     function test_CanRebalanceToIdle() public {
         address user = makeAddr("user");
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
         _mockSucessfulRebalance();
 
         _depositFor(user, 100e9);
@@ -4056,7 +4056,7 @@ contract FlashRebalanceTests is LMPVaultTests {
 
     function test_DebtValuesAreUpdated() public {
         address user = makeAddr("user");
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
         _mockSucessfulRebalance();
 
         _depositFor(user, 100e9);
@@ -4090,7 +4090,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         // TODO: Move to an integration test
 
         // address user = makeAddr("user");
-        // _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
+        // _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
         // _mockSucessfulRebalance();
 
         // _depositFor(user, 100e9);
@@ -4121,8 +4121,8 @@ contract FlashRebalanceTests is LMPVaultTests {
 
     function test_NavPerShareIncreaseNotRealizedImmediately() public {
         address user = makeAddr("user");
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
         _mockSucessfulRebalance();
 
         _depositFor(user, 100e9);
@@ -4161,8 +4161,8 @@ contract FlashRebalanceTests is LMPVaultTests {
 
     function test_NavPerShareIncreasesWhenUnlockNotConfigured() public {
         address user = makeAddr("user");
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
         _mockSucessfulRebalance();
 
         _depositFor(user, 100e9);
@@ -4196,7 +4196,7 @@ contract FlashRebalanceTests is LMPVaultTests {
 
     function test_NotifiesStrategyOfSuccess() public {
         address user = makeAddr("user");
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
         _mockSucessfulRebalance();
 
         _depositFor(user, 100e9);
@@ -4225,7 +4225,7 @@ contract FlashRebalanceTests is LMPVaultTests {
 
     function test_VaultIsNotAddedToQueues() public {
         address user = makeAddr("user");
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
         _mockSucessfulRebalance();
 
         _depositFor(user, 100e9);
@@ -4273,8 +4273,8 @@ contract FlashRebalanceTests is LMPVaultTests {
 
     function test_DestinationRemovedFromQueuesWhenBalanceEmpty() public {
         address user = makeAddr("user");
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.DESTINATION_VAULTS_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_DESTINATION_UPDATER, true);
         _mockSucessfulRebalance();
 
         _depositFor(user, 100e9);
@@ -4341,7 +4341,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         DestinationVaultFake[] memory dvs = _setupNDestinations(10);
 
         address user = makeAddr("user");
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
         _mockSucessfulRebalance();
 
         _depositFor(user, 100e9);
@@ -4379,7 +4379,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         DestinationVaultFake[] memory dvs = _setupNDestinations(10);
 
         address user = makeAddr("user");
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
         _mockSucessfulRebalance();
 
         _depositFor(user, 100e9);
@@ -4428,7 +4428,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         DestinationVaultFake[] memory dvs = _setupNDestinations(10);
 
         address user = makeAddr("user");
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
         _mockSucessfulRebalance();
 
         _depositFor(user, 100e9);
@@ -4477,7 +4477,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         DestinationVaultFake[] memory dvs = _setupNDestinations(49);
 
         address user = makeAddr("user");
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
         _mockSucessfulRebalance();
 
         _depositFor(user, 100e9);
@@ -4524,7 +4524,7 @@ contract FlashRebalanceTests is LMPVaultTests {
 
     function test_RevertIf_RebalanceToTheSameDestination() public {
         address user = makeAddr("user");
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
         _mockSucessfulRebalance();
 
         _depositFor(user, 100e9);
@@ -4618,7 +4618,7 @@ contract UpdateDebtReportingTests is LMPVaultTests {
     }
 
     function test_NoUnderflowOnDebtDecreaseScenario() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
 
         address user = makeAddr("user");
 
@@ -4651,7 +4651,7 @@ contract UpdateDebtReportingTests is LMPVaultTests {
     }
 
     function test_EarnedAutoCompoundsAreFactoredIntoIdle() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
 
         address user = makeAddr("user");
 
@@ -4696,7 +4696,7 @@ contract UpdateDebtReportingTests is LMPVaultTests {
     }
 
     function test_BurnedSharesViaWithdrawReduceTotals() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_UPDATE_DEBT_REPORTING_ROLE, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
 
         address user = makeAddr("user");
 
@@ -4981,8 +4981,8 @@ contract PreviewTests is FlashRebalanceTests {
         address user = makeAddr("user");
         uint256 depositAmount = 100e9;
 
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER_ROLE, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_ADMIN, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
         _mockSucessfulRebalance();
 
         _depositFor(user, depositAmount);

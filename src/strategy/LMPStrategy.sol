@@ -339,21 +339,21 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
     }
 
     /// @notice Sets the LST price gap tolerance to the provided value
-    function setLstPriceGapTolerance(uint256 priceGapTolerance) external hasRole(Roles.AUTO_POOL_ADMIN) {
+    function setLstPriceGapTolerance(uint256 priceGapTolerance) external hasRole(Roles.AUTO_POOL_MANAGER) {
         lstPriceGapTolerance = priceGapTolerance;
 
         emit LstPriceGapSet(priceGapTolerance);
     }
 
     /// @notice Sets the dust position portions to the provided value
-    function setDustPositionPortions(uint256 newValue) external hasRole(Roles.AUTO_POOL_ADMIN) {
+    function setDustPositionPortions(uint256 newValue) external hasRole(Roles.AUTO_POOL_MANAGER) {
         dustPositionPortions = newValue;
 
         emit DustPositionPortionSet(newValue);
     }
 
     /// @notice Sets the Idle low/high threshold
-    function setIdleThresholds(uint256 newLowValue, uint256 newHighValue) external hasRole(Roles.AUTO_POOL_ADMIN) {
+    function setIdleThresholds(uint256 newLowValue, uint256 newHighValue) external hasRole(Roles.AUTO_POOL_MANAGER) {
         idleLowThreshold = newLowValue;
         idleHighThreshold = newHighValue;
 

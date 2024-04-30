@@ -13,6 +13,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { IPoolInformation } from "src/interfaces/external/maverick/IPoolInformation.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 //slither-disable-start similar-names
 contract MavEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
@@ -40,8 +41,8 @@ contract MavEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
         return "mav";
     }
 
-    /// @notice Gives ability to set PoolInformation contract to system owner
-    function setPoolInformation(address _poolInformation) external onlyOwner {
+    /// @notice Gives ability to set PoolInformation
+    function setPoolInformation(address _poolInformation) external hasRole(Roles.ORACLE_MANAGER) {
         Errors.verifyNotZero(_poolInformation, "_poolInformation");
         poolInformation = IPoolInformation(_poolInformation);
 

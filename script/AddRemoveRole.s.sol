@@ -23,7 +23,7 @@ import { IAccessController } from "src/interfaces/security/IAccessController.sol
 contract AddRemoveRole is BaseScript {
     ///@dev Manually set variables below.
     bool public constant ADD_ROLE = true; // True to add role, false to remove.
-    bytes32[] public rolesToGrantOrRemove = [Roles.ORACLE_MANAGER_ROLE];
+    bytes32[] public rolesToGrantOrRemove = [Roles.ORACLE_MANAGER];
     address public roleAddress = address(0);
 
     function run() external {

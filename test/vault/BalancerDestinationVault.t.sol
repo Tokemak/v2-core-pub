@@ -96,6 +96,9 @@ contract BalancerDestinationVaultTests is Test {
         vm.label(address(swapRouter), "swapRouter");
         vm.label(address(balSwapper), "balSwapper");
 
+        _accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
+        _accessController.grantRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, address(this));
+
         // Setup the Destination system
 
         _destinationVaultRegistry = new DestinationVaultRegistry(_systemRegistry);
@@ -116,8 +119,6 @@ contract BalancerDestinationVaultTests is Test {
         address[] memory dvAddresses = new address[](1);
         dvAddresses[0] = address(dvTemplate);
         _destinationTemplateRegistry.register(dvTypes, dvAddresses);
-
-        _accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
 
         BalancerDestinationVault.InitParams memory initParams =
             BalancerDestinationVault.InitParams({ balancerPool: WSETH_WETH_BAL_POOL });
@@ -218,7 +219,7 @@ contract BalancerDestinationVaultTests is Test {
         // solhint-disable-next-line not-rely-on-time
         vm.warp(block.timestamp + 7 days);
 
-        _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
+        _accessController.grantRole(Roles.LIQUIDATOR_MANAGER, address(this));
 
         (uint256[] memory amounts, address[] memory tokens) = _destVault.collectRewards();
 
@@ -345,8 +346,8 @@ contract BalancerDestinationVaultTests is Test {
     function test_recoverUnderlying_RunsProperly_RecoverInternal() external {
         address recoveryAddress = vm.addr(1);
 
-        // Give contract TOKEN_RECOVERY_ROLE.
-        _accessController.setupRole(Roles.TOKEN_RECOVERY_ROLE, address(this));
+        // Give contract TOKEN_RECOVERY_MANAGER.
+        _accessController.setupRole(Roles.TOKEN_RECOVERY_MANAGER, address(this));
 
         // Transfer tokens to this contract.
         vm.prank(LP_TOKEN_WHALE);
@@ -367,8 +368,8 @@ contract BalancerDestinationVaultTests is Test {
     function test_recoverUnderlying_RunsProperly_ExternalDebt() external {
         address recoveryAddress = vm.addr(1);
 
-        // Give contract TOKEN_RECOVERY_ROLE.
-        _accessController.setupRole(Roles.TOKEN_RECOVERY_ROLE, address(this));
+        // Give contract TOKEN_RECOVERY_MANAGER.
+        _accessController.setupRole(Roles.TOKEN_RECOVERY_MANAGER, address(this));
 
         // Transfer tokens to this contract.
         vm.prank(LP_TOKEN_WHALE);

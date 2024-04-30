@@ -20,8 +20,8 @@ contract DestinationVaultFactory is SystemComponent, IDestinationVaultFactory, S
     uint256 public defaultRewardBlockDuration;
 
     modifier onlyVaultCreator() {
-        if (!_hasRole(Roles.CREATE_DESTINATION_VAULT_ROLE, msg.sender)) {
-            revert Errors.MissingRole(Roles.CREATE_DESTINATION_VAULT_ROLE, msg.sender);
+        if (!_hasRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, msg.sender)) {
+            revert Errors.MissingRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, msg.sender);
         }
         _;
     }
@@ -47,11 +47,14 @@ contract DestinationVaultFactory is SystemComponent, IDestinationVaultFactory, S
         _setDefaultRewardBlockDuration(_defaultRewardBlockDuration);
     }
 
-    function setDefaultRewardRatio(uint256 rewardRatio) public onlyOwner {
+    function setDefaultRewardRatio(uint256 rewardRatio) public hasRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER) {
         _setDefaultRewardRatio(rewardRatio);
     }
 
-    function setDefaultRewardBlockDuration(uint256 blockDuration) public onlyOwner {
+    function setDefaultRewardBlockDuration(uint256 blockDuration)
+        public
+        hasRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER)
+    {
         _setDefaultRewardBlockDuration(blockDuration);
     }
 

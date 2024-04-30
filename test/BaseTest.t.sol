@@ -123,7 +123,7 @@ contract BaseTest is Test {
 
         lmpVaultFactory = new LMPVaultFactory(systemRegistry, lmpVaultTemplate, 800, 100);
         // NOTE: deployer grants factory permission to update the registry
-        accessController.grantRole(Roles.REGISTRY_UPDATER, address(lmpVaultFactory));
+        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(lmpVaultFactory));
         systemRegistry.setLMPVaultFactory(VaultTypes.LST, address(lmpVaultFactory));
 
         // NOTE: these pieces were taken out so that each set of tests can init only the components it needs!
@@ -137,7 +137,7 @@ contract BaseTest is Test {
         // lmpVaultFactory = new LMPVaultFactory(systemRegistry);
         // systemRegistry.setLMPVaultFactory(VaultTypes.LST, address(lmpVaultFactory));
         // // NOTE: deployer grants factory permission to update the registry
-        // accessController.grantRole(Roles.REGISTRY_UPDATER, address(lmpVaultFactory));
+        // accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(lmpVaultFactory));
     }
 
     function fork() internal {
@@ -223,7 +223,7 @@ contract BaseTest is Test {
         lmpVaultFactory = new LMPVaultFactory(systemRegistry, lmpVaultTemplate, 800, 100);
         systemRegistry.setLMPVaultFactory(VaultTypes.LST, address(lmpVaultFactory));
         // NOTE: deployer grants factory permission to update the registry
-        accessController.grantRole(Roles.REGISTRY_UPDATER, address(lmpVaultFactory));
+        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(lmpVaultFactory));
 
         vm.label(address(lmpVaultFactory), "LMP Vault Factory");
     }

@@ -6,6 +6,7 @@ pragma solidity 0.8.17;
 import { BaseOracleDenominations, ISystemRegistry } from "src/oracles/providers/base/BaseOracleDenominations.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
     /**
@@ -58,7 +59,7 @@ abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
         IAggregatorV3Interface oracle,
         Denomination denomination,
         uint32 pricingTimeout
-    ) public onlyOwner {
+    ) public hasRole(Roles.ORACLE_MANAGER) {
         Errors.verifyNotZero(token, "tokenToAddOracle");
         Errors.verifyNotZero(address(oracle), "oracle");
         if (address(tokenToOracle[token].oracle) != address(0)) revert Errors.AlreadyRegistered(token);
@@ -79,7 +80,11 @@ abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
      * @param token Address of token to remove registration for.
      * @return oracleBeforeDeletion Address of oracle for 'token' before deletion.
      */
-    function removeOracleRegistration(address token) public onlyOwner returns (address oracleBeforeDeletion) {
+    function removeOracleRegistration(address token)
+        public
+        hasRole(Roles.ORACLE_MANAGER)
+        returns (address oracleBeforeDeletion)
+    {
         Errors.verifyNotZero(token, "tokenToRemoveOracle");
         oracleBeforeDeletion = address(tokenToOracle[token].oracle);
         if (oracleBeforeDeletion == address(0)) revert Errors.MustBeSet();

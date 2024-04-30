@@ -56,6 +56,12 @@ contract StatsSystemIntegrationTestBase is Test {
         vm.makePersistent(address(_accessController));
         _systemRegistry.setAccessController(address(_accessController));
 
+        _accessController.grantRole(Roles.STATS_CALC_FACTORY_TEMPLATE_MANAGER, address(this));
+        _accessController.grantRole(Roles.STATS_CALC_FACTORY_MANAGER, address(this));
+        _accessController.grantRole(Roles.STATS_SNAPSHOT_EXECUTOR, address(this));
+        _accessController.grantRole(Roles.STATS_INCENTIVE_TOKEN_UPDATER, address(this));
+        _accessController.grantRole(Roles.ORACLE_MANAGER, address(this));
+
         _systemSecurity = new SystemSecurity(_systemRegistry);
         vm.makePersistent(address(_systemSecurity));
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
@@ -91,11 +97,6 @@ contract StatsSystemIntegrationTestBase is Test {
         _rootPriceOracle.registerMapping(WETH_MAINNET, _ethPeggedOracle);
         _rootPriceOracle.registerMapping(CURVE_ETH, _ethPeggedOracle);
         _rootPriceOracle.registerMapping(WSTETH_MAINNET, _wstEthOracle);
-
-        _accessController.grantRole(Roles.STATS_CALC_TEMPLATE_MGMT_ROLE, address(this));
-        _accessController.grantRole(Roles.CREATE_STATS_CALC_ROLE, address(this));
-        _accessController.grantRole(Roles.STATS_SNAPSHOT_ROLE, address(this));
-        _accessController.grantRole(Roles.STATS_INCENTIVE_TOKEN_UPDATER, address(this));
 
         _incentivePricing = new IncentivePricingStats(_systemRegistry);
         _systemRegistry.setIncentivePricingStats(address(_incentivePricing));

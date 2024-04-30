@@ -27,7 +27,7 @@ contract DestinationVaultMainRewarder is MainRewarder {
             _rewardToken,
             _newRewardRatio,
             _durationInBlock,
-            Roles.DV_REWARD_MANAGER_ROLE,
+            Roles.DV_REWARD_MANAGER,
             _allowExtraReward
         )
     {

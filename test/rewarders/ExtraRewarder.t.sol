@@ -81,12 +81,12 @@ contract RoleBasedAccessControlTests is ExtraRewarderTest {
         );
         vm.mockCall(fakeAccToke, abi.encodeWithSignature("minStakeDuration()"), abi.encode(0));
 
-        // `address(this)` does not have `EXTRA_REWARD_MANAGER_ROLE`.
+        // `address(this)` does not have `EXTRA_REWARD_MANAGER`.
         vm.expectRevert(Errors.AccessDenied.selector);
         rewarder.setTokeLockDuration(5);
 
-        // Grant `EXTRA_REWARD_MANAGER_ROLE` to `address(this)`.
-        accessController.setupRole(Roles.EXTRA_REWARD_MANAGER_ROLE, address(this));
+        // Grant `EXTRA_REWARD_MANAGER` to `address(this)`.
+        accessController.setupRole(Roles.EXTRA_REWARD_MANAGER, address(this));
         rewarder.setTokeLockDuration(5);
         assertEq(rewarder.tokeLockDuration(), 5);
     }
@@ -99,7 +99,7 @@ contract RoleBasedAccessControlTests is ExtraRewarderTest {
         rewarder.addToWhitelist(fakeWhitelisted);
 
         // Grant role, try again.
-        accessController.setupRole(Roles.EXTRA_REWARD_MANAGER_ROLE, address(this));
+        accessController.setupRole(Roles.EXTRA_REWARD_MANAGER, address(this));
         rewarder.addToWhitelist(fakeWhitelisted);
         assertEq(rewarder.whitelistedAddresses(fakeWhitelisted), true);
     }
@@ -109,7 +109,7 @@ contract RoleBasedAccessControlTests is ExtraRewarderTest {
         address extraRewardRoleAddress = vm.addr(1);
 
         // Set up role for `vm.addr(1)`, add address to whitelist.
-        accessController.setupRole(Roles.EXTRA_REWARD_MANAGER_ROLE, extraRewardRoleAddress);
+        accessController.setupRole(Roles.EXTRA_REWARD_MANAGER, extraRewardRoleAddress);
         vm.startPrank(extraRewardRoleAddress);
         rewarder.addToWhitelist(fakeWhitelisted);
         vm.stopPrank();
@@ -119,7 +119,7 @@ contract RoleBasedAccessControlTests is ExtraRewarderTest {
         rewarder.removeFromWhitelist(fakeWhitelisted);
 
         // Grant role, try again.
-        accessController.setupRole(Roles.EXTRA_REWARD_MANAGER_ROLE, address(this));
+        accessController.setupRole(Roles.EXTRA_REWARD_MANAGER, address(this));
         rewarder.removeFromWhitelist(fakeWhitelisted);
         assertEq(rewarder.whitelistedAddresses(fakeWhitelisted), false);
     }

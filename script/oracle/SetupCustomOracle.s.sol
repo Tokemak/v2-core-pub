@@ -31,7 +31,7 @@ contract SetupCustomOracle is BaseScript {
         vm.startBroadcast(vm.envUint(constants.privateKeyEnvVar));
         address owner = vm.addr(vm.envUint(constants.privateKeyEnvVar));
 
-        accessController.grantRole(Roles.ORACLE_MANAGER_ROLE, owner);
+        accessController.grantRole(Roles.ORACLE_MANAGER, owner);
         accessController.grantRole(Roles.CUSTOM_ORACLE_EXECUTOR, owner);
 
         CustomSetOracle oracle = new CustomSetOracle(systemRegistry, 1 days);

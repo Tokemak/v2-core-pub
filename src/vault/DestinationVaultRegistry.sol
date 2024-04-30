@@ -8,6 +8,7 @@ import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSe
 import { IDestinationVaultFactory } from "src/interfaces/vault/IDestinationVaultFactory.sol";
 import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 contract DestinationVaultRegistry is SystemComponent, IDestinationVaultRegistry, SecurityBase {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -63,7 +64,7 @@ contract DestinationVaultRegistry is SystemComponent, IDestinationVaultRegistry,
     /// @notice Changes the factory that is allowed to register new vaults
     /// @dev Systems must match
     /// @param newAddress Address of the new factory
-    function setVaultFactory(address newAddress) external onlyOwner {
+    function setVaultFactory(address newAddress) external hasRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER) {
         Errors.verifyNotZero(newAddress, "newAddress");
 
         factory = IDestinationVaultFactory(newAddress);

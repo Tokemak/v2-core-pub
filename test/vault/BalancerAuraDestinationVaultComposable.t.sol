@@ -79,6 +79,9 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
         _accessController = new AccessController(address(_systemRegistry));
         _systemRegistry.setAccessController(address(_accessController));
 
+        _accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
+        _accessController.grantRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, address(this));
+
         _asset = IWETH9(WETH_MAINNET);
 
         _systemRegistry.addRewardToken(WETH_MAINNET);
@@ -144,8 +147,6 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
         address[] memory dvAddresses = new address[](1);
         dvAddresses[0] = address(dvTemplate);
         _destinationTemplateRegistry.register(dvTypes, dvAddresses);
-
-        _accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
 
         BalancerAuraDestinationVault.InitParams memory initParams = BalancerAuraDestinationVault.InitParams({
             balancerPool: WSETH_RETH_SFRXETH_BAL_POOL,

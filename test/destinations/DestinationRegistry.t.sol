@@ -10,6 +10,7 @@ import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 import { IDestinationAdapter } from "src/interfaces/destinations/IDestinationAdapter.sol";
 import { IDestinationRegistry } from "src/interfaces/destinations/IDestinationRegistry.sol";
 import { PRANK_ADDRESS, RANDOM, TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 contract DestinationRegistryTest is Test {
     DestinationRegistry public registry;
@@ -28,6 +29,8 @@ contract DestinationRegistryTest is Test {
         AccessController accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
         registry = new DestinationRegistry(systemRegistry);
+
+        accessController.grantRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, address(this));
     }
 
     // Register

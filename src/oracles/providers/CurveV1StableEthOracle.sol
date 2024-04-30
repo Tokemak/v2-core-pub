@@ -15,6 +15,7 @@ import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
 import { ICurveV1StableSwap } from "src/interfaces/external/curve/ICurveV1StableSwap.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 /// @title Price oracle for Curve StableSwap pools
 /// @dev getPriceEth is not a view fn to support reentrancy checks. Don't actually change state.
@@ -64,7 +65,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
     /// @dev Pool containing Eth, Weth, ERC-677, ERC-777 tokens should all be registered for reentrancy checks.
     /// @param curvePool address of the Curve pool related to the LP token
     /// @param curveLpToken address of the LP token we'll be looking up prices for
-    function registerPool(address curvePool, address curveLpToken) external onlyOwner {
+    function registerPool(address curvePool, address curveLpToken) external hasRole(Roles.ORACLE_MANAGER) {
         Errors.verifyNotZero(curvePool, "curvePool");
         Errors.verifyNotZero(curveLpToken, "curveLpToken");
 
@@ -107,7 +108,7 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
     /// @dev Must already exist. More lenient than register with expectation checks, it's already in,
     /// assume you know what you're doing
     /// @param curveLpToken token to unregister
-    function unregister(address curveLpToken) external onlyOwner {
+    function unregister(address curveLpToken) external hasRole(Roles.ORACLE_MANAGER) {
         Errors.verifyNotZero(curveLpToken, "curveLpToken");
 
         // You're calling unregister so you're expecting it to be here

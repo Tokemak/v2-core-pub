@@ -31,7 +31,7 @@ contract LMPVaultRegistry is SystemComponent, ILMPVaultRegistry, SecurityBase {
     { }
 
     modifier onlyUpdater() {
-        if (!_hasRole(Roles.REGISTRY_UPDATER, msg.sender)) revert Errors.AccessDenied();
+        if (!_hasRole(Roles.LMP_VAULT_REGISTRY_UPDATER, msg.sender)) revert Errors.AccessDenied();
         _;
     }
 

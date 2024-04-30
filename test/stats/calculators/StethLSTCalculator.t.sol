@@ -29,7 +29,7 @@ contract StethLSTCalculatorTest is Test {
         SystemRegistry systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
         AccessController accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
-        accessController.grantRole(Roles.STATS_SNAPSHOT_ROLE, address(this));
+        accessController.grantRole(Roles.STATS_SNAPSHOT_EXECUTOR, address(this));
 
         // required for initialization, but not part of test surface area
         RootPriceOracle rootPriceOracle = new RootPriceOracle(systemRegistry);

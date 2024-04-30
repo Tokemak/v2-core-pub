@@ -53,8 +53,8 @@ contract MainRewarderTest is BaseTest {
         extraReward2 = new ERC20Mock("EXTRA_REWARD_2", "EXTRA_REWARD_2", address(this), 0);
 
         // grant new roles
-        accessController.grantRole(Roles.DV_REWARD_MANAGER_ROLE, operator);
-        accessController.grantRole(Roles.LIQUIDATOR_ROLE, liquidator);
+        accessController.grantRole(Roles.DV_REWARD_MANAGER, operator);
+        accessController.grantRole(Roles.LIQUIDATOR_MANAGER, liquidator);
 
         deployAccToke();
 

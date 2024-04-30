@@ -18,15 +18,15 @@ contract StatsCalculatorFactory is SystemComponent, IStatsCalculatorFactory, Sec
     mapping(bytes32 => address) public templates;
 
     modifier onlyCreator() {
-        if (!_hasRole(Roles.CREATE_STATS_CALC_ROLE, msg.sender)) {
-            revert Errors.MissingRole(Roles.CREATE_STATS_CALC_ROLE, msg.sender);
+        if (!_hasRole(Roles.STATS_CALC_FACTORY_MANAGER, msg.sender)) {
+            revert Errors.MissingRole(Roles.STATS_CALC_FACTORY_MANAGER, msg.sender);
         }
         _;
     }
 
     modifier onlyTemplateManager() {
-        if (!_hasRole(Roles.STATS_CALC_TEMPLATE_MGMT_ROLE, msg.sender)) {
-            revert Errors.MissingRole(Roles.STATS_CALC_TEMPLATE_MGMT_ROLE, msg.sender);
+        if (!_hasRole(Roles.STATS_CALC_FACTORY_TEMPLATE_MANAGER, msg.sender)) {
+            revert Errors.MissingRole(Roles.STATS_CALC_FACTORY_TEMPLATE_MANAGER, msg.sender);
         }
         _;
     }

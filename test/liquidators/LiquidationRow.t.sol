@@ -141,6 +141,13 @@ contract LiquidationRowTest is Test {
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
 
+        // Grant roles
+        accessController.grantRole(Roles.REWARD_LIQUIDATION_MANAGER, address(this));
+        accessController.grantRole(Roles.REWARD_LIQUIDATION_EXECUTOR, address(this));
+        accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
+        accessController.grantRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, address(this));
+        accessController.grantRole(Roles.ORACLE_MANAGER, address(this));
+
         // Set up Destination Template Registry
         bytes32 dvType = keccak256(abi.encode("test"));
         bytes32[] memory dvTypes = new bytes32[](1);
@@ -170,11 +177,7 @@ contract LiquidationRowTest is Test {
         // Set up LiquidationRow
         liquidationRow = new LiquidationRowWrapper(systemRegistry);
 
-        // grant this contract and liquidatorRow contract the LIQUIDATOR_ROLE so they can call the
-        accessController.grantRole(Roles.REWARD_LIQUIDATION_MANAGER, address(this));
-        accessController.grantRole(Roles.REWARD_LIQUIDATION_EXECUTOR, address(this));
-        accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
-        accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(liquidationRow));
+        accessController.grantRole(Roles.LIQUIDATOR_MANAGER, address(liquidationRow));
 
         // Set up test vault
         baseAsset = address(new TestERC20("baseAsset", "baseAsset"));

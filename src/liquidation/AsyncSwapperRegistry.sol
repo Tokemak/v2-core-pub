@@ -21,7 +21,7 @@ contract AsyncSwapperRegistry is SystemComponent, IAsyncSwapperRegistry, Securit
         SecurityBase(address(_systemRegistry.accessController()))
     { }
 
-    function register(address swapperAddress) external override hasRole(Roles.REGISTRY_UPDATER) {
+    function register(address swapperAddress) external override hasRole(Roles.LMP_VAULT_REGISTRY_UPDATER) {
         Errors.verifyNotZero(swapperAddress, "swapperAddress");
 
         if (!_swappers.add(swapperAddress)) revert Errors.ItemExists();
@@ -29,7 +29,7 @@ contract AsyncSwapperRegistry is SystemComponent, IAsyncSwapperRegistry, Securit
         emit SwapperAdded(swapperAddress);
     }
 
-    function unregister(address swapperAddress) external override hasRole(Roles.REGISTRY_UPDATER) {
+    function unregister(address swapperAddress) external override hasRole(Roles.LMP_VAULT_REGISTRY_UPDATER) {
         Errors.verifyNotZero(swapperAddress, "swapperAddress");
 
         if (!_swappers.remove(swapperAddress)) revert Errors.ItemNotFound();

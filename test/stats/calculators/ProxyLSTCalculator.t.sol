@@ -29,7 +29,7 @@ contract ProxyLSTCalculatorTest is Test {
         _systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
         _accessController = new AccessController(address(_systemRegistry));
         _systemRegistry.setAccessController(address(_accessController));
-        _accessController.grantRole(Roles.STATS_SNAPSHOT_ROLE, address(this));
+        _accessController.grantRole(Roles.STATS_SNAPSHOT_EXECUTOR, address(this));
 
         _calculator = new LSTCalculatorHarness(_systemRegistry);
         _proxyCalculator = new ProxyLSTCalculator(_systemRegistry);

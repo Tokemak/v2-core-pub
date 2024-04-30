@@ -93,8 +93,10 @@ contract MaverickDestinationVaultTests is Test {
         vm.label(address(swapRouter), "swapRouter");
         vm.label(address(balSwapper), "balSwapper");
 
-        // Setup the Destination system
+        _accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
+        _accessController.grantRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, address(this));
 
+        // Setup the Destination system
         _destinationVaultRegistry = new DestinationVaultRegistry(_systemRegistry);
         _destinationTemplateRegistry = new DestinationRegistry(_systemRegistry);
         _systemRegistry.setDestinationTemplateRegistry(address(_destinationTemplateRegistry));
@@ -117,8 +119,6 @@ contract MaverickDestinationVaultTests is Test {
         address[] memory dvAddresses = new address[](1);
         dvAddresses[0] = address(dvTemplate);
         _destinationTemplateRegistry.register(dvTypes, dvAddresses);
-
-        _accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
 
         MaverickDestinationVault.InitParams memory initParams = MaverickDestinationVault.InitParams({
             maverickRouter: MAV_ROUTER,
@@ -222,7 +222,7 @@ contract MaverickDestinationVaultTests is Test {
         // solhint-disable-next-line not-rely-on-time
         vm.warp(block.timestamp + 7 days);
 
-        _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
+        _accessController.grantRole(Roles.LIQUIDATOR_MANAGER, address(this));
 
         IERC20 ldo = IERC20(LDO_MAINNET);
 

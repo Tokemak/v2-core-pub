@@ -18,7 +18,7 @@ import { LMPVaultRouter, ILMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
  *      2. Deploys a `LMPVault` template.
  *      3. Deploys the `LMPVaultFactory`(using previous vault template and the 'lst-guarded-r1' type).
  *      4. Deploys the `LMPVaultRouter`.
- *      5. Grants the `LMPVaultFactory` the `REGISTRY_UPDATER` role.
+ *      5. Grants the `LMPVaultFactory` the `LMP_VAULT_REGISTRY_UPDATER` role.
  *  This script can be rerun to replace the currently deployed lst-guarded-r1 LMP vault factory in the system.
  */
 contract LMPSystem is BaseScript {
@@ -52,7 +52,7 @@ contract LMPSystem is BaseScript {
         systemRegistry.setLMPVaultFactory(lmpVaultType, address(lmpFactory));
         console.log("LMP Vault Factory: %s", address(lmpFactory));
 
-        accessController.setupRole(Roles.REGISTRY_UPDATER, address(lmpFactory));
+        accessController.setupRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(lmpFactory));
 
         // LMP router setup.
         ILMPVaultRouter lmpRouter = systemRegistry.lmpVaultRouter();

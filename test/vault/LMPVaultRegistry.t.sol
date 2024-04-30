@@ -26,7 +26,7 @@ contract LMPVaultRegistryTest is BaseTest {
         super._setUp(false);
 
         lmpVaultRegistry = new LMPVaultRegistry(systemRegistry);
-        accessController.grantRole(Roles.REGISTRY_UPDATER, address(this));
+        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(this));
 
         bytes memory initData = abi.encode("");
 
@@ -124,7 +124,7 @@ contract AddVault is LMPVaultRegistryTest {
     }
 
     function test_RevertIf_AddingVaultWithNoPermission() public {
-        accessController.revokeRole(Roles.REGISTRY_UPDATER, address(this));
+        accessController.revokeRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(this));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         lmpVaultRegistry.addVault(address(vault));
@@ -163,7 +163,7 @@ contract RemoveVault is LMPVaultRegistryTest {
     function test_RevertIf_RemovingVaultWithNoPermission() public {
         lmpVaultRegistry.addVault(address(vault));
 
-        accessController.revokeRole(Roles.REGISTRY_UPDATER, address(this));
+        accessController.revokeRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(this));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         lmpVaultRegistry.removeVault(address(vault));

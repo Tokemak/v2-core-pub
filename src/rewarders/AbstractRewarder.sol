@@ -107,7 +107,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
 
     /// @notice Restricts access to whitelisted addresses or holders of the liquidator role.
     modifier onlyWhitelisted() {
-        if (!whitelistedAddresses[msg.sender] && !_hasRole(Roles.LIQUIDATOR_ROLE, msg.sender)) {
+        if (!whitelistedAddresses[msg.sender] && !_hasRole(Roles.LIQUIDATOR_MANAGER, msg.sender)) {
             revert Errors.AccessDenied();
         }
         _;

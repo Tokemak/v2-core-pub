@@ -23,7 +23,9 @@ import { SystemRegistry, ISystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
+import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 // solhint-disable func-name-mixedcase
 
@@ -48,6 +50,8 @@ contract MavEthOracleTest is Test {
         rootOracle = new RootPriceOracle(registry);
         registry.setRootPriceOracle(address(rootOracle));
         mavOracle = new MavEthOracle(registry, MAV_POOL_INFORMATION);
+
+        accessControl.grantRole(Roles.ORACLE_MANAGER, address(this));
     }
 
     // Constructor tests
@@ -96,6 +100,12 @@ contract MavEthOracleTest is Test {
         mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
 
         assertEq(address(mavOracle.poolInformation()), MAV_POOL_INFORMATION);
+    }
+
+    function test_SetPoolInformation_RevertIf_UnAuthorized() external {
+        vm.prank(makeAddr("fake"));
+        vm.expectRevert(abi.encodeWithSelector(IAccessController.AccessDenied.selector));
+        mavOracle.setPoolInformation(MAV_POOL_INFORMATION);
     }
 
     // Test getSpotPrice error case

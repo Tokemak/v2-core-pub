@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 // solhint-disable func-name-mixedcase,max-states-count,no-console,state-visibility,max-line-length
 
-import { Test } from "forge-std/Test.sol";
+import { Test, console } from "forge-std/Test.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
@@ -100,6 +100,11 @@ contract LMPStrategyInt is Test {
         vm.deal(V2_DEPLOYER, 1000e18);
         vm.startPrank(V2_DEPLOYER);
 
+        _accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, V2_DEPLOYER);
+        _accessController.grantRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, V2_DEPLOYER);
+        _accessController.grantRole(Roles.DESTINATION_VAULT_MANAGER, V2_DEPLOYER);
+        _accessController.grantRole(Roles.ORACLE_MANAGER, V2_DEPLOYER);
+
         _systemRegistry.addRewardToken(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2); // WETH
 
         _destRegistry = new DestinationRegistry(_systemRegistry);
@@ -110,8 +115,6 @@ contract LMPStrategyInt is Test {
 
         _destVaultFactory = new DestinationVaultFactory(_systemRegistry, defaultRewardRatio, defaultRewardBlockDuration);
         _destVaultRegistry.setVaultFactory(address(_destVaultFactory));
-
-        _accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, V2_DEPLOYER);
 
         // Setup Curve Convex Templates
         bytes32 dvType = keccak256(abi.encode("curve-convex"));
@@ -145,10 +148,10 @@ contract LMPStrategyInt is Test {
         address lmpTemplate = address(new LMPVault(_systemRegistry, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, false));
         _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, lmpTemplate, 800, 100);
 
-        _accessController.grantRole(Roles.REGISTRY_UPDATER, address(_lmpVaultFactory));
-        _accessController.grantRole(Roles.CREATE_POOL_ROLE, address(this));
-        _accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, V2_DEPLOYER);
-        _accessController.grantRole(Roles.SOLVER_ROLE, address(this));
+        _accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(_lmpVaultFactory));
+        _accessController.grantRole(Roles.LMP_VAULT_FACTORY_VAULT_CREATOR, address(this));
+        _accessController.grantRole(Roles.LMP_VAULT_DESTINATION_UPDATER, V2_DEPLOYER);
+        _accessController.grantRole(Roles.SOLVER, address(this));
 
         bytes32 lmpSalt = keccak256(abi.encode("lmp1"));
         address lmpVaultAddress = Clones.predictDeterministicAddress(lmpTemplate, lmpSalt, address(_lmpVaultFactory));
@@ -174,7 +177,7 @@ contract LMPStrategyInt is Test {
 
         _vault.addDestinations(destinations);
 
-        _accessController.grantRole(Roles.AUTO_POOL_ADMIN, V2_DEPLOYER);
+        _accessController.grantRole(Roles.AUTO_POOL_MANAGER, V2_DEPLOYER);
         _vault.toggleAllowedUser(V2_DEPLOYER);
         _vault.toggleAllowedUser(address(this));
 
@@ -705,6 +708,9 @@ contract LMPStrategyInt is Test {
         address ethPegOracle = 0x58374B8fF79f4C40Fb66e7ca8B13A08992125821;
         address chainlinkOracle = 0x70975337525D8D4Cae2deb3Ec896e7f4b9fAaB72;
 
+        console.log("Registering base tokens");
+        console.log(msg.sender);
+        console.log(address(this));
         rootPriceOracle.registerMapping(STETH_MAINNET, IPriceOracle(chainlinkOracle));
         rootPriceOracle.registerMapping(WSTETH_MAINNET, IPriceOracle(wstEthOracle));
         rootPriceOracle.registerMapping(WETH9_ADDRESS, IPriceOracle(ethPegOracle));

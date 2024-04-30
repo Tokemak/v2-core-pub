@@ -5,11 +5,13 @@ pragma solidity >=0.8.7;
 import { Test } from "forge-std/Test.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
-import { AccessController } from "src/security/AccessController.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { StatsCalculatorRegistry } from "src/stats/StatsCalculatorRegistry.sol";
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
+import { IAccessControl } from "openzeppelin-contracts/access/IAccessControl.sol";
+
+import { Roles } from "src/libs/Roles.sol";
 
 contract StatsCalculatorRegistryTests is Test {
     uint256 private addressCounter = 0;
@@ -162,8 +164,8 @@ contract StatsCalculatorRegistryTests is Test {
     function ensureOwnerRole() internal {
         vm.mockCall(
             address(accessController),
-            abi.encodeWithSelector(AccessController.verifyOwner.selector, address(this)),
-            abi.encode("")
+            abi.encodeWithSelector(IAccessControl.hasRole.selector, Roles.STATS_CALC_REGISTRY_MANAGER, address(this)),
+            abi.encode(true)
         );
     }
 

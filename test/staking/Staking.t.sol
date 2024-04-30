@@ -5,6 +5,7 @@ pragma solidity 0.8.17;
 
 import { IAccToke } from "src/interfaces/staking/IAccToke.sol";
 import { BaseTest } from "test/BaseTest.t.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 contract StakingTest is BaseTest {
     uint256 private stakeAmount = 1 ether;
@@ -39,6 +40,8 @@ contract StakingTest is BaseTest {
         deal(address(toke), address(this), 10 ether);
 
         deployAccToke();
+
+        accessController.grantRole(Roles.ACC_TOKE_MANAGER, address(this));
 
         assertEq(accToke.name(), "Staked Toke");
         assertEq(accToke.symbol(), "accToke");

@@ -49,10 +49,9 @@ contract LMPVaultRouterTest is BaseTest {
         forkBlock = 16_731_638;
         super.setUp();
 
-        accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));
-        accessController.grantRole(Roles.SET_WITHDRAWAL_QUEUE_ROLE, address(this));
-        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
-        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(lmpVaultFactory));
+        accessController.grantRole(Roles.LMP_VAULT_DESTINATION_UPDATER, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(lmpVaultFactory));
 
         // We use mock since this function is called not from owner and
         vm.mockCall(
@@ -191,7 +190,7 @@ contract LMPVaultRouterTest is BaseTest {
         IAsyncSwapper swapper = new BaseAsyncSwapper(ZERO_EX_MAINNET);
         systemRegistry.setAsyncSwapperRegistry(address(asyncSwapperRegistry));
 
-        accessController.grantRole(Roles.REGISTRY_UPDATER, address(this));
+        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(this));
         asyncSwapperRegistry.register(address(swapper));
 
         // -- End of CVX vault setup --//
@@ -594,8 +593,8 @@ contract LMPVaultRouterTest is BaseTest {
         lmpVaultTemplate = address(new LMPVault(systemRegistry, address(weth), true));
         lmpVaultFactory = new LMPVaultFactory(systemRegistry, lmpVaultTemplate, 800, 100);
         // NOTE: deployer grants factory permission to update the registry
-        accessController.grantRole(Roles.REGISTRY_UPDATER, address(lmpVaultFactory));
-        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(lmpVaultFactory));
+        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(lmpVaultFactory));
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(lmpVaultFactory));
         systemRegistry.setLMPVaultFactory(VaultTypes.LST, address(lmpVaultFactory));
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         lmpVaultFactory.addStrategyTemplate(address(stratTemplate));

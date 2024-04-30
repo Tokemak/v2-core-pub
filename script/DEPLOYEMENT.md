@@ -13,7 +13,7 @@ forge script script/destination/RegisterRewardTokens.s.sol --rpc-url <fork-url> 
 ## Destination System Setup
 
 Deploys and registers the `DestinationRegistry`, `DestinationVaultRegistry`and `DestinationVaultFactory`.
-Grants the `CREATE_DESTINATION_VAULT_ROLE` role to the deploying wallet.
+Grants the `DESTINATION_VAULT_FACTORY_MANAGER` role to the deploying wallet.
 
 ```shell
 forge script script/destination/DestinationSystem.s.sol --rpc-url <fork-url> --broadcast --slow
@@ -68,7 +68,7 @@ Facilitates the setup of the LMP Vault System and the creation of a strategy tai
 ## LMP System:
 
 Deploys and registers the `LMPVaultRegistry`, `LMPVaultFactory` with `lst-guarded-r1` type and `LMPVaultRouter`.
-Grants the `REGISTRY_UPDATER` role to the new lmp factory.
+Grants the `LMP_VAULT_REGISTRY_UPDATER` role to the new lmp factory.
 
 ```shell
 forge script script/lmp/LMPSystem.s.sol --rpc-url <fork-url> --broadcast --slow

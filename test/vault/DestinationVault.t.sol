@@ -64,6 +64,8 @@ contract DestinationVaultBaseTests is Test {
         systemRegistry.setAccessController(address(accessController));
         systemRegistry.setLMPVaultRegistry(address(lmpVaultRegistry));
 
+        accessController.grantRole(Roles.DESTINATION_VAULT_MANAGER, address(this));
+
         baseAsset = new TestERC20("ABC", "ABC");
         underlyer = new TestERC20("DEF", "DEF");
         underlyer.setDecimals(6);
@@ -295,14 +297,14 @@ contract DestinationVaultBaseTests is Test {
     }
 
     function test_recoverUnderlying_RevertsZeroAddress() external {
-        accessController.setupRole(Roles.TOKEN_RECOVERY_ROLE, vm.addr(4));
+        accessController.setupRole(Roles.TOKEN_RECOVERY_MANAGER, vm.addr(4));
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "destination"));
         vm.prank(vm.addr(4));
         testVault.recoverUnderlying(address(0));
     }
 
     function test_recoverUnderlying_RevertsNothingToRecover() external {
-        accessController.setupRole(Roles.TOKEN_RECOVERY_ROLE, vm.addr(4));
+        accessController.setupRole(Roles.TOKEN_RECOVERY_MANAGER, vm.addr(4));
         vm.expectRevert(DestinationVault.NothingToRecover.selector);
         vm.prank(vm.addr(4));
         testVault.recoverUnderlying(vm.addr(55));
@@ -310,7 +312,7 @@ contract DestinationVaultBaseTests is Test {
 
     function test_recoverUnderlying_RunsProperly_RecoverInternal() external {
         // Set up access
-        accessController.setupRole(Roles.TOKEN_RECOVERY_ROLE, vm.addr(4));
+        accessController.setupRole(Roles.TOKEN_RECOVERY_MANAGER, vm.addr(4));
 
         // Get tokens, transfer directly to vault to avoid being picked up in debt tracking.
         deal(address(underlyer), address(this), 1000);

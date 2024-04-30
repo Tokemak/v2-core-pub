@@ -120,6 +120,9 @@ contract BalancerDestinationVaultComposableTests is Test {
         vm.label(address(swapRouter), "swapRouter");
         vm.label(address(balSwapper), "balSwapper");
 
+        _accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
+        _accessController.grantRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, address(this));
+
         // Setup the Destination system
 
         _destinationVaultRegistry = new DestinationVaultRegistry(_systemRegistry);
@@ -140,8 +143,6 @@ contract BalancerDestinationVaultComposableTests is Test {
         address[] memory dvAddresses = new address[](1);
         dvAddresses[0] = address(dvTemplate);
         _destinationTemplateRegistry.register(dvTypes, dvAddresses);
-
-        _accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
 
         BalancerDestinationVault.InitParams memory initParams =
             BalancerDestinationVault.InitParams({ balancerPool: WSETH_RETH_SFRXETH_BAL_POOL });

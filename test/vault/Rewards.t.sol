@@ -10,7 +10,6 @@ import { ECDSA } from "openzeppelin-contracts/utils/cryptography/EIP712.sol";
 
 import { Errors } from "src/utils/Errors.sol";
 import { Rewards } from "src/vault/Rewards.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 

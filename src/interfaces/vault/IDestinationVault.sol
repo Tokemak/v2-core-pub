@@ -64,7 +64,7 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @notice The type of pool associated with this vault
     function poolType() external view returns (string memory);
 
-    /// @notice If the pool deals in ETH
+    /// @notice If the pool only deals in ETH when adding or removing liquidity
     function poolDealInEth() external view returns (bool);
 
     /// @notice Tokens that base asset can be swapped into

@@ -145,7 +145,7 @@ contract BalancerAuraDestinationVault is DestinationVault {
     }
 
     /// @inheritdoc IDestinationVault
-    /// @notice This contract only deals in LP tokens
+    /// @notice Balancer pools do not deal in ETH
     function poolDealInEth() external pure override returns (bool) {
         return false;
     }

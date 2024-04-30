@@ -81,10 +81,10 @@ contract LMPStrategyTest is Test {
 
         defaultStrat = deployStrategy(helpers.getDefaultConfig());
         // Set Idle thresholds
-        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
         defaultStrat.setIdleThresholds(3e16, 7e16);
         // Revoke since we will test access in other tests
-        accessController.revokeRole(Roles.AUTO_POOL_ADMIN, address(this));
+        accessController.revokeRole(Roles.AUTO_POOL_MANAGER, address(this));
 
         defaultParams = getDefaultRebalanceParams();
 
@@ -2149,13 +2149,13 @@ contract LMPStrategyTest is Test {
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         defaultStrat.setIdleThresholds(4e16, 6e16);
 
-        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
 
         defaultStrat.setIdleThresholds(4e16, 6e16);
     }
 
     function test_setIdleThresholdError() public {
-        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
         // Low > High
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.InconsistentIdleThresholds.selector));
         defaultStrat.setIdleThresholds(6e16, 3e16);
@@ -2168,7 +2168,7 @@ contract LMPStrategyTest is Test {
         uint256 originalLowValue = defaultStrat.idleLowThreshold();
         uint256 originalHighValue = defaultStrat.idleHighThreshold();
 
-        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
 
         defaultStrat.setIdleThresholds(5e16, 8e16);
 
@@ -2179,7 +2179,7 @@ contract LMPStrategyTest is Test {
     }
 
     function test_setIdleThresholds_EmitsEvent() public {
-        accessController.grantRole(Roles.AUTO_POOL_ADMIN, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
 
         vm.expectEmit(true, true, true, true);
         emit IdleThresholdsSet(4e16, 7e16);

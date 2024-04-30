@@ -26,7 +26,7 @@ contract RewardsTest is BaseTest {
     IRewards public rewards;
     MockERC20 public vaultToken;
     address public rewardsSigner;
-    Vm.Wallet newWallet;
+    Vm.Wallet public newWallet;
 
     function setUp() public virtual override {
         BaseTest.setUp();
@@ -47,14 +47,14 @@ contract Constructor is RewardsTest {
         MockERC20 token = MockERC20(address(0));
         address signer = address(0x1);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "token"));
-        Rewards incorrectRewards = new Rewards(systemRegistry, token, signer);
+        new Rewards(systemRegistry, token, signer);
     }
 
     function test_constructor_withZeroSignerAddress() public {
         MockERC20 token = new MockERC20("Vault Token", "VT", 6);
         address signer = address(0);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "signerAddress"));
-        Rewards incorrectRewards = new Rewards(systemRegistry, token, signer);
+        new Rewards(systemRegistry, token, signer);
     }
 }
 
@@ -82,11 +82,11 @@ contract SetSigner is RewardsTest {
 }
 
 contract ClaimSetup is RewardsTest {
-    address newWalletPublicKey;
-    address recipientWallet;
-    uint256 initialRecipientWalletBalance;
-    uint256 initialRewardsContractBalance;
-    IRewards.Recipient recipient;
+    address public newWalletPublicKey;
+    address public recipientWallet;
+    uint256 public initialRecipientWalletBalance;
+    uint256 public initialRewardsContractBalance;
+    IRewards.Recipient public recipient;
 
     function setUp() public override {
         RewardsTest.setUp();
@@ -131,7 +131,7 @@ contract Claim is ClaimSetup {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(newWallet, hashedRecipient);
         vm.startPrank(recipientWallet);
         vm.expectRevert(Errors.ZeroAmount.selector);
-        uint256 claimedAmount = rewards.claim(recipient, v, r, s);
+        rewards.claim(recipient, v, r, s);
         vm.stopPrank();
     }
 
@@ -152,7 +152,7 @@ contract Claim is ClaimSetup {
 
         vm.startPrank(user);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSigner.selector, newWalletPublicKey));
-        uint256 claimedAmount = rewards.claim(recipient, v, r, s);
+        rewards.claim(recipient, v, r, s);
     }
 
     function test_claimInvalidChainId() public {
@@ -164,21 +164,21 @@ contract Claim is ClaimSetup {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(newWallet, hashedRecipient);
         vm.startPrank(newWalletPublicKey);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidChainId.selector, recipient.chainId));
-        uint256 claimedAmount = rewards.claim(recipient, v, r, s);
+        rewards.claim(recipient, v, r, s);
     }
 
     function test_claimExcessAmount() public {
-        uint256 base_amount = 100;
+        uint256 baseAmount = 100;
 
-        recipient.amount = base_amount + 100;
+        recipient.amount = baseAmount + 100;
         recipient.wallet = newWalletPublicKey;
-        vaultToken.mint(address(rewards), base_amount);
+        vaultToken.mint(address(rewards), baseAmount);
         bytes32 hashedRecipient = rewards.genHash(recipient);
         rewards.setSigner(newWalletPublicKey);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(newWallet, hashedRecipient);
         vm.startPrank(newWalletPublicKey);
         vm.expectRevert(abi.encodeWithSelector(Errors.InsufficientBalance.selector, address(vaultToken)));
-        uint256 claimedAmount = rewards.claim(recipient, v, r, s);
+        rewards.claim(recipient, v, r, s);
     }
 
     function test_claimForCorrectSignature(uint256 claimAmount) public {

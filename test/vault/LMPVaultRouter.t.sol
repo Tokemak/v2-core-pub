@@ -18,9 +18,11 @@ import { LMPVaultMainRewarder } from "src/rewarders/LMPVaultMainRewarder.sol";
 import { LMPVault } from "src/vault/LMPVault.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
 import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
-import { ILMPVaultRouterBase } from "src/interfaces/vault/ILMPVaultRouter.sol";
+import { ILMPVaultRouterBase, ILMPVaultRouter } from "src/interfaces/vault/ILMPVaultRouter.sol";
 
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
+import { IRewards } from "src/interfaces/IRewards.sol";
+import { Rewards } from "src/vault/Rewards.sol";
 
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
@@ -34,6 +36,8 @@ import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { ERC2612 } from "test/utils/ERC2612.sol";
 import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
+
+import { Vm } from "forge-std/Vm.sol";
 
 contract LMPVaultRouterWrapper is LMPVaultRouter {
     error SomethingWentWrong();
@@ -59,7 +63,8 @@ contract SwapperMock is BaseAsyncSwapper, BaseTest {
         // Mock 1:1 swap
 
         deal(address(this), params.buyAmount);
-        payable(WETH9_ADDRESS).call{ value: params.buyAmount }("");
+        (bool success, bytes memory data) = payable(WETH9_ADDRESS).call{ value: params.buyAmount }("");
+        require(success, string(data));
         IERC20(WETH9_ADDRESS).transfer(msg.sender, params.buyAmount);
         return params.buyAmount;
     }
@@ -72,6 +77,8 @@ contract LMPVaultRouterTest is BaseTest {
     LMPVault public lmpVault2;
 
     IMainRewarder public lmpRewarder;
+    Rewards public rewards;
+    Vm.Wallet public rewardsSigner;
 
     uint256 public constant MIN_DEPOSIT_AMOUNT = 100;
     uint256 public constant MAX_DEPOSIT_AMOUNT = 100 * 1e6 * 1e18; // 100mil toke
@@ -102,6 +109,9 @@ contract LMPVaultRouterTest is BaseTest {
 
         // Set rewarder as rewarder set on LMP by factory.
         lmpRewarder = lmpVault.rewarder();
+
+        rewardsSigner = vm.createWallet(string("signer"));
+        rewards = new Rewards(systemRegistry, IERC20(address(lmpVault)), rewardsSigner.addr);
     }
 
     function _setupVault(bytes memory salt) internal returns (LMPVault _lmpVault) {
@@ -454,6 +464,62 @@ contract LMPVaultRouterTest is BaseTest {
         assertEq(address(this).balance, ethBefore - amount, "ETH not withdrawn as expected");
         assertEq(lmpVault.balanceOf(address(this)), sharesBefore + sharesReceived, "Insufficient shares received");
         assertEq(weth.balanceOf(address(this)), wethBefore, "WETH should not change");
+    }
+
+    function test_claim_rewards() public {
+        uint256 amount = depositAmount;
+        // deposit first
+        baseAsset.approve(address(lmpVaultRouter), amount);
+        _deposit(lmpVault, amount);
+        lmpVault.transfer(address(rewards), amount);
+
+        assertEq(lmpVault.balanceOf(address(this)), 0, "Vault token balance should be empty");
+
+        IRewards.Recipient memory recipient =
+            IRewards.Recipient({ chainId: block.chainid, cycle: 1, wallet: address(this), amount: amount });
+
+        bytes32 hashedRecipient = rewards.genHash(recipient);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(rewardsSigner, hashedRecipient);
+
+        uint256 claimedAmount = lmpVaultRouter.claimRewards(rewards, recipient, v, r, s);
+
+        assertEq(claimedAmount, amount, "should claim full amount from rewards");
+
+        assertEq(lmpVault.balanceOf(address(this)), amount, "Vault token balance should be back to normal");
+    }
+
+    function test_redeem_on_claim_rewards() public {
+        uint256 amount = depositAmount;
+        // deposit first
+        baseAsset.approve(address(lmpVaultRouter), amount);
+        _deposit(lmpVault, amount);
+        lmpVault.transfer(address(rewards), amount);
+        lmpVault.approve(address(lmpVaultRouter), amount);
+
+        assertEq(lmpVault.balanceOf(address(this)), 0, "Vault token balance should be empty");
+
+        IRewards.Recipient memory recipient =
+            IRewards.Recipient({ chainId: block.chainid, cycle: 1, wallet: address(this), amount: amount });
+
+        bytes32 hashedRecipient = rewards.genHash(recipient);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(rewardsSigner, hashedRecipient);
+
+        uint256 prevBaseAssetBalance = baseAsset.balanceOf(address(this));
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeCall(ILMPVaultRouter.claimRewards, (IRewards(rewards), recipient, v, r, s));
+        calls[1] = abi.encodeCall(lmpVaultRouter.redeem, (lmpVault, address(this), amount, 1));
+
+        lmpVaultRouter.multicall(calls);
+
+        uint256 newBaseAssetBalance = baseAsset.balanceOf(address(this));
+
+        assertEq(lmpVault.balanceOf(address(this)), 0, "Vault token balance should still be 0");
+        assertEq(
+            newBaseAssetBalance - prevBaseAssetBalance, depositAmount, "Rewards should be redeemed into base asset"
+        );
     }
 
     function test_withdraw() public {

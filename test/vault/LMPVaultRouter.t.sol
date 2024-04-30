@@ -57,14 +57,16 @@ contract LMPVaultRouterWrapper is LMPVaultRouter {
 
 /// @dev Custom mocked swapper for testing to represent a 1:1 swap
 contract SwapperMock is BaseAsyncSwapper, BaseTest {
+    error ETHSwapFailed();
+
     constructor(address _aggregator) BaseAsyncSwapper(_aggregator) { }
 
     function swap(SwapParams memory params) public override returns (uint256 buyTokenAmountReceived) {
         // Mock 1:1 swap
 
         deal(address(this), params.buyAmount);
-        (bool success, bytes memory data) = payable(WETH9_ADDRESS).call{ value: params.buyAmount }("");
-        require(success, string(data));
+        (bool success,) = payable(WETH9_ADDRESS).call{ value: params.buyAmount }("");
+        if (!success) revert ETHSwapFailed();
         IERC20(WETH9_ADDRESS).transfer(msg.sender, params.buyAmount);
         return params.buyAmount;
     }

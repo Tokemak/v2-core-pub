@@ -4,15 +4,10 @@ pragma solidity >=0.8.7;
 
 import { BaseTest } from "test/BaseTest.t.sol";
 
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { AccessController } from "src/security/AccessController.sol";
-import { SystemRegistry } from "src/SystemRegistry.sol";
-
 import { IRewards } from "src/interfaces/IRewards.sol";
-import { SecurityBase } from "src/security/SecurityBase.sol";
 
-import { EIP712, ECDSA } from "openzeppelin-contracts/utils/cryptography/EIP712.sol";
-import { Roles } from "src/libs/Roles.sol";
+import { ECDSA } from "openzeppelin-contracts/utils/cryptography/EIP712.sol";
+
 import { Errors } from "src/utils/Errors.sol";
 import { Rewards } from "src/vault/Rewards.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";

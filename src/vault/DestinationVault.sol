@@ -476,12 +476,14 @@ abstract contract DestinationVault is
     /// @notice Validates incentive calculator for the destination vault
     function _validateCalculator(address calculator) internal virtual;
 
+    /// @inheritdoc IDestinationVault
     function setMessage(bytes32 hash, bool flag) external hasRole(Roles.LMP_VAULT_DESTINATION_UPDATER) {
         signedMessages[hash] = flag;
 
         emit UpdateSignedMessage(hash, flag);
     }
 
+    /// @inheritdoc IERC1271
     function isValidSignature(bytes32 hash, bytes memory) external view override returns (bytes4 magicValue) {
         if (signedMessages[hash]) {
             magicValue = IERC1271.isValidSignature.selector;

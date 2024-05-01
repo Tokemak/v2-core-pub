@@ -403,7 +403,7 @@ contract DestinationVaultBaseTests is Test {
 
     function test_setMessage() public {
         bytes32 testHash = keccak256("TEST HASH GENERATION");
-        accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));
+        accessController.grantRole(Roles.LMP_VAULT_DESTINATION_UPDATER, address(this));
 
         testVault.setMessage(testHash, true);
 
@@ -421,7 +421,7 @@ contract DestinationVaultBaseTests is Test {
     function test_isValidSignature() public {
         bytes4 magicValue = 0x1626ba7e;
         bytes32 testHash = keccak256("TEST HASH GENERATION");
-        accessController.grantRole(Roles.DESTINATION_VAULTS_UPDATER, address(this));
+        accessController.grantRole(Roles.LMP_VAULT_DESTINATION_UPDATER, address(this));
 
         testVault.setMessage(testHash, true);
         bytes4 returnedValue = testVault.isValidSignature(testHash, bytes(""));

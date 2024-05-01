@@ -209,22 +209,38 @@ contract MessageProxy is IMessageProxy, SecurityBase {
     /// @notice Retry for multiple messages to multiple destinations per message.
     /// @dev Caller must send in ETH to cover router fees. Cannot use contract balance
     /// @dev Excess ETH is not refunded, use getFee() to calculate needed amount
+
+    /**
+     * struct RetryArgs {
+     *     address msgSender;
+     *     bytes32 messageType;
+     *     uint256 messageRetryTimestamp; // Timestamp of original message, emitted in `MessageData` event.
+     *     bytes message;
+     *     MessageRouteConfig[] configs;
+     * }
+     */
+    /**
+     * QUESTIONS
+     * Does a check for configs length > 0 make sense? Would save gas and give potentially useful revert
+     */
     function resendLastMessage(RetryArgs[] memory args) external payable hasRole(Roles.MESSAGE_PROXY_ADMIN) {
         // Tracking for fee
         uint256 feeLeft = msg.value;
 
         // Loop through RetryArgs array.
         for (uint256 i = 0; i < args.length; ++i) {
-            // Store vars with multiple usages locally.  `messageRetryTimestamp` not stored due to stack too deep
+            // Store vars with multiple usages locally
             RetryArgs memory currentRetry = args[i];
             address msgSender = currentRetry.msgSender;
             bytes32 messageType = currentRetry.messageType;
+            uint256 messageRetryTimestamp = currentRetry.messageRetryTimestamp;
             bytes memory message = currentRetry.message;
 
             // Get hash from data passed in, hash from last message, revert if they are not equal.
-            bytes32 currentMessageHash = keccak256(
-                abi.encode(Message(msgSender, VERSION, currentRetry.messageRetryTimestamp, messageType, message))
-            );
+            // solhint-disable-next-line max-line-length
+            bytes memory encodedMessage = encodeMessage(msgSender, VERSION, messageRetryTimestamp, messageType, message);
+            bytes32 currentMessageHash =
+                keccak256(encodeMessage(msgSender, VERSION, messageRetryTimestamp, messageType, message));
             {
                 bytes32 storedMessageHash = lastMessageSent[msgSender][messageType];
                 if (currentMessageHash != storedMessageHash) {
@@ -241,7 +257,7 @@ contract MessageProxy is IMessageProxy, SecurityBase {
                 Errors.verifyNotZero(destChainReceiver, "destChainReceiver");
 
                 Client.EVM2AnyMessage memory ccipMessage =
-                    _ccipBuild(destChainReceiver, currentRetry.configs[j].gas, message);
+                    _ccipBuild(destChainReceiver, currentRetry.configs[j].gas, encodedMessage);
 
                 uint256 fee = routerClient.getFee(currentDestChainSelector, ccipMessage);
 
@@ -357,6 +373,10 @@ contract MessageProxy is IMessageProxy, SecurityBase {
     }
 
     /// @notice Updates the gas we'll send for this message route
+    /**
+     * NOTES
+     * May be able to just check for currentStoredRoutes.length
+     */
     function setGasForRoute(
         address messageSender,
         bytes32 messageType,

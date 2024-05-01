@@ -13,7 +13,7 @@ import { IAccessController } from "src/interfaces/security/IAccessController.sol
 import { Errors } from "src/utils/Errors.sol";
 import { Client } from "src/external/chainlink/ccip/Client.sol";
 
-// solhint-disable func-name-mixedcase
+// solhint-disable func-name-mixedcase,avoid-low-level-calls
 
 contract MessageProxyTester is MessageProxy {
     constructor(ISystemRegistry _systemRegistry, IRouterClient ccipRouter) MessageProxy(_systemRegistry, ccipRouter) { }

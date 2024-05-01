@@ -121,22 +121,7 @@ contract MaverickDexCalculator is IDexLSTStats, BaseStatsCalculator, Initializab
         return address(boostedPosition);
     }
 
-    function _scaleDecimalsToOriginal(uint256 decimals, uint256 amount) internal pure returns (uint256) {
-        if (decimals == 18) {
-            // default LST case they are all 18 decimals
-            return amount;
-        } else if (decimals < 18) {
-            uint256 exponent = 18 - decimals;
-            amount = amount / (10 ** exponent);
-        } else {
-            uint256 exponent = decimals - 18;
-            amount = amount * (10 ** exponent);
-        }
-
-        return amount;
-    }
-
-    function _getCurrentReservesInEth() internal returns (uint256 reservesAEthValue, uint256 reservesBEthValue) {
+    function _getCurrentReservesInEth() internal returns (uint256, uint256) {
         IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
         (uint256 reservesA, uint256 reservesB) = IPoolPositionSlim(boostedPosition).getReserves();
 
@@ -144,12 +129,16 @@ contract MaverickDexCalculator is IDexLSTStats, BaseStatsCalculator, Initializab
         balances[0] = reservesA;
         balances[1] = reservesB;
 
-        // slither-disable-next-line similar-names
-        reservesAEthValue = calculateReserveInEthByIndex(pricer, balances, 0);
-        reservesBEthValue = calculateReserveInEthByIndex(pricer, balances, 1);
+        // slither-disable-start similar-names
+        uint256 reservesAEthValue = calculateReserveInEthByIndex(pricer, balances, 0);
+        uint256 reservesBEthValue = calculateReserveInEthByIndex(pricer, balances, 1);
+
+        return (reservesAEthValue, reservesBEthValue);
+        // slither-disable-end similar-names
     }
 
     function _snapshot() internal override {
+        // slither-disable-next-line similar-names
         (uint256 reservesAEthValue, uint256 reservesBEthValue) = _getCurrentReservesInEth();
 
         if (reservesInEthFilterInitialized) {
@@ -201,7 +190,7 @@ contract MaverickDexCalculator is IDexLSTStats, BaseStatsCalculator, Initializab
         if (address(lstStats[1]) != address(0)) {
             lstStatsData[1] = lstStats[1].current();
         }
-
+        // slither-disable-next-line similar-names
         (uint256 reservesAEthValue, uint256 reservesBEthValue) = _getCurrentReservesInEth();
 
         uint256[] memory reservesInEthMemory = new uint256[](2);

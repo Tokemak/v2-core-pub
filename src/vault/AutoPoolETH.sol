@@ -59,6 +59,7 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
     /// @notice Overarching baseAsset type
     bytes32 public immutable vaultType = VaultTypes.LST;
 
+    // solhint-disable-next-line var-name-mixedcase
     uint256 public immutable ONE;
 
     /// @notice Instance of this system this vault is tied to

@@ -148,7 +148,7 @@ contract MessageProxyTests is Test, SystemRegistryMocks, AccessControllerMocks {
     }
 
     function _mockIsProxyAdmin(address user, bool isAdmin) internal {
-        _mockAccessControllerHasRole(_accessController, user, Roles.MESSAGE_PROXY_ADMIN, isAdmin);
+        _mockAccessControllerHasRole(_accessController, user, Roles.MESSAGE_PROXY_MANAGER, isAdmin);
     }
 }
 

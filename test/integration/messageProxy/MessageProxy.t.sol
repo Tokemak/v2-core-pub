@@ -96,7 +96,7 @@ contract MessageProxyIntegTests is BaseTest {
         messageProxy = new MessageProxy(systemRegistry, IRouterClient(CCIP_ROUTER_MAINNET));
 
         // Role setup
-        accessController.setupRole(Roles.MESSAGE_PROXY_ADMIN, address(this));
+        accessController.setupRole(Roles.MESSAGE_PROXY_MANAGER, address(this));
 
         // Set dest chain info
         messageProxy.setDestinationChainReceiver(baseDestSelector, destChainReceiverBase);

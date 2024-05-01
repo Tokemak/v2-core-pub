@@ -223,7 +223,7 @@ contract MessageProxy is IMessageProxy, SecurityBase {
      * QUESTIONS
      * Does a check for configs length > 0 make sense? Would save gas and give potentially useful revert
      */
-    function resendLastMessage(RetryArgs[] memory args) external payable hasRole(Roles.MESSAGE_PROXY_ADMIN) {
+    function resendLastMessage(RetryArgs[] memory args) external payable hasRole(Roles.MESSAGE_PROXY_MANAGER) {
         // Tracking for fee
         uint256 feeLeft = msg.value;
 
@@ -286,7 +286,7 @@ contract MessageProxy is IMessageProxy, SecurityBase {
     function setDestinationChainReceiver(
         uint64 destinationChainSelector,
         address destinationChainReceiver
-    ) external hasRole(Roles.MESSAGE_PROXY_ADMIN) {
+    ) external hasRole(Roles.MESSAGE_PROXY_MANAGER) {
         // Check that we aren't doing cleanup if a chain is deprecated
         if (destinationChainReceiver != address(0)) {
             _verifyValidChain(destinationChainSelector);
@@ -302,7 +302,7 @@ contract MessageProxy is IMessageProxy, SecurityBase {
         address sender,
         bytes32 messageType,
         MessageRouteConfig[] memory routes
-    ) external hasRole(Roles.MESSAGE_PROXY_ADMIN) {
+    ) external hasRole(Roles.MESSAGE_PROXY_MANAGER) {
         Errors.verifyNotZero(sender, "sender");
         Errors.verifyNotZero(messageType, "messageType");
 
@@ -335,7 +335,7 @@ contract MessageProxy is IMessageProxy, SecurityBase {
         address sender,
         bytes32 messageType,
         uint64[] calldata chainSelectors
-    ) external hasRole(Roles.MESSAGE_PROXY_ADMIN) {
+    ) external hasRole(Roles.MESSAGE_PROXY_MANAGER) {
         Errors.verifyNotZero(sender, "sender");
         Errors.verifyNotZero(messageType, "messageType");
 
@@ -382,7 +382,7 @@ contract MessageProxy is IMessageProxy, SecurityBase {
         bytes32 messageType,
         uint64 chainId,
         uint192 gas
-    ) external hasRole(Roles.MESSAGE_PROXY_ADMIN) {
+    ) external hasRole(Roles.MESSAGE_PROXY_MANAGER) {
         Errors.verifyNotZero(messageSender, "sender");
         Errors.verifyNotZero(messageType, "messageType");
         Errors.verifyNotZero(gas, "gas");

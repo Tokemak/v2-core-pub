@@ -140,12 +140,6 @@ contract MaverickDexCalculator is IDexLSTStats, BaseStatsCalculator, Initializab
         IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
         (uint256 reservesA, uint256 reservesB) = IPoolPositionSlim(boostedPosition).getReserves();
 
-        //getReserves scales to 18, so we need to scale back to token decimals
-        (reservesA, reservesB) = (
-            _scaleDecimalsToOriginal(reserveTokensDecimals[0], reservesA),
-            _scaleDecimalsToOriginal(reserveTokensDecimals[1], reservesB)
-        );
-
         uint256[] memory balances = new uint256[](2);
         balances[0] = reservesA;
         balances[1] = reservesB;
@@ -189,15 +183,13 @@ contract MaverickDexCalculator is IDexLSTStats, BaseStatsCalculator, Initializab
     ) internal returns (uint256) {
         address token = reserveTokens[index];
 
-        // the price oracle is always 18 decimals, so divide by the decimals of the token
-        // to ensure that we always report the value in ETH as 18 decimals
-        uint256 divisor = 10 ** IERC20Metadata(token).decimals();
-
         // We are using the balances directly here which can be manipulated but these values are
         // only used in the strategy where we do additional checks to ensure the pool
         // is a good state
+        // We don't have to check decimals here because Maverick Pools getReserves() scales token reserves to 1e18
+        // so instead we only need to devide by 1e18 to get the ETH value in 1e18 terms.
         // slither-disable-next-line reentrancy-benign,reentrancy-no-eth
-        return pricer.getPriceInEth(token) * balances[index] / divisor;
+        return pricer.getPriceInEth(token) * balances[index] / 1e18;
     }
 
     function current() external returns (DexLSTStatsData memory) {

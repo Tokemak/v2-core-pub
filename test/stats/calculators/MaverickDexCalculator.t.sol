@@ -327,11 +327,13 @@ contract MaverickDexCalculatorTest is Test {
         assertEq(cur.lastSnapshotTimestamp, prevTimestamp);
     }
 
-    function test_scaleDecimalsToOriginal() public {
+    function testFuzz_scaleDecimalsToOriginal(uint256 decimals) public {
+        vm.assume(decimals < 100);
+        vm.assume(decimals > 1);
         vm.mockCall(pool, abi.encodeWithSelector(IPool.tokenA.selector), abi.encode(RETH_MAINNET));
         vm.mockCall(pool, abi.encodeWithSelector(IPool.tokenB.selector), abi.encode(SWETH_MAINNET));
         // because prices are in 1e18, decimals don't matter
-        vm.mockCall(RETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(6));
+        vm.mockCall(RETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(decimals));
 
         MaverickDexCalculator.InitData memory initData = MaverickDexCalculator.InitData({
             pool: pool,
@@ -344,7 +346,7 @@ contract MaverickDexCalculatorTest is Test {
         depAprIds[0] = rETHStats.getAprId();
         depAprIds[1] = swETHStats.getAprId();
 
-        mockPositionReserves(100e18, 100e18);
+        mockPositionReserves(100e18, 100e18); // because getReserves scales everything to 1e18
         calculator.initialize(depAprIds, abi.encode(initData));
 
         mockFeeApr(1e18, uint40(block.timestamp));

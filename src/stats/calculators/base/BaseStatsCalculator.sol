@@ -5,15 +5,14 @@ pragma solidity 0.8.17;
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
+import { SystemComponent } from "src/SystemComponent.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 
 /// @title Base Stats Calculator
 /// @notice Captures common behavior across all calculators
 /// @dev Performs security checks and general roll-up behavior
-abstract contract BaseStatsCalculator is IStatsCalculator, SecurityBase {
-    ISystemRegistry public immutable systemRegistry;
-
+abstract contract BaseStatsCalculator is IStatsCalculator, SecurityBase, SystemComponent {
     modifier onlyStatsSnapshot() {
         if (!_hasRole(Roles.STATS_SNAPSHOT_EXECUTOR, msg.sender)) {
             revert Errors.MissingRole(Roles.STATS_SNAPSHOT_EXECUTOR, msg.sender);
@@ -21,9 +20,10 @@ abstract contract BaseStatsCalculator is IStatsCalculator, SecurityBase {
         _;
     }
 
-    constructor(ISystemRegistry _systemRegistry) SecurityBase(address(_systemRegistry.accessController())) {
-        systemRegistry = _systemRegistry;
-    }
+    constructor(ISystemRegistry _systemRegistry)
+        SystemComponent(_systemRegistry)
+        SecurityBase(address(_systemRegistry.accessController()))
+    { }
 
     /// @inheritdoc IStatsCalculator
     function snapshot() external override onlyStatsSnapshot {

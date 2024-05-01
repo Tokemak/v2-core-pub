@@ -4,7 +4,8 @@ import { Test } from "forge-std/Test.sol";
 import { MaverickCalculator } from "src/stats/calculators/MaverickCalculator.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IReward } from "src/interfaces/external/maverick/IReward.sol";
-import { IERC20 } from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import { IAccessControl } from "openzeppelin-contracts/access/IAccessControl.sol";
 import { IReward } from "src/interfaces/external/maverick/IReward.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
@@ -13,6 +14,7 @@ import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricing
 import { IPoolPositionSlim } from "src/interfaces/external/maverick/IPoolPositionSlim.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 /* solhint-disable func-name-mixedcase,contract-name-camelcase,one-contract-per-file */
 
@@ -22,6 +24,7 @@ contract MaverickCalculatorTest is Test {
     address internal underlyerStats;
     address internal pricingStats;
     address internal systemRegistry;
+    address internal accessController;
     address internal rootPriceOracle;
 
     address internal boostedRewarder;
@@ -53,6 +56,7 @@ contract MaverickCalculatorTest is Test {
         underlyerStats = vm.addr(1);
         pricingStats = vm.addr(2);
         systemRegistry = vm.addr(3);
+        accessController = vm.addr(1000);
         rootPriceOracle = vm.addr(4);
 
         boostedRewarder = vm.addr(10);
@@ -71,10 +75,17 @@ contract MaverickCalculatorTest is Test {
         );
 
         vm.mockCall(
-            systemRegistry, abi.encodeWithSelector(ISystemRegistry.accessController.selector), abi.encode(vm.addr(1000))
+            systemRegistry,
+            abi.encodeWithSelector(ISystemRegistry.accessController.selector),
+            abi.encode(accessController)
         );
         vm.mockCall(
             systemRegistry, abi.encodeWithSelector(ISystemRegistry.incentivePricing.selector), abi.encode(pricingStats)
+        );
+        vm.mockCall(
+            accessController,
+            abi.encodeWithSelector(IAccessControl.hasRole.selector, Roles.STATS_SNAPSHOT_EXECUTOR, address(this)),
+            abi.encode(true)
         );
 
         // mock all prices to be 1

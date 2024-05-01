@@ -7,6 +7,7 @@ pragma solidity >=0.8.7;
 import { Test } from "forge-std/Test.sol";
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import { IAccessControl } from "openzeppelin-contracts/access/IAccessControl.sol";
 
 import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.sol";
 import { ConvexCalculator } from "src/stats/calculators/ConvexCalculator.sol";
@@ -20,11 +21,13 @@ import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 import { LDO_MAINNET, CNC_MAINNET } from "test/utils/Addresses.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 contract ConvexCalculatorTest is Test {
     address internal underlyerStats;
     address internal pricingStats;
     address internal systemRegistry;
+    address internal accessController;
     address internal rootPriceOracle;
 
     address internal mainRewarder;
@@ -58,6 +61,7 @@ contract ConvexCalculatorTest is Test {
         underlyerStats = vm.addr(1);
         pricingStats = vm.addr(2);
         systemRegistry = vm.addr(3);
+        accessController = vm.addr(1000);
         rootPriceOracle = vm.addr(4);
 
         mainRewarder = vm.addr(100);
@@ -95,12 +99,20 @@ contract ConvexCalculatorTest is Test {
         );
 
         vm.mockCall(
-            systemRegistry, abi.encodeWithSelector(ISystemRegistry.accessController.selector), abi.encode(vm.addr(1000))
+            systemRegistry,
+            abi.encodeWithSelector(ISystemRegistry.accessController.selector),
+            abi.encode(accessController)
         );
         vm.mockCall(
             systemRegistry, abi.encodeWithSelector(ISystemRegistry.incentivePricing.selector), abi.encode(pricingStats)
         );
         vm.mockCall(systemRegistry, abi.encodeWithSelector(ISystemRegistry.weth.selector), abi.encode(weth));
+
+        vm.mockCall(
+            accessController,
+            abi.encodeWithSelector(IAccessControl.hasRole.selector, Roles.STATS_SNAPSHOT_EXECUTOR, address(this)),
+            abi.encode(true)
+        );
 
         // mock all prices to be 1
         vm.mockCall(rootPriceOracle, abi.encodeWithSelector(IRootPriceOracle.getPriceInEth.selector), abi.encode(1));
@@ -466,7 +478,7 @@ contract Current is ConvexCalculatorTest {
             if (i % 2 == 0) {
                 time[i] = 1 days;
             } else {
-                time[i] = 5 hours;
+                time[i] = 7 hours;
             }
 
             rewardPerTokenValue += 5_000_000_000_000_000_000;

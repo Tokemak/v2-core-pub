@@ -9,19 +9,12 @@ import { IBaseRewardPool } from "src/interfaces/external/convex/IBaseRewardPool.
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
-import { Errors } from "src/utils/Errors.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
+import { Errors } from "src/utils/Errors.sol";
 import { Stats } from "src/stats/Stats.sol";
-import { SystemComponent } from "src/SystemComponent.sol";
-import { SecurityBase } from "src/security/SecurityBase.sol";
+import { BaseStatsCalculator } from "src/stats/calculators/base/BaseStatsCalculator.sol";
 
-abstract contract IncentiveCalculatorBase is
-    SystemComponent,
-    SecurityBase,
-    Initializable,
-    IDexLSTStats,
-    IStatsCalculator
-{
+abstract contract IncentiveCalculatorBase is BaseStatsCalculator, Initializable, IDexLSTStats {
     /// @dev Interval between two consecutive snapshot steps during the snapshot process.
     uint256 public constant SNAPSHOT_INTERVAL = 3 hours;
 
@@ -101,10 +94,7 @@ abstract contract IncentiveCalculatorBase is
         uint256 safeTotalSupply
     );
 
-    constructor(ISystemRegistry _systemRegistry)
-        SystemComponent(_systemRegistry)
-        SecurityBase(address(_systemRegistry.accessController()))
-    { }
+    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
 
     /// @inheritdoc IStatsCalculator
     function initialize(bytes32[] calldata, bytes calldata initData) public virtual override initializer {
@@ -234,7 +224,7 @@ abstract contract IncentiveCalculatorBase is
      *  Incentive credits needs to be updated at least once every 24 hours which is covered by the above check.
      * @return true if any of the main or extra rewarders require a snapshot, otherwise false.
      */
-    function shouldSnapshot() public view returns (bool) {
+    function shouldSnapshot() public view override returns (bool) {
         // Check if the main rewarder needs a snapshot
         (uint256 rewardRate, uint256 totalSupply, uint256 periodFinish) = _getRewardPoolMetrics(address(rewarder));
         if (_shouldSnapshot(address(rewarder), rewardRate, periodFinish, totalSupply)) return true;
@@ -253,7 +243,7 @@ abstract contract IncentiveCalculatorBase is
         return false;
     }
 
-    function snapshot() external {
+    function _snapshot() internal override {
         // Record a new snapshot of total APR across all rewarders
         // Also, triggers a new snapshot or finalize snapshot for total supply across all the rewarders
         // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
@@ -389,7 +379,7 @@ abstract contract IncentiveCalculatorBase is
      * @param totalSupply The total supply of tokens for the rewarder.
      * @param rewardRate The current reward rate for the rewarder.
      */
-    function _snapshot(address _rewarder, uint256 totalSupply, uint256 rewardRate) internal {
+    function _snapshotRewarder(address _rewarder, uint256 totalSupply, uint256 rewardRate) internal {
         if (totalSupply == 0) {
             safeTotalSupplies[_rewarder] = 0;
             lastSnapshotRewardPerToken[_rewarder] = 0;
@@ -507,7 +497,7 @@ abstract contract IncentiveCalculatorBase is
         // Get reward pool metrics for the main rewarder and take a snapshot if necessary
         (uint256 rewardRate, uint256 totalSupply, uint256 periodFinish) = _getRewardPoolMetrics(address(rewarder));
         if (_shouldSnapshot(address(rewarder), rewardRate, periodFinish, totalSupply)) {
-            _snapshot(address(rewarder), totalSupply, rewardRate);
+            _snapshotRewarder(address(rewarder), totalSupply, rewardRate);
         }
 
         // slither-disable-next-line reentrancy-no-eth
@@ -530,7 +520,7 @@ abstract contract IncentiveCalculatorBase is
 
             // Take a snapshot for the extra rewarder if necessary
             if (_shouldSnapshot(extraRewarder, rewardRate, periodFinish, totalSupply)) {
-                _snapshot(extraRewarder, totalSupply, rewardRate);
+                _snapshotRewarder(extraRewarder, totalSupply, rewardRate);
             }
             rewardToken = resolveRewardToken(extraRewarder);
 

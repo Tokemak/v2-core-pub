@@ -10,14 +10,13 @@ import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { Stats } from "src/stats/Stats.sol";
-import { SystemComponent } from "src/SystemComponent.sol";
-import { SecurityBase } from "src/security/SecurityBase.sol";
 import { IReward } from "src/interfaces/external/maverick/IReward.sol";
 import { IPoolPositionSlim } from "src/interfaces/external/maverick/IPoolPositionSlim.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
+import { BaseStatsCalculator } from "src/stats/calculators/base/BaseStatsCalculator.sol";
 
-contract MaverickCalculator is SystemComponent, SecurityBase, Initializable, IDexLSTStats, IStatsCalculator {
+contract MaverickCalculator is BaseStatsCalculator, Initializable, IDexLSTStats {
     IDexLSTStats public underlyerStats;
     IReward public boostedRewarder;
     IPoolPositionSlim public boostedPosition;
@@ -78,10 +77,7 @@ contract MaverickCalculator is SystemComponent, SecurityBase, Initializable, IDe
         uint256 decayInitTimestamp
     );
 
-    constructor(ISystemRegistry _systemRegistry)
-        SystemComponent(_systemRegistry)
-        SecurityBase(address(_systemRegistry.accessController()))
-    {
+    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) {
         _disableInitializers();
     }
 
@@ -174,7 +170,7 @@ contract MaverickCalculator is SystemComponent, SecurityBase, Initializable, IDe
         return data;
     }
 
-    function shouldSnapshot() public view returns (bool) {
+    function shouldSnapshot() public view override returns (bool) {
         IReward.RewardInfo[] memory rewardInfo = boostedRewarder.rewardInfo();
         IReward.RewardInfo memory info;
         uint256 totalSupply = IERC20(address(boostedRewarder)).totalSupply();
@@ -189,7 +185,7 @@ contract MaverickCalculator is SystemComponent, SecurityBase, Initializable, IDe
         return false;
     }
 
-    function snapshot() external {
+    function _snapshot() internal override {
         IReward.RewardInfo[] memory rewardInfo = boostedRewarder.rewardInfo();
 
         // Record a new snapshot of total APR across all rewarders
@@ -246,7 +242,7 @@ contract MaverickCalculator is SystemComponent, SecurityBase, Initializable, IDe
      * @param info Information about the reward token and the rate of rewards
      * @return The snapshot status for the given rewarder, based on the last snapshot and current block time.
      */
-    function _snapshotStatus(IReward.RewardInfo memory info) public view returns (SnapshotStatus) {
+    function _snapshotRewarderStatus(IReward.RewardInfo memory info) public view returns (SnapshotStatus) {
         if (lastSnapshotRewardPerTokens[address(info.rewardToken)] == 0) {
             return SnapshotStatus.noSnapshot;
         }
@@ -274,7 +270,7 @@ contract MaverickCalculator is SystemComponent, SecurityBase, Initializable, IDe
     }
 
     function _shouldSnapshot(IReward.RewardInfo memory info, uint256 totalSupply) public view returns (bool) {
-        SnapshotStatus status = _snapshotStatus(info);
+        SnapshotStatus status = _snapshotRewarderStatus(info);
 
         // If the status indicates we should finalize a snapshot, return true.
         if (status == SnapshotStatus.shouldFinalize || status == SnapshotStatus.shouldRestart) return true;
@@ -313,7 +309,7 @@ contract MaverickCalculator is SystemComponent, SecurityBase, Initializable, IDe
         return false;
     }
 
-    function _snapshot(IReward.RewardInfo memory info, uint256 totalSupply) internal {
+    function _snapshotRewarder(IReward.RewardInfo memory info, uint256 totalSupply) internal {
         if (totalSupply == 0) {
             safeTotalSupplies[address(info.rewardToken)] = 0;
             lastSnapshotRewardPerTokens[address(info.rewardToken)] = 0;
@@ -321,7 +317,7 @@ contract MaverickCalculator is SystemComponent, SecurityBase, Initializable, IDe
             return;
         }
 
-        SnapshotStatus status = _snapshotStatus(info);
+        SnapshotStatus status = _snapshotRewarderStatus(info);
 
         // Initialization: When no snapshot exists, start a new snapshot.
         // Restart: If the reward rate changed, restart the snapshot process.
@@ -383,7 +379,7 @@ contract MaverickCalculator is SystemComponent, SecurityBase, Initializable, IDe
         for (uint256 index = 0; index < rewardInfo.length; ++index) {
             info = rewardInfo[index];
             if (_shouldSnapshot(info, totalSupply)) {
-                _snapshot(info, totalSupply);
+                _snapshotRewarder(info, totalSupply);
             }
 
             totalApr += _computeAPR(info, lpSafePriceInQuote);

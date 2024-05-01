@@ -123,6 +123,7 @@ contract MaverickDexCalculator is IDexLSTStats, BaseStatsCalculator, Initializab
 
     function _scaleDecimalsToOriginal(uint256 decimals, uint256 amount) internal pure returns (uint256) {
         if (decimals == 18) {
+            // default LST case they are all 18 decimals
             return amount;
         } else if (decimals < 18) {
             uint256 exponent = 18 - decimals;
@@ -135,7 +136,7 @@ contract MaverickDexCalculator is IDexLSTStats, BaseStatsCalculator, Initializab
         return amount;
     }
 
-    function _snapshot() internal override {
+    function _getCurrentReservesInEth() internal returns (uint256 reservesAEthValue, uint256 reservesBEthValue) {
         IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
         (uint256 reservesA, uint256 reservesB) = IPoolPositionSlim(boostedPosition).getReserves();
 
@@ -150,8 +151,12 @@ contract MaverickDexCalculator is IDexLSTStats, BaseStatsCalculator, Initializab
         balances[1] = reservesB;
 
         // slither-disable-next-line similar-names
-        uint256 reservesAEthValue = calculateReserveInEthByIndex(pricer, balances, 0);
-        uint256 reservesBEthValue = calculateReserveInEthByIndex(pricer, balances, 1);
+        reservesAEthValue = calculateReserveInEthByIndex(pricer, balances, 0);
+        reservesBEthValue = calculateReserveInEthByIndex(pricer, balances, 1);
+    }
+
+    function _snapshot() internal override {
+        (uint256 reservesAEthValue, uint256 reservesBEthValue) = _getCurrentReservesInEth();
 
         if (reservesInEthFilterInitialized) {
             // filter normally once the filter has been initialized
@@ -205,22 +210,7 @@ contract MaverickDexCalculator is IDexLSTStats, BaseStatsCalculator, Initializab
             lstStatsData[1] = lstStats[1].current();
         }
 
-        IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
-        (uint256 reservesA, uint256 reservesB) = IPoolPositionSlim(boostedPosition).getReserves();
-
-        //getReserves scales to 18, so we need to scale back to token decimals
-        (reservesA, reservesB) = (
-            _scaleDecimalsToOriginal(reserveTokensDecimals[0], reservesA),
-            _scaleDecimalsToOriginal(reserveTokensDecimals[1], reservesB)
-        );
-
-        uint256[] memory balances = new uint256[](2);
-        balances[0] = reservesA;
-        balances[1] = reservesB;
-
-        // slither-disable-next-line similar-names
-        uint256 reservesAEthValue = calculateReserveInEthByIndex(pricer, balances, 0);
-        uint256 reservesBEthValue = calculateReserveInEthByIndex(pricer, balances, 1);
+        (uint256 reservesAEthValue, uint256 reservesBEthValue) = _getCurrentReservesInEth();
 
         uint256[] memory reservesInEthMemory = new uint256[](2);
 

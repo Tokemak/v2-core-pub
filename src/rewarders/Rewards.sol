@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-import { IRewards } from "src/interfaces/IRewards.sol";
+import { IRewards } from "src/interfaces/rewarders/IRewards.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { EIP712, ECDSA } from "openzeppelin-contracts/utils/cryptography/EIP712.sol";

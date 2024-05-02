@@ -7,9 +7,10 @@ import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard
 
 import { Address } from "openzeppelin-contracts/utils/Address.sol";
 import { ILMPVault, ILMPVaultRouter } from "src/interfaces/vault/ILMPVaultRouter.sol";
-import { IRewards } from "src/interfaces/IRewards.sol";
+import { IRewards } from "src/interfaces/rewarders/IRewards.sol";
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 import { LMPVaultRouterBase, ISystemRegistry } from "src/vault/LMPVaultRouterBase.sol";
+import { Errors } from "src/utils/Errors.sol";
 
 /// @title ERC4626Router contract
 contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard {
@@ -105,6 +106,7 @@ contract LMPVaultRouter is ILMPVaultRouter, LMPVaultRouterBase, ReentrancyGuard 
         bytes32 r,
         bytes32 s
     ) public override returns (uint256) {
+        if (msg.sender != recipient.wallet) revert Errors.AccessDenied();
         return rewarder.claimFor(recipient, v, r, s);
     }
 }

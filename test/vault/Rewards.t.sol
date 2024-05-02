@@ -4,12 +4,12 @@ pragma solidity >=0.8.7;
 
 import { BaseTest } from "test/BaseTest.t.sol";
 
-import { IRewards } from "src/interfaces/IRewards.sol";
+import { IRewards } from "src/interfaces/rewarders/IRewards.sol";
 
 import { ECDSA } from "openzeppelin-contracts/utils/cryptography/EIP712.sol";
 
 import { Errors } from "src/utils/Errors.sol";
-import { Rewards } from "src/vault/Rewards.sol";
+import { Rewards } from "src/rewarders/Rewards.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 

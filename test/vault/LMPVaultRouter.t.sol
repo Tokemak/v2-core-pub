@@ -21,8 +21,8 @@ import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
 import { ILMPVaultRouterBase, ILMPVaultRouter } from "src/interfaces/vault/ILMPVaultRouter.sol";
 
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
-import { IRewards } from "src/interfaces/IRewards.sol";
-import { Rewards } from "src/vault/Rewards.sol";
+import { IRewards } from "src/interfaces/rewarders/IRewards.sol";
+import { Rewards } from "src/rewarders/Rewards.sol";
 
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
@@ -483,6 +483,11 @@ contract LMPVaultRouterTest is BaseTest {
         bytes32 hashedRecipient = rewards.genHash(recipient);
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(rewardsSigner, hashedRecipient);
+
+        vm.startPrank(address(2));
+        vm.expectRevert(Errors.AccessDenied.selector);
+        lmpVaultRouter.claimRewards(rewards, recipient, v, r, s);
+        vm.stopPrank();
 
         uint256 claimedAmount = lmpVaultRouter.claimRewards(rewards, recipient, v, r, s);
 

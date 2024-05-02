@@ -120,5 +120,5 @@ interface ILMPVaultRouterBase {
     /// @notice Claims rewards on user stake of vault token.
     /// @param vault ILMPVault instance of vault token to claim rewards for.
     /// @param rewarder Rewarder to claim rewards from.
-    function claimRewards(ILMPVault vault, IMainRewarder rewarder) external;
+    function claimAutoPoolRewards(ILMPVault vault, IMainRewarder rewarder) external;
 }

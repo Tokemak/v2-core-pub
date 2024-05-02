@@ -909,7 +909,7 @@ contract LMPVaultRouterTest is BaseTest {
 
     function test_RevertRewarderDoesNotExist_claim() public {
         vm.expectRevert(Errors.ItemNotFound.selector);
-        lmpVaultRouter.claimRewards(lmpVault, IMainRewarder(makeAddr("FAKE_REWARDER")));
+        lmpVaultRouter.claimAutoPoolRewards(lmpVault, IMainRewarder(makeAddr("FAKE_REWARDER")));
     }
 
     function test_ClaimFromPastRewarder() public {
@@ -964,7 +964,7 @@ contract LMPVaultRouterTest is BaseTest {
         assertEq(userRewardsPastRewarderBefore, localStakeAmount);
 
         // Claim rewards.
-        lmpVaultRouter.claimRewards(lmpVault, lmpRewarder);
+        lmpVaultRouter.claimAutoPoolRewards(lmpVault, lmpRewarder);
 
         // Snapshot and checks.
         uint256 userClaimedRewards = toke.balanceOf(address(this));
@@ -1007,7 +1007,7 @@ contract LMPVaultRouterTest is BaseTest {
         // Roll for entire reward duration, gives all rewards to user.  100 is reward duration.
         vm.roll(block.number + 100);
 
-        lmpVaultRouter.claimRewards(lmpVault, lmpRewarder);
+        lmpVaultRouter.claimAutoPoolRewards(lmpVault, lmpRewarder);
 
         assertEq(toke.balanceOf(address(this)), localStakeAmount); // Make sure all toke transferred to user.
         assertEq(toke.balanceOf(address(lmpRewarder)), 0); // Rewarder should have no toke left.

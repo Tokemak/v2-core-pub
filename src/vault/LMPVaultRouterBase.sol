@@ -148,7 +148,7 @@ abstract contract LMPVaultRouterBase is
     }
 
     /// @inheritdoc ILMPVaultRouterBase
-    function claimRewards(ILMPVault vault, IMainRewarder rewarder) external {
+    function claimAutoPoolRewards(ILMPVault vault, IMainRewarder rewarder) external {
         _checkVault(address(vault));
         _checkRewarder(vault, address(rewarder));
 

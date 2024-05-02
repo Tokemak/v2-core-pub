@@ -20,6 +20,7 @@ import { IStatsCalculatorRegistry } from "src/interfaces/stats/IStatsCalculatorR
 import { IAsyncSwapperRegistry } from "src/interfaces/liquidation/IAsyncSwapperRegistry.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
+import { IMessageProxy } from "src/interfaces/messageProxy/IMessageProxy.sol";
 
 /// @notice Root most registry contract for the system
 interface ISystemRegistry {
@@ -91,4 +92,8 @@ interface ISystemRegistry {
     /// @notice Get the Incentive Pricing Stats
     /// @return incentivePricing the incentive pricing contract
     function incentivePricing() external view returns (IIncentivesPricingStats);
+
+    /// @notice Get the Messagy Proxy
+    /// @return Message proxy contract
+    function messageProxy() external view returns (IMessageProxy);
 }

@@ -31,6 +31,7 @@ contract SystemRegistryTest is Test {
     event AutoPilotRouterSet(address router);
     event AutoPoolFactorySet(bytes32 vaultType, address factory);
     event IncentivePricingStatsSet(address incentivePricingStats);
+    event MessageProxySet(address messageProxy);
 
     function setUp() public {
         _systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
@@ -932,6 +933,57 @@ contract SystemRegistryTest is Test {
         address emptyContract = address(new EmptyContract());
         vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
         _systemRegistry.setAutoPoolFactory(bytes32("Test bytes"), emptyContract);
+    }
+
+    /* ******************************** */
+    /* Message proxy
+    /* ******************************** */
+
+    function test_setMessageProxy_RevertsInvalidOwner() public {
+        vm.prank(makeAddr("NOT_OWNER"));
+        vm.expectRevert("Ownable: caller is not the owner");
+        _systemRegistry.setMessageProxy(makeAddr("PROXY"));
+    }
+
+    function test_setMessgeProxy_RevertsDuplicate() public {
+        address proxy = makeAddr("MESSAGE_PROXY");
+        mockSystemComponent(proxy);
+
+        vm.expectEmit(true, true, true, true);
+        emit MessageProxySet(proxy);
+
+        _systemRegistry.setMessageProxy(proxy);
+
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.DuplicateSet.selector, proxy));
+
+        _systemRegistry.setMessageProxy(proxy);
+    }
+
+    function test_setMessageProxy_CanSetMutipleTimes() public {
+        address proxy = makeAddr("MESSAGE_PROXY");
+        mockSystemComponent(proxy);
+
+        vm.expectEmit(true, true, true, true);
+        emit MessageProxySet(proxy);
+
+        _systemRegistry.setMessageProxy(proxy);
+
+        address replacementProxy = makeAddr("REPLACEMENT");
+        mockSystemComponent(replacementProxy);
+
+        vm.expectEmit(true, true, true, true);
+        emit MessageProxySet(replacementProxy);
+
+        _systemRegistry.setMessageProxy(replacementProxy);
+    }
+
+    function test_messageProxy_ReturnsCorrectly() public {
+        address proxy = makeAddr("PROXY");
+        mockSystemComponent(proxy);
+
+        _systemRegistry.setMessageProxy(proxy);
+
+        assertEq(address(_systemRegistry.messageProxy()), proxy);
     }
 
     /* ******************************** */

@@ -37,6 +37,7 @@ import { IStatsCalculatorRegistry } from "src/interfaces/stats/IStatsCalculatorR
 import { IAsyncSwapperRegistry } from "src/interfaces/liquidation/IAsyncSwapperRegistry.sol";
 import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IMessageProxy } from "src/interfaces/messageProxy/IMessageProxy.sol";
 
 // solhint-disable max-states-count
 
@@ -76,6 +77,7 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     EnumerableSet.Bytes32Set private _autoPoolFactoryTypes;
     IStatsCalculatorRegistry private _statsCalculatorRegistry;
     EnumerableSet.AddressSet private _rewardTokens;
+    IMessageProxy private _messageProxy;
 
     /// =====================================================
     /// Events
@@ -98,6 +100,7 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     event RewardTokenRemoved(address rewardToken);
     event IncentivePricingStatsSet(address incentivePricingStats);
     event SystemSecuritySet(address security);
+    event MessageProxySet(address messageProxy);
 
     /// =====================================================
     /// Errors
@@ -400,6 +403,23 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
         _verifySystemsAgree(security);
     }
 
+    /// @notice Set Message Proxy instance for this system
+    /// @dev Value can be replaced
+    /// @param proxy Address of the Message Proxy
+    function setMessageProxy(address proxy) external onlyOwner {
+        Errors.verifyNotZero(proxy, "messageProxy");
+
+        if (proxy == address(_messageProxy)) {
+            revert DuplicateSet(proxy);
+        }
+
+        emit MessageProxySet(proxy);
+
+        _messageProxy = IMessageProxy(proxy);
+
+        _verifySystemsAgree(proxy);
+    }
+
     /// @inheritdoc ISystemRegistry
     function gpToke() external view returns (IAccToke) {
         return _accToke;
@@ -477,6 +497,11 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     /// @inheritdoc ISystemRegistry
     function isRewardToken(address rewardToken) external view returns (bool) {
         return _rewardTokens.contains(rewardToken);
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function messageProxy() external view returns (IMessageProxy) {
+        return _messageProxy;
     }
 
     /// =====================================================

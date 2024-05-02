@@ -15,11 +15,16 @@ contract AutoPoolStrategyMocks {
         vm = _vm;
     }
 
-    function _mockSucessfulRebalance(address strategy) internal {
+    function _mockSuccessfulRebalance(address strategy) internal {
         _mockVerifyRebalance(strategy, true, "");
         _mockNavUpdate(strategy);
         _mockRebalanceSuccessfullyExecuted(strategy);
         _mockGetRebalanceOutSummaryStats(strategy);
+    }
+
+    function _mockFailingRebalance(address strategy, string memory message) internal {
+        _mockGetRebalanceOutSummaryStats(strategy);
+        _mockVerifyRebalance(strategy, false, message);
     }
 
     function _mockVerifyRebalance(address strategy, bool success, string memory message) internal {

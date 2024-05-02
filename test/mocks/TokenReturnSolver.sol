@@ -17,15 +17,31 @@ contract TokenReturnSolver is IERC3156FlashBorrower {
     }
 
     function buildDataForDvIn(address dv, uint256 returnAmount) public view returns (bytes memory) {
-        return abi.encode(returnAmount, IDestinationVault(dv).underlying());
+        return abi.encode(returnAmount, IDestinationVault(dv).underlying(), "ERC3156FlashBorrower.onFlashLoan");
     }
 
     function buildForIdleIn(ILMPVault vault, uint256 returnAmount) public view returns (bytes memory) {
-        return abi.encode(returnAmount, vault.asset());
+        return abi.encode(returnAmount, vault.asset(), "ERC3156FlashBorrower.onFlashLoan");
+    }
+
+    function buildDataForDvIn(
+        address dv,
+        uint256 returnAmount,
+        string memory valueToHash
+    ) public view returns (bytes memory) {
+        return abi.encode(returnAmount, IDestinationVault(dv).underlying(), valueToHash);
+    }
+
+    function buildForIdleIn(
+        ILMPVault vault,
+        uint256 returnAmount,
+        string memory valueToHash
+    ) public view returns (bytes memory) {
+        return abi.encode(returnAmount, vault.asset(), valueToHash);
     }
 
     function onFlashLoan(address, address, uint256, uint256, bytes memory data) external returns (bytes32) {
-        (uint256 ret, address token) = abi.decode(data, (uint256, address));
+        (uint256 ret, address token, string memory hashVal) = abi.decode(data, (uint256, address, string));
 
         if (token == 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2) {
             vm.deal(address(this), ret);
@@ -35,6 +51,6 @@ contract TokenReturnSolver is IERC3156FlashBorrower {
             TestERC20(token).mint(msg.sender, ret);
         }
 
-        return keccak256("ERC3156FlashBorrower.onFlashLoan");
+        return keccak256(abi.encodePacked(hashVal));
     }
 }

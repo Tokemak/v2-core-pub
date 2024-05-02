@@ -35,6 +35,8 @@ import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 import { TokenReturnSolver } from "test/mocks/TokenReturnSolver.sol";
+import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
+import { Events } from "test/unit/vault/AutoPool.Events.sol";
 
 contract LMPVaultTests is
     Test,
@@ -100,12 +102,6 @@ contract LMPVaultTests is
     );
     event FeeCollected(uint256 fees, address feeSink, uint256 mintedShares, uint256 profit, uint256 idle, uint256 debt);
     event PeriodicFeeCollected(uint256 fees, address feeSink, uint256 mintedShares);
-    event Shutdown(ILMPVault.VaultShutdownStatus reason);
-    event Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares);
-    event Withdraw(
-        address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
-    );
-    event Transfer(address indexed sender, address indexed receiver, uint256 amount);
 
     function setUp() public virtual {
         vm.warp(1_702_419_857);
@@ -137,7 +133,7 @@ contract LMPVaultTests is
         vault.initialize(lmpStrategy, "1", "1", initData);
         vm.label(address(vault), "FeeAndProfitTestVaultProxy");
 
-        // Autopool init weth deposit was added later, breaks many tests in this file.  Zero out to avoid issues.
+        // AutoPool init weth deposit was added later, breaks many tests in this file.  Zero out to avoid issues.
         vault.setTotalIdle(0);
         vault.setTotalSupply(0);
 
@@ -226,8 +222,12 @@ contract LMPVaultTests is
         return dv;
     }
 
-    function _mockSucessfulRebalance() internal {
-        _mockSucessfulRebalance(lmpStrategy);
+    function _mockSuccessfulRebalance() internal {
+        _mockSuccessfulRebalance(lmpStrategy);
+    }
+
+    function _mockFailingRebalance(string memory message) internal {
+        _mockFailingRebalance(lmpStrategy, message);
     }
 
     function _ensureNoStateChanges(VmSafe.AccountAccess[] memory records) internal {
@@ -247,6 +247,15 @@ contract LMPVaultTests is
                 }
             }
         }
+    }
+
+    function _isInList(address[] memory list, address check) internal pure returns (bool) {
+        for (uint256 i = 0; i < list.length; ++i) {
+            if (list[i] == check) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 
@@ -411,7 +420,7 @@ contract InitializationTests is LMPVaultTests {
     }
 
     function test_RestrictedVault_AllowsInitDeposit() public {
-        uint256 vaultInitializorAssetAmountBefore = vaultAsset.balanceOf(address(this));
+        uint256 vaultInitAssetAmountBefore = vaultAsset.balanceOf(address(this));
 
         initTestVaultRestricted.initialize(lmpStrategy, "suffix", "prefix", "");
 
@@ -420,11 +429,11 @@ contract InitializationTests is LMPVaultTests {
         assertEq(initTestVaultRestricted.balanceOf(address(this)), 0);
         assertEq(initTestVaultRestricted.getAssetBreakdown().totalIdle, WETH_INIT_DEPOSIT);
         assertEq(vaultAsset.balanceOf(address(initTestVaultRestricted)), WETH_INIT_DEPOSIT);
-        assertEq(vaultAsset.balanceOf(address(this)), vaultInitializorAssetAmountBefore - WETH_INIT_DEPOSIT);
+        assertEq(vaultAsset.balanceOf(address(this)), vaultInitAssetAmountBefore - WETH_INIT_DEPOSIT);
     }
 
     function test_NonRestrictedVault_AllowsInitDeposit() public {
-        uint256 vaultInitializorAssetAmountBefore = vaultAsset.balanceOf(address(this));
+        uint256 vaultInitAssetAmountBefore = vaultAsset.balanceOf(address(this));
 
         initTestVault.initialize(lmpStrategy, "suffix", "prefix", "");
 
@@ -433,7 +442,7 @@ contract InitializationTests is LMPVaultTests {
         assertEq(initTestVault.balanceOf(address(this)), 0);
         assertEq(initTestVault.getAssetBreakdown().totalIdle, WETH_INIT_DEPOSIT);
         assertEq(vaultAsset.balanceOf(address(initTestVault)), WETH_INIT_DEPOSIT);
-        assertEq(vaultAsset.balanceOf(address(this)), vaultInitializorAssetAmountBefore - WETH_INIT_DEPOSIT);
+        assertEq(vaultAsset.balanceOf(address(this)), vaultInitAssetAmountBefore - WETH_INIT_DEPOSIT);
     }
 
     function test_zeroAddressTransfer_RevertsWhen_IncorrectSharesAmountReturned() public {
@@ -450,7 +459,7 @@ contract InitializationTests is LMPVaultTests {
     }
 }
 
-contract DepositTests is LMPVaultTests {
+contract Deposit is LMPVaultTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -481,7 +490,7 @@ contract DepositTests is LMPVaultTests {
         uint256 shares = vault.convertToShares(5e9);
 
         vm.expectEmit(true, true, true, true);
-        emit Deposit(address(this), user, 5e9, 6.25e9);
+        emit Events.Deposit(address(this), user, 5e9, 6.25e9);
         vault.deposit(5e9, user);
 
         assertEq(shares, 6.25e9, "shares");
@@ -556,6 +565,39 @@ contract DepositTests is LMPVaultTests {
         uint256 actualShares = _depositFor(user, 1e18);
 
         assertTrue(calculatedShares > actualShares, "shares");
+    }
+
+    function test_ExistingPriceUsedWhenStaleDestinationRepriceIsLower() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 10e18);
+
+        // Mimic a deployment
+        DestinationVaultFake destVault = _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e18,
+                valuePerShare: 1e9,
+                minDebtValue: 9e9,
+                maxDebtValue: 11e9,
+                lastDebtReportTimestamp: block.timestamp - 2 days // Make the data stale
+             }),
+            18
+        );
+        vault.setTotalIdle(0);
+
+        // Get the expected shares based on the value at the last deployment
+        uint256 calculatedShares = vault.convertToShares(1e18, ILMPVault.TotalAssetPurpose.Deposit);
+
+        // We had a valuePerShare of 1e18 when we deployed, lets value each LP at 0.5e18
+        // This is the idea that when a pool is attacked and skewed to one side we will take the highest priced
+        // Token and value all of the reserves at that price, giving the user the worst execution but still letting
+        // it go through and relying on their slippage settings. However, when our existing price is higher,
+        // keep using it
+        _mockDestVaultCeilingPrice(address(destVault), 0.5e9);
+
+        uint256 actualShares = _depositFor(user, 1e18);
+
+        assertEq(calculatedShares, actualShares, "shares");
     }
 
     function test_MultipleStaleDestinationsAreRepriced() public {
@@ -657,6 +699,85 @@ contract DepositTests is LMPVaultTests {
         assertEq(vault.getAssetBreakdown().totalIdle, 1e18, "idle");
     }
 
+    /**
+     * This test is testing for a donation attack type of bug where the user is essentially using the vaults
+     * rounding functionality to skew nav/share and cause a second depositor a loss.  This attack was able
+     * to happen before an init deposit was added to the vault.  Steps to recreate the attack:
+     * - Vault needs to be in a state where totalSupply is 1 wei and totalAssets is > 1 wei.
+     * - In a loop, user deposits 2 * totalAssets - 1, and withdraws 1 wei of shares. Because of rounding
+     *    this loop will mint 1 wei share every time, burn 1 wei share every time, and return 1 wei asset
+     *    to the depositor each time.  This leads to a scenario where totalAssets grows larger and totalSupply
+     *    stays as 1 wei.
+     * - User2 comes and deposits 2 * totalAssets - 1 assets after user1 finishes skewing nav / share.  This will
+     *    only mint user2 1 wei shares even thought they have deposited nearly double what user1 has deposited.
+     * - User1 redeems their one share for half of the assets in the vault, more than they originally deposited.
+     *
+     * The goal of this test is to have both user and and user 2 get the same amount of assets deposited back, showing
+     *  that the attack can no longer happen.
+     */
+    function test_BlocksDepositWithdrawN1AttackVector() public {
+        uint256 multiplier = 1;
+
+        address user = makeAddr("user1");
+        _depositFor(user, 1 * multiplier);
+
+        // Setting up idle, supply to what would exist at init, plus any extra to simulate attack.
+        // TotalAssets had to be > totalSupply for attack to work.
+        vault.setTotalIdle(2 * multiplier + WETH_INIT_DEPOSIT);
+        vault.setTotalSupply(WETH_INIT_DEPOSIT + 1);
+
+        // Actually send assets to vault to match idle.
+        vaultAsset.mint(address(vault), 2 * multiplier - 1);
+
+        uint256 totalDeposited = 1 * multiplier;
+        uint256 totalWithdrawn = 0;
+
+        // Attack, before fix this would skew nav / share by depositing just under double totalAssets each time,
+        // only get minted one share.
+        for (uint256 i = 0; i < 30; i++) {
+            uint256 totalAssets = vault.totalAssets();
+            _depositFor(user, 2 * totalAssets - 1);
+            totalDeposited += 2 * totalAssets - 1;
+            vm.prank(user);
+            vault.withdraw(1, user, user);
+            totalWithdrawn += 1;
+        }
+
+        uint256 user1TotalDeposited = totalDeposited - totalWithdrawn;
+
+        // Deposit for user2, almost 2x total deposits of user1
+        address user2 = newAddr(1002, "user2");
+        uint256 user2Deposit = 2 * vault.totalAssets() - 1;
+        _depositFor(user2, user2Deposit);
+
+        // User1 redeems all of their shares.  Before fix, this would have caused them to receive half of the
+        // total vault assets.  Now they should just get back what they deposited.
+        uint256 user1Bal = vault.balanceOf(user);
+        vm.prank(user);
+        uint256 user1Remove = vault.redeem(user1Bal, user, user);
+
+        // User2 redeem.  Would have lost shares before fix.
+        uint256 user2Bal = vault.balanceOf(user2);
+        vm.prank(user2);
+        uint256 user2Remove = vault.redeem(user2Bal, user2, user2);
+
+        // Balance of both would have been 1 in attack scenario, will be much higher now.
+        assertGt(user1Bal, 1);
+        assertGt(user2Bal, 1);
+
+        // Check that both get back amount that was deposited.
+        assertEq(user1TotalDeposited, user1Remove);
+        assertEq(user2Deposit, user2Remove);
+    }
+
+    function test_RevertIf_ReceiverIsZeroAddress() public {
+        vaultAsset.mint(address(this), 1e18);
+        vaultAsset.approve(address(vault), 1e18);
+
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolToken.ERC20InvalidReceiver.selector, address(0)));
+        vault.deposit(1e18, address(0));
+    }
+
     function test_RevertIf_NavDecreases() public {
         address user = makeAddr("user1");
         _depositFor(user, 2e18);
@@ -745,77 +866,6 @@ contract DepositTests is LMPVaultTests {
 
         uint256 shares = vault.deposit(1000, address(this));
         assertEq(shares, 1000, "shares");
-    }
-
-    /**
-     * This test is testing for a donation attack type of bug where the user is essentially using the vaults
-     * rounding functionality to skew nav/share and cause a second depositor a loss.  This attack was able
-     * to happen before an init deposit was added to the vault.  Steps to recreate the attack:
-     * - Vault needs to be in a state where totalSupply is 1 wei and totalAssets is > 1 wei.
-     * - In a loop, user deposits 2 * totalAssets - 1, and withdraws 1 wei of shares. Because of rounding
-     *    this loop will mint 1 wei share every time, burn 1 wei share every time, and return 1 wei asset
-     *    to the depositor each time.  This leads to a scenario where totalAssets grows larger and totalSupply
-     *    stays as 1 wei.
-     * - User2 comes and deposits 2 * totalAssets - 1 assets after user1 finishes skewing nav / share.  This will
-     *    only mint user2 1 wei shares even thought they have deposited nearly double what user1 has deposited.
-     * - User1 redeems their one share for half of the assets in the vault, more than they originally deposited.
-     *
-     * The goal of this test is to have both user and and user 2 get the same amount of assets deposited back, showing
-     *  that the attack can no longer happen.
-     */
-    function test_depositWithdraw_AttackVector() public {
-        uint256 multiplier = 1;
-
-        address user = makeAddr("user1");
-        _depositFor(user, 1 * multiplier);
-
-        // Setting up idle, supply to what would exist at init, plus any extra to simulate attack.
-        // TotalAssets had to be > totalSupply for attack to work.
-        vault.setTotalIdle(2 * multiplier + WETH_INIT_DEPOSIT);
-        vault.setTotalSupply(WETH_INIT_DEPOSIT + 1);
-
-        // Actually send assets to vault to match idle.
-        vaultAsset.mint(address(vault), 2 * multiplier - 1);
-
-        uint256 totalDeposited = 1 * multiplier;
-        uint256 totalWithdrawn = 0;
-
-        // Attack, before fix this would skew nav / share by depositing just under double totalAssets each time,
-        // only get minted one share.
-        for (uint256 i = 0; i < 30; i++) {
-            uint256 totalAssets = vault.totalAssets();
-            _depositFor(user, 2 * totalAssets - 1);
-            totalDeposited += 2 * totalAssets - 1;
-            vm.prank(user);
-            vault.withdraw(1, user, user);
-            totalWithdrawn += 1;
-        }
-
-        uint256 user1TotalDeposited = totalDeposited - totalWithdrawn;
-
-        // Deposit for user2, almost 2x total deposits of user1
-        address user2 = newAddr(1002, "user2");
-        uint256 user2Deposit = 2 * vault.totalAssets() - 1;
-        _depositFor(user2, user2Deposit);
-
-        // User1 redeems all of their shares.  Before fix, this would have caused them to receive half of the
-        // total vault assets.  Now they should just get back what they deposited.
-        uint256 user1Bal = vault.balanceOf(user);
-        vm.prank(user);
-        uint256 user1Remove = vault.redeem(user1Bal, user, user);
-
-        // User2 redeem.  Would have lost shares before fix.
-        uint256 user2Bal = vault.balanceOf(user2);
-        vm.prank(user2);
-        uint256 user2Remove = vault.redeem(user2Bal, user2, user2);
-
-        // Balance of both would have been 1 in attack scenario, will be much higher now.
-        assertGt(user1Bal, 1);
-        assertGt(user2Bal, 1);
-
-        // Check that both get back amount that was deposited.
-        assertEq(user1TotalDeposited, user1Remove);
-        assertEq(user2Deposit, user2Remove);
     }
 
     function test_RevertIf_PoolNotCollateralizedIdle() public {
@@ -1036,7 +1086,7 @@ contract MintTests is LMPVaultTests {
         uint256 assets = vault.convertToAssets(6.25e9);
 
         vm.expectEmit(true, true, true, true);
-        emit Deposit(address(this), user, 5e9, 6.25e9);
+        emit Events.Deposit(address(this), user, 5e9, 6.25e9);
         vault.mint(6.25e9, user);
 
         assertEq(assets, 5e9, "assets");
@@ -1121,6 +1171,207 @@ contract MintTests is LMPVaultTests {
 
         // It will now require more assets than it would have originally
         assertTrue(actualAssets > calculatedAssets, "assets");
+    }
+
+    function test_ExistingPriceUsedWhenStaleDestinationRepriceIsLower() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 10e18);
+
+        // Mimic a deployment
+        DestinationVaultFake destVault = _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e18,
+                valuePerShare: 1e9,
+                minDebtValue: 9e9,
+                maxDebtValue: 11e9,
+                lastDebtReportTimestamp: block.timestamp - 2 days // Make the data stale
+             }),
+            18
+        );
+        vault.setTotalIdle(0);
+
+        // Get the expected shares based on the value at the last deployment
+        uint256 calculatedShares = vault.convertToShares(1e18, ILMPVault.TotalAssetPurpose.Deposit);
+
+        // We had a valuePerShare of 1e18 when we deployed, lets value each LP at 0.5e18
+        // This is the idea that when a pool is attacked and skewed to one side we will take the highest priced
+        // Token and value all of the reserves at that price, giving the user the worst execution but still letting
+        // it go through and relying on their slippage settings. However, when our existing price is higher,
+        // keep using it
+        _mockDestVaultCeilingPrice(address(destVault), 0.5e9);
+
+        _mintFor(user, 1e18, calculatedShares);
+    }
+
+    function test_MultipleStaleDestinationsAreRepriced() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 2e9);
+
+        // Mimic a deployment
+        DestinationVaultFake staleDv1 = _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 8e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp - 2 days
+            })
+        );
+        DestinationVaultFake staleDv2 = _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 5e9,
+                maxDebtValue: 13e9,
+                lastDebtReportTimestamp: block.timestamp - 2 days
+            })
+        );
+        _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 9e9,
+                maxDebtValue: 11e9,
+                lastDebtReportTimestamp: block.timestamp - 1
+            })
+        );
+        //vault.setTotalIdle(0);
+
+        // So at this point we should have
+        // Idle: 0
+        // Debt Value: 30
+        // Min Debt Value: 22,  8 + 5 + 9
+        // Max Debt Value: 40, 16 + 13 + 11
+
+        assertEq(vault.getAssetBreakdown().totalIdle, 2e9, "idle");
+        assertEq(vault.getAssetBreakdown().totalDebt, 31e9, "debt");
+        assertEq(vault.getAssetBreakdown().totalDebtMin, 22e9, "minDebt");
+        assertEq(vault.getAssetBreakdown().totalDebtMax, 40e9, "maxDebt");
+
+        // Get the expected shares based on the value at the last deployment
+        // We'd use the max debt value on deposit, (40e9 debt + 2 idle), and 2e9 existing shares
+        // 1e9 * 42e9 / 2e9 = 47619047
+        uint256 calculatedShares = vault.convertToAssets(1e9, ILMPVault.TotalAssetPurpose.Deposit);
+        assertEq(calculatedShares, 21e9);
+
+        // We use the ceiling price during a repricing
+        _mockDestVaultCeilingPrice(address(staleDv1), 5e9);
+        _mockDestVaultCeilingPrice(address(staleDv2), 5e9);
+
+        // So originally we had
+        // DV1 - Shares 10 value 16
+        // DV2 - Shares 10 value 13
+        // DV3 - Shares 10 value 11
+
+        // Repriced we have
+        // DV1 - Shares 10 value 50
+        // DV1 - Shares 10 value 50
+        // DV3 - Shares 10 value 11
+        // So a total assets of 113 (still have 2 in idle)
+        // And then for new shares of 1e9, 1e9 * 113e9 / 2e9 = 56.5e9 assets
+
+        uint256 actualAssets = _mintFor(user, 56.5e9, 1e9);
+        assertEq(actualAssets, 56.5e9, "actualAssets");
+    }
+
+    function test_InitialSharesMintedOneToOne() public {
+        vaultAsset.mint(address(this), 1e18);
+        vaultAsset.approve(address(vault), 1e18);
+
+        uint256 beforeShares = vault.balanceOf(address(this));
+        uint256 beforeAsset = vaultAsset.balanceOf(address(this));
+        uint256 assets = vault.mint(1000, address(this));
+        uint256 afterShares = vault.balanceOf(address(this));
+        uint256 afterAsset = vaultAsset.balanceOf(address(this));
+
+        assertEq(assets, 1000, "assetsRequired");
+        assertEq(beforeAsset - afterAsset, 1000, "assetChange");
+        assertEq(afterShares - beforeShares, 1000, "shareChange");
+        assertEq(vault.getAssetBreakdown().totalIdle, 1000, "idle");
+    }
+
+    function test_DepositsGoToIdle() public {
+        vaultAsset.mint(address(this), 1e18);
+        vaultAsset.approve(address(vault), 1e18);
+        assertEq(vault.getAssetBreakdown().totalIdle, 0, "beforeIdle");
+        vault.mint(1e18, address(this));
+        assertEq(vault.getAssetBreakdown().totalIdle, 1e18, "idle");
+    }
+
+    function test_RevertIf_NavDecreases() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 2e18);
+
+        vaultAsset.mint(address(this), 1e18);
+        vaultAsset.approve(address(vault), 1e18);
+
+        vault.nextDepositGetsDoubleShares();
+
+        vm.expectRevert(abi.encodeWithSelector(LMPVault.NavDecreased.selector, 10_000, 7500));
+        vault.mint(1e18, user);
+    }
+
+    function test_RevertIf_VaultIsShutdown() public {
+        vaultAsset.mint(address(this), 1e18);
+        vaultAsset.approve(address(vault), 1e18);
+
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
+        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+
+        vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626MintExceedsMax.selector, 1000, 0));
+        vault.mint(1000, address(this));
+    }
+
+    function test_RevertIf_SystemIsMidNavChange() public {
+        _mockSysSecurityNavOpsInProgress(systemSecurity, 1);
+
+        vaultAsset.mint(address(this), 1e18);
+        vaultAsset.approve(address(vault), 1e18);
+
+        vm.expectRevert(abi.encodeWithSelector(LMPVault.NavOpsInProgress.selector));
+        vault.mint(1000, address(this));
+
+        _mockSysSecurityNavOpsInProgress(systemSecurity, 0);
+
+        vault.mint(1000, address(this));
+    }
+
+    function test_RevertIf_PausedLocally() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.EMERGENCY_PAUSER, true);
+
+        vaultAsset.mint(address(this), 1000);
+        vaultAsset.approve(address(vault), 1000);
+
+        vault.pause();
+
+        vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626MintExceedsMax.selector, 1000, 0));
+        vault.mint(1000, address(this));
+
+        vault.unpause();
+
+        uint256 shares = vault.mint(1000, address(this));
+        assertEq(shares, 1000, "shares");
+    }
+
+    function test_RevertIf_PausedGlobally() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.EMERGENCY_PAUSER, true);
+
+        vaultAsset.mint(address(this), 1000);
+        vaultAsset.approve(address(vault), 1000);
+
+        _mockSysSecurityIsSystemPaused(systemSecurity, true);
+
+        vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626MintExceedsMax.selector, 1000, 0));
+        vault.mint(1000, address(this));
+
+        _mockSysSecurityIsSystemPaused(systemSecurity, false);
+
+        uint256 shares = vault.mint(1000, address(this));
+        assertEq(shares, 1000, "shares");
     }
 
     function test_RevertIf_PoolNotCollateralizedIdle() public {
@@ -1411,6 +1662,190 @@ contract Withdraw is LMPVaultTests {
         assertEq(vault.totalDebtMax(), 5.005e9, "totalDebtMax");
     }
 
+    function test_MultipleAttemptsAgainstASingleDestinationCanExit() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 10e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 9.99e9,
+                maxDebtValue: 10.01e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Everything from idle was rebalanced out
+        vault.setTotalIdle(0);
+
+        dv1.setDebtValuePerShare(0.999e9);
+
+        // Simulating 3 attempts at withdrawing from a single destination
+        // Our valuation will be .999e9 per share on the first round, but we are going
+        // to configure slippage of 1e9. We're attempting to pull 8e9 out. That means
+        // we'd calculate the shares to burn at about 8.008 (8/.999) and ultimately receive about 7.
+
+        // So, our 8.008 shares were only worth 7. Not worth .99 like we originally thought
+        // but 0.874125. And, when we're working on multiple rounds like this we pad the slippage
+        // we received here a bit in case we are moving fast at the edges of a curve. First pad is 1% so
+        // we'll see that value actually at 0.86538. So, pulling 1 with shares valuation at 0.86538
+        // means we'll burn about 1.1456 shares. However, with the slippage we've set for the second round
+        // we will only receive around .8. So at this point we've burned about 9.1536 DV shares and received
+        // a total of 7.8 of our requested 8. .2 to go
+
+        // So that round, our shares only ended being worth about 0.6896. We double the pad on each round, at 2%
+        // now so really only worth 0.6758. With .2 to pull that means we'll burn 0.2947 shares. We'll set our slippage
+        // so that we cover the amount on this round. We should get around 0.2944
+
+        // So the user should get the full 8 back, having burned around 9.5 shares of the destination vault shares.
+        // And we should get ~0.09 in idle due to the excess pull on the last round
+
+        dv1.setWithdrawBaseAssetSlippage(1e9, 0.35440117e9, 0.00001e9);
+
+        vm.prank(user);
+        uint256 sharesBurned = vault.withdraw(8e9, user, user);
+
+        assertEq(vault.totalIdle(), 0.095770551e9, "totalIdle");
+        assertEq(dv1.balanceOf(address(vault)), 0.540358636e9, /* 10 - ~9.5 burned */ "shares");
+        assertEq(vault.totalDebtMin(), (uint256(0.540358636e9 * 0.999e9) / 1e9) - 1, "totalDebtMin");
+        assertEq(sharesBurned, 9.459641366e9, "sharesBurned");
+    }
+
+    function test_MultipleAttemptsAgainstASingleDestinationCanExhaust() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 10e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 9e9,
+                valuePerShare: 1e9,
+                minDebtValue: 8.99e9,
+                maxDebtValue: 9.01e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(1e9);
+
+        dv1.setDebtValuePerShare(0.95e9);
+
+        // We are going to try and pull 8e9 out. We'll value the shares initially at our min debt
+        // valuation of .999e9 so we'll burn ~8.008e9 shares. We've set the actual value of the shares at this moment
+        // to 0.95e9 though with 0.01e9 of slippage so we'll only get 7.588453837e9 back.
+
+        // So we now know that our shares are really worth ~0.947609121e9 and with the 1% pad we give it on the first
+        // round of retries we'll value them at 0.938133029e9. We're trying to get our remaining 0.411546163e9 so with
+        // the current valuation we'll burn ~0.438686359e9 shares. We'll setup slippage so we only get ~.05 back though.
+
+        // So only getting .05 back from that trade we can determine our new per/share value
+        // to be ~0.113976646e9 (0.05 / 0.438686359e9). With the 2% pad on the second try, ~0.111697113e9
+        // So we have ~7.638453837e9 assets total which means we still need to pull ~0.361546163e9. Given the current
+        // valuation that would mean we'd need over 3 shares to cover which we don't have so we'll burn everything we do
+        // have. From our original 9 we're left with ~0.553313641e9. We'll setup slippage so the final pull only nets
+        // ~0.125647959e9 leaving us to pull the remainder from idle. We have ~7.764101796e9 and so we should see
+        // ~0.235898204 come from idle
+
+        dv1.setWithdrawBaseAssetSlippage(0.01e9, 0.366752041e9, 0.4e9);
+
+        vm.prank(user);
+        uint256 sharesBurned = vault.withdraw(8e9, user, user);
+
+        assertEq(vault.totalIdle(), 0.773247957e9, /* ~1 - 0.235898204 */ "totalIdle");
+
+        // We burned all of the destinations shares which were worth 8.99 and then we received ~0.235 from idle
+        // so that'd be ~9.225e9
+        assertEq(sharesBurned, 9.225978023e9, "sharesBurned");
+
+        // We wiped all debt
+        assertEq(dv1.balanceOf(address(vault)), 0, "dvSharesRemaining");
+        assertEq(vault.totalDebtMin(), 0, "totalDebtMin");
+        assertEq(vault.totalDebtMax(), 0, "totalDebtMin");
+    }
+
+    function test_ExcessiveSlippageExhaustsDestination() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 10e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 9e9,
+                valuePerShare: 1e9,
+                minDebtValue: 8.99e9,
+                maxDebtValue: 9.01e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(1e9);
+
+        dv1.setDebtValuePerShare(0.95e9);
+
+        // We are going to try and pull 8e9 out. We'll value the shares initially at our min debt
+        // valuation of .899e9 so we'll burn ~8.008e9 shares. We've set the actual value of the shares at this moment
+        // to 0.95e9 though with 0.01e9 of slippage so we'll only get 7.588453837e9 back.
+
+        // So we now know that our shares are really worth ~0.947609121e9 and with the 1% pad we give it on the first
+        // round of retries we'll value them at 0.938133029e9. We're trying to get our remaining 0.401546163e9 so with
+        // the current valuation we'll burn ~0.423460223e9 shares. We'll setup slippage so we only get ~0.002287211 back
+        // though.
+
+        // So only getting 0.002287211 back from that trade we can determine our new per/share value
+        // to be ~0.005401242e9. When we pad our slippage at the 2% for this round it brings it to ~0.407244131
+        // which is over our expected assets we pull all shares.
+
+        // From our original 9 we're left with ~0.567641001e9. We'll setup slippage so the final pull only nets
+        // ~0.139258951e9 leaving us to pull the remainder from idle. We have ~7.739999999e9 and so we should see
+        // ~0.260000001 come from idle
+
+        dv1.setWithdrawBaseAssetSlippage(0.01e9, 0.4e9, 0.4e9);
+
+        vm.prank(user);
+        vault.withdraw(8e9, user, user);
+
+        assertEq(vault.totalIdle(), 0.739999998e9, /* ~1 - 0.260000001 */ "totalIdle");
+
+        // We wiped all debt
+        assertEq(dv1.balanceOf(address(vault)), 0, "dvSharesRemaining");
+        assertEq(vault.totalDebtMin(), 0, "totalDebtMin");
+        assertEq(vault.totalDebtMax(), 0, "totalDebtMin");
+    }
+
+    function test_RevertIf_CantCoverRequestedAssetsDueToSlippage() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 10e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 9.99e9,
+                maxDebtValue: 10.01e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(0);
+
+        // We are going to try and pull 8e9 out. We'll value the shares initially at our min debt
+        // valuation of .999e9 so we'll burn ~8.008e9 shares. We've set slippage to 5e9 on the first round so we
+        // only get ~3 back. There's no slippage on the next round but given the reprice we burn all the shares
+        // and it still only nets 1.991991992.
+
+        dv1.setWithdrawBaseAssetSlippage(5e9);
+
+        vm.startPrank(user);
+
+        vm.expectRevert(abi.encodeWithSelector(LMPDebt.TooFewAssets.selector, 8e9, 5e9));
+        vault.withdraw(8e9, user, user);
+
+        vm.stopPrank();
+    }
+
     function test_AssetsGoToReceiver() public {
         address user1 = makeAddr("user1");
         address user2 = makeAddr("user2");
@@ -1419,6 +1854,42 @@ contract Withdraw is LMPVaultTests {
         _depositFor(user1, amount);
 
         vm.prank(user1);
+        vault.withdraw(amount, user2, user1);
+
+        uint256 newBalance = vaultAsset.balanceOf(user2);
+
+        assertEq(amount, newBalance - prevBalance, "newBalance");
+    }
+
+    function test_AllowsWithApprovals() public {
+        address user1 = makeAddr("user1");
+        address user2 = makeAddr("user2");
+        uint256 amount = 9e18;
+        uint256 prevBalance = vaultAsset.balanceOf(user2);
+        _depositFor(user1, amount);
+
+        vm.prank(user1);
+        vault.approve(user2, amount);
+
+        vm.prank(user2);
+        vault.withdraw(amount, user2, user1);
+
+        uint256 newBalance = vaultAsset.balanceOf(user2);
+
+        assertEq(amount, newBalance - prevBalance, "newBalance");
+    }
+
+    function test_AllowsWithMaxApproval() public {
+        address user1 = makeAddr("user1");
+        address user2 = makeAddr("user2");
+        uint256 amount = 9e18;
+        uint256 prevBalance = vaultAsset.balanceOf(user2);
+        _depositFor(user1, amount);
+
+        vm.prank(user1);
+        vault.approve(user2, type(uint256).max);
+
+        vm.prank(user2);
         vault.withdraw(amount, user2, user1);
 
         uint256 newBalance = vaultAsset.balanceOf(user2);
@@ -1437,7 +1908,7 @@ contract Withdraw is LMPVaultTests {
         uint256 shares = vault.convertToShares(3e9);
 
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(user1, user2, user1, 3e9, 3.75e9);
+        emit Events.Withdraw(user1, user2, user1, 3e9, 3.75e9);
         vm.prank(user1);
         vault.withdraw(3e9, user2, user1);
 
@@ -1550,6 +2021,31 @@ contract Withdraw is LMPVaultTests {
         vault.withdraw(10e18, user, user);
 
         assertEq(vault.isInWithdrawalQueue(address(dv1)), false);
+    }
+
+    function test_PartialDestinationWithdrawUpdatesTotalDebt() public {
+        address user = makeAddr("user1");
+        _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e18,
+                valuePerShare: 1e18,
+                minDebtValue: 10e18,
+                maxDebtValue: 10e18,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+        _depositFor(user, 10e18);
+
+        // Everything from idle was rebalanced out
+        vault.setTotalIdle(0);
+
+        assertEq(vault.getAssetBreakdown().totalDebt, 10e18, "beginningDebt");
+
+        vm.prank(user);
+        vault.withdraw(5e18, user, user);
+
+        assertEq(vault.getAssetBreakdown().totalDebt, 5e18, "endingDebt");
     }
 
     function test_UserReceivesNoMoreThanCachedValueIfValueIncreases() public {
@@ -2291,6 +2787,42 @@ contract Redeem is LMPVaultTests {
         assertEq(amount, newBalance - prevBalance, "newBalance");
     }
 
+    function test_AllowsWithApprovals() public {
+        address user1 = makeAddr("user1");
+        address user2 = makeAddr("user2");
+        uint256 amount = 9e18;
+        uint256 prevBalance = vaultAsset.balanceOf(user2);
+        _depositFor(user1, amount);
+
+        vm.prank(user1);
+        vault.approve(user2, amount);
+
+        vm.prank(user2);
+        vault.redeem(amount, user2, user1);
+
+        uint256 newBalance = vaultAsset.balanceOf(user2);
+
+        assertEq(amount, newBalance - prevBalance, "newBalance");
+    }
+
+    function test_AllowsWithMaxApproval() public {
+        address user1 = makeAddr("user1");
+        address user2 = makeAddr("user2");
+        uint256 amount = 9e18;
+        uint256 prevBalance = vaultAsset.balanceOf(user2);
+        _depositFor(user1, amount);
+
+        vm.prank(user1);
+        vault.approve(user2, type(uint256).max);
+
+        vm.prank(user2);
+        vault.redeem(amount, user2, user1);
+
+        uint256 newBalance = vaultAsset.balanceOf(user2);
+
+        assertEq(amount, newBalance - prevBalance, "newBalance");
+    }
+
     function test_EmitsWithdrawEvent() public {
         address user1 = makeAddr("user1");
         address user2 = makeAddr("user2");
@@ -2303,7 +2835,7 @@ contract Redeem is LMPVaultTests {
 
         vm.expectEmit(true, true, true, true);
 
-        emit Withdraw(user1, user2, user1, 2.4e9, 3e9);
+        emit Events.Withdraw(user1, user2, user1, 2.4e9, 3e9);
         vm.prank(user1);
         vault.redeem(3e9, user2, user1);
 
@@ -2400,6 +2932,31 @@ contract Redeem is LMPVaultTests {
         vault.redeem(userShares, user, user);
 
         assertEq(vault.isInWithdrawalQueue(address(dv1)), false);
+    }
+
+    function test_PartialDestinationWithdrawUpdatesTotalDebt() public {
+        address user = makeAddr("user1");
+        _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e18,
+                valuePerShare: 1e18,
+                minDebtValue: 10e18,
+                maxDebtValue: 10e18,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+        _depositFor(user, 10e18);
+
+        // Everything from idle was rebalanced out
+        vault.setTotalIdle(0);
+
+        assertEq(vault.getAssetBreakdown().totalDebt, 10e18, "beginningDebt");
+
+        vm.prank(user);
+        vault.redeem(5e18, user, user);
+
+        assertEq(vault.getAssetBreakdown().totalDebt, 5e18, "endingDebt");
     }
 
     function test_UserReceivesNoMoreThanCachedValueIfValueIncreases() public {
@@ -2854,7 +3411,7 @@ contract Redeem is LMPVaultTests {
     }
 }
 
-contract MaxRedeemTests is LMPVaultTests {
+contract MaxRedeem is LMPVaultTests {
     function test_CalculatesAtOneToOne() public {
         address user = makeAddr("user1");
         uint256 depositAmount = 1e18;
@@ -2927,7 +3484,7 @@ contract MaxRedeemTests is LMPVaultTests {
     }
 }
 
-contract ShutdownTests is LMPVaultTests {
+contract Shutdown is LMPVaultTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -2955,14 +3512,14 @@ contract ShutdownTests is LMPVaultTests {
     function test_EmitsEventDeprecated() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
-        emit Shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        emit Events.Shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
         vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
     }
 
     function test_EmitsEventExploit() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
-        emit Shutdown(ILMPVault.VaultShutdownStatus.Exploit);
+        emit Events.Shutdown(ILMPVault.VaultShutdownStatus.Exploit);
         vault.shutdown(ILMPVault.VaultShutdownStatus.Exploit);
     }
 
@@ -2987,7 +3544,7 @@ contract ShutdownTests is LMPVaultTests {
     }
 }
 
-contract RecoverTests is LMPVaultTests {
+contract Recover is LMPVaultTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -3184,7 +3741,7 @@ contract PeriodicFees is LMPVaultTests {
         //
 
         // Local variables.
-        uint256 warpAmount = block.timestamp + 1 days; // Calc fee for one day passing btwn debt reportings.
+        uint256 warpAmount = block.timestamp + 1 days; // Calc fee for one day passing between debt reportings.
         uint256 depositAmount = 3e20;
         uint256 periodicFeeBps = 500; // 5%
         address feeSink = makeAddr("periodicFeeSink");
@@ -3211,7 +3768,7 @@ contract PeriodicFees is LMPVaultTests {
 
         // Update debt, check events.
         vm.expectEmit(true, true, false, true);
-        emit Deposit(address(vault), feeSink, 0, calculatedShares);
+        emit Events.Deposit(address(vault), feeSink, 0, calculatedShares);
         vm.expectEmit(false, false, false, true);
         emit PeriodicFeeCollected(expectedFees, feeSink, calculatedShares);
         vm.expectEmit(false, false, false, true);
@@ -3248,7 +3805,7 @@ contract PeriodicFees is LMPVaultTests {
 
         // Update debt, check events.
         vm.expectEmit(true, true, false, true);
-        emit Deposit(address(vault), feeSink, 0, calculatedShares);
+        emit Events.Deposit(address(vault), feeSink, 0, calculatedShares);
         vm.expectEmit(false, false, false, true);
         emit PeriodicFeeCollected(expectedFees, feeSink, calculatedShares);
         vm.expectEmit(false, false, false, true);
@@ -3287,7 +3844,7 @@ contract PeriodicFees is LMPVaultTests {
 
         // Update debt, check events.
         vm.expectEmit(true, true, false, true);
-        emit Deposit(address(vault), feeSink, 0, calculatedShares);
+        emit Events.Deposit(address(vault), feeSink, 0, calculatedShares);
         vm.expectEmit(false, false, false, true);
         emit PeriodicFeeCollected(expectedFees, feeSink, calculatedShares);
         vm.expectEmit(false, false, false, true);
@@ -3333,12 +3890,30 @@ contract PeriodicFees is LMPVaultTests {
     }
 }
 
-contract TransferTests is LMPVaultTests {
+contract TransferFrom is LMPVaultTests {
     function setUp() public virtual override {
         super.setUp();
     }
 
-    function test_RevertIf_TransferPaused() public {
+    function test_RevertIf_InsufficientBalance() public {
+        address recipient = address(4);
+        address user = address(5);
+
+        vaultAsset.mint(address(this), 1000);
+        vaultAsset.approve(address(vault), 1000);
+        vault.mint(1000, address(this));
+
+        vault.approve(user, 5000);
+
+        vm.startPrank(user);
+        vm.expectRevert(
+            abi.encodeWithSelector(AutoPoolToken.ERC20InsufficientBalance.selector, address(this), 1000, 2000)
+        );
+        vault.transferFrom(address(this), recipient, 2000);
+        vm.stopPrank();
+    }
+
+    function test_RevertIf_InsufficientAllowance() public {
         address recipient = address(4);
         address user = address(5);
 
@@ -3348,13 +3923,24 @@ contract TransferTests is LMPVaultTests {
 
         vault.approve(user, 500);
 
-        _mockAccessControllerHasRole(accessController, address(this), Roles.EMERGENCY_PAUSER, true);
+        vm.startPrank(user);
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolToken.ERC20InsufficientAllowance.selector, user, 500, 1000));
+        vault.transferFrom(address(this), recipient, 1000);
+        vm.stopPrank();
+    }
 
-        vault.pause();
+    function test_RevertIf_TransferToZeroAddress() public {
+        address user = address(5);
+
+        vaultAsset.mint(address(this), 1000);
+        vaultAsset.approve(address(vault), 1000);
+        vault.mint(1000, address(this));
+
+        vault.approve(user, 500);
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(Pausable.IsPaused.selector));
-        vault.transferFrom(address(this), recipient, 10);
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolToken.ERC20InvalidReceiver.selector, address(0)));
+        vault.transferFrom(address(this), address(0), 10);
         vm.stopPrank();
     }
 
@@ -3375,6 +3961,68 @@ contract TransferTests is LMPVaultTests {
         vm.startPrank(user);
         vm.expectRevert(abi.encodeWithSelector(Pausable.IsPaused.selector));
         vault.transferFrom(address(this), recipient, 10);
+        vm.stopPrank();
+    }
+}
+
+contract Transfer is LMPVaultTests {
+    function setUp() public virtual override {
+        super.setUp();
+    }
+
+    function test_RevertIf_TransferPaused() public {
+        address recipient = address(4);
+
+        vaultAsset.mint(address(this), 1000);
+        vaultAsset.approve(address(vault), 1000);
+        vault.mint(1000, address(this));
+
+        _mockAccessControllerHasRole(accessController, address(this), Roles.EMERGENCY_PAUSER, true);
+        vault.pause();
+
+        vm.expectRevert(abi.encodeWithSelector(Pausable.IsPaused.selector));
+        vault.transfer(recipient, 10);
+    }
+
+    function test_RevertIf_InsufficientBalance() public {
+        address recipient = address(4);
+
+        vaultAsset.mint(address(this), 1000);
+        vaultAsset.approve(address(vault), 1000);
+        vault.mint(1000, address(this));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(AutoPoolToken.ERC20InsufficientBalance.selector, address(this), 1000, 2000)
+        );
+        vault.transfer(recipient, 2000);
+    }
+
+    function test_RevertIf_TransferToZeroAddress() public {
+        vaultAsset.mint(address(this), 1000);
+        vaultAsset.approve(address(vault), 1000);
+        vault.mint(1000, address(this));
+
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolToken.ERC20InvalidReceiver.selector, address(0)));
+        vault.transfer(address(0), 10);
+    }
+}
+
+contract Approve is LMPVaultTests {
+    function test_RevertIf_ApprovingFromAddressZero() public {
+        vm.startPrank(address(0));
+
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolToken.ERC20InvalidApprover.selector, address(0)));
+        vault.approve(address(1), 1);
+
+        vm.stopPrank();
+    }
+
+    function test_RevertIf_ApprovingToAddressZero() public {
+        vm.startPrank(address(1));
+
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolToken.ERC20InvalidSpender.selector, address(0)));
+        vault.approve(address(0), 1);
+
         vm.stopPrank();
     }
 }
@@ -4238,7 +4886,7 @@ contract FeeAndProfitTests is LMPVaultTests {
     }
 }
 
-contract FlashRebalanceTests is LMPVaultTests {
+contract FlashRebalanceSetup is LMPVaultTests {
     DestinationVaultFake internal dv1;
     DestinationVaultFake internal dv2;
     TokenReturnSolver internal solver;
@@ -4270,11 +4918,13 @@ contract FlashRebalanceTests is LMPVaultTests {
 
         solver = new TokenReturnSolver(vm);
     }
+}
 
+contract FlashRebalance is FlashRebalanceSetup {
     function test_IdleAssetsCanRebalanceOut() public {
         address user = makeAddr("user");
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockSucessfulRebalance();
+        _mockSuccessfulRebalance();
 
         _depositFor(user, 100e9);
 
@@ -4301,7 +4951,7 @@ contract FlashRebalanceTests is LMPVaultTests {
     function test_CanRebalanceToIdle() public {
         address user = makeAddr("user");
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockSucessfulRebalance();
+        _mockSuccessfulRebalance();
 
         _depositFor(user, 100e9);
 
@@ -4342,13 +4992,13 @@ contract FlashRebalanceTests is LMPVaultTests {
     function test_DebtValuesAreUpdated() public {
         address user = makeAddr("user");
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockSucessfulRebalance();
+        _mockSuccessfulRebalance();
 
         _depositFor(user, 100e9);
 
-        assertEq(vault.getAssetBreakdown().totalDebt, 0, "predebt");
-        assertEq(vault.getAssetBreakdown().totalDebtMin, 0, "premin");
-        assertEq(vault.getAssetBreakdown().totalDebtMax, 0, "premax");
+        assertEq(vault.getAssetBreakdown().totalDebt, 0, "preDebt");
+        assertEq(vault.getAssetBreakdown().totalDebtMin, 0, "preMin");
+        assertEq(vault.getAssetBreakdown().totalDebtMax, 0, "preMax");
 
         // Setup the solver data to mint us the dv1 underlying for amount
         bytes memory data = solver.buildDataForDvIn(address(dv1), 50e9);
@@ -4376,7 +5026,7 @@ contract FlashRebalanceTests is LMPVaultTests {
 
         // address user = makeAddr("user");
         // _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        // _mockSucessfulRebalance();
+        // _mockSuccessfulRebalance();
 
         // _depositFor(user, 100e9);
 
@@ -4408,7 +5058,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         address user = makeAddr("user");
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        _mockSucessfulRebalance();
+        _mockSuccessfulRebalance();
 
         _depositFor(user, 100e9);
 
@@ -4448,7 +5098,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         address user = makeAddr("user");
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        _mockSucessfulRebalance();
+        _mockSuccessfulRebalance();
 
         _depositFor(user, 100e9);
 
@@ -4482,7 +5132,7 @@ contract FlashRebalanceTests is LMPVaultTests {
     function test_NotifiesStrategyOfSuccess() public {
         address user = makeAddr("user");
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockSucessfulRebalance();
+        _mockSuccessfulRebalance();
 
         _depositFor(user, 100e9);
 
@@ -4511,7 +5161,7 @@ contract FlashRebalanceTests is LMPVaultTests {
     function test_VaultIsNotAddedToQueues() public {
         address user = makeAddr("user");
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockSucessfulRebalance();
+        _mockSuccessfulRebalance();
 
         _depositFor(user, 100e9);
 
@@ -4560,7 +5210,7 @@ contract FlashRebalanceTests is LMPVaultTests {
         address user = makeAddr("user");
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
         _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_DESTINATION_UPDATER, true);
-        _mockSucessfulRebalance();
+        _mockSuccessfulRebalance();
 
         _depositFor(user, 100e9);
 
@@ -4627,7 +5277,7 @@ contract FlashRebalanceTests is LMPVaultTests {
 
         address user = makeAddr("user");
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockSucessfulRebalance();
+        _mockSuccessfulRebalance();
 
         _depositFor(user, 100e9);
 
@@ -4665,7 +5315,7 @@ contract FlashRebalanceTests is LMPVaultTests {
 
         address user = makeAddr("user");
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockSucessfulRebalance();
+        _mockSuccessfulRebalance();
 
         _depositFor(user, 100e9);
 
@@ -4714,7 +5364,7 @@ contract FlashRebalanceTests is LMPVaultTests {
 
         address user = makeAddr("user");
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockSucessfulRebalance();
+        _mockSuccessfulRebalance();
 
         _depositFor(user, 100e9);
 
@@ -4763,7 +5413,7 @@ contract FlashRebalanceTests is LMPVaultTests {
 
         address user = makeAddr("user");
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockSucessfulRebalance();
+        _mockSuccessfulRebalance();
 
         _depositFor(user, 100e9);
 
@@ -4807,10 +5457,97 @@ contract FlashRebalanceTests is LMPVaultTests {
         );
     }
 
+    function test_RevertIf_StrategyRejectsTheRebalance() public {
+        address user = makeAddr("user");
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockFailingRebalance("msg");
+
+        _depositFor(user, 100e9);
+
+        // Setup the solver data to mint us the dv1 underlying for amount
+        bytes memory outData = solver.buildDataForDvIn(address(dv1), 50e9);
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
+
+        address tokenIn = address(dv1.underlyer());
+        address tokenOut = vault.asset();
+
+        vm.expectRevert(abi.encodeWithSelector(LMPDebt.RebalanceFailed.selector, "msg"));
+        vault.flashRebalance(
+            solver,
+            IStrategy.RebalanceParams({
+                destinationIn: address(dv1),
+                tokenIn: tokenIn,
+                amountIn: 50e9,
+                destinationOut: address(vault),
+                tokenOut: tokenOut,
+                amountOut: 50e9
+            }),
+            outData
+        );
+    }
+
+    function test_RevertIf_SolverDoesntSendBackEnoughAssets() public {
+        address user = makeAddr("user");
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockFailingRebalance("msg");
+
+        _depositFor(user, 100e9);
+
+        // Setup the solver data to mint us the dv1 underlying for amount
+        bytes memory outData = solver.buildDataForDvIn(address(dv1), 49e9);
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
+
+        address tokenIn = address(dv1.underlyer());
+        address tokenOut = vault.asset();
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.FlashLoanFailed.selector, tokenIn, 50e9));
+        vault.flashRebalance(
+            solver,
+            IStrategy.RebalanceParams({
+                destinationIn: address(dv1),
+                tokenIn: tokenIn,
+                amountIn: 50e9,
+                destinationOut: address(vault),
+                tokenOut: tokenOut,
+                amountOut: 50e9
+            }),
+            outData
+        );
+    }
+
+    function test_RevertIf_3156HashIsInvalid() public {
+        address user = makeAddr("user");
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockFailingRebalance("msg");
+
+        _depositFor(user, 100e9);
+
+        // Setup the solver data to mint us the dv1 underlying for amount
+        bytes memory outData = solver.buildDataForDvIn(address(dv1), 50e9, "badHash");
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
+
+        address tokenIn = address(dv1.underlyer());
+        address tokenOut = vault.asset();
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.FlashLoanFailed.selector, tokenIn, 50e9));
+        vault.flashRebalance(
+            solver,
+            IStrategy.RebalanceParams({
+                destinationIn: address(dv1),
+                tokenIn: tokenIn,
+                amountIn: 50e9,
+                destinationOut: address(vault),
+                tokenOut: tokenOut,
+                amountOut: 50e9
+            }),
+            outData
+        );
+    }
+
     function test_RevertIf_RebalanceToTheSameDestination() public {
         address user = makeAddr("user");
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockSucessfulRebalance();
+        _mockSuccessfulRebalance();
 
         _depositFor(user, 100e9);
 
@@ -4866,9 +5603,221 @@ contract FlashRebalanceTests is LMPVaultTests {
         );
     }
 
-    function test_RevertIf_Paused() public { }
+    function test_RevertIf_AttemptIdleAssetsOutWhenShutdown() public {
+        address user = makeAddr("user");
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
+        _mockSuccessfulRebalance();
 
-    function test_RevertIf_NotCalledByRole() public { }
+        _depositFor(user, 100e9);
+
+        // Setup the solver data to mint us the dv1 underlying for amount
+        bytes memory data = solver.buildDataForDvIn(address(dv1), 50e9);
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
+
+        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+
+        address dv1Underlyer = address(dv1.underlyer());
+        address tokenOut = vault.asset();
+
+        vm.expectRevert(abi.encodeWithSelector(LMPDebt.VaultShutdown.selector));
+        vault.flashRebalance(
+            solver,
+            IStrategy.RebalanceParams({
+                destinationIn: address(dv1),
+                tokenIn: dv1Underlyer,
+                amountIn: 50e9,
+                destinationOut: address(vault),
+                tokenOut: tokenOut,
+                amountOut: 50e9
+            }),
+            data
+        );
+    }
+
+    function test_RevertIf_DestinationInPriceIsNotSafe() public {
+        address user = makeAddr("user");
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockSuccessfulRebalance();
+
+        _depositFor(user, 100e9);
+
+        // Setup the solver data to mint us the dv1 underlying for amount
+        bytes memory data = solver.buildDataForDvIn(address(dv1), 50e9);
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, false);
+
+        address dv1Underlyer = address(dv1.underlyer());
+        address tokenOut = vault.asset();
+
+        vm.expectRevert(abi.encodeWithSelector(LMPDebt.InvalidPrices.selector));
+        vault.flashRebalance(
+            solver,
+            IStrategy.RebalanceParams({
+                destinationIn: address(dv1),
+                tokenIn: dv1Underlyer,
+                amountIn: 50e9,
+                destinationOut: address(vault),
+                tokenOut: tokenOut,
+                amountOut: 50e9
+            }),
+            data
+        );
+    }
+
+    function test_RevertIf_DestinationOutPriceIsNotSafe() public {
+        address user = makeAddr("user");
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockSuccessfulRebalance();
+
+        _depositFor(user, 100e9);
+
+        // Setup the solver data to mint us the dv1 underlying for amount
+        bytes memory outData = solver.buildDataForDvIn(address(dv1), 50e9);
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
+        vault.flashRebalance(
+            solver,
+            IStrategy.RebalanceParams({
+                destinationIn: address(dv1),
+                tokenIn: address(dv1.underlyer()),
+                amountIn: 50e9,
+                destinationOut: address(vault),
+                tokenOut: vault.asset(),
+                amountOut: 50e9
+            }),
+            outData
+        );
+
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, false);
+
+        bytes memory inData = solver.buildForIdleIn(vault, 49e9);
+
+        address asset = vault.asset();
+        address tokenOut = address(dv1.underlyer());
+
+        vm.expectRevert(abi.encodeWithSelector(LMPDebt.InvalidPrices.selector));
+        vault.flashRebalance(
+            solver,
+            IStrategy.RebalanceParams({
+                destinationIn: address(vault),
+                tokenIn: asset,
+                amountIn: 49e9,
+                destinationOut: address(dv1),
+                tokenOut: tokenOut,
+                amountOut: 49e9
+            }),
+            inData
+        );
+    }
+
+    function test_RevertIf_PausedLocally() public {
+        address user = makeAddr("user");
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.EMERGENCY_PAUSER, true);
+        _mockSuccessfulRebalance();
+
+        _depositFor(user, 100e9);
+
+        // Setup the solver data to mint us the dv1 underlying for amount
+        bytes memory data = solver.buildDataForDvIn(address(dv1), 50e9);
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, false);
+
+        address dv1Underlyer = address(dv1.underlyer());
+        address tokenOut = vault.asset();
+
+        vault.pause();
+
+        vm.expectRevert(abi.encodeWithSelector(Pausable.IsPaused.selector));
+        vault.flashRebalance(
+            solver,
+            IStrategy.RebalanceParams({
+                destinationIn: address(dv1),
+                tokenIn: dv1Underlyer,
+                amountIn: 50e9,
+                destinationOut: address(vault),
+                tokenOut: tokenOut,
+                amountOut: 50e9
+            }),
+            data
+        );
+    }
+
+    function test_RevertIf_PausedGlobally() public {
+        address user = makeAddr("user");
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.EMERGENCY_PAUSER, true);
+        _mockSuccessfulRebalance();
+
+        _depositFor(user, 100e9);
+
+        // Setup the solver data to mint us the dv1 underlying for amount
+        bytes memory data = solver.buildDataForDvIn(address(dv1), 50e9);
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, false);
+
+        address dv1Underlyer = address(dv1.underlyer());
+        address tokenOut = vault.asset();
+
+        _mockSysSecurityIsSystemPaused(systemSecurity, true);
+
+        vm.expectRevert(abi.encodeWithSelector(Pausable.IsPaused.selector));
+        vault.flashRebalance(
+            solver,
+            IStrategy.RebalanceParams({
+                destinationIn: address(dv1),
+                tokenIn: dv1Underlyer,
+                amountIn: 50e9,
+                destinationOut: address(vault),
+                tokenOut: tokenOut,
+                amountOut: 50e9
+            }),
+            data
+        );
+    }
+
+    function test_RevertIf_NotCalledByRole() public {
+        address user = makeAddr("user");
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, false);
+        _mockSuccessfulRebalance();
+
+        _depositFor(user, 100e9);
+
+        // Setup the solver data to mint us the dv1 underlying for amount
+        bytes memory data = solver.buildDataForDvIn(address(dv1), 50e9);
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
+
+        address dv1Underlyer = address(dv1.underlyer());
+        address tokenOut = vault.asset();
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        vault.flashRebalance(
+            solver,
+            IStrategy.RebalanceParams({
+                destinationIn: address(dv1),
+                tokenIn: dv1Underlyer,
+                amountIn: 50e9,
+                destinationOut: address(vault),
+                tokenOut: tokenOut,
+                amountOut: 50e9
+            }),
+            data
+        );
+
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        vault.flashRebalance(
+            solver,
+            IStrategy.RebalanceParams({
+                destinationIn: address(dv1),
+                tokenIn: dv1Underlyer,
+                amountIn: 50e9,
+                destinationOut: address(vault),
+                tokenOut: tokenOut,
+                amountOut: 50e9
+            }),
+            data
+        );
+    }
 
     function _setupNDestinations(uint256 n) internal returns (DestinationVaultFake[] memory ret) {
         ret = new DestinationVaultFake[](n);
@@ -4886,18 +5835,9 @@ contract FlashRebalanceTests is LMPVaultTests {
             );
         }
     }
-
-    function _isInList(address[] memory list, address check) internal pure returns (bool) {
-        for (uint256 i = 0; i < list.length; ++i) {
-            if (list[i] == check) {
-                return true;
-            }
-        }
-        return false;
-    }
 }
 
-contract UpdateDebtReportingTests is LMPVaultTests {
+contract UpdateDebtReporting is LMPVaultTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -4980,8 +5920,326 @@ contract UpdateDebtReportingTests is LMPVaultTests {
         assertEq(vault.getAssetBreakdown().totalIdle, 19e18, "idle");
     }
 
+    function test_EarnedAutoCompoundsLeaveNavShareUnaffected() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+
+        address user = makeAddr("user");
+
+        DestinationVaultFake dv1 = _setupDestinationWithRewarder(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e18,
+                valuePerShare: 1e18,
+                minDebtValue: 10e18,
+                maxDebtValue: 10e18,
+                lastDebtReportTimestamp: block.timestamp
+            }),
+            10e18
+        );
+
+        DestinationVaultFake dv2 = _setupDestinationWithRewarder(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e18,
+                valuePerShare: 1e18,
+                minDebtValue: 10e18,
+                maxDebtValue: 10e18,
+                lastDebtReportTimestamp: block.timestamp
+            }),
+            9e18
+        );
+
+        _depositFor(user, 1_000_000_000_000_000_010);
+
+        // Everything from idle was rebalanced out
+        vault.setTotalIdle(0);
+
+        _mockDestVaultRangePricesLP(address(dv1), 1e18, 1e18, true);
+        _mockDestVaultRangePricesLP(address(dv2), 1e18, 1e18, true);
+
+        uint256 perNavShare = vault.convertToAssets(1e9);
+
+        vault.updateDebtReporting(4);
+
+        uint256 postNavShare = vault.convertToAssets(1e9);
+
+        assertEq(perNavShare, postNavShare, "navShare");
+
+        vm.warp(block.timestamp + 86_400);
+
+        uint256 afterUnlockNavShare = vault.convertToAssets(1e9);
+
+        assertTrue(afterUnlockNavShare > postNavShare, "postUnlock");
+    }
+
+    function test_EarnedAutoCompoundsPriceAppreciationLeaveNavShareUnaffected() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+
+        address user = makeAddr("user");
+
+        DestinationVaultFake dv1 = _setupDestinationWithRewarder(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e18,
+                valuePerShare: 1e18,
+                minDebtValue: 10e18,
+                maxDebtValue: 10e18,
+                lastDebtReportTimestamp: block.timestamp
+            }),
+            10e18
+        );
+
+        DestinationVaultFake dv2 = _setupDestinationWithRewarder(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e18,
+                valuePerShare: 1e18,
+                minDebtValue: 10e18,
+                maxDebtValue: 10e18,
+                lastDebtReportTimestamp: block.timestamp
+            }),
+            9e18
+        );
+
+        _depositFor(user, 1_000_000_000_000_000_010);
+
+        // Everything from idle was rebalanced out
+        vault.setTotalIdle(0);
+
+        _mockDestVaultRangePricesLP(address(dv1), 2e18, 2e18, true);
+        _mockDestVaultRangePricesLP(address(dv2), 2e18, 2e18, true);
+
+        uint256 perNavShare = vault.convertToAssets(1e9);
+
+        vault.updateDebtReporting(4);
+
+        uint256 postNavShare = vault.convertToAssets(1e9);
+
+        assertEq(perNavShare, postNavShare, "navShare");
+
+        vm.warp(block.timestamp + 86_400);
+
+        uint256 afterUnlockNavShare = vault.convertToAssets(1e9);
+
+        assertTrue(afterUnlockNavShare > postNavShare, "postUnlock");
+    }
+
+    function test_CoveredPeriodicFeesLeaveNavShareUnaffected() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+
+        address user = makeAddr("user");
+
+        address feeReceiver = makeAddr("feeReceiver");
+        vault.setPeriodicFeeBps(1000);
+        vault.setPeriodicFeeSink(feeReceiver);
+        vault.useRealCollectFees();
+
+        _depositFor(user, 1e9);
+
+        vault.updateDebtReporting(4);
+
+        vm.warp(block.timestamp + 1 weeks);
+
+        DestinationVaultFake dv1 = _setupDestinationWithRewarder(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
+                lastDebtReportTimestamp: block.timestamp
+            }),
+            10e9
+        );
+
+        DestinationVaultFake dv2 = _setupDestinationWithRewarder(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
+                lastDebtReportTimestamp: block.timestamp
+            }),
+            9e9
+        );
+
+        // Everything from idle was rebalanced out
+        vault.setTotalIdle(0);
+
+        uint256 feeReceiverBalStart = vault.balanceOf(feeReceiver);
+
+        _mockDestVaultRangePricesLP(address(dv1), 2e9, 2e9, true);
+        _mockDestVaultRangePricesLP(address(dv2), 2e9, 2e9, true);
+
+        uint256 perNavShare = vault.convertToAssets(1e9);
+
+        vault.updateDebtReporting(4);
+
+        uint256 feeReceiverBalEnd = vault.balanceOf(feeReceiver);
+
+        assertTrue(feeReceiverBalEnd > feeReceiverBalStart, "feeReceived");
+
+        uint256 postNavShare = vault.convertToAssets(1e9);
+
+        assertEq(perNavShare, postNavShare, "navShare");
+
+        vm.warp(block.timestamp + 86_400);
+
+        uint256 afterUnlockNavShare = vault.convertToAssets(1e9);
+
+        assertTrue(afterUnlockNavShare > postNavShare, "postUnlock");
+    }
+
+    function test_CoveredPeriodicAndStreamingFeesLeaveNavShareUnaffected() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+
+        address user = makeAddr("user");
+
+        address periodicFeeReceiver = makeAddr("periodicFeeReceiver");
+        address streamingFeeReceiver = makeAddr("streamingFeeReceiver");
+        vault.setPeriodicFeeBps(1000);
+        vault.setPeriodicFeeSink(periodicFeeReceiver);
+        vault.setStreamingFeeBps(1000);
+        vault.setFeeSink(streamingFeeReceiver);
+        vault.useRealCollectFees();
+
+        _depositFor(user, 1e9);
+
+        vault.updateDebtReporting(4);
+
+        vm.warp(block.timestamp + 1 weeks);
+
+        DestinationVaultFake dv1 = _setupDestinationWithRewarder(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
+                lastDebtReportTimestamp: block.timestamp
+            }),
+            10e9
+        );
+
+        DestinationVaultFake dv2 = _setupDestinationWithRewarder(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
+                lastDebtReportTimestamp: block.timestamp
+            }),
+            9e9
+        );
+
+        // Everything from idle was rebalanced out
+        vault.setTotalIdle(0);
+
+        uint256 periodicFeeReceiverBalStart = vault.balanceOf(periodicFeeReceiver);
+        uint256 streamingFeeReceiverBalStart = vault.balanceOf(streamingFeeReceiver);
+
+        _mockDestVaultRangePricesLP(address(dv1), 2e9, 2e9, true);
+        _mockDestVaultRangePricesLP(address(dv2), 2e9, 2e9, true);
+
+        uint256 perNavShare = vault.convertToAssets(1e9);
+
+        vault.updateDebtReporting(4);
+
+        uint256 periodicFeeReceiverBalEnd = vault.balanceOf(periodicFeeReceiver);
+        uint256 streamingFeeReceiverBalEnd = vault.balanceOf(streamingFeeReceiver);
+
+        assertTrue(periodicFeeReceiverBalEnd > periodicFeeReceiverBalStart, "periodicFeeReceived");
+        assertTrue(streamingFeeReceiverBalEnd > streamingFeeReceiverBalStart, "streamingFeeReceived");
+
+        uint256 postNavShare = vault.convertToAssets(1e9);
+
+        assertEq(perNavShare, postNavShare, "navShare");
+
+        vm.warp(block.timestamp + 86_400);
+
+        uint256 afterUnlockNavShare = vault.convertToAssets(1e9);
+
+        assertTrue(afterUnlockNavShare > postNavShare, "postUnlock");
+    }
+
+    function test_NavShareDecreasesWhenPeriodicFeeNotCovered() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+
+        address user = makeAddr("user");
+
+        address feeReceiver = makeAddr("feeReceiver");
+        vault.setPeriodicFeeBps(1000);
+        vault.setPeriodicFeeSink(feeReceiver);
+        vault.useRealCollectFees();
+
+        _depositFor(user, 1e9 + 10);
+
+        vault.updateDebtReporting(4);
+
+        vm.warp(block.timestamp + 1 weeks);
+
+        DestinationVaultFake dv1 = _setupDestinationWithRewarder(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
+                lastDebtReportTimestamp: block.timestamp
+            }),
+            0
+        );
+
+        DestinationVaultFake dv2 = _setupDestinationWithRewarder(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
+                lastDebtReportTimestamp: block.timestamp
+            }),
+            0
+        );
+
+        // Everything from idle was rebalanced out
+        vault.setTotalIdle(0);
+
+        uint256 feeReceiverBalStart = vault.balanceOf(feeReceiver);
+
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
+        _mockDestVaultRangePricesLP(address(dv2), 1e9, 1e9, true);
+
+        console.log("vault.totalAssets() start", vault.totalAssets());
+        console.log("feeReceiverBalStart", feeReceiverBalStart);
+        uint256 preNavShare = vault.convertToAssets(1e9);
+
+        vault.updateDebtReporting(4);
+
+        console.log("vault.totalAssets() end", vault.totalAssets());
+        uint256 feeReceiverBalEnd = vault.balanceOf(feeReceiver);
+        console.log("feeReceiverBalEnd", feeReceiverBalEnd);
+
+        assertTrue(feeReceiverBalEnd > feeReceiverBalStart, "feeReceived");
+
+        uint256 postNavShare = vault.convertToAssets(1e9);
+
+        assertTrue(preNavShare > postNavShare, "navShare");
+    }
+
     function test_BurnedSharesViaWithdrawReduceTotals() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+
+        // Disable unlock period so profit hits immediately
+        vault.setProfitUnlockPeriod(0);
 
         address user = makeAddr("user");
 
@@ -5162,6 +6420,291 @@ contract UpdateDebtReportingTests is LMPVaultTests {
         assertEq(vault.getDestinationInfo(address(dv2)).cachedMaxDebtValue, 0, "stage8Dv2MaxDebt");
     }
 
+    function test_DestinationsExhaustedThroughWithdrawLeaveDebtQueue() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+
+        address user = makeAddr("user");
+
+        _depositFor(user, 10e9);
+
+        DestinationVaultFake dv1 = _setupDestinationWithRewarder(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
+                lastDebtReportTimestamp: block.timestamp
+            }),
+            0
+        );
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
+
+        // Everything from idle was rebalanced out
+        vault.setTotalIdle(0);
+
+        vm.prank(user);
+        vault.redeem(10e9, user, user);
+
+        assertEq(vault.getAssetBreakdown().totalIdle, 0, "totalIdlePreReport");
+        assertEq(vault.getAssetBreakdown().totalDebtMin, 0, "totalDebtMinPreReport");
+        assertEq(vault.getAssetBreakdown().totalDebtMax, 0, "totalDebtMinPreReport");
+        assertEq(_isInList(vault.getDebtReportingQueue(), address(dv1)), true, "d1PreReport");
+
+        vault.updateDebtReporting(1);
+
+        assertEq(_isInList(vault.getDebtReportingQueue(), address(dv1)), false, "d1PostReport");
+    }
+
+    function test_HighWaterMarkPreventsStreamingFeesTaken() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+
+        address streamingFeeReceiver = makeAddr("streamingFeeReceiver");
+
+        vault.setStreamingFeeBps(1000);
+        vault.setFeeSink(streamingFeeReceiver);
+        vault.useRealCollectFees();
+        vault.setRebalanceFeeHighWaterMarkEnabled(true);
+
+        address user = makeAddr("user");
+        _depositFor(user, 10e9);
+
+        vault.updateDebtReporting(1);
+
+        // We don't care where the increased assets came from really
+        // This will increase nav/share on next reporting so receiver should get shares
+        vault.setTotalIdle(20e9);
+
+        uint256 feeReceiverBalStart = vault.balanceOf(streamingFeeReceiver);
+        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 10_000, "preNavShare");
+        assertEq(feeReceiverBalStart, 0, "feeReceiverBalStart");
+
+        vault.updateDebtReporting(1);
+
+        uint256 feeReceiverBalStep1 = vault.balanceOf(streamingFeeReceiver);
+        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 19_999, "postNavShare");
+        assertTrue(feeReceiverBalStep1 > feeReceiverBalStart, "feeReceiverBalStep1");
+
+        // Set our idle lower than the last round
+        vault.setTotalIdle(11e9);
+
+        vault.updateDebtReporting(1);
+
+        uint256 feeReceiverBalStep2 = vault.balanceOf(streamingFeeReceiver);
+
+        // nav/share went down so they get no more shares
+        assertEq(feeReceiverBalStep1, feeReceiverBalStep2, "feeReceiverBalStep2");
+
+        // Set our idle higher than previous round, but less than first round
+        // Doesn't reach high water mark so no shares should be given
+        vault.setTotalIdle(15e9);
+
+        vault.updateDebtReporting(1);
+
+        uint256 feeReceiverBalStep3 = vault.balanceOf(streamingFeeReceiver);
+
+        // nav/share didn't reach height so nothing
+        assertEq(feeReceiverBalStep1, feeReceiverBalStep3, "feeReceiverBalStep3");
+
+        // Set high enough to break previous water mark
+        vault.setTotalIdle(21e9);
+
+        vault.updateDebtReporting(1);
+
+        uint256 feeReceiverBalStep4 = vault.balanceOf(streamingFeeReceiver);
+
+        // nav/share didn't reach height so nothing
+        assertTrue(feeReceiverBalStep4 > feeReceiverBalStep3, "feeReceiverBalStep4");
+
+        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 20_999, "postNavShare");
+    }
+
+    function test_DisabledHighWaterMarkAllowsStreamingFeesTaken() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+
+        address streamingFeeReceiver = makeAddr("streamingFeeReceiver");
+
+        vault.setStreamingFeeBps(1000);
+        vault.setFeeSink(streamingFeeReceiver);
+        vault.useRealCollectFees();
+        vault.setRebalanceFeeHighWaterMarkEnabled(true);
+
+        address user = makeAddr("user");
+        _depositFor(user, 10e9);
+
+        vault.updateDebtReporting(1);
+
+        // We don't care where the increased assets came from really
+        // This will increase nav/share on next reporting so receiver should get shares
+        vault.setTotalIdle(20e9);
+
+        uint256 feeReceiverBalStart = vault.balanceOf(streamingFeeReceiver);
+        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 10_000, "preNavShare");
+        assertEq(feeReceiverBalStart, 0, "feeReceiverBalStart");
+
+        vault.updateDebtReporting(1);
+
+        uint256 feeReceiverBalStep1 = vault.balanceOf(streamingFeeReceiver);
+        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 19_999, "postNavShare");
+        assertTrue(feeReceiverBalStep1 > feeReceiverBalStart, "feeReceiverBalStep1");
+
+        vault.setRebalanceFeeHighWaterMarkEnabled(false);
+
+        // Set our idle lower than the last round
+        vault.setTotalIdle(11e9);
+
+        vault.updateDebtReporting(1);
+
+        uint256 feeReceiverBalStep2 = vault.balanceOf(streamingFeeReceiver);
+
+        // nav/share went down so they get no more shares
+        assertEq(feeReceiverBalStep1, feeReceiverBalStep2, "feeReceiverBalStep2");
+
+        // Set our idle higher than previous round and with high water mark disabled
+        // we should see fees taken
+        vault.setTotalIdle(15e9);
+
+        vault.updateDebtReporting(1);
+
+        uint256 feeReceiverBalStep3 = vault.balanceOf(streamingFeeReceiver);
+
+        // nav/share didn't reach height so nothing
+        assertTrue(feeReceiverBalStep1 < feeReceiverBalStep3, "feeReceiverBalStep3");
+    }
+
+    function test_CanTakeFeesWhenHighWaterMarkDecays() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+
+        address streamingFeeReceiver = makeAddr("streamingFeeReceiver");
+
+        vault.setStreamingFeeBps(1000);
+        vault.setFeeSink(streamingFeeReceiver);
+        vault.useRealCollectFees();
+        vault.setRebalanceFeeHighWaterMarkEnabled(true);
+
+        address user = makeAddr("user");
+        _depositFor(user, 10e9);
+
+        vault.updateDebtReporting(1);
+
+        // We don't care where the increased assets came from really
+        // This will increase nav/share on next reporting so receiver should get shares
+        vault.setTotalIdle(20e9);
+
+        uint256 feeReceiverBalStart = vault.balanceOf(streamingFeeReceiver);
+        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 10_000, "preNavShare");
+        assertEq(feeReceiverBalStart, 0, "feeReceiverBalStart");
+
+        vault.updateDebtReporting(1);
+
+        uint256 feeReceiverBalStep1 = vault.balanceOf(streamingFeeReceiver);
+        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 19_999, "postNavShare");
+        assertTrue(feeReceiverBalStep1 > feeReceiverBalStart, "feeReceiverBalStep1");
+
+        // Set our idle lower than the last round
+        vault.setTotalIdle(18e9);
+
+        vault.updateDebtReporting(1);
+
+        uint256 feeReceiverBalStep2 = vault.balanceOf(streamingFeeReceiver);
+
+        // nav/share went down so they get no more shares
+        assertEq(feeReceiverBalStep1, feeReceiverBalStep2, "feeReceiverBalStep2");
+
+        // We won't start decay until 60 days, get us there, but still should be
+        // no change
+        vm.warp(block.timestamp + 60 days);
+
+        vault.updateDebtReporting(1);
+
+        uint256 feeReceiverBalStep3 = vault.balanceOf(streamingFeeReceiver);
+
+        // nav/share went down so they get no more shares
+        assertEq(feeReceiverBalStep1, feeReceiverBalStep3, "feeReceiverBalStep3");
+
+        // Go forward into the decay period until we'd be below
+        vm.warp(block.timestamp + 60 days);
+
+        vault.updateDebtReporting(1);
+
+        uint256 feeReceiverBalStep4 = vault.balanceOf(streamingFeeReceiver);
+
+        assertTrue(feeReceiverBalStep1 < feeReceiverBalStep4, "feeReceiverBalStep4");
+    }
+
+    function test_CanTakeFeesWhenWeReachMaxDecay() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+
+        address streamingFeeReceiver = makeAddr("streamingFeeReceiver");
+
+        vault.setStreamingFeeBps(1000);
+        vault.setFeeSink(streamingFeeReceiver);
+        vault.useRealCollectFees();
+        vault.setRebalanceFeeHighWaterMarkEnabled(true);
+
+        address user = makeAddr("user");
+        _depositFor(user, 10e9);
+
+        vault.updateDebtReporting(1);
+
+        // We don't care where the increased assets came from really
+        // This will increase nav/share on next reporting so receiver should get shares
+        vault.setTotalIdle(20e9);
+
+        uint256 feeReceiverBalStart = vault.balanceOf(streamingFeeReceiver);
+        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 10_000, "preNavShare");
+        assertEq(feeReceiverBalStart, 0, "feeReceiverBalStart");
+
+        vault.updateDebtReporting(1);
+
+        uint256 feeReceiverBalStep1 = vault.balanceOf(streamingFeeReceiver);
+        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 19_999, "postNavShare");
+        assertTrue(feeReceiverBalStep1 > feeReceiverBalStart, "feeReceiverBalStep1");
+
+        // Set our idle lower than the last round
+        vault.setTotalIdle(1e7);
+
+        vault.updateDebtReporting(1);
+
+        uint256 feeReceiverBalStep2 = vault.balanceOf(streamingFeeReceiver);
+
+        // nav/share went down so they get no more shares
+        assertEq(feeReceiverBalStep1, feeReceiverBalStep2, "feeReceiverBalStep2");
+
+        // We won't start decay until 60 days, get us there, but still should be
+        // no change
+        vm.warp(block.timestamp + 60 days);
+
+        vault.updateDebtReporting(1);
+
+        uint256 feeReceiverBalStep3 = vault.balanceOf(streamingFeeReceiver);
+
+        // nav/share went down so they get no more shares
+        assertEq(feeReceiverBalStep1, feeReceiverBalStep3, "feeReceiverBalStep3");
+
+        // Go forward into the decay period until we'd be below
+        vm.warp(block.timestamp + 539 days);
+
+        vault.updateDebtReporting(1);
+
+        uint256 feeReceiverBalStep4 = vault.balanceOf(streamingFeeReceiver);
+
+        assertEq(feeReceiverBalStep1, feeReceiverBalStep4, "feeReceiverBalStep4");
+
+        uint256 finalHighmarkCheck = vault.getFeeSettings().navPerShareLastFeeMark;
+
+        // Go forward into the decay period until we'd be below
+        vm.warp(block.timestamp + 12 days);
+
+        vault.updateDebtReporting(1);
+
+        assertTrue(finalHighmarkCheck != vault.getFeeSettings().navPerShareLastFeeMark, "finalHighmarkCheck");
+    }
+
     function _setupDestinationWithRewarder(
         DVSetup memory setup,
         uint256 amount
@@ -5176,8 +6719,396 @@ contract UpdateDebtReportingTests is LMPVaultTests {
     }
 }
 
+contract AddDestinations is LMPVaultTests {
+    IDestinationVaultRegistry private _destVaultRegistry;
+
+    event DestinationVaultAdded(address destination);
+
+    function setUp() public virtual override {
+        super.setUp();
+        _setupDestinationVaultRegistry();
+    }
+
+    function test_RevertIf_NoDestinationsGiven() public {
+        _allowTestToCallAdd();
+
+        address[] memory newDestinations = new address[](0);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParams.selector));
+        vault.addDestinations(newDestinations);
+    }
+
+    function test_RevertIf_GivenAddressIsZero() public {
+        _allowTestToCallAdd();
+
+        address[] memory newDestinations = new address[](1);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidAddress.selector, address(0)));
+        vault.addDestinations(newDestinations);
+    }
+
+    function test_RevertIf_GivenAddressNotARegisteredDestination() public {
+        _allowTestToCallAdd();
+
+        address dest = makeAddr("dest");
+        address[] memory newDestinations = new address[](1);
+        newDestinations[0] = dest;
+        _mockDestIsRegistered(dest, false);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidAddress.selector, dest));
+        vault.addDestinations(newDestinations);
+
+        _mockDestIsRegistered(dest, true);
+
+        vault.addDestinations(newDestinations);
+    }
+
+    function test_RevertIf_DuplicateDestinationAdded() public {
+        _allowTestToCallAdd();
+
+        address dest = makeAddr("dest");
+        address[] memory newDestinations = new address[](1);
+        newDestinations[0] = dest;
+        _mockDestIsRegistered(dest, true);
+
+        vault.addDestinations(newDestinations);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ItemExists.selector));
+        vault.addDestinations(newDestinations);
+    }
+
+    function test_EmitEventsForEachDestinationAdded() public {
+        _allowTestToCallAdd();
+
+        address dest1 = makeAddr("dest1");
+        address dest2 = makeAddr("dest2");
+        address[] memory newDestinations = new address[](2);
+        newDestinations[0] = dest1;
+        newDestinations[1] = dest2;
+
+        _mockDestIsRegistered(dest1, true);
+        _mockDestIsRegistered(dest2, true);
+
+        vm.expectEmit(true, true, true, true);
+        emit DestinationVaultAdded(dest1);
+
+        vm.expectEmit(true, true, true, true);
+        emit DestinationVaultAdded(dest2);
+
+        vault.addDestinations(newDestinations);
+    }
+
+    function test_RemovesDestinationFromRemovalQueue() public {
+        _allowTestToCallAdd();
+
+        address dest1 = makeAddr("dest1");
+        address[] memory newDestinations = new address[](1);
+        newDestinations[0] = dest1;
+
+        _mockDestIsRegistered(dest1, true);
+
+        vault.addDestinations(newDestinations);
+
+        address dest2 = address(
+            _setupDestinationVault(
+                DVSetup({
+                    lmpVault: vault,
+                    dvSharesToLMP: 10e18,
+                    valuePerShare: 1e18,
+                    minDebtValue: 5e18,
+                    maxDebtValue: 15e18,
+                    lastDebtReportTimestamp: block.timestamp
+                })
+            )
+        );
+        _mockDestIsRegistered(dest2, true);
+
+        newDestinations[0] = dest2;
+        vault.removeDestinations(newDestinations);
+
+        address[] memory setRemovals = vault.getRemovalQueue();
+        assertEq(setRemovals.length, 1, "len");
+        assertEq(setRemovals[0], dest2, "inQueue");
+
+        vault.addDestinations(newDestinations);
+
+        setRemovals = vault.getRemovalQueue();
+        assertEq(setRemovals.length, 0, "len");
+
+        address[] memory destinations = vault.getDestinations();
+        assertEq(destinations.length, 2, "dLen");
+        assertEq(destinations[0], dest1, "d1");
+        assertEq(destinations[1], dest2, "d2");
+    }
+
+    function test_AddsSingleDestination() public {
+        _allowTestToCallAdd();
+
+        address dest1 = makeAddr("dest1");
+        address[] memory newDestinations = new address[](1);
+        newDestinations[0] = dest1;
+
+        _mockDestIsRegistered(dest1, true);
+
+        vault.addDestinations(newDestinations);
+
+        address[] memory destinations = vault.getDestinations();
+        assertEq(destinations.length, 1, "dLen");
+        assertEq(destinations[0], dest1, "d1");
+    }
+
+    function test_AddsMultipleDestinations() public {
+        _allowTestToCallAdd();
+
+        address dest1 = makeAddr("dest1");
+        address dest2 = makeAddr("dest2");
+
+        address[] memory newDestinations = new address[](2);
+        newDestinations[0] = dest1;
+        newDestinations[1] = dest2;
+
+        _mockDestIsRegistered(dest1, true);
+        _mockDestIsRegistered(dest2, true);
+
+        vault.addDestinations(newDestinations);
+
+        address[] memory destinations = vault.getDestinations();
+        assertEq(destinations.length, 2, "dLen");
+        assertEq(destinations[0], dest1, "d1");
+        assertEq(destinations[1], dest2, "d2");
+    }
+
+    function test_AddsNewToExistingList() public {
+        _allowTestToCallAdd();
+
+        address dest1 = makeAddr("dest1");
+        address dest2 = makeAddr("dest2");
+
+        address[] memory newDestinations = new address[](2);
+        newDestinations[0] = dest1;
+        newDestinations[1] = dest2;
+
+        _mockDestIsRegistered(dest1, true);
+        _mockDestIsRegistered(dest2, true);
+
+        vault.addDestinations(newDestinations);
+
+        address[] memory destinations = vault.getDestinations();
+        assertEq(destinations.length, 2, "dLen");
+        assertEq(destinations[0], dest1, "d1");
+        assertEq(destinations[1], dest2, "d2");
+
+        address dest3 = makeAddr("dest3");
+        address dest4 = makeAddr("dest4");
+
+        address[] memory newDestinations2 = new address[](2);
+        newDestinations2[0] = dest3;
+        newDestinations2[1] = dest4;
+
+        _mockDestIsRegistered(dest3, true);
+        _mockDestIsRegistered(dest4, true);
+
+        vault.addDestinations(newDestinations2);
+
+        destinations = vault.getDestinations();
+        assertEq(destinations.length, 4, "dLen");
+        assertEq(destinations[0], dest1, "d1");
+        assertEq(destinations[1], dest2, "d2");
+        assertEq(destinations[2], dest3, "d3");
+        assertEq(destinations[3], dest4, "d4");
+    }
+
+    function _allowTestToCallAdd() private {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_DESTINATION_UPDATER, true);
+    }
+
+    function _mockDestIsRegistered(address destVault, bool isRegistered) private {
+        vm.mockCall(
+            address(_destVaultRegistry),
+            abi.encodeWithSelector(IDestinationVaultRegistry.isRegistered.selector, address(destVault)),
+            abi.encode(isRegistered)
+        );
+    }
+
+    function _setupDestinationVaultRegistry() private {
+        address reg = makeAddr("dvRegistry");
+
+        vm.mockCall(
+            address(systemRegistry),
+            abi.encodeWithSelector(ISystemRegistry.destinationVaultRegistry.selector),
+            abi.encode(reg)
+        );
+
+        _destVaultRegistry = IDestinationVaultRegistry(reg);
+    }
+}
+
+contract RemoveDestinations is LMPVaultTests {
+    IDestinationVaultRegistry private _destVaultRegistry;
+
+    event DestinationVaultRemoved(address destination);
+    event AddedToRemovalQueue(address destination);
+
+    function setUp() public virtual override {
+        super.setUp();
+        _setupDestinationVaultRegistry();
+    }
+
+    function test_RemovesDestinations() public {
+        _allowTestToCallAdd();
+
+        address dest1 = makeAddr("dest1");
+        address dest2 = makeAddr("dest2");
+
+        address[] memory newDestinations = new address[](2);
+        newDestinations[0] = dest1;
+        newDestinations[1] = dest2;
+
+        _mockDestIsRegistered(dest1, true);
+        _mockDestIsRegistered(dest2, true);
+
+        vault.addDestinations(newDestinations);
+        address[] memory destinations = vault.getDestinations();
+        assertEq(destinations.length, 2, "len");
+
+        _mockBalanceOf(dest1, 0);
+        _mockBalanceOf(dest2, 0);
+
+        vault.removeDestinations(newDestinations);
+
+        destinations = vault.getDestinations();
+        assertEq(destinations.length, 0, "lenEnd");
+    }
+
+    function test_EmitsDestinationVaultRemovedEvent() public {
+        _allowTestToCallAdd();
+
+        address dest1 = makeAddr("dest1");
+        address dest2 = makeAddr("dest2");
+
+        address[] memory newDestinations = new address[](2);
+        newDestinations[0] = dest1;
+        newDestinations[1] = dest2;
+
+        _mockDestIsRegistered(dest1, true);
+        _mockDestIsRegistered(dest2, true);
+
+        vault.addDestinations(newDestinations);
+
+        _mockBalanceOf(dest1, 0);
+        _mockBalanceOf(dest2, 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit DestinationVaultRemoved(dest1);
+
+        vm.expectEmit(true, true, true, true);
+        emit DestinationVaultRemoved(dest2);
+
+        vault.removeDestinations(newDestinations);
+    }
+
+    function test_AddsToRemovalQueueIfABalanceExists() public {
+        _allowTestToCallAdd();
+
+        address dest1 = makeAddr("dest1");
+        address dest2 = makeAddr("dest2");
+
+        address[] memory newDestinations = new address[](2);
+        newDestinations[0] = dest1;
+        newDestinations[1] = dest2;
+
+        _mockDestIsRegistered(dest1, true);
+        _mockDestIsRegistered(dest2, true);
+
+        vault.addDestinations(newDestinations);
+
+        _mockBalanceOf(dest1, 0);
+        _mockBalanceOf(dest2, 1);
+
+        vm.expectEmit(true, true, true, true);
+        emit DestinationVaultRemoved(dest1);
+
+        vm.expectEmit(true, true, true, true);
+        emit AddedToRemovalQueue(dest2);
+
+        vm.expectEmit(true, true, true, true);
+        emit DestinationVaultRemoved(dest2);
+
+        vault.removeDestinations(newDestinations);
+
+        address[] memory setRemovals = vault.getRemovalQueue();
+        assertEq(setRemovals.length, 1, "len");
+        assertEq(setRemovals[0], dest2, "inQueue");
+    }
+
+    function test_RevertIf_DestinationDoesNotExist() public {
+        _allowTestToCallAdd();
+
+        address dest1 = makeAddr("dest1");
+
+        address[] memory newDestinations = new address[](1);
+        newDestinations[0] = dest1;
+
+        _mockDestIsRegistered(dest1, true);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ItemNotFound.selector));
+        vault.removeDestinations(newDestinations);
+    }
+
+    function _mockBalanceOf(address destVault, uint256 balance) private {
+        vm.mockCall(destVault, abi.encodeWithSignature("balanceOf(address)", address(vault)), abi.encode(balance));
+    }
+
+    function _allowTestToCallAdd() private {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_DESTINATION_UPDATER, true);
+    }
+
+    function _mockDestIsRegistered(address destVault, bool isRegistered) private {
+        vm.mockCall(
+            address(_destVaultRegistry),
+            abi.encodeWithSelector(IDestinationVaultRegistry.isRegistered.selector, address(destVault)),
+            abi.encode(isRegistered)
+        );
+    }
+
+    function _setupDestinationVaultRegistry() private {
+        address reg = makeAddr("dvRegistry");
+
+        vm.mockCall(
+            address(systemRegistry),
+            abi.encodeWithSelector(ISystemRegistry.destinationVaultRegistry.selector),
+            abi.encode(reg)
+        );
+
+        _destVaultRegistry = IDestinationVaultRegistry(reg);
+    }
+}
+
+contract TotalAssets is LMPVaultTests {
+    function test_TotalAssetsTimeCheckedDoesNotAllowGlobalUsage() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 2e18);
+
+        // Mimic a deployment
+        _setupDestinationVault(
+            DVSetup({
+                lmpVault: vault,
+                dvSharesToLMP: 10e18,
+                valuePerShare: 1e18,
+                minDebtValue: 9e18,
+                maxDebtValue: 11e18,
+                lastDebtReportTimestamp: block.timestamp - 2 days // Make the data stale
+             })
+        );
+        vault.setTotalIdle(0);
+
+        vm.expectRevert(abi.encodeWithSelector(LMPDebt.InvalidTotalAssetPurpose.selector));
+        vault.totalAssetsTimeChecked(ILMPVault.TotalAssetPurpose.Global);
+    }
+}
+
 // Testing previewWithdraw / previewRedeem / maxWithdraw
-contract PreviewTests is FlashRebalanceTests {
+contract PreviewTests is FlashRebalanceSetup {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -5307,7 +7238,7 @@ contract PreviewTests is FlashRebalanceTests {
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        _mockSucessfulRebalance();
+        _mockSuccessfulRebalance();
 
         _depositFor(user, depositAmount);
 
@@ -5419,9 +7350,7 @@ contract DestinationVaultFake {
 
     function depositUnderlying(uint256 amount) external returns (uint256 shares) {
         underlyer.transferFrom(msg.sender, address(this), amount);
-        console.log("depositUnderlying befre bal", balances[msg.sender]);
         balances[msg.sender] += amount;
-        console.log("depositUnderlying after bal", balances[msg.sender]);
         shares = amount;
     }
 
@@ -5442,6 +7371,14 @@ contract TestLMPVault is LMPVault {
     bool private _nextWithdrawHalvesIdle;
 
     constructor(ISystemRegistry _systemRegistry, address _vaultAsset) LMPVault(_systemRegistry, _vaultAsset, false) { }
+
+    function directTransfer(address to, uint256 value) external {
+        AutoPoolToken.transfer(_tokenData, to, value);
+    }
+
+    function directTransferFrom(address from, address to, uint256 value) external {
+        AutoPoolToken.transferFrom(_tokenData, from, to, value);
+    }
 
     function nextDepositGetsDoubleShares() public {
         _nextDepositGetsDoubleShares = true;
@@ -5575,6 +7512,10 @@ contract FeeAndProfitTestVault is TestLMPVault {
             return;
         }
         super._updateStrategyNav(assets, supply);
+    }
+
+    function totalAssetsTimeChecked(TotalAssetPurpose purpose) public returns (uint256) {
+        return LMPDebt.totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, purpose);
     }
 
     function useRealCollectFees() public {

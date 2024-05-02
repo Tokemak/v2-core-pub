@@ -120,9 +120,6 @@ interface ILMPVault is IERC4626, IERC20Permit {
 
     function getFeeSettings() external view returns (AutoPoolFeeSettings memory);
 
-    /// @notice Remove emptied destination vault from pending removal queue
-    function removeFromRemovalQueue(address vaultToRemove) external;
-
     /// @notice Initiate the shutdown procedures for this vault
     function shutdown(VaultShutdownStatus reason) external;
 

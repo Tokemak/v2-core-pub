@@ -42,7 +42,7 @@ abstract contract CurveDestinationVaultBase is BaseScript {
                 calculator,
                 new address[](0), // additionalTrackedTokens
                 keccak256(abi.encodePacked(block.number)),
-                initParamBytes
+                abi.encodePacked(initParamBytes, bytes32(0))
             )
         );
 

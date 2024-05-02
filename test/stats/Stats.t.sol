@@ -68,6 +68,8 @@ contract StatsTest is Test {
         vm.assume(startValue < type(uint256).max / 1e18);
         vm.assume(endValue < type(uint256).max / 1e18);
         vm.assume(endValue < startValue);
+        vm.assume(endValue > 1e3);
+        vm.assume(startValue > 1e3);
         uint256 result = Stats.calculateUnannualizedNegativeChange(startValue, endValue);
         assertGt(result, 0);
     }

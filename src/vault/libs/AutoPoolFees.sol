@@ -206,7 +206,7 @@ library AutoPoolFees {
         //      can go down
         //   2. When the high mark is enabled, then we only want to set `navPerShareLastFeeMark`
         //      when it is greater than the last time we captured fees (or would have)
-        if (currentNavPerShare > effectiveNavPerShareLastFeeMark || !settings.rebalanceFeeHighWaterMarkEnabled) {
+        if (currentNavPerShare >= effectiveNavPerShareLastFeeMark || !settings.rebalanceFeeHighWaterMarkEnabled) {
             settings.navPerShareLastFeeMark = currentNavPerShare;
             settings.navPerShareLastFeeMarkTimestamp = block.timestamp;
             emit NewNavShareFeeMark(currentNavPerShare, block.timestamp);
@@ -318,7 +318,7 @@ library AutoPoolFees {
         // If there were existing shares and we set the unlock period to 0 they are immediately unlocked
         // so we don't have to worry about existing shares here. And if the period is 0 then we
         // won't be locking any new shares
-        if (unlockPeriod == 0) {
+        if (unlockPeriod == 0 || startTotalAssets == 0) {
             return startTotalSupply;
         }
 
@@ -438,7 +438,15 @@ library AutoPoolFees {
 
         // Set the high mark when we change the fee so we aren't able to go farther back in
         // time than one debt reporting and claim fee's against past profits
-        feeSettings.navPerShareLastFeeMark = (vault.totalAssets() * FEE_DIVISOR) / vault.totalSupply();
+        uint256 ts = vault.totalSupply();
+        if (ts > 0) {
+            uint256 ta = vault.totalAssets();
+            if (ta > 0) {
+                feeSettings.navPerShareLastFeeMark = (vault.totalAssets() * FEE_DIVISOR) / vault.totalSupply();
+            } else {
+                feeSettings.navPerShareLastFeeMark = FEE_DIVISOR;
+            }
+        }
         emit StreamingFeeSet(fee);
     }
 

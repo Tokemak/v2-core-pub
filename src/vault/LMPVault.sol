@@ -271,6 +271,8 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
             toggleAllowedUser(factory);
         }
         // slither-disable-end reentrancy-no-eth
+
+        AutoPoolFees.setProfitUnlockPeriod(_profitUnlockSettings, _tokenData, 86_400);
     }
 
     /// @notice Mints Vault shares to receiver by depositing exactly amount of underlying tokens
@@ -820,7 +822,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
         // slither-disable-next-line reentrancy-no-eth
         LMPDebt.IdleDebtUpdates memory result =
-            LMPDebt._updateDebtReporting(_debtReportQueue, _destinations, _destinationInfo, numToProcess);
+            LMPDebt._updateDebtReporting(_debtReportQueue, _destinationInfo, numToProcess);
 
         uint256 newIdle = startingIdle + result.totalIdleIncrease;
         uint256 newDebt = startingDebt + result.totalDebtIncrease - result.totalDebtDecrease;
@@ -845,8 +847,6 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         bool collectPeriodicFees
     ) internal returns (uint256 newTotalSupply) {
         // Collect any fees and lock any profit if appropriate
-        // idle+debt here represent the new totalAssets we just need them separate
-        // for fee calcs
         AutoPoolFees.burnUnlockedShares(_profitUnlockSettings, _tokenData);
 
         uint256 startingTotalSupply = totalSupply();
@@ -901,10 +901,6 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
     function getRemovalQueue() public view override returns (address[] memory) {
         return _removalQueue.values();
-    }
-
-    function removeFromRemovalQueue(address vaultToRemove) public override hasRole(Roles.REBALANCER) {
-        LMPDestinations.removeFromRemovalQueue(_removalQueue, vaultToRemove);
     }
 
     /// @inheritdoc ILMPVault

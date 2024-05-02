@@ -26,14 +26,6 @@ library LMPDestinations {
     /// @notice Maximum amount of destinations we can be deployed to a given time
     uint256 public constant MAX_DEPLOYED_DESTINATIONS = 50;
 
-    function removeFromRemovalQueue(EnumerableSet.AddressSet storage removalQueue, address vaultToRemove) external {
-        if (!removalQueue.remove(vaultToRemove)) {
-            revert Errors.ItemNotFound();
-        }
-
-        emit RemovedFromRemovalQueue(vaultToRemove);
-    }
-
     /// @notice Remove, or queue to remove if necessary, destinations from the vault
     /// @dev No need to handle withdrawal queue as it will be popped once it hits balance 0 in withdraw or rebalance.
     /// Debt report queue is handled the same way

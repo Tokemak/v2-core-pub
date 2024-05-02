@@ -22,6 +22,8 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
     /// @notice time in seconds between discount snapshots
     uint256 public constant DISCOUNT_SNAPSHOT_INTERVAL_IN_SEC = 24 * 60 * 60; // 1 day
 
+    bytes32 public constant LST_SNAPSHOT_MESSAGE_TYPE = keccak256("LST_SNAPSHOT");
+
     /// @notice alpha for filter
     uint256 public constant ALPHA = 1e17; // 0.1; must be 0 < x <= 1e18
 
@@ -132,6 +134,16 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
                 newBaseApr = currentApr;
                 baseAprFilterInitialized = true;
             }
+
+            // Send data to other chain if necessary.
+            bytes memory message = abi.encode(
+                LSTDestinationInfo({
+                    snapshotTimestamp: block.timestamp,
+                    newBaseApr: newBaseApr,
+                    currentEthPerToken: currentEthPerToken
+                })
+            );
+            systemRegistry.messageProxy().sendMessage(LST_SNAPSHOT_MESSAGE_TYPE, message);
 
             emit BaseAprSnapshotTaken(
                 lastBaseAprEthPerToken,

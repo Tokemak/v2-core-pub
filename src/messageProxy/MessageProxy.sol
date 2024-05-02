@@ -9,9 +9,10 @@ import { Client } from "src/external/chainlink/ccip/Client.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IMessageProxy } from "src/interfaces/messageProxy/IMessageProxy.sol";
 import { IRouterClient } from "src/interfaces/external/chainlink/IRouterClient.sol";
+import { SystemComponent } from "src/SystemComponent.sol";
 
 /// @title Proxy contract, sits in from of Chainlink CCIP and routes messages to various chains
-contract MessageProxy is IMessageProxy, SecurityBase {
+contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     /// =====================================================
     /// Constant Vars
     /// =====================================================
@@ -92,7 +93,7 @@ contract MessageProxy is IMessageProxy, SecurityBase {
     /// Events
     /// =====================================================
 
-    /// @notice Emitted when message is built to be sent.
+    /// @notice Emitted when message is built to be sent for message sender and type.
     event MessageData(
         bytes32 indexed messageHash, uint256 messageTimestamp, address sender, bytes32 messageType, bytes message
     );
@@ -139,7 +140,7 @@ contract MessageProxy is IMessageProxy, SecurityBase {
     constructor(
         ISystemRegistry _systemRegistry,
         IRouterClient ccipRouter
-    ) SecurityBase(address(_systemRegistry.accessController())) {
+    ) SystemComponent(_systemRegistry) SecurityBase(address(_systemRegistry.accessController())) {
         Errors.verifyNotZero(address(ccipRouter), "ccipRouter");
 
         routerClient = ccipRouter;
@@ -150,8 +151,10 @@ contract MessageProxy is IMessageProxy, SecurityBase {
     /// =====================================================
 
     /// @notice Sends message to destination chain(s)
-    /// @dev Can only be called by calculator.
+    /// @dev Can only be called by registered message sender.
     /// @dev Can not revert, do not want ability to interrupt calculator snap-shotting on L1
+    /// @param messageType bytes32 message type
+    /// @param message Bytes message to send to receiver contract
     function sendMessage(bytes32 messageType, bytes memory message) external override {
         // Lookup message routes from _messageRoutes
         MessageRouteConfig[] memory configs = _messageRoutes[msg.sender][messageType];
@@ -187,11 +190,11 @@ contract MessageProxy is IMessageProxy, SecurityBase {
 
             uint256 fee = routerClient.getFee(destChainSelector, ccipMessage);
             uint256 addressBalance = address(this).balance;
-            // If we have the balance, try ccip message
 
+            // If we have the balance, try ccip message
             // slither-disable-next-line timestamp
             if (addressBalance >= fee) {
-                // Catch any errors thrown from L1 ccip, emit event with information on success or failure
+                // Catch any errors thrown from L1 ccip router, emit event with information on success or failure
                 try routerClient.ccipSend{ value: fee }(destChainSelector, ccipMessage) returns (bytes32 ccipMessageId)
                 {
                     // slither-disable-next-line reentrancy-events
@@ -200,7 +203,7 @@ contract MessageProxy is IMessageProxy, SecurityBase {
                     emit MessageFailed(destChainSelector, messageHash);
                 }
             } else {
-                // If we do not have balance, emit message telling so.
+                // If we do not have balance, emit event telling so.
                 emit MessageFailedFee(destChainSelector, messageHash, addressBalance, fee);
             }
         }
@@ -209,20 +212,7 @@ contract MessageProxy is IMessageProxy, SecurityBase {
     /// @notice Retry for multiple messages to multiple destinations per message.
     /// @dev Caller must send in ETH to cover router fees. Cannot use contract balance
     /// @dev Excess ETH is not refunded, use getFee() to calculate needed amount
-
-    /**
-     * struct RetryArgs {
-     *     address msgSender;
-     *     bytes32 messageType;
-     *     uint256 messageRetryTimestamp; // Timestamp of original message, emitted in `MessageData` event.
-     *     bytes message;
-     *     MessageRouteConfig[] configs;
-     * }
-     */
-    /**
-     * QUESTIONS
-     * Does a check for configs length > 0 make sense? Would save gas and give potentially useful revert
-     */
+    /// @param args Array of RetryArgs structs
     function resendLastMessage(RetryArgs[] memory args) external payable hasRole(Roles.MESSAGE_PROXY_MANAGER) {
         // Tracking for fee
         uint256 feeLeft = msg.value;
@@ -298,6 +288,10 @@ contract MessageProxy is IMessageProxy, SecurityBase {
     }
 
     /// @notice Add message routes for sender / messageType
+    /// @dev Reverts if route is duplicate
+    /// @param sender Message sender for routes
+    /// @param messageType Message type for routes
+    /// @param routes Routes to set for sender and type pairing
     function addMessageRoutes(
         address sender,
         bytes32 messageType,
@@ -331,6 +325,10 @@ contract MessageProxy is IMessageProxy, SecurityBase {
     }
 
     /// @notice Remove message routes for sender / messageType
+    /// @dev Reverts if a route attempted to be deleted does not exist
+    /// @param sender Message sender for routes
+    /// @param messageType for routes
+    /// @param chainSelectors Selectors for chains to be removed
     function removeMessageRoutes(
         address sender,
         bytes32 messageType,
@@ -346,6 +344,7 @@ contract MessageProxy is IMessageProxy, SecurityBase {
 
         for (uint256 i = 0; i < chainLength; ++i) {
             uint256 currentLen = currentStoredRoutes.length;
+            uint64 currentSelector = chainSelectors[i];
             if (currentLen == 0) {
                 revert Errors.ItemNotFound();
             }
@@ -353,8 +352,8 @@ contract MessageProxy is IMessageProxy, SecurityBase {
             uint256 j = 0;
             for (; j < currentLen; ++j) {
                 // If route to add is equal to a stored route, remove.
-                if (chainSelectors[i] == currentStoredRoutes[j].destinationChainSelector) {
-                    emit MessageRouteDeleted(sender, messageType, chainSelectors[i]);
+                if (currentSelector == currentStoredRoutes[j].destinationChainSelector) {
+                    emit MessageRouteDeleted(sender, messageType, currentSelector);
 
                     // For each route, record index of storage array that was deleted.
                     currentStoredRoutes[j] = currentStoredRoutes[currentStoredRoutes.length - 1];
@@ -373,10 +372,11 @@ contract MessageProxy is IMessageProxy, SecurityBase {
     }
 
     /// @notice Updates the gas we'll send for this message route
-    /**
-     * NOTES
-     * May be able to just check for currentStoredRoutes.length
-     */
+    /// @dev Reverts if chainId is not found for message sender and type combo
+    /// @param messageSender Message sender for route to be updated
+    /// @param messageType Message type for route to be updated
+    /// @param chainId chainId for route to be updated
+    /// @param gas Gas to update route receving chain to
     function setGasForRoute(
         address messageSender,
         bytes32 messageType,
@@ -404,6 +404,12 @@ contract MessageProxy is IMessageProxy, SecurityBase {
         }
     }
 
+    /// @notice Encodes message to be sent to receiving chain
+    /// @param sender Message sender
+    /// @param version Version of message to be sent
+    /// @param messageTimestamp Timestamp of message to be sent
+    /// @param messageType message type to be sent
+    /// @param message Bytes message to be processed on receiving chain.
     function encodeMessage(
         address sender,
         uint256 version,
@@ -423,6 +429,9 @@ contract MessageProxy is IMessageProxy, SecurityBase {
     }
 
     /// @notice Estimate fees off-chain for purpose of retries
+    /// @param messageSender Address of the message sender for fee estimation
+    /// @param messageType Message type for fee estimation
+    /// @param message Message for fee estimation
     function getFee(
         address messageSender,
         bytes32 messageType,
@@ -436,6 +445,7 @@ contract MessageProxy is IMessageProxy, SecurityBase {
 
         bytes memory encodedMessage = encodeMessage(messageSender, VERSION, block.timestamp, messageType, message);
 
+        // Loop through configs and get fee by destination chain.
         for (uint256 i = 0; i < len; ++i) {
             uint64 destChainSelector = configs[i].destinationChainSelector;
             address destChainReceiver = destinationChainReceivers[destChainSelector];
@@ -449,6 +459,8 @@ contract MessageProxy is IMessageProxy, SecurityBase {
     }
 
     /// @notice Returns all message routes for sender and messageType.
+    /// @param sender Message sender for routes
+    /// @param messageType Message type for routes
     function getMessageRoutes(
         address sender,
         bytes32 messageType
@@ -464,10 +476,11 @@ contract MessageProxy is IMessageProxy, SecurityBase {
     /// Functions - Receive
     /// =====================================================
 
+    /// @dev `sendMessage` requires contract to be funded with Eth
     receive() external payable { }
 
     /// =====================================================
-    /// Functions - Private Helpers
+    /// Functions - Private / Internal Helpers
     /// =====================================================
 
     /// @notice Builds Chainlink specified message to send to destination chain.

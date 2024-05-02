@@ -620,7 +620,7 @@ contract ResendLastMessageIntegTests is MessageProxyIntegTests {
         uint256 optimismExpectedFee = gasMessageType1[1];
 
         (, uint256[] memory gasMessageType2) = messageProxy.getFee(address(this), messageType2, message2);
-        // Array of message type 1 gas + base dest fee from messageType1
+        // Array of message type 1 gas + base dest fee from messageType2
         uint256 expectedTotalFee = _getTotalFee(gasMessageType1) + gasMessageType2[0];
         // Base expected fees for both message types.
         uint256 baseTotalExpectedFee = gasMessageType1[0] + gasMessageType2[0];

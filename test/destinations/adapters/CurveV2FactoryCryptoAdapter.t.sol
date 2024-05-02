@@ -22,6 +22,7 @@ import {
     WSTETH_ARBITRUM,
     WETH_ARBITRUM
 } from "test/utils/Addresses.sol";
+import { Errors } from "src/utils/Errors.sol";
 
 contract CurveV2FactoryCryptoAdapterTest is Test {
     uint256 public mainnetFork;
@@ -57,6 +58,21 @@ contract CurveV2FactoryCryptoAdapterTest is Test {
         assertEq(vm.activeFork(), forkId);
 
         weth = IWETH9(WETH9_OPTIMISM);
+    }
+
+    function testRevertIfInvalidAmounts() public {
+        address poolAddress = 0xDC24316b9AE028F1497c275EB9192a3Ea0f67022;
+        IERC20 lpToken = IERC20(0x06325440D014e39736583c165C2963BA99fAf14E);
+
+        uint256[] memory withdrawAmounts = new uint256[](5);
+        withdrawAmounts[0] = 0.5 * 1e18;
+        withdrawAmounts[1] = 0;
+        withdrawAmounts[2] = 0;
+        withdrawAmounts[3] = 0;
+        withdrawAmounts[4] = 0;
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "amounts"));
+        CurveV2FactoryCryptoAdapter.removeLiquidity(withdrawAmounts, 1, poolAddress, address(lpToken), weth);
     }
 
     function testRemoveLiquidityEthStEth() public {

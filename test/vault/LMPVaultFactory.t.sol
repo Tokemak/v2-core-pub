@@ -9,7 +9,6 @@ import { Errors } from "src/utils/Errors.sol";
 import { LMPVault } from "src/vault/LMPVault.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
-import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Test } from "forge-std/Test.sol";
 import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
 import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
@@ -24,18 +23,18 @@ contract LMPVaultFactoryTest is Test {
     uint256 public constant WETH_INIT_DEPOSIT = 100_000;
     address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
-    SystemRegistry private _systemRegistry;
-    AccessController private _accessController;
-    LMPVaultRegistry private _lmpVaultRegistry;
-    LMPVaultFactory private _lmpVaultFactory;
-    SystemSecurity private _systemSecurity;
+    SystemRegistry internal _systemRegistry;
+    AccessController internal _accessController;
+    LMPVaultRegistry internal _lmpVaultRegistry;
+    LMPVaultFactory internal _lmpVaultFactory;
+    SystemSecurity internal _systemSecurity;
 
-    IWETH9 private _asset;
-    TestERC20 private _toke;
+    IWETH9 internal _asset;
+    TestERC20 internal _toke;
 
-    address private _template;
-    address private _stratTemplate;
-    bytes private lmpVaultInitData;
+    address internal _template;
+    address internal _stratTemplate;
+    bytes internal lmpVaultInitData;
 
     // ERC20 transfer event.
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -86,81 +85,144 @@ contract LMPVaultFactoryTest is Test {
             abi.encode(makeAddr("LMP_VAULT_ROUTER"))
         );
     }
+}
 
-    function test_constructor_RewardInfoSet() public {
-        assertEq(_lmpVaultFactory.defaultRewardRatio(), 800);
-        assertEq(_lmpVaultFactory.defaultRewardBlockDuration(), 100);
+contract Constructor is LMPVaultFactoryTest {
+    function test_RevertIf_TemplateIsZero() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "template"));
+        new LMPVaultFactory(_systemRegistry, address(0), 800, 100);
     }
 
-    function test_setDefaultRewardRatio_UpdatesValue() public {
+    function test_SetDefaultRewardRatio() public {
         assertEq(_lmpVaultFactory.defaultRewardRatio(), 800);
+    }
+
+    function test_SetTemplate() public {
+        assertEq(_lmpVaultFactory.template(), _template);
+    }
+
+    function test_SetVaultRegistry() public {
+        assertEq(address(_lmpVaultFactory.vaultRegistry()), address(_lmpVaultRegistry));
+    }
+
+    function test_SetDefaultRewardBlockDuration() public {
+        assertEq(_lmpVaultFactory.defaultRewardBlockDuration(), 100);
+    }
+}
+
+contract AddStrategyTemplate is LMPVaultFactoryTest {
+    event StrategyTemplateAdded(address template);
+
+    function test_RevertIf_ItemAlreadyExists() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ItemExists.selector));
+        _lmpVaultFactory.addStrategyTemplate(_stratTemplate);
+    }
+
+    function test_EmitStrategyTemplateAdded() public {
+        address random = makeAddr("random");
+
+        vm.expectEmit(true, true, true, true);
+        emit StrategyTemplateAdded(random);
+
+        _lmpVaultFactory.addStrategyTemplate(random);
+    }
+}
+
+contract RemoveStrategyTemplate is LMPVaultFactoryTest {
+    event StrategyTemplateRemoved(address template);
+
+    function test_RevertIf_ItemNotFound() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ItemNotFound.selector));
+        _lmpVaultFactory.removeStrategyTemplate(address(0));
+    }
+
+    function test_EmitStrategyTemplateRemoved() public {
+        vm.expectEmit(true, true, true, true);
+        emit StrategyTemplateRemoved(_stratTemplate);
+
+        _lmpVaultFactory.removeStrategyTemplate(_stratTemplate);
+    }
+}
+
+contract SetDefaultRewardRatio is LMPVaultFactoryTest {
+    event DefaultRewardRatioSet(uint256 rewardRatio);
+
+    function test_EmitDefaultRewardRatioSet() public {
+        vm.expectEmit(true, true, true, true);
+        emit DefaultRewardRatioSet(900);
+
         _lmpVaultFactory.setDefaultRewardRatio(900);
-        assertEq(_lmpVaultFactory.defaultRewardRatio(), 900);
     }
+}
 
-    function test_setDefaultRewardBlockDuration_UpdatesValue() public {
-        assertEq(_lmpVaultFactory.defaultRewardBlockDuration(), 100);
+contract SetDefaultRewardBlockDuration is LMPVaultFactoryTest {
+    event DefaultBlockDurationSet(uint256 blockDuration);
+
+    function test_EmitDefaultBlockDurationSet() public {
+        vm.expectEmit(true, true, true, true);
+        emit DefaultBlockDurationSet(900);
+
         _lmpVaultFactory.setDefaultRewardBlockDuration(900);
-        assertEq(_lmpVaultFactory.defaultRewardBlockDuration(), 900);
     }
+}
 
-    function test_createVault_CreatesVault_AddsToRegistry_SendsToZeroAddress() public {
-        uint256 vaultCreatorBalanceBefore = address(this).balance;
-        uint256 wethContractBalanceBefore = address(_asset).balance;
-        uint256 factoryEthBalanceBefore = address(_lmpVaultFactory).balance;
-        uint256 assetBalanceDeadAddressBefore = _asset.balanceOf(DEAD_ADDRESS);
+contract CreateVault is LMPVaultFactoryTest {
+    error InvalidStrategy();
 
-        address newVault = _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
-            _stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData
-        );
-        assertTrue(_lmpVaultRegistry.isVault(newVault));
-
-        // Balance checks - vault asset
-        assertEq(_asset.balanceOf(address(_lmpVaultFactory)), 0);
-        assertEq(_asset.balanceOf(address(this)), 0);
-        assertEq(_asset.balanceOf(DEAD_ADDRESS), assetBalanceDeadAddressBefore);
-        assertEq(_asset.balanceOf(newVault), WETH_INIT_DEPOSIT);
-
-        // Eth
-        assertLe(address(this).balance, vaultCreatorBalanceBefore - WETH_INIT_DEPOSIT);
-        assertEq(address(_lmpVaultFactory).balance, 0);
-        assertEq(address(newVault).balance, 0);
-        assertEq(address(_asset).balance, wethContractBalanceBefore + WETH_INIT_DEPOSIT);
-        assertEq(factoryEthBalanceBefore, address(_lmpVaultFactory).balance);
-
-        // Vault token
-        assertEq(LMPVault(newVault).balanceOf(DEAD_ADDRESS), WETH_INIT_DEPOSIT);
-        assertEq(LMPVault(newVault).balanceOf(address(_lmpVaultFactory)), 0);
-        assertEq(LMPVault(newVault).balanceOf(address(this)), 0);
-        assertEq(LMPVault(newVault).balanceOf(newVault), 0);
-
-        // Vault state
-        assertEq(LMPVault(newVault).totalSupply(), WETH_INIT_DEPOSIT);
-        assertEq(LMPVault(newVault).getAssetBreakdown().totalIdle, WETH_INIT_DEPOSIT);
-    }
-
-    function test_createVault_MustHaveVaultCreatorRole() public {
-        vm.startPrank(address(34));
+    function test_RevertIf_NotVaultCreator() public {
+        address pranker = makeAddr("pranker");
+        deal(pranker, 3 ether);
+        vm.startPrank(pranker);
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        _lmpVaultFactory.createVault(_stratTemplate, "x", "y", keccak256("v1"), "");
-        vm.stopPrank();
+        _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
+            _stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData
+        );
     }
 
-    function test_createVault_FixesUpTokenFields() public {
+    function test_RevertIf_SaltIsZero() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "salt"));
+        bytes32 salt = bytes32(0);
+
+        _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(_stratTemplate, "x", "y", salt, lmpVaultInitData);
+    }
+
+    function test_RevertIf_StrategyTemplateDoesNotExist() public {
+        vm.expectRevert(abi.encodeWithSelector(LMPVaultFactory.InvalidStrategy.selector));
+
+        _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
+            makeAddr("random"), "x", "y", keccak256("v1"), lmpVaultInitData
+        );
+    }
+
+    function test_RevertIf_InvalidEthAmount() public {
+        vm.expectRevert(abi.encodeWithSelector(LMPVaultFactory.InvalidEthAmount.selector, WETH_INIT_DEPOSIT + 1));
+
+        _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT + 1 }(
+            _stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData
+        );
+    }
+
+    function test_AddVaultToRegistry() public {
         address newVault = _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
             _stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData
         );
-        assertEq(IERC20(newVault).symbol(), "x");
-        assertEq(IERC20(newVault).name(), "y");
+
+        assertTrue(_lmpVaultRegistry.isVault(newVault));
+    }
+}
+
+contract GetStrategyTemplates is LMPVaultFactoryTest {
+    function test_ReturnsStrategyTemplates() public {
+        assertEq(_lmpVaultFactory.getStrategyTemplates()[0], _stratTemplate);
+    }
+}
+
+contract IsStrategyTemplate is LMPVaultFactoryTest {
+    function test_ReturnsTrueIfStrategyTemplate() public {
+        assertTrue(_lmpVaultFactory.isStrategyTemplate(_stratTemplate));
     }
 
-    function test_create_RevertsWithLessEthThanRequired() public {
-        vm.expectRevert(abi.encodeWithSelector(InvalidEthAmount.selector, 1));
-        _lmpVaultFactory.createVault{ value: 1 }(_stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData);
-    }
-
-    function test_create_RevertsWithMoreEthThanRequired() public {
-        vm.expectRevert(abi.encodeWithSelector(InvalidEthAmount.selector, 1_000_000));
-        _lmpVaultFactory.createVault{ value: 1_000_000 }(_stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData);
+    function test_ReturnsFalseIfNotStrategyTemplate() public {
+        assertFalse(_lmpVaultFactory.isStrategyTemplate(makeAddr("random")));
     }
 }

@@ -44,6 +44,114 @@ contract BalancerAdapterTest is Test {
         vault = IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
     }
 
+    function testRevertIfNonZeroAmountProvided() public {
+        address poolAddress = 0x9c6d47Ff73e0F5E51BE5FD53236e3F595C5793F2;
+
+        address[] memory tokens = new address[](2);
+        tokens[0] = WSTETH_MAINNET;
+        tokens[1] = CBETH_MAINNET;
+
+        uint256[] memory withdrawAmounts = new uint256[](2);
+        withdrawAmounts[0] = 0;
+        withdrawAmounts[1] = 0;
+
+        vm.expectRevert(abi.encodeWithSelector(BalancerBeethovenAdapter.NoNonZeroAmountProvided.selector));
+        BalancerBeethovenAdapter.removeLiquidityImbalance(vault, poolAddress, tokens, withdrawAmounts, 1);
+    }
+
+    function testRevertIfArraysLengthMismatch() public {
+        address poolAddress = 0x9c6d47Ff73e0F5E51BE5FD53236e3F595C5793F2;
+
+        address[] memory tokens = new address[](0);
+
+        uint256[] memory withdrawAmounts = new uint256[](2);
+        withdrawAmounts[0] = 1 * 1e18;
+        withdrawAmounts[1] = 1 * 1e18;
+        vm.expectRevert(abi.encodeWithSelector(BalancerBeethovenAdapter.ArraysLengthMismatch.selector));
+        BalancerBeethovenAdapter.removeLiquidity(vault, poolAddress, tokens, withdrawAmounts, 1);
+    }
+
+    function testRevertIfPoolTokenMismatch() public {
+        address poolAddress = 0x9c6d47Ff73e0F5E51BE5FD53236e3F595C5793F2;
+
+        address[] memory tokens = new address[](3);
+        tokens[0] = WSTETH_MAINNET;
+        tokens[1] = CBETH_MAINNET;
+        tokens[2] = CBETH_MAINNET;
+
+        uint256[] memory withdrawAmounts = new uint256[](3);
+        withdrawAmounts[0] = 1 * 1e18;
+        withdrawAmounts[1] = 1 * 1e18;
+        withdrawAmounts[2] = 1 * 1e18;
+
+        vm.expectRevert(abi.encodeWithSelector(BalancerBeethovenAdapter.ArraysLengthMismatch.selector));
+        BalancerBeethovenAdapter.removeLiquidity(vault, poolAddress, tokens, withdrawAmounts, 1);
+    }
+
+    function testRevertIfInvalidBalanceChange() public {
+        address poolAddress = 0x9c6d47Ff73e0F5E51BE5FD53236e3F595C5793F2;
+        IERC20 lpToken = IERC20(poolAddress);
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 1.5 * 1e18;
+        amounts[1] = 1.5 * 1e18;
+
+        deal(address(WSTETH_MAINNET), address(this), 2 * 1e18);
+        deal(address(CBETH_MAINNET), address(this), 2 * 1e18);
+
+        uint256 minLpMintAmount = 1;
+
+        address[] memory tokens = new address[](2);
+        tokens[0] = WSTETH_MAINNET;
+        tokens[1] = CBETH_MAINNET;
+
+        _addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
+
+        uint256 preLpBalance = lpToken.balanceOf(address(this));
+
+        uint256[] memory withdrawAmounts = new uint256[](2);
+        withdrawAmounts[0] = 1 * 1e18;
+        withdrawAmounts[1] = 1 * 1e18;
+
+        // Mock the call so balance before and after are equal
+        vm.mockCall(poolAddress, abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(1000));
+
+        vm.expectRevert(abi.encodeWithSelector(BalancerBeethovenAdapter.InvalidBalanceChange.selector));
+        BalancerBeethovenAdapter.removeLiquidity(vault, poolAddress, tokens, withdrawAmounts, preLpBalance);
+    }
+
+    function testRevertIfBalanceDidNotIncrease() public {
+        address poolAddress = 0x9c6d47Ff73e0F5E51BE5FD53236e3F595C5793F2;
+        IERC20 lpToken = IERC20(poolAddress);
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 1.5 * 1e18;
+        amounts[1] = 1.5 * 1e18;
+
+        deal(address(WSTETH_MAINNET), address(this), 2 * 1e18);
+        deal(address(CBETH_MAINNET), address(this), 2 * 1e18);
+
+        uint256 minLpMintAmount = 1;
+
+        address[] memory tokens = new address[](2);
+        tokens[0] = WSTETH_MAINNET;
+        tokens[1] = CBETH_MAINNET;
+
+        _addLiquidity(vault, poolAddress, tokens, amounts, minLpMintAmount);
+
+        uint256 preLpBalance = lpToken.balanceOf(address(this));
+
+        uint256[] memory withdrawAmounts = new uint256[](2);
+        withdrawAmounts[0] = 1 * 1e18;
+        withdrawAmounts[1] = 1 * 1e18;
+
+        // Mock the call so balance is 0
+        vm.mockCall(WSTETH_MAINNET, abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(0));
+
+        vm.expectRevert(abi.encodeWithSelector(BalancerBeethovenAdapter.BalanceMustIncrease.selector));
+        BalancerBeethovenAdapter.removeLiquidity(vault, poolAddress, tokens, withdrawAmounts, preLpBalance);
+    }
+
     function testRemoveLiquidityWstEthCbEth() public {
         address poolAddress = 0x9c6d47Ff73e0F5E51BE5FD53236e3F595C5793F2;
         IERC20 lpToken = IERC20(poolAddress);
@@ -70,6 +178,7 @@ contract BalancerAdapterTest is Test {
         uint256[] memory withdrawAmounts = new uint256[](2);
         withdrawAmounts[0] = 1 * 1e18;
         withdrawAmounts[1] = 1 * 1e18;
+
         BalancerBeethovenAdapter.removeLiquidity(vault, poolAddress, tokens, withdrawAmounts, preLpBalance);
 
         uint256 afterBalance1 = IERC20(WSTETH_MAINNET).balanceOf(address(this));

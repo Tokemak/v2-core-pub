@@ -450,6 +450,10 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
             uint64 destChainSelector = configs[i].destinationChainSelector;
             address destChainReceiver = destinationChainReceivers[destChainSelector];
 
+            Errors.verifyNotZero(
+                destinationChainReceivers[destChainSelector], "destinationChainReceivers[destChainSelector]"
+            );
+
             // Build message for fee.
             Client.EVM2AnyMessage memory ccipFeeMessage = _ccipBuild(destChainReceiver, configs[i].gas, encodedMessage);
 

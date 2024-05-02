@@ -929,6 +929,29 @@ contract GetMessageRoutes is MessageProxyTests {
 }
 
 contract GetFee is MessageProxyTests {
+    function test_RevertsWhen_DestChainSelectorHasNoReceiver() public {
+        _mockIsProxyAdmin(address(this), true);
+
+        address sender = makeAddr("sender");
+        bytes32 messageType = keccak256("messageType");
+        bytes memory message = abi.encode("message");
+
+        // Set message route but no dest chain receiver.
+        MessageProxy.MessageRouteConfig[] memory routes = new MessageProxy.MessageRouteConfig[](1);
+
+        uint64 chainId = 12;
+        _mockRouterIsChainSupported(chainId, true);
+
+        routes[0] = MessageProxy.MessageRouteConfig({ destinationChainSelector: chainId, gas: 1 });
+
+        _proxy.addMessageRoutes(sender, messageType, routes);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.ZeroAddress.selector, "destinationChainReceivers[destChainSelector]")
+        );
+        _proxy.getFee(sender, messageType, message);
+    }
+
     function test_ReturnsEmptiesWhenNoRoutes() public {
         address sender = makeAddr("sender");
         bytes32 messageType = keccak256("messageType");

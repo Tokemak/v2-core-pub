@@ -142,6 +142,15 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
                 baseAprFilterInitialized = true;
             }
 
+            emit BaseAprSnapshotTaken(
+                lastBaseAprEthPerToken,
+                lastBaseAprSnapshotTimestamp,
+                currentEthPerToken,
+                block.timestamp,
+                baseApr,
+                newBaseApr
+            );
+
             // Send data to other chain if necessary.
             if (destinationMessageSend) {
                 bytes memory message = abi.encode(
@@ -153,17 +162,11 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
                 );
                 IMessageProxy messageProxy = systemRegistry.messageProxy();
                 Errors.verifyNotZero(address(messageProxy), "messageProxy");
-                messageProxy.sendMessage(LST_SNAPSHOT_MESSAGE_TYPE, message);
-            }
 
-            emit BaseAprSnapshotTaken(
-                lastBaseAprEthPerToken,
-                lastBaseAprSnapshotTimestamp,
-                currentEthPerToken,
-                block.timestamp,
-                baseApr,
-                newBaseApr
-            );
+                // slither-disable-start reentrancy-no-eth
+                messageProxy.sendMessage(LST_SNAPSHOT_MESSAGE_TYPE, message);
+                // slither-disable-end reentrancy-no-eth
+            }
 
             baseApr = newBaseApr;
             lastBaseAprEthPerToken = currentEthPerToken;

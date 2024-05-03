@@ -442,7 +442,7 @@ library AutoPoolFees {
         if (ts > 0) {
             uint256 ta = vault.totalAssets();
             if (ta > 0) {
-                feeSettings.navPerShareLastFeeMark = (vault.totalAssets() * FEE_DIVISOR) / vault.totalSupply();
+                feeSettings.navPerShareLastFeeMark = (ta * FEE_DIVISOR) / ts;
             } else {
                 feeSettings.navPerShareLastFeeMark = FEE_DIVISOR;
             }

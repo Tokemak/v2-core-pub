@@ -3,6 +3,7 @@
 pragma solidity 0.8.17;
 
 import { BaseStatsCalculator } from "src/stats/calculators/base/BaseStatsCalculator.sol";
+import { Roles } from "src/libs/Roles.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -22,6 +23,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
     /// @notice time in seconds between discount snapshots
     uint256 public constant DISCOUNT_SNAPSHOT_INTERVAL_IN_SEC = 24 * 60 * 60; // 1 day
 
+    /// @notice message type hash for sending snapshots to other chains
     bytes32 public constant LST_SNAPSHOT_MESSAGE_TYPE = keccak256("LST_SNAPSHOT");
 
     /// @notice alpha for filter
@@ -66,6 +68,9 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
 
     /// @notice indicates if baseApr filter is initialized
     bool public baseAprFilterInitialized;
+
+    /// @notice Whether to send message to destination chain on _snapshot
+    bool public destinationMessageSend = false;
 
     bytes32 private _aprId;
 
@@ -136,14 +141,16 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
             }
 
             // Send data to other chain if necessary.
-            bytes memory message = abi.encode(
-                LSTDestinationInfo({
-                    snapshotTimestamp: block.timestamp,
-                    newBaseApr: newBaseApr,
-                    currentEthPerToken: currentEthPerToken
-                })
-            );
-            systemRegistry.messageProxy().sendMessage(LST_SNAPSHOT_MESSAGE_TYPE, message);
+            if (destinationMessageSend) {
+                bytes memory message = abi.encode(
+                    LSTDestinationInfo({
+                        snapshotTimestamp: block.timestamp,
+                        newBaseApr: newBaseApr,
+                        currentEthPerToken: currentEthPerToken
+                    })
+                );
+                systemRegistry.messageProxy().sendMessage(LST_SNAPSHOT_MESSAGE_TYPE, message);
+            }
 
             emit BaseAprSnapshotTaken(
                 lastBaseAprEthPerToken,
@@ -314,6 +321,12 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
         // slither-disable-next-line reentrancy-events
         emit DiscountSnapshotTaken(lastDiscountSnapshotTimestamp, trackedDiscount, block.timestamp);
         lastDiscountSnapshotTimestamp = block.timestamp;
+    }
+
+    /// @notice Switches flag for sending messages to other chains.
+    function setDestinationMessageSent() external hasRole(Roles.STATS_GENERAL_MANAGER) {
+        destinationMessageSend = !destinationMessageSend;
+        emit DestinationMessageSendSet(destinationMessageSend);
     }
 
     /// @inheritdoc ILSTStats

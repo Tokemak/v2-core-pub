@@ -490,6 +490,97 @@ contract TestingStrategy is ILMPStrategy {
 
     error BadRebalance();
 
+    /// @notice the number of days to pause rebalancing due to NAV decay
+    uint16 public immutable pauseRebalancePeriodInDays = 0;
+
+    /// @notice the number of seconds gap between consecutive rebalances
+    uint256 public immutable rebalanceTimeGapInSeconds = 0;
+
+    /// @notice destinations trading a premium above maxPremium will be blocked from new capital deployments
+    int256 public immutable maxPremium = 0; // 100% = 1e18
+
+    /// @notice destinations trading a discount above maxDiscount will be blocked from new capital deployments
+    int256 public immutable maxDiscount = 0; // 100% = 1e18
+
+    /// @notice the allowed staleness of stats data before a revert occurs
+    uint40 public immutable staleDataToleranceInSeconds = 0;
+
+    /// @notice the swap cost offset period to initialize the strategy with
+    uint16 public immutable swapCostOffsetInitInDays = 0;
+
+    /// @notice the number of violations required to trigger a tightening of the swap cost offset period (1 to 10)
+    uint16 public immutable swapCostOffsetTightenThresholdInViolations = 0;
+
+    /// @notice the number of days to decrease the swap offset period for each tightening step
+    uint16 public immutable swapCostOffsetTightenStepInDays = 0;
+
+    /// @notice the number of days since a rebalance required to trigger a relaxing of the swap cost offset period
+    uint16 public immutable swapCostOffsetRelaxThresholdInDays = 0;
+
+    /// @notice the number of days to increase the swap offset period for each relaxing step
+    uint16 public immutable swapCostOffsetRelaxStepInDays = 0;
+
+    // slither-disable-start similar-names
+    /// @notice the maximum the swap cost offset period can reach. This is the loosest the strategy will be
+    uint16 public immutable swapCostOffsetMaxInDays = 0;
+
+    /// @notice the minimum the swap cost offset period can reach. This is the most conservative the strategy will be
+    uint16 public immutable swapCostOffsetMinInDays = 0;
+
+    /// @notice the number of days for the first NAV decay comparison (e.g., 30 days)
+    uint8 public immutable navLookback1InDays = 0;
+
+    /// @notice the number of days for the second NAV decay comparison (e.g., 60 days)
+    uint8 public immutable navLookback2InDays = 0;
+
+    /// @notice the number of days for the third NAV decay comparison (e.g., 90 days)
+    uint8 public immutable navLookback3InDays = 0;
+    // slither-disable-end similar-names
+
+    /// @notice the maximum slippage that is allowed for a normal rebalance
+    uint256 public immutable maxNormalOperationSlippage = 0; // 100% = 1e18
+
+    /// @notice the maximum amount of slippage to allow when a destination is trimmed due to constraint violations
+    /// recommend setting this higher than maxNormalOperationSlippage
+    uint256 public immutable maxTrimOperationSlippage = 0; // 100% = 1e18
+
+    /// @notice the maximum amount of slippage to allow when a destinationVault has been shutdown
+    /// shutdown for a vault is abnormal and means there is an issue at that destination
+    /// recommend setting this higher than maxNormalOperationSlippage
+    uint256 public immutable maxEmergencyOperationSlippage = 0; // 100% = 1e18
+
+    /// @notice the maximum amount of slippage to allow when the LMPVault has been shutdown
+    uint256 public immutable maxShutdownOperationSlippage = 0; // 100% = 1e18
+
+    /// @notice the maximum discount used for price return
+    int256 public immutable maxAllowedDiscount = 0; // 18 precision
+
+    /// @notice model weight used for LSTs base yield, 1e6 is the highest
+    uint256 public immutable weightBase = 0;
+
+    /// @notice model weight used for DEX fee yield, 1e6 is the highest
+    uint256 public immutable weightFee = 0;
+
+    /// @notice model weight used for incentive yield
+    uint256 public immutable weightIncentive = 0;
+
+    /// @notice model weight used slashing costs
+    uint256 public immutable weightSlashing = 0;
+
+    /// @notice model weight applied to an LST discount when exiting the position
+    int256 public immutable weightPriceDiscountExit = 0;
+
+    /// @notice model weight applied to an LST discount when entering the position
+    int256 public immutable weightPriceDiscountEnter = 0;
+
+    /// @notice model weight applied to an LST premium when entering or exiting the position
+    int256 public immutable weightPricePremium = 0;
+
+    /// @notice initial value of the swap cost offset to use
+    uint16 public immutable swapCostOffsetInit = 0;
+
+    uint256 public immutable defaultLstPriceGapTolerance = 0;
+
     function setNextRebalanceSuccess(bool succeeds) public {
         _nextRebalanceSuccess = succeeds;
     }

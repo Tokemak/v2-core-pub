@@ -17,28 +17,26 @@ import { NavTracking } from "src/strategy/NavTracking.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { LMPStrategyConfig } from "src/strategy/LMPStrategyConfig.sol";
-import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
+import { StrategyUtils } from "src/strategy/libs/StrategyUtils.sol";
+import { SubSaturateMath } from "src/strategy/libs/SubSaturateMath.sol";
+import { SummaryStats } from "src/strategy/libs/SummaryStats.sol";
+import { SystemComponent } from "src/SystemComponent.sol";
 
-contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
+contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBase {
     using ViolationTracking for ViolationTracking.State;
     using NavTracking for NavTracking.State;
     using SubSaturateMath for uint256;
     using SubSaturateMath for int256;
     using Math for uint256;
 
-    // when removing liquidity, rewards can be expired by this amount if the pool as incentive credits
-    uint256 private constant EXPIRED_REWARD_TOLERANCE = 2 days;
-
     /* ******************************** */
     /* Immutable Config                 */
     /* ******************************** */
-    /// @notice Tokemak system-level registry. Used to lookup other services (e.g., pricing)
-    ISystemRegistry public immutable systemRegistry;
 
     /// @notice the number of days to pause rebalancing due to NAV decay
     uint16 public immutable pauseRebalancePeriodInDays;
@@ -219,9 +217,6 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
     event PauseStart(uint256 navPerShare, uint256 nav1, uint256 nav2, uint256 nav3);
     event PauseStop();
 
-    event InLSTPriceGap(address token, uint256 priceSafe, uint256 priceSpot);
-    event OutLSTPriceGap(address token, uint256 priceSafe, uint256 priceSpot);
-
     event LstPriceGapSet(uint256 newPriceGap);
     event DustPositionPortionSet(uint256 newValue);
     event IdleThresholdsSet(uint256 newLowValue, uint256 newHighValue);
@@ -234,7 +229,7 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
     error RebalanceTimeGapNotMet();
     error RebalanceDestinationsMatch();
     error RebalanceDestinationUnderlyerMismatch(address destination, address trueUnderlyer, address providedUnderlyer);
-    error LstStatsReservesMismatch();
+
     error StaleData(string name);
     error SwapCostExceeded();
     error MaxSlippageExceeded();
@@ -250,13 +245,6 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
     error InconsistentIdleThresholds();
     error IdleHighThresholdViolated();
 
-    struct InterimStats {
-        uint256 baseApr;
-        int256 priceReturn;
-        int256 maxDiscount;
-        int256 maxPremium;
-    }
-
     struct RebalanceValueStats {
         uint256 inPrice;
         uint256 outPrice;
@@ -264,11 +252,6 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         uint256 outEthValue;
         uint256 swapCost;
         uint256 slippage;
-    }
-
-    enum RebalanceDirection {
-        In,
-        Out
     }
 
     modifier onlyLMPVault() {
@@ -279,9 +262,7 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
     constructor(
         ISystemRegistry _systemRegistry,
         LMPStrategyConfig.StrategyConfig memory conf
-    ) SecurityBase(address(_systemRegistry.accessController())) {
-        systemRegistry = _systemRegistry;
-
+    ) SystemComponent(_systemRegistry) SecurityBase(address(_systemRegistry.accessController())) {
         LMPStrategyConfig.validate(conf);
 
         rebalanceTimeGapInSeconds = conf.rebalanceTimeGapInSeconds;
@@ -431,16 +412,18 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         // slither-disable-start divide-before-multiply
         // equation is `compositeReturn * ethValue` / 1e18, which is multiply before divide
         // compositeReturn and ethValue are both 1e18 precision
-        int256 predictedAnnualizedGain = (inSummary.compositeReturn * convertUintToInt(valueStats.inEthValue))
-            .subSaturate(outSummary.compositeReturn * convertUintToInt(valueStats.outEthValue)) / 1e18;
+        int256 predictedAnnualizedGain = (
+            inSummary.compositeReturn * StrategyUtils.convertUintToInt(valueStats.inEthValue)
+        ).subSaturate(outSummary.compositeReturn * StrategyUtils.convertUintToInt(valueStats.outEthValue)) / 1e18;
 
         // slither-disable-end divide-before-multiply
-        int256 predictedGainAtOffsetEnd = (predictedAnnualizedGain * convertUintToInt(swapOffsetPeriod) / 365);
+        int256 predictedGainAtOffsetEnd =
+            (predictedAnnualizedGain * StrategyUtils.convertUintToInt(swapOffsetPeriod) / 365);
 
         // if the predicted gain in Eth by the end of the swap offset period is less than
         // the swap cost then revert b/c the vault will not offset slippage in sufficient time
         // slither-disable-next-line timestamp
-        if (predictedGainAtOffsetEnd <= convertUintToInt(valueStats.swapCost)) revert SwapCostExceeded();
+        if (predictedGainAtOffsetEnd <= StrategyUtils.convertUintToInt(valueStats.swapCost)) revert SwapCostExceeded();
         // slither-disable-next-line reentrancy-events
         emit RebalanceBetweenDestinations(
             valueStats, params, outSummary, inSummary, swapOffsetPeriod, predictedAnnualizedGain
@@ -550,62 +533,6 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
             swapCost: swapCost,
             slippage: slippage
         });
-    }
-
-    // Calculate the largest difference between spot & safe price for the underlying LST tokens.
-    // This does not support Curve meta pools
-    function verifyLSTPriceGap(IStrategy.RebalanceParams memory params, uint256 tolerance) internal returns (bool) {
-        // Pricer
-        IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
-
-        IDestinationVault dest;
-        address[] memory lstTokens;
-        uint256 numLsts;
-        address dvPoolAddress;
-
-        // Out Destination
-        if (params.destinationOut != address(lmpVault)) {
-            dest = IDestinationVault(params.destinationOut);
-            lstTokens = dest.underlyingTokens();
-            numLsts = lstTokens.length;
-            dvPoolAddress = dest.getPool();
-            for (uint256 i = 0; i < numLsts; ++i) {
-                uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
-                uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], dvPoolAddress);
-                // slither-disable-next-line reentrancy-events
-                emit OutLSTPriceGap(lstTokens[i], priceSafe, priceSpot);
-                // For out destination, the pool tokens should not be lower than safe price by tolerance
-                if ((priceSafe == 0) || (priceSpot == 0)) {
-                    return false;
-                } else if (priceSafe > priceSpot) {
-                    if (((priceSafe * 1.0e18 / priceSpot - 1.0e18) * 10_000) / 1.0e18 > tolerance) {
-                        return false;
-                    }
-                }
-            }
-        }
-
-        // In Destination
-        dest = IDestinationVault(params.destinationIn);
-        lstTokens = dest.underlyingTokens();
-        numLsts = lstTokens.length;
-        dvPoolAddress = dest.getPool();
-        for (uint256 i = 0; i < numLsts; ++i) {
-            uint256 priceSafe = pricer.getPriceInEth(lstTokens[i]);
-            uint256 priceSpot = pricer.getSpotPriceInEth(lstTokens[i], dvPoolAddress);
-            // slither-disable-next-line reentrancy-events
-            emit InLSTPriceGap(lstTokens[i], priceSafe, priceSpot);
-            // For in destination, the pool tokens should not be higher than safe price by tolerance
-            if ((priceSafe == 0) || (priceSpot == 0)) {
-                return false;
-            } else if (priceSpot > priceSafe) {
-                if (((priceSpot * 1.0e18 / priceSafe - 1.0e18) * 10_000) / 1.0e18 > tolerance) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
     }
 
     function verifyRebalanceToIdle(IStrategy.RebalanceParams memory params, uint256 slippage) internal {
@@ -814,7 +741,9 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         // Call to verify before remove/add liquidity to the dest in the rebalance txn
         // if the in dest is not LMPVault i.e. this is not a rebalance to idle txn, verify price tolerance
         if (rebalanceParams.destinationIn != address(lmpVault)) {
-            if (!verifyLSTPriceGap(rebalanceParams, lstPriceGapTolerance)) revert LSTPriceGapToleranceExceeded();
+            if (!SummaryStats.verifyLSTPriceGap(lmpVault, rebalanceParams, lstPriceGapTolerance)) {
+                revert LSTPriceGapToleranceExceeded();
+            }
         }
         outSummary = _getRebalanceOutSummaryStats(rebalanceParams);
     }
@@ -827,8 +756,13 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         // Use safe price
         uint256 outPrice = _getInOutTokenPriceInEth(rebalanceParams.tokenOut, rebalanceParams.destinationOut);
         outSummary = (
-            getDestinationSummaryStats(
-                rebalanceParams.destinationOut, outPrice, RebalanceDirection.Out, rebalanceParams.amountOut
+            SummaryStats.getDestinationSummaryStats(
+                lmpVault,
+                systemRegistry.incentivePricing(),
+                rebalanceParams.destinationOut,
+                outPrice,
+                RebalanceDirection.Out,
+                rebalanceParams.amountOut
             )
         );
     }
@@ -855,243 +789,15 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
         // Use safe price
         uint256 inPrice = _getInOutTokenPriceInEth(rebalanceParams.tokenIn, rebalanceParams.destinationIn);
         inSummary = (
-            getDestinationSummaryStats(
-                rebalanceParams.destinationIn, inPrice, RebalanceDirection.In, rebalanceParams.amountIn
+            SummaryStats.getDestinationSummaryStats(
+                lmpVault,
+                systemRegistry.incentivePricing(),
+                rebalanceParams.destinationIn,
+                inPrice,
+                RebalanceDirection.In,
+                rebalanceParams.amountIn
             )
         );
-    }
-
-    function getDestinationSummaryStats(
-        address destAddress,
-        uint256 price,
-        RebalanceDirection direction,
-        uint256 amount
-    ) internal returns (IStrategy.SummaryStats memory) {
-        // NOTE: creating this as empty to save on variables later
-        // has the distinct downside that if you forget to update a value, you get the zero value
-        // slither-disable-next-line uninitialized-local
-        IStrategy.SummaryStats memory result;
-
-        if (destAddress == address(lmpVault)) {
-            result.destination = destAddress;
-            result.ownedShares = lmpVault.getAssetBreakdown().totalIdle;
-            result.pricePerShare = price;
-            return result;
-        }
-
-        IDestinationVault dest = IDestinationVault(destAddress);
-        IDexLSTStats.DexLSTStatsData memory stats = dest.getStats().current();
-
-        ensureNotStaleData("DexStats", stats.lastSnapshotTimestamp);
-
-        uint256 numLstStats = stats.lstStatsData.length;
-        if (numLstStats != stats.reservesInEth.length) revert LstStatsReservesMismatch();
-
-        int256[] memory priceReturns = calculatePriceReturns(stats);
-
-        // temporary holder to reduce variables
-        InterimStats memory interimStats;
-
-        uint256 reservesTotal = 0;
-        for (uint256 i = 0; i < numLstStats; ++i) {
-            uint256 reserveValue = stats.reservesInEth[i];
-            reservesTotal += reserveValue;
-
-            if (priceReturns[i] != 0) {
-                interimStats.priceReturn += calculateWeightedPriceReturn(priceReturns[i], reserveValue, direction);
-            }
-
-            // For tokens like WETH/ETH who have no data, tokens we've configured as NO_OP's in the
-            // destinations/calculators, we can just skip the rest of these calcs as they have no stats
-            if (stats.lstStatsData[i].baseApr == 0 && stats.lstStatsData[i].lastSnapshotTimestamp == 0) {
-                continue;
-            }
-
-            ensureNotStaleData("lstData", stats.lstStatsData[i].lastSnapshotTimestamp);
-
-            interimStats.baseApr += stats.lstStatsData[i].baseApr * reserveValue;
-
-            int256 discount = stats.lstStatsData[i].discount;
-            // slither-disable-next-line timestamp
-            if (discount < interimStats.maxPremium) {
-                interimStats.maxPremium = discount;
-            }
-            // slither-disable-next-line timestamp
-            if (discount > interimStats.maxDiscount) {
-                interimStats.maxDiscount = discount;
-            }
-        }
-
-        // if reserves are 0, then leave baseApr + priceReturn as 0
-        if (reservesTotal > 0) {
-            result.baseApr = interimStats.baseApr / reservesTotal;
-            result.priceReturn = interimStats.priceReturn / convertUintToInt(reservesTotal);
-        }
-
-        result.destination = destAddress;
-        result.feeApr = stats.feeApr;
-        result.incentiveApr = calculateIncentiveApr(stats.stakingIncentiveStats, direction, destAddress, amount, price);
-        result.safeTotalSupply = stats.stakingIncentiveStats.safeTotalSupply;
-        result.ownedShares = dest.balanceOf(address(lmpVault));
-        result.pricePerShare = price;
-        result.maxPremium = interimStats.maxPremium;
-        result.maxDiscount = interimStats.maxDiscount;
-
-        uint256 returnExPrice = (
-            result.baseApr * weightBase / 1e6 + result.feeApr * weightFee / 1e6
-                + result.incentiveApr * weightIncentive / 1e6
-        );
-
-        result.compositeReturn = convertUintToInt(returnExPrice) + result.priceReturn; // price already weighted
-
-        return result;
-    }
-
-    function calculateWeightedPriceReturn(
-        int256 priceReturn,
-        uint256 reserveValue,
-        RebalanceDirection direction
-    ) internal view returns (int256) {
-        // slither-disable-next-line timestamp
-        if (priceReturn > 0) {
-            // LST trading at a discount
-            if (direction == RebalanceDirection.Out) {
-                return priceReturn * convertUintToInt(reserveValue) * weightPriceDiscountExit / 1e6;
-            } else {
-                return priceReturn * convertUintToInt(reserveValue) * weightPriceDiscountEnter / 1e6;
-            }
-        } else {
-            // LST trading at 0 or a premium
-            return priceReturn * convertUintToInt(reserveValue) * weightPricePremium / 1e6;
-        }
-    }
-
-    function calculateIncentiveApr(
-        IDexLSTStats.StakingIncentiveStats memory stats,
-        RebalanceDirection direction,
-        address destAddress,
-        uint256 lpAmountToAddOrRemove,
-        uint256 lpPrice
-    ) internal view returns (uint256) {
-        IIncentivesPricingStats pricing = systemRegistry.incentivePricing();
-
-        bool hasCredits = stats.incentiveCredits > 0;
-        uint256 totalRewards = 0;
-
-        uint256 numRewards = stats.annualizedRewardAmounts.length;
-        for (uint256 i = 0; i < numRewards; ++i) {
-            address rewardToken = stats.rewardTokens[i];
-            // Move ahead only if the rewardToken is not 0
-            if (rewardToken != address(0)) {
-                uint256 tokenPrice = getIncentivePrice(pricing, rewardToken);
-
-                // skip processing if the token is worthless or unregistered
-                if (tokenPrice == 0) continue;
-
-                uint256 periodFinish = stats.periodFinishForRewards[i];
-                uint256 rewardRate = stats.annualizedRewardAmounts[i];
-                uint256 rewardDivisor = 10 ** IERC20Metadata(rewardToken).decimals();
-
-                if (direction == RebalanceDirection.Out) {
-                    // if the destination has credits then extend the periodFinish by the expiredTolerance
-                    // this allows destinations that consistently had rewards some leniency
-                    if (hasCredits) {
-                        periodFinish += EXPIRED_REWARD_TOLERANCE;
-                    }
-
-                    // slither-disable-next-line timestamp
-                    if (periodFinish > block.timestamp) {
-                        // tokenPrice is 1e18 and we want 1e18 out, so divide by the token decimals
-                        totalRewards += rewardRate * tokenPrice / rewardDivisor;
-                    }
-                } else {
-                    // when adding to a destination, count incentives only when either of the following conditions are
-                    // met:
-                    // 1) the incentive lasts at least 7 days
-                    // 2) the incentive lasts >3 days and the destination has a positive incentive credit balance
-                    if (
-                        // slither-disable-next-line timestamp
-                        periodFinish >= block.timestamp + 7 days
-                            || (hasCredits && periodFinish > block.timestamp + 3 days)
-                    ) {
-                        // tokenPrice is 1e18 and we want 1e18 out, so divide by the token decimals
-                        totalRewards += rewardRate * tokenPrice / rewardDivisor;
-                    }
-                }
-            }
-        }
-
-        if (totalRewards == 0) {
-            return 0;
-        }
-
-        uint256 lpTokenDivisor = 10 ** IDestinationVault(destAddress).decimals();
-        uint256 totalSupplyInEth = 0;
-        // When comparing in & out destinations, we want to consider the supply with our allocation
-        // included to estimate the resulting incentive rate
-        if (direction == RebalanceDirection.Out) {
-            totalSupplyInEth = stats.safeTotalSupply * lpPrice / lpTokenDivisor;
-        } else {
-            totalSupplyInEth = (stats.safeTotalSupply + lpAmountToAddOrRemove) * lpPrice / lpTokenDivisor;
-        }
-
-        // Adjust for totalSupplyInEth is 0
-        if (totalSupplyInEth != 0) {
-            return (totalRewards * 1e18) / totalSupplyInEth;
-        } else {
-            return (totalRewards);
-        }
-    }
-
-    function getIncentivePrice(IIncentivesPricingStats pricing, address token) internal view returns (uint256) {
-        (uint256 fastPrice, uint256 slowPrice) = pricing.getPriceOrZero(token, staleDataToleranceInSeconds);
-        return fastPrice.min(slowPrice);
-    }
-
-    function calculatePriceReturns(IDexLSTStats.DexLSTStatsData memory stats) internal view returns (int256[] memory) {
-        ILSTStats.LSTStatsData[] memory lstStatsData = stats.lstStatsData;
-
-        uint256 numLsts = lstStatsData.length;
-        int256[] memory priceReturns = new int256[](numLsts);
-
-        for (uint256 i = 0; i < numLsts; ++i) {
-            ILSTStats.LSTStatsData memory data = lstStatsData[i];
-
-            uint256 scalingFactor = 1e18; // default scalingFactor is 1
-
-            int256 discount = data.discount;
-            if (discount > maxAllowedDiscount) {
-                discount = maxAllowedDiscount;
-            }
-
-            // discount value that is negative indicates LST price premium
-            // scalingFactor = 1e18 for premiums and discounts that are small
-            // discountTimestampByPercent array holds the timestamp in position i for discount = (i+1)%
-            uint40[5] memory discountTimestampByPercent = data.discountTimestampByPercent;
-
-            // 1e16 means a 1% LST discount where full scale is 1e18.
-            if (discount > 1e16) {
-                // linear approximation for exponential function with approx. half life of 30 days
-                uint256 halfLifeSec = 30 * 24 * 60 * 60;
-                uint256 len = data.discountTimestampByPercent.length;
-                for (uint256 j = 1; j < len; ++j) {
-                    // slither-disable-next-line timestamp
-                    if (discount <= convertUintToInt((j + 1) * 1e16)) {
-                        // current timestamp should be strictly >= timestamp in discountTimestampByPercent
-                        uint256 timeSinceDiscountSec =
-                            uint256(uint40(block.timestamp) - discountTimestampByPercent[j - 1]);
-                        scalingFactor >>= (timeSinceDiscountSec / halfLifeSec);
-                        // slither-disable-next-line weak-prng
-                        timeSinceDiscountSec %= halfLifeSec;
-                        scalingFactor -= scalingFactor * timeSinceDiscountSec / halfLifeSec / 2;
-                        break;
-                    }
-                }
-            }
-            priceReturns[i] = discount * convertUintToInt(scalingFactor) / 1e18;
-        }
-
-        return priceReturns;
     }
 
     /// @inheritdoc ILMPStrategy
@@ -1230,23 +936,5 @@ contract LMPStrategy is Initializable, ILMPStrategy, SecurityBase {
     function ensureNotStaleData(string memory name, uint256 dataTimestamp) internal view {
         // slither-disable-next-line timestamp
         if (block.timestamp - dataTimestamp > staleDataToleranceInSeconds) revert StaleData(name);
-    }
-
-    function convertUintToInt(uint256 value) internal pure returns (int256) {
-        // slither-disable-next-line timestamp
-        if (value > uint256(type(int256).max)) revert CannotConvertUintToInt();
-        return int256(value);
-    }
-}
-
-library SubSaturateMath {
-    function subSaturate(uint256 self, uint256 other) internal pure returns (uint256) {
-        if (other >= self) return 0;
-        return self - other;
-    }
-
-    function subSaturate(int256 self, int256 other) internal pure returns (int256) {
-        if (other >= self) return 0;
-        return self - other;
     }
 }

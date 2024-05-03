@@ -29,6 +29,10 @@ import { ViolationTracking } from "src/strategy/ViolationTracking.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
+import { Incentives } from "src/strategy/libs/Incentives.sol";
+import { PriceReturn } from "src/strategy/libs/PriceReturn.sol";
+import { SummaryStats } from "src/strategy/libs/SummaryStats.sol";
+import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 
 contract LMPStrategyTest is Test {
     using NavTracking for NavTracking.State;
@@ -1199,7 +1203,7 @@ contract LMPStrategyTest is Test {
         setLmpIdle(idle);
 
         IStrategy.SummaryStats memory stats =
-            defaultStrat._getDestinationSummaryStats(mockLMPVault, price, LMPStrategy.RebalanceDirection.In, 1);
+            defaultStrat._getDestinationSummaryStats(mockLMPVault, price, ILMPStrategy.RebalanceDirection.In, 1);
 
         // only these are populated when destination is idle asset
         assertEq(stats.destination, mockLMPVault);
@@ -1244,7 +1248,7 @@ contract LMPStrategyTest is Test {
         setStatsCurrent(mockOutStats, stats);
 
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.StaleData.selector, "DexStats"));
-        defaultStrat._getDestinationSummaryStats(mockOutDest, 0, LMPStrategy.RebalanceDirection.Out, 0);
+        defaultStrat._getDestinationSummaryStats(mockOutDest, 0, ILMPStrategy.RebalanceDirection.Out, 0);
     }
 
     function test_getDestinationSummaryStats_RevertIf_reserveStatsMismatch() public {
@@ -1255,8 +1259,8 @@ contract LMPStrategyTest is Test {
         stats.reservesInEth = new uint256[](1);
         setStatsCurrent(mockOutStats, stats);
 
-        vm.expectRevert(abi.encodeWithSelector(LMPStrategy.LstStatsReservesMismatch.selector));
-        defaultStrat._getDestinationSummaryStats(mockOutDest, 0, LMPStrategy.RebalanceDirection.Out, 0);
+        vm.expectRevert(abi.encodeWithSelector(SummaryStats.LstStatsReservesMismatch.selector));
+        defaultStrat._getDestinationSummaryStats(mockOutDest, 0, ILMPStrategy.RebalanceDirection.Out, 0);
     }
 
     function test_getDestinationSummaryStats_RevertIf_staleLstData() public {
@@ -1270,7 +1274,7 @@ contract LMPStrategyTest is Test {
         setStatsCurrent(mockOutStats, stats);
 
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.StaleData.selector, "lstData"));
-        defaultStrat._getDestinationSummaryStats(mockOutDest, 0, LMPStrategy.RebalanceDirection.Out, 0);
+        defaultStrat._getDestinationSummaryStats(mockOutDest, 0, ILMPStrategy.RebalanceDirection.Out, 0);
     }
 
     function test_getDestinationSummaryStats_calculatesWeightedResult() public {
@@ -1320,7 +1324,7 @@ contract LMPStrategyTest is Test {
 
         // test rebalance out
         IStrategy.SummaryStats memory summary = defaultStrat._getDestinationSummaryStats(
-            mockOutDest, lpPrice, LMPStrategy.RebalanceDirection.Out, rebalanceAmount
+            mockOutDest, lpPrice, ILMPStrategy.RebalanceDirection.Out, rebalanceAmount
         );
 
         assertEq(summary.destination, mockOutDest);
@@ -1345,7 +1349,7 @@ contract LMPStrategyTest is Test {
 
         // test rebalance in
         summary = defaultStrat._getDestinationSummaryStats(
-            mockOutDest, lpPrice, LMPStrategy.RebalanceDirection.In, rebalanceAmount
+            mockOutDest, lpPrice, ILMPStrategy.RebalanceDirection.In, rebalanceAmount
         );
 
         assertEq(summary.destination, mockOutDest);
@@ -1372,7 +1376,7 @@ contract LMPStrategyTest is Test {
     function test_calculateWeightedPriceReturn_outDiscount() public {
         int256 priceReturn = 1e17; // 10%
         uint256 reserveValue = 34e18;
-        LMPStrategy.RebalanceDirection direction = LMPStrategy.RebalanceDirection.Out;
+        ILMPStrategy.RebalanceDirection direction = ILMPStrategy.RebalanceDirection.Out;
 
         int256 actual = defaultStrat._calculateWeightedPriceReturn(priceReturn, reserveValue, direction);
         // 10% * 34 * 0.75 = 2.55 (1e36)
@@ -1383,7 +1387,7 @@ contract LMPStrategyTest is Test {
     function test_calculateWeightedPriceReturn_inDiscount() public {
         int256 priceReturn = 1e17; // 10%
         uint256 reserveValue = 34e18;
-        LMPStrategy.RebalanceDirection direction = LMPStrategy.RebalanceDirection.In;
+        ILMPStrategy.RebalanceDirection direction = ILMPStrategy.RebalanceDirection.In;
 
         int256 actual = defaultStrat._calculateWeightedPriceReturn(priceReturn, reserveValue, direction);
         assertEq(actual, 0);
@@ -1395,11 +1399,11 @@ contract LMPStrategyTest is Test {
 
         // same regardless of direction
         assertEq(
-            defaultStrat._calculateWeightedPriceReturn(priceReturn, reserveValue, LMPStrategy.RebalanceDirection.In),
+            defaultStrat._calculateWeightedPriceReturn(priceReturn, reserveValue, ILMPStrategy.RebalanceDirection.In),
             -34e35
         );
         assertEq(
-            defaultStrat._calculateWeightedPriceReturn(priceReturn, reserveValue, LMPStrategy.RebalanceDirection.Out),
+            defaultStrat._calculateWeightedPriceReturn(priceReturn, reserveValue, ILMPStrategy.RebalanceDirection.Out),
             -34e35
         );
     }
@@ -1524,7 +1528,7 @@ contract LMPStrategyTest is Test {
         stat.annualizedRewardAmounts = annualizedRewards;
 
         uint256 incentive =
-            defaultStrat._calculateIncentiveApr(stat, LMPStrategy.RebalanceDirection.In, vm.addr(1), 1, 1);
+            defaultStrat._calculateIncentiveApr(stat, ILMPStrategy.RebalanceDirection.In, vm.addr(1), 1, 1);
         assertEq(incentive, 0);
     }
 
@@ -1556,12 +1560,12 @@ contract LMPStrategyTest is Test {
         // expected apr = 5 (eth per year) / 132 = 3.78%
         uint256 expected = 37_878_787_878_787_878;
         uint256 actual =
-            defaultStrat._calculateIncentiveApr(stat, LMPStrategy.RebalanceDirection.Out, lpToken, amount, lpPrice);
+            defaultStrat._calculateIncentiveApr(stat, ILMPStrategy.RebalanceDirection.Out, lpToken, amount, lpPrice);
         assertEq(actual, expected);
 
         periodFinishes[0] = 180 days - 2 days; // make it so that even with the 2 day bump, still expired
         assertEq(
-            defaultStrat._calculateIncentiveApr(stat, LMPStrategy.RebalanceDirection.Out, lpToken, amount, lpPrice), 0
+            defaultStrat._calculateIncentiveApr(stat, ILMPStrategy.RebalanceDirection.Out, lpToken, amount, lpPrice), 0
         );
     }
 
@@ -1587,7 +1591,7 @@ contract LMPStrategyTest is Test {
         stat.incentiveCredits = 0; // set to zero so expired rewards are ignored
 
         uint256 incentive =
-            defaultStrat._calculateIncentiveApr(stat, LMPStrategy.RebalanceDirection.In, vm.addr(1), 1, 1);
+            defaultStrat._calculateIncentiveApr(stat, ILMPStrategy.RebalanceDirection.In, vm.addr(1), 1, 1);
         assertEq(incentive, 0);
     }
 
@@ -1619,13 +1623,13 @@ contract LMPStrategyTest is Test {
         // expected apr = 10 (eth per year) / 206.4 = 4.84%
         uint256 expected = 48_449_612_403_100_775;
         uint256 actual =
-            defaultStrat._calculateIncentiveApr(stat, LMPStrategy.RebalanceDirection.In, lpToken, amount, lpPrice);
+            defaultStrat._calculateIncentiveApr(stat, ILMPStrategy.RebalanceDirection.In, lpToken, amount, lpPrice);
         assertEq(actual, expected);
 
         // test that it gets ignored if less than 7 days
         periodFinishes[0] = 180 days + 7 days - 1;
         assertEq(
-            defaultStrat._calculateIncentiveApr(stat, LMPStrategy.RebalanceDirection.In, lpToken, amount, lpPrice), 0
+            defaultStrat._calculateIncentiveApr(stat, ILMPStrategy.RebalanceDirection.In, lpToken, amount, lpPrice), 0
         );
     }
 
@@ -2449,7 +2453,7 @@ contract LMPStrategyHarness is LMPStrategy {
     }
 
     function _calculatePriceReturns(IDexLSTStats.DexLSTStatsData memory stats) public view returns (int256[] memory) {
-        return calculatePriceReturns(stats);
+        return PriceReturn.calculatePriceReturns(stats);
     }
 
     function _calculateIncentiveApr(
@@ -2459,11 +2463,13 @@ contract LMPStrategyHarness is LMPStrategy {
         uint256 amount,
         uint256 price
     ) public view returns (uint256) {
-        return calculateIncentiveApr(stats, direction, destAddress, amount, price);
+        return Incentives.calculateIncentiveApr(
+            systemRegistry.incentivePricing(), stats, direction, destAddress, amount, price
+        );
     }
 
     function _getIncentivePrice(IIncentivesPricingStats pricing, address token) public view returns (uint256) {
-        return getIncentivePrice(pricing, token);
+        return Incentives.getIncentivePrice(staleDataToleranceInSeconds, pricing, token);
     }
 
     function _getRebalanceInSummaryStats(IStrategy.RebalanceParams memory rebalanceParams)
@@ -2479,7 +2485,9 @@ contract LMPStrategyHarness is LMPStrategy {
         RebalanceDirection direction,
         uint256 amount
     ) public returns (IStrategy.SummaryStats memory) {
-        return getDestinationSummaryStats(destAddress, price, direction, amount);
+        return SummaryStats.getDestinationSummaryStats(
+            lmpVault, systemRegistry.incentivePricing(), destAddress, price, direction, amount
+        );
     }
 
     function _calculateWeightedPriceReturn(
@@ -2487,6 +2495,6 @@ contract LMPStrategyHarness is LMPStrategy {
         uint256 reserveValue,
         RebalanceDirection direction
     ) public view returns (int256) {
-        return calculateWeightedPriceReturn(priceReturn, reserveValue, direction);
+        return PriceReturn.calculateWeightedPriceReturn(priceReturn, reserveValue, direction);
     }
 }

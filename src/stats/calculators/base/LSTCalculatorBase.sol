@@ -9,6 +9,8 @@ import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { Stats } from "src/stats/Stats.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
+import { IMessageProxy } from "src/interfaces/messageProxy/IMessageProxy.sol";
+import { Errors } from "src/utils/Errors.sol";
 
 abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
     /// @notice time in seconds between apr snapshots
@@ -149,7 +151,9 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
                         currentEthPerToken: currentEthPerToken
                     })
                 );
-                systemRegistry.messageProxy().sendMessage(LST_SNAPSHOT_MESSAGE_TYPE, message);
+                IMessageProxy messageProxy = systemRegistry.messageProxy();
+                Errors.verifyNotZero(address(messageProxy), "messageProxy");
+                messageProxy.sendMessage(LST_SNAPSHOT_MESSAGE_TYPE, message);
             }
 
             emit BaseAprSnapshotTaken(
@@ -324,7 +328,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
     }
 
     /// @notice Switches flag for sending messages to other chains.
-    function setDestinationMessageSent() external hasRole(Roles.STATS_GENERAL_MANAGER) {
+    function setDestinationMessageSend() external hasRole(Roles.STATS_GENERAL_MANAGER) {
         destinationMessageSend = !destinationMessageSend;
         emit DestinationMessageSendSet(destinationMessageSend);
     }

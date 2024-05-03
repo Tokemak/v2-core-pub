@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-// solhint-disable gas-custom-errors
+// solhint-disable gas-custom-errors,avoid-low-level-calls,func-name-mixedcase,max-line-length
 
 import { Test } from "forge-std/Test.sol";
 import { LSTCalculatorBase } from "src/stats/calculators/base/LSTCalculatorBase.sol";
@@ -17,11 +17,15 @@ import { TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
+import { Errors } from "src/utils/Errors.sol";
+import { MessageProxy, IRouterClient } from "src/messageProxy/MessageProxy.sol";
 
 contract LSTCalculatorBaseTest is Test {
     SystemRegistry private systemRegistry;
     AccessController private accessController;
     RootPriceOracle private rootPriceOracle;
+    MessageProxy private messageProxy;
+    address private chainlinkRouter;
 
     TestLSTCalculator private testCalculator;
     address private mockToken = vm.addr(1);
@@ -82,6 +86,11 @@ contract LSTCalculatorBaseTest is Test {
 
     event SlashingEventRecorded(uint256 slashingCost, uint256 slashingTimestamp);
 
+    event DestinationMessageSendSet(bool destinationMessageSend);
+
+    // From MessageProxy
+    event MessageSent(uint64 destChainSelector, bytes32 messageHash, bytes32 ccipMessageId);
+
     function setUp() public {
         uint256 mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), START_BLOCK);
         vm.selectFork(mainnetFork);
@@ -92,6 +101,9 @@ contract LSTCalculatorBaseTest is Test {
         accessController.grantRole(Roles.STATS_SNAPSHOT_EXECUTOR, address(this));
         rootPriceOracle = new RootPriceOracle(systemRegistry);
         systemRegistry.setRootPriceOracle(address(rootPriceOracle));
+
+        chainlinkRouter = makeAddr("CHAINLINK_ROUTER");
+        messageProxy = new MessageProxy(systemRegistry, IRouterClient(chainlinkRouter));
 
         testCalculator = TestLSTCalculator(Clones.clone(address(new TestLSTCalculator(systemRegistry))));
     }
@@ -683,6 +695,109 @@ contract LSTCalculatorBaseTest is Test {
         stats = testCalculator.current();
         foundDiscountHistory = [10e5, 11e5, 12e5, 13e5, 4e5, 5e5, 6e5, 7e5, 8e5, 9e5];
         verifyDiscountHistory(stats.discountHistory, foundDiscountHistory);
+    }
+
+    // ############################## Destination send logic ########################################
+
+    function test_setDestinationMessageSend_RevertsIncorrectCaller() public {
+        vm.expectRevert(Errors.AccessDenied.selector);
+        testCalculator.setDestinationMessageSend();
+    }
+
+    function test_setDestinationMessageSend_UpdatesProperly() public {
+        vm.mockCall(
+            address(accessController),
+            abi.encodeWithSignature("hasRole(bytes32,address)", Roles.STATS_GENERAL_MANAGER, address(this)),
+            abi.encode(true)
+        );
+
+        // First time calling, false -> true
+        vm.expectEmit(true, true, true, true);
+        emit DestinationMessageSendSet(true);
+        testCalculator.setDestinationMessageSend();
+        assertEq(testCalculator.destinationMessageSend(), true);
+
+        // Back to false
+        vm.expectEmit(true, true, true, true);
+        emit DestinationMessageSendSet(false);
+        testCalculator.setDestinationMessageSend();
+        assertEq(testCalculator.destinationMessageSend(), false);
+    }
+
+    function test_SendMessageToProxy_FailsZeroAddress() public {
+        mockCalculateEthPerToken(1);
+        mockIsRebasing(false);
+        initCalculator(1e18);
+
+        // Warp timestamp to time that allows branch needed for message send to other chain to run
+        vm.warp(block.timestamp + testCalculator.APR_FILTER_INIT_INTERVAL_IN_SEC() + 1);
+
+        // Mock all roles to return true
+        vm.mockCall(address(accessController), abi.encodeWithSignature("hasRole(bytes32,address)"), abi.encode(true));
+
+        // Set to true
+        testCalculator.setDestinationMessageSend();
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "messageProxy"));
+        testCalculator.snapshot();
+    }
+
+    function test_SendMessageToProxy_destinationMessageSend() public {
+        bytes32 ccipMessageId = keccak256("ccipMessageId");
+        uint64 destChainId = 1;
+        address destChainReceiver = makeAddr("receiver");
+        uint256 timestamp = block.timestamp + testCalculator.APR_FILTER_INIT_INTERVAL_IN_SEC() + 1;
+
+        mockCalculateEthPerToken(1);
+        mockIsRebasing(false);
+        initCalculator(1e18);
+
+        // Warp timestamp to time that allows branch needed for message send to other chain to run
+        vm.warp(timestamp);
+
+        // Mock all roles to return true
+        vm.mockCall(address(accessController), abi.encodeWithSignature("hasRole(bytes32,address)"), abi.encode(true));
+
+        // Mock Chainlink router functions
+        vm.mockCall(chainlinkRouter, abi.encodeWithSelector(IRouterClient.ccipSend.selector), abi.encode(ccipMessageId));
+        vm.mockCall(chainlinkRouter, abi.encodeWithSelector(IRouterClient.getFee.selector), abi.encode(1));
+        vm.mockCall(chainlinkRouter, abi.encodeWithSelector(IRouterClient.isChainSupported.selector), abi.encode(true));
+
+        // Set message proxy
+        systemRegistry.setMessageProxy(address(messageProxy));
+
+        // Send funds to messageProxy
+        address(messageProxy).call{ value: 1 }("");
+
+        // Set to true
+        testCalculator.setDestinationMessageSend();
+
+        // Build config for destination chain and gas price.
+        MessageProxy.MessageRouteConfig[] memory configs = new MessageProxy.MessageRouteConfig[](1);
+        configs[0] = MessageProxy.MessageRouteConfig({ destinationChainSelector: destChainId, gas: 1 });
+
+        // Set required info in MessageProxy
+        messageProxy.setDestinationChainReceiver(destChainId, destChainReceiver);
+        messageProxy.addMessageRoutes(address(testCalculator), testCalculator.LST_SNAPSHOT_MESSAGE_TYPE(), configs);
+
+        // Building message hash to compare to one emitted in event from MessageProxy
+        // Values used for `newBaseApr` and `currentEthPerToken` fields console logged from contract
+        bytes32 messageHash = keccak256(
+            messageProxy.encodeMessage(
+                address(testCalculator),
+                1,
+                timestamp,
+                testCalculator.LST_SNAPSHOT_MESSAGE_TYPE(),
+                abi.encode(
+                    ILSTStats.LSTDestinationInfo({ snapshotTimestamp: timestamp, newBaseApr: 0, currentEthPerToken: 1 })
+                )
+            )
+        );
+
+        vm.expectEmit(true, true, true, true);
+        emit MessageSent(destChainId, messageHash, ccipMessageId);
+
+        testCalculator.snapshot();
     }
 
     // ############################## helper functions ########################################

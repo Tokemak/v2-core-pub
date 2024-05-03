@@ -6705,6 +6705,13 @@ contract UpdateDebtReporting is LMPVaultTests {
         assertTrue(finalHighmarkCheck != vault.getFeeSettings().navPerShareLastFeeMark, "finalHighmarkCheck");
     }
 
+    function test_RevertIf_NotCalledByRole() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, false);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        vault.updateDebtReporting(1);
+    }
+
     function _setupDestinationWithRewarder(
         DVSetup memory setup,
         uint256 amount

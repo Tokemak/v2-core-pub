@@ -94,7 +94,9 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, Initializable,
         uint256 safeTotalSupply
     );
 
-    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
+    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) {
+        _disableInitializers();
+    }
 
     /// @inheritdoc IStatsCalculator
     function initialize(bytes32[] calldata, bytes calldata initData) public virtual override initializer {

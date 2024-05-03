@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { Test } from "forge-std/Test.sol";
-
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Stats } from "src/stats/Stats.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
@@ -83,7 +83,8 @@ contract BalancerComposableStablePoolCalculatorTest is Test {
         systemRegistry.setRootPriceOracle(address(rootPriceOracle));
 
         // Calculator setup
-        calculator = new TestBalancerCalculator(systemRegistry, BAL_VAULT);
+        calculator =
+            TestBalancerCalculator(Clones.clone(address(new TestBalancerCalculator(systemRegistry, BAL_VAULT))));
 
         bytes32[] memory depAprIds = new bytes32[](3);
         depAprIds[0] = Stats.NOOP_APR_ID;

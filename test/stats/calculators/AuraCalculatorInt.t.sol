@@ -21,6 +21,7 @@ import {
     RETH_CL_FEED_MAINNET,
     RETH_MAINNET
 } from "test/utils/Addresses.sol";
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 
 contract AuraCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
     AuraCalculator internal _calculator;
@@ -121,7 +122,9 @@ contract AuraCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
         });
         bytes memory encodedInitData = abi.encode(initData);
 
-        _calculator = new AuraCalculator(_systemRegistry, AURA_BOOSTER);
+        address templateCalc = address(new AuraCalculator(_systemRegistry, AURA_BOOSTER));
+        vm.makePersistent(address(templateCalc));
+        _calculator = AuraCalculator(Clones.clone(templateCalc));
         vm.makePersistent(address(_calculator));
         _calculator.initialize(dependantAprs, encodedInitData);
     }

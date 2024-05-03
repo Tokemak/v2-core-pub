@@ -29,6 +29,7 @@ import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IPool } from "src/interfaces/external/curve/IPool.sol";
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 
 contract CurveV1PoolNoRebasingStatsCalculatorTest is Test {
     uint256 private constant TARGET_BLOCK = 17_580_732;
@@ -58,7 +59,9 @@ contract CurveV1PoolNoRebasingStatsCalculatorTest is Test {
         accessController.grantRole(Roles.STATS_SNAPSHOT_EXECUTOR, address(this));
         curveResolver = new CurveResolverMainnet(ICurveMetaRegistry(CURVE_META_REGISTRY_MAINNET));
 
-        calculator = new CurveV1PoolNoRebasingStatsCalculator(systemRegistry);
+        calculator = CurveV1PoolNoRebasingStatsCalculator(
+            Clones.clone(address(new CurveV1PoolNoRebasingStatsCalculator(systemRegistry)))
+        );
 
         vm.clearMockedCalls();
         mockGetCurveResolver(); // bypass systemRegistry

@@ -68,6 +68,8 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
     constructor(ISystemRegistry _systemRegistry, address _balancerVault) BaseStatsCalculator(_systemRegistry) {
         Errors.verifyNotZero(_balancerVault, "_balancerVault");
         balancerVault = IVault(_balancerVault);
+
+        _disableInitializers();
     }
 
     /// @inheritdoc IStatsCalculator

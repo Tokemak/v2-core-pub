@@ -24,6 +24,7 @@ import {
     CVX_CL_FEED_MAINNET,
     LDO_CL_FEED_MAINNET
 } from "test/utils/Addresses.sol";
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 
 contract ConvexCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
     ConvexCalculator internal _calculator;
@@ -123,7 +124,9 @@ contract ConvexCalculatorIntegrationTest is StatsSystemIntegrationTestBase {
         });
         bytes memory encodedInitData = abi.encode(initData);
 
-        _calculator = new ConvexCalculator(_systemRegistry, CONVEX_BOOSTER);
+        address templateCalc = address(new ConvexCalculator(_systemRegistry, CONVEX_BOOSTER));
+        vm.makePersistent(templateCalc);
+        _calculator = ConvexCalculator(Clones.clone(templateCalc));
         vm.makePersistent(address(_calculator));
         _calculator.initialize(dependantAprs, encodedInitData);
     }

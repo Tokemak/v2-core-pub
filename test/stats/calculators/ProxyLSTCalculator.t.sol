@@ -13,6 +13,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { TOKE_MAINNET, WETH_MAINNET, CBETH_MAINNET } from "test/utils/Addresses.sol";
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 
 // solhint-disable func-name-mixedcase
 contract ProxyLSTCalculatorTest is Test {
@@ -32,7 +33,7 @@ contract ProxyLSTCalculatorTest is Test {
         _accessController.grantRole(Roles.STATS_SNAPSHOT_EXECUTOR, address(this));
 
         _calculator = new LSTCalculatorHarness(_systemRegistry);
-        _proxyCalculator = new ProxyLSTCalculator(_systemRegistry);
+        _proxyCalculator = ProxyLSTCalculator(Clones.clone(address(new ProxyLSTCalculator(_systemRegistry))));
     }
 
     function test_Revert_WhenSnapshot() public {

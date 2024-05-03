@@ -22,7 +22,9 @@ contract ProxyLSTCalculator is ILSTStats, BaseStatsCalculator, Initializable {
         bool isRebasing;
     }
 
-    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
+    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) {
+        _disableInitializers();
+    }
 
     /// @inheritdoc IStatsCalculator
     function initialize(bytes32[] calldata, bytes calldata initData) external override initializer {
@@ -31,25 +33,6 @@ contract ProxyLSTCalculator is ILSTStats, BaseStatsCalculator, Initializable {
         statsCalculator = ILSTStats(decodedInitData.statsCalculator);
         _aprId = keccak256(abi.encode("lst", lstTokenAddress));
         _isRebasing = decodedInitData.isRebasing;
-    }
-
-    /// @inheritdoc IStatsCalculator
-    function getAddressId() external view returns (address) {
-        return lstTokenAddress;
-    }
-
-    /// @inheritdoc IStatsCalculator
-    function getAprId() external view returns (bytes32) {
-        return _aprId;
-    }
-
-    function _snapshot() internal pure override {
-        revert NoSnapshotTaken();
-    }
-
-    /// @inheritdoc IStatsCalculator
-    function shouldSnapshot() public pure override returns (bool takeSnapshot) {
-        return false;
     }
 
     /// @inheritdoc ILSTStats
@@ -65,5 +48,24 @@ contract ProxyLSTCalculator is ILSTStats, BaseStatsCalculator, Initializable {
     /// @inheritdoc ILSTStats
     function isRebasing() external view returns (bool) {
         return _isRebasing;
+    }
+
+    /// @inheritdoc IStatsCalculator
+    function getAddressId() external view returns (address) {
+        return lstTokenAddress;
+    }
+
+    /// @inheritdoc IStatsCalculator
+    function getAprId() external view returns (bytes32) {
+        return _aprId;
+    }
+
+    /// @inheritdoc IStatsCalculator
+    function shouldSnapshot() public pure override returns (bool takeSnapshot) {
+        return false;
+    }
+
+    function _snapshot() internal pure override {
+        revert NoSnapshotTaken();
     }
 }

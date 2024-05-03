@@ -58,7 +58,9 @@ abstract contract CurvePoolNoRebasingCalculatorBase is IDexLSTStats, BaseStatsCa
     error DependentAprIdsMismatchTokens(uint256 numDependentAprIds, uint256 numCoins);
     error InvalidPool(address poolAddress);
 
-    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
+    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) {
+        _disableInitializers();
+    }
 
     /// @inheritdoc IStatsCalculator
     function getAddressId() external view returns (address) {

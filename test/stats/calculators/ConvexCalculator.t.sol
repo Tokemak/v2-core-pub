@@ -8,7 +8,7 @@ import { Test } from "forge-std/Test.sol";
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IAccessControl } from "openzeppelin-contracts/access/IAccessControl.sol";
-
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.sol";
 import { ConvexCalculator } from "src/stats/calculators/ConvexCalculator.sol";
 import { ITokenWrapper } from "src/interfaces/external/convex/ITokenWrapper.sol";
@@ -141,7 +141,8 @@ contract ConvexCalculatorTest is Test {
 
         mockAsset(mainRewarder, lpToken, 363);
 
-        calculator = new ConvexCalculator(ISystemRegistry(systemRegistry), booster);
+        calculator =
+            ConvexCalculator(Clones.clone(address(new ConvexCalculator(ISystemRegistry(systemRegistry), booster))));
 
         bytes32[] memory dependantAprs = new bytes32[](0);
         IncentiveCalculatorBase.InitData memory initData = IncentiveCalculatorBase.InitData({
@@ -697,7 +698,8 @@ contract Initialize is ConvexCalculatorTest {
     function test_RevertIf_RewarderLpTokenDoesntMatchProvided() public {
         address invalidLpToken = makeAddr("invalidLpToken");
 
-        ConvexCalculator calc = new ConvexCalculator(ISystemRegistry(systemRegistry), booster);
+        ConvexCalculator calc =
+            ConvexCalculator(Clones.clone(address(new ConvexCalculator(ISystemRegistry(systemRegistry), booster))));
 
         bytes32[] memory dependantAprs = new bytes32[](0);
         IncentiveCalculatorBase.InitData memory initData = IncentiveCalculatorBase.InitData({

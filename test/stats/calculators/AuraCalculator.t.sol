@@ -7,7 +7,7 @@ import { Test } from "forge-std/Test.sol";
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IAccessControl } from "openzeppelin-contracts/access/IAccessControl.sol";
-
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { AuraCalculator } from "src/stats/calculators/AuraCalculator.sol";
 import { IAuraStashToken } from "src/interfaces/external/aura/IAuraStashToken.sol";
 import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
@@ -142,7 +142,8 @@ contract AuraCalculatorTest is Test {
 
         vm.mockCall(underlyerStats, abi.encodeWithSelector(IDexLSTStats.current.selector), abi.encode(data));
 
-        calculator = new AuraCalculator(ISystemRegistry(systemRegistry), booster);
+        address template = address(new AuraCalculator(ISystemRegistry(systemRegistry), booster));
+        calculator = AuraCalculator(Clones.clone(template));
 
         bytes32[] memory dependantAprs = new bytes32[](0);
         IncentiveCalculatorBase.InitData memory initData = IncentiveCalculatorBase.InitData({
@@ -641,7 +642,8 @@ contract Initialize is AuraCalculatorTest {
     function test_RevertIf_RewarderLpTokenDoesntMatchProvided() public {
         address invalidLpToken = makeAddr("invalidLpToken");
 
-        AuraCalculator calc = new AuraCalculator(ISystemRegistry(systemRegistry), booster);
+        address template = address(new AuraCalculator(ISystemRegistry(systemRegistry), booster));
+        AuraCalculator calc = AuraCalculator(Clones.clone(template));
 
         bytes32[] memory dependantAprs = new bytes32[](0);
         IncentiveCalculatorBase.InitData memory initData = IncentiveCalculatorBase.InitData({

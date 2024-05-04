@@ -73,6 +73,9 @@ contract MessageProxyTests is Test, SystemRegistryMocks, AccessControllerMocks {
     /// @notice Emitted when message sent in by calculator does not exist
     event MessageZeroLength(address messageSender, bytes32 messageType);
 
+    /// @notice Emitted when getting fee from external contracts fails.
+    event GetFeeFailed(uint64 destChainSelector, bytes32 messageHash);
+
     constructor() SystemRegistryMocks(vm) AccessControllerMocks(vm) { }
 
     function setUp() external {
@@ -1145,6 +1148,40 @@ contract SendMessage is MessageProxyTests {
 
         vm.expectEmit(true, true, true, true, address(_proxy));
         emit DestinationChainNotRegisteredEvent(chainId, messageHash);
+
+        _proxy.sendMessage(messageType, message);
+
+        vm.stopPrank();
+    }
+
+    function test_EmitsGetFeeFailedEvent() public {
+        _mockIsProxyAdmin(address(this), true);
+
+        address sender = makeAddr("sender");
+        bytes32 messageType = keccak256("message");
+        bytes memory message = abi.encode("message");
+        address chainReceiver = makeAddr("chainReceiver12");
+
+        MessageProxy.MessageRouteConfig[] memory routes = new MessageProxy.MessageRouteConfig[](1);
+        uint64 chainId = 12;
+        _mockRouterIsChainSupported(chainId, true);
+        _proxy.setDestinationChainReceiver(chainId, chainReceiver);
+
+        routes[0] = MessageProxy.MessageRouteConfig({ destinationChainSelector: chainId, gas: 1 });
+        _proxy.addMessageRoutes(sender, messageType, routes);
+
+        // Mock getFee revert
+        // solhint-disable-next-line  max-line-length
+        vm.mockCallRevert(address(_routerClient), abi.encodeWithSelector(IRouterClient.getFee.selector), abi.encode(""));
+
+        bytes32 messageHash = _getEncodedMsgHash(sender, block.timestamp, messageType, message);
+        uint256 dealAmount = 1e9;
+        deal(address(_proxy), dealAmount);
+
+        vm.startPrank(sender);
+
+        vm.expectEmit(true, true, true, true);
+        emit GetFeeFailed(chainId, messageHash);
 
         _proxy.sendMessage(messageType, message);
 

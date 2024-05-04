@@ -121,6 +121,9 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     /// @dev All below events emitted upon message failure in `sendMessage()`
     /// =====================================================
 
+    /// @notice Emitted when `Router.getFee()` call fails
+    event GetFeeFailed(uint64 destChainSelector, bytes32 messageHash);
+
     /// @notice Emitted when a message fails in try-catch.
     event MessageFailed(uint64 destChainId, bytes32 messageHash);
 
@@ -152,7 +155,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
 
     /// @notice Sends message to destination chain(s)
     /// @dev Can only be called by registered message sender.
-    /// @dev Can not revert, do not want ability to interrupt calculator snap-shotting on L1
+    /// @dev Should not revert under normal circumstances, do not want ability to interrupt calculator snap-shotting
     /// @param messageType bytes32 message type
     /// @param message Bytes message to send to receiver contract
     function sendMessage(bytes32 messageType, bytes memory message) external override {
@@ -188,7 +191,15 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
             // Build ccip message
             Client.EVM2AnyMessage memory ccipMessage = _ccipBuild(destChainReceiver, configs[i].gas, encodedMessage);
 
-            uint256 fee = routerClient.getFee(destChainSelector, ccipMessage);
+            // Attempt to get fee destination chain send, emit event and break look on failure.
+            uint256 fee;
+            try routerClient.getFee(destChainSelector, ccipMessage) returns (uint256 _fee) {
+                fee = _fee;
+            } catch {
+                emit GetFeeFailed(destChainSelector, messageHash);
+                break;
+            }
+
             uint256 addressBalance = address(this).balance;
 
             // If we have the balance, try ccip message

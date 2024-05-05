@@ -8,6 +8,7 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { SystemComponent } from "src/SystemComponent.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { Utilities } from "src/libs/Utilities.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IBasePool } from "src/interfaces/external/balancer/IBasePool.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
@@ -94,9 +95,11 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
     ) private returns (uint256 price, address actualQuoteToken) {
         bytes32 poolId = IBasePool(pool).getPoolId();
 
-        IVault.BatchSwapStep[] memory steps = new IVault.BatchSwapStep[](1);
         // Scaling price down to minimize impacts on low liquidity pools.
-        uint256 amountIn = 10 ** (IERC20Metadata(token).decimals() - 3);
+        uint256 scaledDownDecimals = Utilities.getScaledDownDecimals(IERC20Metadata(token));
+        uint256 amountIn = 10 ** scaledDownDecimals;
+
+        IVault.BatchSwapStep[] memory steps = new IVault.BatchSwapStep[](1);
         steps[0] = IVault.BatchSwapStep(poolId, 0, 1, amountIn, "");
 
         int256 tokenIndex = -1;

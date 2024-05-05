@@ -13,6 +13,7 @@ import { SystemComponent } from "src/SystemComponent.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { Utilities } from "src/libs/Utilities.sol";
 import { ICurveV2Swap } from "src/interfaces/external/curve/ICurveV2Swap.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { Roles } from "src/libs/Roles.sol";
@@ -195,9 +196,12 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
             revert NotRegistered(lpToken);
         }
 
-        // Scale swap down by token decimals - 3 to minimize swap impact on smaller pools, scale back up after swap.
-        uint256 dy =
-            ICurveV2Swap(pool).get_dy(tokenIndex, quoteTokenIndex, 10 ** (IERC20Metadata(token).decimals() - 3)) * 1e3;
+        // Scale swap down token decimal to minimize swap impact on smaller pools, scale back up after swap.
+        uint256 scaledDownDecimals = Utilities.getScaledDownDecimals(IERC20Metadata(token));
+        uint256 scaleDownFactor = Utilities.getScaleDownFactor(IERC20Metadata(token));
+        uint256 dy = ICurveV2Swap(pool).get_dy(
+            tokenIndex, quoteTokenIndex, 10 ** (scaledDownDecimals) * 1 ** 10 ** scaleDownFactor
+        );
 
         /// @dev The fee is dynamically based on current balances; slight discrepancies post-calculation are acceptable
         /// for low-value swaps.

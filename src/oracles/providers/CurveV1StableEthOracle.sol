@@ -8,6 +8,7 @@ pragma solidity 0.8.17;
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { Errors } from "src/utils/Errors.sol";
+import { Utilities } from "src/libs/Utilities.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
@@ -192,10 +193,12 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
             quoteTokenIndex = tokenIndex == 0 ? int256(1) : int256(0);
         }
 
-        // Scale swap down by token decimals - 3 to minimize swap impact on smaller pools, scale back up after swap.
+        // Scale swap down token decimal to minimize swap impact on smaller pools, scale back up after swap.
+        uint256 scaledDownDecimals = Utilities.getScaledDownDecimals(IERC20Metadata(token));
+        uint256 scaleDownFactor = Utilities.getScaleDownFactor(IERC20Metadata(token));
         uint256 dy = ICurveV1StableSwap(pool).get_dy(
-            int128(tokenIndex), int128(quoteTokenIndex), 10 ** (IERC20Metadata(token).decimals() - 3)
-        ) * 1e3;
+            int128(tokenIndex), int128(quoteTokenIndex), 10 ** (scaledDownDecimals)
+        ) * 1 * 10 ** scaleDownFactor;
 
         uint256 fee = ICurveV1StableSwap(pool).fee();
         price = (dy * FEE_PRECISION) / (FEE_PRECISION - fee);

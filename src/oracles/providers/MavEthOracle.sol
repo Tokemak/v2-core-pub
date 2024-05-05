@@ -8,6 +8,7 @@ import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IE
 import { IPool } from "src/interfaces/external/maverick/IPool.sol";
 import { IPoolPositionDynamicSlim } from "src/interfaces/external/maverick/IPoolPositionDynamicSlim.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { Utilities } from "src/libs/Utilities.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
@@ -120,10 +121,12 @@ contract MavEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
 
     /// @dev This function gets price using Maverick's `PoolInformation` contract
     function _getSpotPrice(address token, IPool pool, bool isTokenA) private returns (uint256 price) {
+        uint256 scaledDownDecimals = Utilities.getScaledDownDecimals(IERC20Metadata(token));
+
         price = poolInformation.calculateSwap(
             pool,
-            // we swap 0.001 units to minimize the impact on small pools
-            uint128(10 ** (IERC20Metadata(token).decimals() - 3)),
+            // we swap scaled-down units to minimize the impact on small pools
+            uint128(10 ** scaledDownDecimals),
             isTokenA, // tokenAIn
             false, // exactOutput
             0 // sqrtPriceLimit

@@ -138,7 +138,7 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
         _verifySystemsAgree(address(newAccToke));
     }
 
-    /// @notice Set the LMP Vault Registry for this instance of the system
+    /// @notice Set the AutoPoolRegistry for this instance of the system
     /// @dev Should only be able to set this value one time
     /// @param registry Address of the registry
     function setAutoPoolRegistry(address registry) external onlyOwner {
@@ -155,9 +155,9 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
         _verifySystemsAgree(registry);
     }
 
-    /// @notice Set the LMP Vault Router for this instance of the system
+    /// @notice Set the AutoPilotRouter for this instance of the system
     /// @dev allows setting multiple times
-    /// @param router Address of the LMP Vault Router
+    /// @param router Address of the AutoPilotRouter
     function setAutoPilotRouter(address router) external onlyOwner {
         Errors.verifyNotZero(router, "autoPoolRouter");
 

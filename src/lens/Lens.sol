@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
+import { AutoPoolDebt } from "src/vault/libs/AutoPoolDebt.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
@@ -201,7 +201,8 @@ contract Lens is SystemComponent {
             (IDexLSTStats.DexLSTStatsData memory currentStats, bool statsIncomplete) =
                 _safeDestinationGetStats(destinationAddress);
             address[] memory destinationTokens = IDestinationVault(destinationAddress).underlyingTokens();
-            LMPDebt.DestinationInfo memory vaultDestInfo = IAutoPool(autoPool).getDestinationInfo(destinationAddress);
+            AutoPoolDebt.DestinationInfo memory vaultDestInfo =
+                IAutoPool(autoPool).getDestinationInfo(destinationAddress);
             uint256 vaultBalOfDest = IDestinationVault(destinationAddress).balanceOf(autoPool);
 
             destinations[i] = DestinationVault({

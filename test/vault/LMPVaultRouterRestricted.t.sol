@@ -23,8 +23,8 @@ import { BaseTest } from "test/BaseTest.t.sol";
 import { WETH_MAINNET, ZERO_EX_MAINNET, CVX_MAINNET } from "test/utils/Addresses.sol";
 
 import { ERC2612 } from "test/utils/ERC2612.sol";
-import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
-import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
+import { AutoPoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutoPoolETHStrategyTestHelpers.sol";
+import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
 
 // solhint-disable func-name-mixedcase
 contract AutoPilotRouterTest is BaseTest {
@@ -68,12 +68,12 @@ contract AutoPilotRouterTest is BaseTest {
         autoPool.toggleAllowedUser(vm.addr(1));
         autoPool.toggleAllowedUser(address(autoPoolRouter));
 
-        // Set rewarder as rewarder set on LMP by factory.
+        // Set rewarder as rewarder set on AutoPool by factory.
         autoPoolRewarder = autoPool.rewarder();
     }
 
     function _setupVault(bytes memory salt) internal returns (AutoPoolETH _autoPool) {
-        LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        AutoPoolETHStrategy stratTemplate = new AutoPoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
         _autoPool = AutoPoolETH(
@@ -596,7 +596,7 @@ contract AutoPilotRouterTest is BaseTest {
         accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
         accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(autoPoolFactory));
         systemRegistry.setAutoPoolFactory(VaultTypes.LST, address(autoPoolFactory));
-        LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        AutoPoolETHStrategy stratTemplate = new AutoPoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
         autoPool = AutoPoolETH(

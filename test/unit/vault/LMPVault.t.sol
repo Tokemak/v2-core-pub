@@ -5,7 +5,7 @@ pragma solidity >=0.8.7;
 // solhint-disable func-name-mixedcase,max-states-count,var-name-mixedcase,no-console
 
 import { Roles } from "src/libs/Roles.sol";
-import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
+import { AutoPoolDebt } from "src/vault/libs/AutoPoolDebt.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { Test } from "forge-std/Test.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
@@ -29,10 +29,10 @@ import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSe
 import { AutoPoolToken } from "src/vault/libs/AutoPoolToken.sol";
 import { console } from "forge-std/console.sol";
 import { AutoPoolFees } from "src/vault/libs/AutoPoolFees.sol";
-import { LMPDestinations } from "src/vault/libs/LMPDestinations.sol";
+import { AutoPoolDestinations } from "src/vault/libs/AutoPoolDestinations.sol";
 import { Pausable } from "src/security/Pausable.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
-import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
+import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 import { TokenReturnSolver } from "test/mocks/TokenReturnSolver.sol";
 import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
@@ -70,7 +70,7 @@ contract AutoPoolETHTests is
 
     struct DVSetup {
         FeeAndProfitTestVault autoPool;
-        uint256 dvSharesToLMP;
+        uint256 dvSharesToAutoPool;
         uint256 valuePerShare;
         uint256 minDebtValue;
         uint256 maxDebtValue;
@@ -98,7 +98,7 @@ contract AutoPoolETHTests is
     event Nav(uint256 idle, uint256 debt, uint256 totalSupply);
     event RewarderSet(address rewarder);
     event DestinationDebtReporting(
-        address destination, LMPDebt.IdleDebtUpdates debtInfo, uint256 claimed, uint256 claimGasUsed
+        address destination, AutoPoolDebt.IdleDebtUpdates debtInfo, uint256 claimed, uint256 claimGasUsed
     );
     event FeeCollected(uint256 fees, address feeSink, uint256 mintedShares, uint256 profit, uint256 idle, uint256 debt);
     event PeriodicFeeCollected(uint256 fees, address feeSink, uint256 mintedShares);
@@ -189,7 +189,7 @@ contract AutoPoolETHTests is
             (setup.minDebtValue + setup.maxDebtValue) / 2,
             setup.minDebtValue,
             setup.maxDebtValue,
-            setup.dvSharesToLMP,
+            setup.dvSharesToAutoPool,
             setup.lastDebtReportTimestamp
         );
     }
@@ -207,7 +207,7 @@ contract AutoPoolETHTests is
         // Set the price that the dv shares are worth.
         // This also affects how much base asset is returned when shares are burned
         dv.setDebtValuePerShare(setup.valuePerShare);
-        dv.mint(setup.dvSharesToLMP, address(setup.autoPool));
+        dv.mint(setup.dvSharesToAutoPool, address(setup.autoPool));
 
         // Act as though we've rebalanced into this destination
         // ------------------------------------------------------------------
@@ -518,7 +518,7 @@ contract Deposit is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 5e18,
                 maxDebtValue: 15e18,
@@ -545,7 +545,7 @@ contract Deposit is AutoPoolETHTests {
         DestinationVaultFake destVault = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 9e18,
                 maxDebtValue: 11e18,
@@ -576,7 +576,7 @@ contract Deposit is AutoPoolETHTests {
         DestinationVaultFake destVault = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e9,
                 minDebtValue: 9e9,
                 maxDebtValue: 11e9,
@@ -609,7 +609,7 @@ contract Deposit is AutoPoolETHTests {
         DestinationVaultFake staleDv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 8e9,
                 maxDebtValue: 16e9,
@@ -619,7 +619,7 @@ contract Deposit is AutoPoolETHTests {
         DestinationVaultFake staleDv2 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 5e9,
                 maxDebtValue: 13e9,
@@ -629,7 +629,7 @@ contract Deposit is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9e9,
                 maxDebtValue: 11e9,
@@ -953,7 +953,7 @@ contract MaxDepositTests is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -985,7 +985,7 @@ contract MaxDepositTests is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -1033,7 +1033,7 @@ contract PreviewDepositTests is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -1117,7 +1117,7 @@ contract MintTests is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 5e18,
                 maxDebtValue: 15e18,
@@ -1148,7 +1148,7 @@ contract MintTests is AutoPoolETHTests {
         DestinationVaultFake destVault = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 9e18,
                 maxDebtValue: 11e18,
@@ -1182,7 +1182,7 @@ contract MintTests is AutoPoolETHTests {
         DestinationVaultFake destVault = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e9,
                 minDebtValue: 9e9,
                 maxDebtValue: 11e9,
@@ -1213,7 +1213,7 @@ contract MintTests is AutoPoolETHTests {
         DestinationVaultFake staleDv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 8e9,
                 maxDebtValue: 16e9,
@@ -1223,7 +1223,7 @@ contract MintTests is AutoPoolETHTests {
         DestinationVaultFake staleDv2 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 5e9,
                 maxDebtValue: 13e9,
@@ -1233,7 +1233,7 @@ contract MintTests is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9e9,
                 maxDebtValue: 11e9,
@@ -1443,7 +1443,7 @@ contract MaxMintTests is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -1501,7 +1501,7 @@ contract PreviewMintTests is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -1564,7 +1564,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -1606,7 +1606,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -1637,7 +1637,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -1670,7 +1670,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -1721,7 +1721,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 9e9,
+                dvSharesToAutoPool: 9e9,
                 valuePerShare: 1e9,
                 minDebtValue: 8.99e9,
                 maxDebtValue: 9.01e9,
@@ -1773,7 +1773,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 9e9,
+                dvSharesToAutoPool: 9e9,
                 valuePerShare: 1e9,
                 minDebtValue: 8.99e9,
                 maxDebtValue: 9.01e9,
@@ -1822,7 +1822,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -1841,7 +1841,7 @@ contract Withdraw is AutoPoolETHTests {
 
         vm.startPrank(user);
 
-        vm.expectRevert(abi.encodeWithSelector(LMPDebt.TooFewAssets.selector, 8e9, 5e9));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.TooFewAssets.selector, 8e9, 5e9));
         vault.withdraw(8e9, user, user);
 
         vm.stopPrank();
@@ -1944,7 +1944,7 @@ contract Withdraw is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 5e18,
                 maxDebtValue: 15e18,
@@ -1957,7 +1957,7 @@ contract Withdraw is AutoPoolETHTests {
 
         // We try to request more than we have overall, which is the min debt value of dv1, 5e18
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(LMPDebt.TooFewAssets.selector, 6e18, 5e18));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.TooFewAssets.selector, 6e18, 5e18));
         vault.withdraw(6e18, user2, user1);
         vm.revertTo(snapshotId);
 
@@ -2004,7 +2004,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -2029,7 +2029,7 @@ contract Withdraw is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -2061,7 +2061,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 100e9,
+                dvSharesToAutoPool: 100e9,
                 valuePerShare: 2e9,
                 minDebtValue: 1.95e9 * 100,
                 maxDebtValue: 2.05e9 * 100,
@@ -2073,7 +2073,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake destVault2 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 800e9,
+                dvSharesToAutoPool: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
                 maxDebtValue: 1.05e9 * 800,
@@ -2136,7 +2136,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 100e9,
+                dvSharesToAutoPool: 100e9,
                 valuePerShare: 2e9,
                 minDebtValue: 1.95e9 * 100,
                 maxDebtValue: 2.05e9 * 100,
@@ -2148,7 +2148,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake destVault2 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 800e9,
+                dvSharesToAutoPool: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
                 maxDebtValue: 1.05e9 * 800,
@@ -2222,7 +2222,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 800e9,
+                dvSharesToAutoPool: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
                 maxDebtValue: 1.05e9 * 800,
@@ -2270,7 +2270,7 @@ contract Withdraw is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -2309,7 +2309,7 @@ contract Withdraw is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -2341,7 +2341,7 @@ contract Withdraw is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -2374,7 +2374,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -2496,7 +2496,7 @@ contract Withdraw is AutoPoolETHTests {
         }
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(LMPDebt.TooFewAssets.selector, 1e18, 0));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.TooFewAssets.selector, 1e18, 0));
         vault.withdraw(1e18, user, user);
         vm.stopPrank();
     }
@@ -2554,7 +2554,7 @@ contract MaxWithdrawTests is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -2594,7 +2594,7 @@ contract MaxWithdrawTests is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -2679,7 +2679,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -2711,7 +2711,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -2744,7 +2744,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -2871,7 +2871,7 @@ contract Redeem is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 5e9,
                 maxDebtValue: 15e9,
@@ -2915,7 +2915,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 9.99e18,
                 maxDebtValue: 10.01e18,
@@ -2940,7 +2940,7 @@ contract Redeem is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -2972,7 +2972,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 100e9,
+                dvSharesToAutoPool: 100e9,
                 valuePerShare: 2e9,
                 minDebtValue: 1.95e9 * 100,
                 maxDebtValue: 2.05e9 * 100,
@@ -2984,7 +2984,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake destVault2 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 800e9,
+                dvSharesToAutoPool: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
                 maxDebtValue: 1.05e9 * 800,
@@ -3047,7 +3047,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 100e9,
+                dvSharesToAutoPool: 100e9,
                 valuePerShare: 2e9,
                 minDebtValue: 1.95e9 * 100,
                 maxDebtValue: 2.05e9 * 100,
@@ -3059,7 +3059,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake destVault2 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 800e9,
+                dvSharesToAutoPool: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
                 maxDebtValue: 1.05e9 * 800,
@@ -3117,7 +3117,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 800e9,
+                dvSharesToAutoPool: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
                 maxDebtValue: 1.05e9 * 800,
@@ -3165,7 +3165,7 @@ contract Redeem is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -3204,7 +3204,7 @@ contract Redeem is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -3236,7 +3236,7 @@ contract Redeem is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -3269,7 +3269,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -3449,7 +3449,7 @@ contract MaxRedeem is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -3685,7 +3685,7 @@ contract Recover is AutoPoolETHTests {
     //         _setupDestinationVault(
     //             DVSetup({
     //                 autoPool: vault,
-    //                 dvSharesToLMP: 10e18,
+    //                 dvSharesToAutoPool: 10e18,
     //                 valuePerShare: 1e18,
     //                 minDebtValue: 5e18,
     //                 maxDebtValue: 15e18,
@@ -4898,7 +4898,7 @@ contract FlashRebalanceSetup is AutoPoolETHTests {
         dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 0e9,
+                dvSharesToAutoPool: 0e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0e9,
                 maxDebtValue: 0e9,
@@ -4909,7 +4909,7 @@ contract FlashRebalanceSetup is AutoPoolETHTests {
         dv2 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 0e9,
+                dvSharesToAutoPool: 0e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0e9,
                 maxDebtValue: 0e9,
@@ -5144,7 +5144,9 @@ contract FlashRebalance is FlashRebalanceSetup {
         address dv1Underlyer = address(dv1.underlyer());
         address asset = vault.asset();
 
-        vm.expectCall(autoPoolStrategy, abi.encodeWithSelector(ILMPStrategy.rebalanceSuccessfullyExecuted.selector));
+        vm.expectCall(
+            autoPoolStrategy, abi.encodeWithSelector(IAutoPoolStrategy.rebalanceSuccessfullyExecuted.selector)
+        );
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5443,7 +5445,7 @@ contract FlashRebalance is FlashRebalanceSetup {
         address inUnderlyer = address(dvs[48].underlyer());
         address baseAsset = address(vault.asset());
 
-        vm.expectRevert(abi.encodeWithSelector(LMPDestinations.TooManyDeployedDestinations.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolDestinations.TooManyDeployedDestinations.selector));
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5472,7 +5474,7 @@ contract FlashRebalance is FlashRebalanceSetup {
         address tokenIn = address(dv1.underlyer());
         address tokenOut = vault.asset();
 
-        vm.expectRevert(abi.encodeWithSelector(LMPDebt.RebalanceFailed.selector, "msg"));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.RebalanceFailed.selector, "msg"));
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5621,7 +5623,7 @@ contract FlashRebalance is FlashRebalanceSetup {
         address dv1Underlyer = address(dv1.underlyer());
         address tokenOut = vault.asset();
 
-        vm.expectRevert(abi.encodeWithSelector(LMPDebt.VaultShutdown.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.VaultShutdown.selector));
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5650,7 +5652,7 @@ contract FlashRebalance is FlashRebalanceSetup {
         address dv1Underlyer = address(dv1.underlyer());
         address tokenOut = vault.asset();
 
-        vm.expectRevert(abi.encodeWithSelector(LMPDebt.InvalidPrices.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.InvalidPrices.selector));
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5695,7 +5697,7 @@ contract FlashRebalance is FlashRebalanceSetup {
         address asset = vault.asset();
         address tokenOut = address(dv1.underlyer());
 
-        vm.expectRevert(abi.encodeWithSelector(LMPDebt.InvalidPrices.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.InvalidPrices.selector));
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5826,7 +5828,7 @@ contract FlashRebalance is FlashRebalanceSetup {
             ret[i] = _createAddDestinationVault(
                 DVSetup({
                     autoPool: vault,
-                    dvSharesToLMP: 0e9,
+                    dvSharesToAutoPool: 0e9,
                     valuePerShare: 1e9,
                     minDebtValue: 0e9,
                     maxDebtValue: 0e9,
@@ -5851,7 +5853,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -5884,7 +5886,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -5896,7 +5898,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -5929,7 +5931,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -5941,7 +5943,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -5981,7 +5983,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -5993,7 +5995,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -6046,7 +6048,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -6058,7 +6060,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -6118,7 +6120,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -6130,7 +6132,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -6190,7 +6192,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -6202,7 +6204,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -6249,7 +6251,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9e9,
                 maxDebtValue: 11e9,
@@ -6261,7 +6263,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 5e9,
+                dvSharesToAutoPool: 5e9,
                 valuePerShare: 1e9,
                 minDebtValue: 4.5e9,
                 maxDebtValue: 5.5e9,
@@ -6431,7 +6433,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e9,
+                dvSharesToAutoPool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -6821,7 +6823,7 @@ contract AddDestinations is AutoPoolETHTests {
             _setupDestinationVault(
                 DVSetup({
                     autoPool: vault,
-                    dvSharesToLMP: 10e18,
+                    dvSharesToAutoPool: 10e18,
                     valuePerShare: 1e18,
                     minDebtValue: 5e18,
                     maxDebtValue: 15e18,
@@ -7101,7 +7103,7 @@ contract TotalAssets is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToLMP: 10e18,
+                dvSharesToAutoPool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 9e18,
                 maxDebtValue: 11e18,
@@ -7110,7 +7112,7 @@ contract TotalAssets is AutoPoolETHTests {
         );
         vault.setTotalIdle(0);
 
-        vm.expectRevert(abi.encodeWithSelector(LMPDebt.InvalidTotalAssetPurpose.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.InvalidTotalAssetPurpose.selector));
         vault.totalAssetsTimeChecked(IAutoPool.TotalAssetPurpose.Global);
     }
 }
@@ -7472,7 +7474,7 @@ contract TestAutoPoolETH is AutoPoolETH {
         uint256 ownedShares,
         uint256 lastDebtReportTimestamp
     ) external {
-        _destinationInfo[destination] = LMPDebt.DestinationInfo({
+        _destinationInfo[destination] = AutoPoolDebt.DestinationInfo({
             cachedDebtValue: cachedDebtValue,
             cachedMinDebtValue: cachedMinDebtValue,
             cachedMaxDebtValue: cachedMaxDebtValue,
@@ -7526,7 +7528,7 @@ contract FeeAndProfitTestVault is TestAutoPoolETH {
     }
 
     function totalAssetsTimeChecked(TotalAssetPurpose purpose) public returns (uint256) {
-        return LMPDebt.totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, purpose);
+        return AutoPoolDebt.totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, purpose);
     }
 
     function useRealCollectFees() public {

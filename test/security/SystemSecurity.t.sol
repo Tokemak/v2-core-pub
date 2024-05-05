@@ -124,7 +124,7 @@ contract SystemSecurityTests is Test {
         assertEq(_systemSecurity.navOpsInProgress(), 0);
     }
 
-    function test_enterNavOperation_CanOnlyBeCalledByLMP() public {
+    function test_enterNavOperation_CanOnlyBeCalledByAutoPool() public {
         _mockIsVault(address(this), false);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
@@ -151,7 +151,7 @@ contract SystemSecurityTests is Test {
         _systemSecurity.exitNavOperation();
     }
 
-    function test_exitNavOperation_CanOnlyBeCalledByLMP() public {
+    function test_exitNavOperation_CanOnlyBeCalledByAutoPool() public {
         _systemSecurity.enterNavOperation();
 
         _mockIsVault(address(this), false);

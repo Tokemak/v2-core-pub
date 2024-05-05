@@ -200,7 +200,7 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
         // subtracting base yield is an approximation b/c it uses the point-in-time reserve balances to estimate the
         // yield earned from the rebasing token. An attacker could shift the balance of the pool, causing us to believe
         // the fee apr is higher or lower. For a number of reasons, FeeApr has a low weight in the rebalancing logic.
-        // LMP strategies understand that this signal can be noisy and correct accordingly A price check against an
+        // AutoPool strategies understand that this signal can be noisy and correct accordingly A price check against an
         // oracle is an option to further mitigate the issue
         uint256 weightedBaseApr = 0;
         uint256 totalReservesInEth = 0;

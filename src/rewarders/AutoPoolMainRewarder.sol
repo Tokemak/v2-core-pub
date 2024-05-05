@@ -9,8 +9,7 @@ import { Roles } from "src/libs/Roles.sol";
 
 /**
  * @title AutoPoolMainRewarder
- * @notice Main rewarder for LMP Vault contracts.  This is used to enforce role based
- *      access control for LMP rewarders.
+ * @notice Main rewarder for AutoPool contracts.
  */
 contract AutoPoolMainRewarder is MainRewarder {
     using SafeERC20 for IERC20;

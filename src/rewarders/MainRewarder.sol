@@ -25,7 +25,7 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @notice True if additional reward tokens/contracts are allowed to be added
-    /// @dev Destination Vaults should not allow extras. LMP should.
+    /// @dev Destination Vaults should not allow extras. AutoPool's should.
     bool public immutable allowExtraRewards;
 
     EnumerableSet.AddressSet private _extraRewards;

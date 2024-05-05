@@ -5,22 +5,22 @@ pragma solidity 0.8.17;
 // solhint-disable no-console,reason-string,state-visibility,max-line-length,gas-custom-errors
 
 import { Systems } from "script/utils/Constants.sol";
-import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
+import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
 import { BaseScript, console } from "script/BaseScript.sol";
 import { IAutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
-import { LMPStrategyConfig } from "src/strategy/LMPStrategyConfig.sol";
+import { AutoPoolETHStrategyConfig } from "src/strategy/AutoPoolETHStrategyConfig.sol";
 
 /**
  * @dev This contract:
- *      1. Deploys a new LMP strategy template with the following configuration.
- *      2. Registers the new strategy template in the `lst-guarded-r1` LMP Vault Factory.
+ *      1. Deploys a new AutoPool strategy template with the following configuration.
+ *      2. Registers the new strategy template in the `lst-guarded-r1` AutoPool Vault Factory.
  */
-contract CreateLMPStrategy is BaseScript {
+contract CreateAutoPoolETHStrategy is BaseScript {
     // 🚨 Manually set variables below. 🚨
     bytes32 public autoPoolType = keccak256("lst-guarded-r1");
 
-    LMPStrategyConfig.StrategyConfig config = LMPStrategyConfig.StrategyConfig({
-        swapCostOffset: LMPStrategyConfig.SwapCostOffsetConfig({
+    AutoPoolETHStrategyConfig.StrategyConfig config = AutoPoolETHStrategyConfig.StrategyConfig({
+        swapCostOffset: AutoPoolETHStrategyConfig.SwapCostOffsetConfig({
             initInDays: 60,
             tightenThresholdInViolations: 5,
             tightenStepInDays: 2,
@@ -29,14 +29,18 @@ contract CreateLMPStrategy is BaseScript {
             maxInDays: 60,
             minInDays: 7
         }),
-        navLookback: LMPStrategyConfig.NavLookbackConfig({ lookback1InDays: 30, lookback2InDays: 60, lookback3InDays: 90 }),
-        slippage: LMPStrategyConfig.SlippageConfig({
+        navLookback: AutoPoolETHStrategyConfig.NavLookbackConfig({
+            lookback1InDays: 30,
+            lookback2InDays: 60,
+            lookback3InDays: 90
+        }),
+        slippage: AutoPoolETHStrategyConfig.SlippageConfig({
             maxNormalOperationSlippage: 5e15, // 0.5%
             maxTrimOperationSlippage: 2e16, // 2%
             maxEmergencyOperationSlippage: 0.025e18, // 2.5%
             maxShutdownOperationSlippage: 0.015e18 // 1.5%
          }),
-        modelWeights: LMPStrategyConfig.ModelWeights({
+        modelWeights: AutoPoolETHStrategyConfig.ModelWeights({
             baseYield: 1e6,
             feeYield: 1e6,
             incentiveYield: 0.9e6,
@@ -59,15 +63,15 @@ contract CreateLMPStrategy is BaseScript {
 
         vm.startBroadcast(privateKey);
 
-        LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, config);
+        AutoPoolETHStrategy stratTemplate = new AutoPoolETHStrategy(systemRegistry, config);
         IAutoPoolFactory autoPoolFactory = systemRegistry.getAutoPoolFactoryByType(autoPoolType);
 
         if (address(autoPoolFactory) == address(0)) {
-            revert("LMP Vault Factory not set for lst-guarded-r1 type");
+            revert("AutoPool Vault Factory not set for lst-guarded-r1 type");
         }
 
         autoPoolFactory.addStrategyTemplate(address(stratTemplate));
-        console.log("LMP Strategy address: %s", address(stratTemplate));
+        console.log("AutoPool Strategy address: %s", address(stratTemplate));
 
         vm.stopBroadcast();
     }

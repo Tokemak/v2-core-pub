@@ -53,8 +53,8 @@ import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegi
  */
 contract DeploySystem is BaseScript {
     /// @dev Manually set variables below.
-    uint256 public defaultRewardRatioLmp = 800;
-    uint256 public defaultRewardBlockDurationLmp = 100;
+    uint256 public defaultRewardRatioAutoPool = 800;
+    uint256 public defaultRewardBlockDurationAutoPool = 100;
     uint256 public defaultRewardRatioDest = 1;
     uint256 public defaultRewardBlockDurationDest = 1000;
     bytes32 public autoPoolType = keccak256("lst-weth-v1");
@@ -109,37 +109,37 @@ contract DeploySystem is BaseScript {
         systemRegistry.setSystemSecurity(address(systemSecurity));
         console.log("System Security address: ", address(systemSecurity));
 
-        // LMP Registry setup.
+        // AutoPool Registry setup.
         autoPoolRegistry = new AutoPoolRegistry(systemRegistry);
         systemRegistry.setAutoPoolRegistry(address(autoPoolRegistry));
-        console.log("LMP Vault Registry address: ", address(autoPoolRegistry));
+        console.log("AutoPool Vault Registry address: ", address(autoPoolRegistry));
 
-        // Deploy LMP Template.
+        // Deploy AutoPool Template.
         autoPoolTemplate = new AutoPoolETH(systemRegistry, wethAddress, false);
-        console.log("LMP Template address: ", address(autoPoolTemplate));
+        console.log("AutoPool Template address: ", address(autoPoolTemplate));
 
-        // LMP Factory setup.
+        // AutoPool Factory setup.
         autoPoolFactory = new AutoPoolFactory(
-            systemRegistry, address(autoPoolTemplate), defaultRewardRatioLmp, defaultRewardBlockDurationLmp
+            systemRegistry, address(autoPoolTemplate), defaultRewardRatioAutoPool, defaultRewardBlockDurationAutoPool
         );
         systemRegistry.setAutoPoolFactory(autoPoolType, address(autoPoolFactory));
         accessController.setupRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
-        console.log("LMP Factory address: ", address(autoPoolFactory));
+        console.log("AutoPool Factory address: ", address(autoPoolFactory));
 
-        // Initial LMP Vault creation.
-        // address establishedLmp =
+        // Initial AutoPool Vault creation.
+        // address establishedAutoPool =
         //     autoPoolFactory.createVault(autoPool1SupplyLimit, autoPool1WalletLimit, autoPool1SymbolSuffix,
         // autoPool1DescPrefix, autoPool1Salt, "");
-        // address emergingLmp =
+        // address emergingAutoPool =
         //     autoPoolFactory.createVault(autoPool2SupplyLimit, autoPool2WalletLimit, autoPool2SymbolSuffix,
         // autoPool2DescPrefix, autoPool2Salt, "");
-        // console.log("Established LMP Vault address: ", establishedLmp);
-        // console.log("Emerging LMP Vault address: ", emergingLmp);
+        // console.log("Established AutoPool Vault address: ", establishedAutoPool);
+        // console.log("Emerging AutoPool Vault address: ", emergingAutoPool);
 
-        // LMP router setup.
+        // AutoPool router setup.
         autoPoolRouter = new AutoPilotRouter(systemRegistry);
         systemRegistry.setAutoPilotRouter(address(autoPoolRouter));
-        console.log("LMP Router address: ", address(autoPoolRouter));
+        console.log("AutoPool Router address: ", address(autoPoolRouter));
 
         // Destination registry setup.
         destRegistry = new DestinationRegistry(systemRegistry);

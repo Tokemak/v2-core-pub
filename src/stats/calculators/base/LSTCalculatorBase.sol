@@ -211,7 +211,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
         uint256 lastSnapshotTimestamp;
 
         // return the most recent snapshot timestamp
-        // the timestamp is used by the LMP to ensure that snapshots are occurring
+        // the timestamp is used by the AutoPool to ensure that snapshots are occurring
         // so it is indifferent to which snapshot has occurred
         // slither-disable-next-line timestamp
         if (lastBaseAprSnapshotTimestamp < lastSlashingSnapshotTimestamp) {

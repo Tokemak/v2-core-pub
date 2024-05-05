@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity >=0.8.7;
 
-// solhint-disable func-name-mixedcase,max-states-count
+// solhint-disable func-name-mixedcase,max-states-count,max-line-length
 
 import { Test } from "forge-std/Test.sol";
 import { Roles } from "src/libs/Roles.sol";
@@ -14,8 +14,8 @@ import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
-import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
-import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
+import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
+import { AutoPoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutoPoolETHStrategyTestHelpers.sol";
 import { TestWETH9 } from "test/mocks/TestWETH9.sol";
 
 contract PermitTests is Test {
@@ -52,7 +52,7 @@ contract PermitTests is Test {
         _systemSecurity = new SystemSecurity(_systemRegistry);
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
 
-        // Setup the LMP Vault
+        // Setup the AutoPool Vault
 
         _asset = TestERC20(address(_weth));
         _systemRegistry.addRewardToken(address(_asset));
@@ -66,14 +66,14 @@ contract PermitTests is Test {
 
         bytes memory initData = abi.encode("");
 
-        LMPStrategy strategyTemplate = new LMPStrategy(_systemRegistry, stratHelpers.getDefaultConfig());
+        AutoPoolETHStrategy strategyTemplate = new AutoPoolETHStrategy(_systemRegistry, stratHelpers.getDefaultConfig());
         _autoPoolFactory.addStrategyTemplate(address(strategyTemplate));
 
         // Mock AutoPilotRouter call for AutoPoolETH creation.
         vm.mockCall(
             address(_systemRegistry),
             abi.encodeWithSelector(SystemRegistry.autoPoolRouter.selector),
-            abi.encode(makeAddr("LMP_VAULT_ROUTER"))
+            abi.encode(makeAddr("AutoPool_VAULT_ROUTER"))
         );
 
         _autoPool = AutoPoolETH(

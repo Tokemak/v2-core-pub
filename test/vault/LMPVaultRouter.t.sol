@@ -34,8 +34,8 @@ import { WETH_MAINNET, ZERO_EX_MAINNET, CVX_MAINNET, TREASURY, WETH9_ADDRESS } f
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 
 import { ERC2612 } from "test/utils/ERC2612.sol";
-import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
-import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
+import { AutoPoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutoPoolETHStrategyTestHelpers.sol";
+import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
 
 import { Vm } from "forge-std/Vm.sol";
 
@@ -109,7 +109,7 @@ contract AutoPilotRouterTest is BaseTest {
 
         autoPool = _setupVault("v1");
 
-        // Set rewarder as rewarder set on LMP by factory.
+        // Set rewarder as rewarder set on AutoPool by factory.
         autoPoolRewarder = autoPool.rewarder();
 
         rewardsSigner = vm.createWallet(string("signer"));
@@ -117,7 +117,7 @@ contract AutoPilotRouterTest is BaseTest {
     }
 
     function _setupVault(bytes memory salt) internal returns (AutoPoolETH _autoPool) {
-        LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        AutoPoolETHStrategy stratTemplate = new AutoPoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
         _autoPool = AutoPoolETH(
@@ -731,7 +731,7 @@ contract AutoPilotRouterTest is BaseTest {
     function test_RevertsOnInvalidVault() public {
         // No need to approve, deposit to vault, etc, revert will happen before transfer.
         vm.expectRevert(Errors.ItemNotFound.selector);
-        autoPoolRouter.stakeVaultToken(IERC20(makeAddr("NOT_LMP_VAULT")), depositAmount);
+        autoPoolRouter.stakeVaultToken(IERC20(makeAddr("NOT_AutoPool_VAULT")), depositAmount);
     }
 
     function test_stakeVaultToken_Router() public {
@@ -804,10 +804,10 @@ contract AutoPilotRouterTest is BaseTest {
         assertTrue(autoPool.isPastRewarder(address(autoPoolRewarder)));
 
         uint256 userBalanceInPastRewarderBefore = autoPoolRewarder.balanceOf(address(this));
-        uint256 userBalanceLMPTokenBefore = autoPool.balanceOf(address(this));
+        uint256 userBalanceAutoPoolTokenBefore = autoPool.balanceOf(address(this));
 
         assertEq(userBalanceInPastRewarderBefore, shareBalanceBefore);
-        assertEq(userBalanceLMPTokenBefore, 0);
+        assertEq(userBalanceAutoPoolTokenBefore, 0);
 
         // Fake rewarder - 0x002C41f924b4f3c0EE3B65749c4481f7cc9Dea03
         // Real rewarder - 0xc1A7C52ED8c7671a56e8626e7ae362334480f599
@@ -815,10 +815,10 @@ contract AutoPilotRouterTest is BaseTest {
         autoPoolRouter.withdrawVaultToken(autoPool, autoPoolRewarder, shareBalanceBefore, false);
 
         uint256 userBalanceInPastRewarderAfter = autoPoolRewarder.balanceOf(address(this));
-        uint256 userBalanceLMPTokenAfter = autoPool.balanceOf(address(this));
+        uint256 userBalanceAutoPoolTokenAfter = autoPool.balanceOf(address(this));
 
         assertEq(userBalanceInPastRewarderAfter, 0);
-        assertEq(userBalanceLMPTokenAfter, shareBalanceBefore);
+        assertEq(userBalanceAutoPoolTokenAfter, shareBalanceBefore);
     }
 
     function test_withdrawVaultToken_NoClaim_Router() public {
@@ -864,10 +864,10 @@ contract AutoPilotRouterTest is BaseTest {
         autoPoolRewarder.queueNewRewards(localStakeAmount);
         vm.stopPrank();
 
-        // Deposit to LMP.
+        // Deposit to AutoPool.
         uint256 sharesReceived = _deposit(autoPool, depositAmount);
 
-        // Stake LMP
+        // Stake AutoPool
         autoPool.approve(address(autoPoolRouter), sharesReceived);
 
         bytes[] memory calls = new bytes[](3);
@@ -944,7 +944,7 @@ contract AutoPilotRouterTest is BaseTest {
         // Roll block for reward claiming.
         vm.roll(block.number + 100);
 
-        // Create new rewarder, set as rewarder on LMP vault.
+        // Create new rewarder, set as rewarder on AutoPool vault.
         AutoPoolMainRewarder newRewarder = new AutoPoolMainRewarder(
             systemRegistry, address(new MockERC20("X", "X", 18)), 100, 100, false, address(autoPool)
         );
@@ -987,10 +987,10 @@ contract AutoPilotRouterTest is BaseTest {
         autoPoolRewarder.queueNewRewards(localStakeAmount);
         vm.stopPrank();
 
-        // Deposit to LMP.
+        // Deposit to AutoPool.
         uint256 sharesReceived = _deposit(autoPool, depositAmount);
 
-        // Stake LMP
+        // Stake AutoPool
         autoPool.approve(address(autoPoolRouter), sharesReceived);
 
         bytes[] memory calls = new bytes[](3);
@@ -1067,7 +1067,7 @@ contract AutoPilotRouterTest is BaseTest {
 
         autoPoolRouter.multicall(calls);
 
-        // Need array of bytes with two members, one for unstaking from rewarder, other for withdrawing from LMP.
+        // Need array of bytes with two members, one for unstaking from rewarder, other for withdrawing from AutoPool.
         bytes[] memory data = new bytes[](2);
 
         // Approve router to burn share tokens.
@@ -1213,7 +1213,7 @@ contract AutoPilotRouterTest is BaseTest {
         // NOTE: deployer grants factory permission to update the registry
         accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
         systemRegistry.setAutoPoolFactory(VaultTypes.LST, address(autoPoolFactory));
-        LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        AutoPoolETHStrategy stratTemplate = new AutoPoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
         autoPool = AutoPoolETH(

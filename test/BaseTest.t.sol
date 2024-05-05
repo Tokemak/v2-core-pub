@@ -225,7 +225,7 @@ contract BaseTest is Test {
         // NOTE: deployer grants factory permission to update the registry
         accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
 
-        vm.label(address(autoPoolFactory), "LMP Vault Factory");
+        vm.label(address(autoPoolFactory), "AutoPool Vault Factory");
     }
 
     function createAndPrankUser(string memory label) public returns (address) {

@@ -37,7 +37,7 @@ contract SystemRegistryTest is Test {
     }
 
     /* ******************************** */
-    /* LMP Vault Registry
+    /* AutoPool Vault Registry
     /* ******************************** */
 
     function testSystemRegistryAutoPoolETHSetOnceDuplicateValue() public {
@@ -112,17 +112,17 @@ contract SystemRegistryTest is Test {
     }
 
     /* ******************************** */
-    /* LMP Vault Router
+    /* AutoPool Vault Router
     /* ******************************** */
 
     function test_OnlyOwner_setAutoPilotRouter() external {
         address fakeOwner = vm.addr(3);
-        address fakeLMPRouter = vm.addr(4);
+        address fakeAutoPoolRouter = vm.addr(4);
 
         vm.prank(fakeOwner);
         vm.expectRevert("Ownable: caller is not the owner");
 
-        _systemRegistry.setAutoPilotRouter(fakeLMPRouter);
+        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter);
     }
 
     function test_ZeroAddress_setAutoPilotRouter() external {
@@ -131,62 +131,64 @@ contract SystemRegistryTest is Test {
     }
 
     function test_Duplicate_setAutoPilotRouter() external {
-        address fakeLMPRouter = vm.addr(4);
-        mockSystemComponent(fakeLMPRouter);
+        address fakeAutoPoolRouter = vm.addr(4);
+        mockSystemComponent(fakeAutoPoolRouter);
 
-        _systemRegistry.setAutoPilotRouter(fakeLMPRouter);
+        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter);
 
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.DuplicateSet.selector, fakeLMPRouter));
-        _systemRegistry.setAutoPilotRouter(fakeLMPRouter);
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.DuplicateSet.selector, fakeAutoPoolRouter));
+        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter);
     }
 
     function test_WorksProperly_setAutoPilotRouter() external {
-        address fakeLMPRouter = vm.addr(4);
-        mockSystemComponent(fakeLMPRouter);
+        address fakeAutoPoolRouter = vm.addr(4);
+        mockSystemComponent(fakeAutoPoolRouter);
 
         vm.expectEmit(false, false, false, true);
-        emit AutoPilotRouterSet(fakeLMPRouter);
-        _systemRegistry.setAutoPilotRouter(fakeLMPRouter);
+        emit AutoPilotRouterSet(fakeAutoPoolRouter);
+        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter);
 
-        assertEq(fakeLMPRouter, address(_systemRegistry.autoPoolRouter()));
+        assertEq(fakeAutoPoolRouter, address(_systemRegistry.autoPoolRouter()));
     }
 
     function test_SetMultipleTimes_setAutoPilotRouter() external {
-        address fakeLMPRouter1 = vm.addr(4);
-        address fakeLMPRouter2 = vm.addr(5);
+        address fakeAutoPoolRouter1 = vm.addr(4);
+        address fakeAutoPoolRouter2 = vm.addr(5);
 
-        mockSystemComponent(fakeLMPRouter1);
-        mockSystemComponent(fakeLMPRouter2);
+        mockSystemComponent(fakeAutoPoolRouter1);
+        mockSystemComponent(fakeAutoPoolRouter2);
 
         // First set
         vm.expectEmit(false, false, false, true);
-        emit AutoPilotRouterSet(fakeLMPRouter1);
-        _systemRegistry.setAutoPilotRouter(fakeLMPRouter1);
-        assertEq(fakeLMPRouter1, address(_systemRegistry.autoPoolRouter()));
+        emit AutoPilotRouterSet(fakeAutoPoolRouter1);
+        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter1);
+        assertEq(fakeAutoPoolRouter1, address(_systemRegistry.autoPoolRouter()));
 
         // Second set
         vm.expectEmit(false, false, false, true);
-        emit AutoPilotRouterSet(fakeLMPRouter2);
-        _systemRegistry.setAutoPilotRouter(fakeLMPRouter2);
-        assertEq(fakeLMPRouter2, address(_systemRegistry.autoPoolRouter()));
+        emit AutoPilotRouterSet(fakeAutoPoolRouter2);
+        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter2);
+        assertEq(fakeAutoPoolRouter2, address(_systemRegistry.autoPoolRouter()));
     }
 
     function test_SystemMismatch_setAutoPilotRouter() external {
-        address fakeLMPRouter = vm.addr(4);
+        address fakeAutoPoolRouter = vm.addr(4);
         address fakeRegistry = vm.addr(3);
 
         vm.mockCall(
-            fakeLMPRouter, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), abi.encode(fakeRegistry)
+            fakeAutoPoolRouter,
+            abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector),
+            abi.encode(fakeRegistry)
         );
         vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(_systemRegistry), fakeRegistry));
 
-        _systemRegistry.setAutoPilotRouter(fakeLMPRouter);
+        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter);
     }
 
     function test_InvalidContract_setAutoPilotRouter() external {
-        address fakeLMPRouter = vm.addr(4);
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeLMPRouter));
-        _systemRegistry.setAutoPilotRouter(fakeLMPRouter);
+        address fakeAutoPoolRouter = vm.addr(4);
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeAutoPoolRouter));
+        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter);
 
         address emptyContract = address(new EmptyContract());
         vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
@@ -876,15 +878,15 @@ contract SystemRegistryTest is Test {
     }
 
     /* ******************************** */
-    /* LMP Vault Factory
+    /* AutoPool Vault Factory
     /* ******************************** */
 
     function test_OnlyOwner_setAutoPoolFactory() external {
-        address fakeLMPFactory = vm.addr(4);
+        address fakeAutoPoolFactory = vm.addr(4);
         vm.prank(vm.addr(1));
 
         vm.expectRevert("Ownable: caller is not the owner");
-        _systemRegistry.setAutoPoolFactory(bytes32("Test bytes"), fakeLMPFactory);
+        _systemRegistry.setAutoPoolFactory(bytes32("Test bytes"), fakeAutoPoolFactory);
     }
 
     function test_ZeroAddress_setAutoPoolFactory() external {
@@ -898,28 +900,28 @@ contract SystemRegistryTest is Test {
     }
 
     function test_ProperAdd_setAutoPoolFactory() external {
-        bytes32 fakeLMPFactoryBytes = bytes32("Fake LMP");
-        address fakeLMPFactory = vm.addr(4);
-        mockSystemComponent(fakeLMPFactory);
+        bytes32 fakeAutoPoolFactoryBytes = bytes32("Fake AutoPool");
+        address fakeAutoPoolFactory = vm.addr(4);
+        mockSystemComponent(fakeAutoPoolFactory);
 
         vm.expectEmit(false, false, false, true);
-        emit AutoPoolFactorySet(fakeLMPFactoryBytes, fakeLMPFactory);
+        emit AutoPoolFactorySet(fakeAutoPoolFactoryBytes, fakeAutoPoolFactory);
 
-        _systemRegistry.setAutoPoolFactory(fakeLMPFactoryBytes, fakeLMPFactory);
-        assertEq(address(_systemRegistry.getAutoPoolFactoryByType(fakeLMPFactoryBytes)), fakeLMPFactory);
+        _systemRegistry.setAutoPoolFactory(fakeAutoPoolFactoryBytes, fakeAutoPoolFactory);
+        assertEq(address(_systemRegistry.getAutoPoolFactoryByType(fakeAutoPoolFactoryBytes)), fakeAutoPoolFactory);
     }
 
     function test_SystemMismatch_setAutoPoolFactory() external {
         address fakeRegistry = vm.addr(3);
-        address fakeLMPFactory = vm.addr(4);
+        address fakeAutoPoolFactory = vm.addr(4);
 
         vm.mockCall(
-            fakeLMPFactory,
+            fakeAutoPoolFactory,
             abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector),
             abi.encode(fakeRegistry)
         );
         vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(_systemRegistry), fakeRegistry));
-        _systemRegistry.setAutoPoolFactory(bytes32("Test bytes"), fakeLMPFactory);
+        _systemRegistry.setAutoPoolFactory(bytes32("Test bytes"), fakeAutoPoolFactory);
     }
 
     function test_InvalidContract_setAutoPoolFactory() external {

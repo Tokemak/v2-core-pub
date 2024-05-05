@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 import { NavTracking } from "src/strategy/NavTracking.sol";
 
-library LMPStrategyConfig {
+library AutoPoolETHStrategyConfig {
     uint256 private constant WEIGHT_MAX = 1e6;
     int256 private constant WEIGHT_MAX_I = 1e6;
 
@@ -70,8 +70,7 @@ library LMPStrategyConfig {
         // shutdown for a vault is abnormal and means there is an issue at that destination
         // recommend setting this higher than maxNormalOperationSlippage
         uint256 maxEmergencyOperationSlippage; // 100% = 1e18
-        // the maximum amount of slippage to allow when the AutoPoolETH has been shutdown
-        // TODO: why would a LMP be shutdown??
+        // the maximum amount of slippage to allow when the AutoPool has been shutdown
         uint256 maxShutdownOperationSlippage; // 100% = 1e18
     }
 

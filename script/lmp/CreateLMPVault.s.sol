@@ -11,7 +11,8 @@ import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
 
 /**
  * @dev This contract:
- *      1. Creates a new LMP Vault using the `lst-guarded-r1` LMP Vault Factory and the specified strategy template.
+ *      1. Creates a new AutoPool Vault using the `lst-guarded-r1` AutoPool Vault Factory and the specified strategy
+ * template.
  */
 contract CreateAutoPoolETH is BaseScript {
     // 🚨 Manually set variables below. 🚨
@@ -37,7 +38,7 @@ contract CreateAutoPoolETH is BaseScript {
             revert("Strategy template not found");
         }
 
-        // Initial LMP Vault creation.
+        // Initial AutoPool Vault creation.
         address autoPool = autoPoolFactory.createVault(
             strategyTemplateAddress,
             autoPool1SymbolSuffix,
@@ -45,7 +46,7 @@ contract CreateAutoPoolETH is BaseScript {
             keccak256(abi.encodePacked(block.number)),
             ""
         );
-        console.log("LMP Vault address: ", autoPool);
+        console.log("AutoPool Vault address: ", autoPool);
 
         vm.stopBroadcast();
     }

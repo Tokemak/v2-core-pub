@@ -12,14 +12,14 @@ import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
-import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
+import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
 import { StructuredLinkedList } from "src/strategy/StructuredLinkedList.sol";
 import { WithdrawalQueue } from "src/strategy/WithdrawalQueue.sol";
 import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { AutoPoolToken } from "src/vault/libs/AutoPoolToken.sol";
 
-library LMPDebt {
+library AutoPoolDebt {
     using Math for uint256;
     using SafeERC20 for IERC20;
     using WithdrawalQueue for StructuredLinkedList.List;
@@ -41,7 +41,7 @@ library LMPDebt {
     error AmountExceedsAllowance(uint256 shares, uint256 allowed);
 
     event DestinationDebtReporting(
-        address destination, LMPDebt.IdleDebtUpdates debtInfo, uint256 claimed, uint256 claimGasUsed
+        address destination, AutoPoolDebt.IdleDebtUpdates debtInfo, uint256 claimed, uint256 claimGasUsed
     );
     event NewNavShareFeeMark(uint256 navPerShare, uint256 timestamp);
     event Nav(uint256 idle, uint256 debt, uint256 totalSupply);
@@ -126,7 +126,7 @@ library LMPDebt {
         IERC3156FlashBorrower receiver,
         IStrategy.RebalanceParams memory params,
         IStrategy.SummaryStats memory destSummaryOut,
-        ILMPStrategy autoPoolStrategy,
+        IAutoPoolStrategy autoPoolStrategy,
         FlashRebalanceParams memory flashParams,
         bytes calldata data
     ) external returns (IdleDebtUpdates memory result) {
@@ -134,7 +134,7 @@ library LMPDebt {
         // If the tokenOut is _asset we assume they are taking idle
         // which is already in the contract
         result = _handleRebalanceOut(
-            LMPDebt.RebalanceOutParams({
+            AutoPoolDebt.RebalanceOutParams({
                 receiver: address(receiver),
                 destinationOut: params.destinationOut,
                 amountOut: params.amountOut,
@@ -347,7 +347,7 @@ library LMPDebt {
 
     function totalAssetsTimeChecked(
         StructuredLinkedList.List storage debtReportQueue,
-        mapping(address => LMPDebt.DestinationInfo) storage destinationInfo,
+        mapping(address => AutoPoolDebt.DestinationInfo) storage destinationInfo,
         IAutoPool.TotalAssetPurpose purpose
     ) external returns (uint256) {
         IDestinationVault destVault = IDestinationVault(debtReportQueue.peekHead());
@@ -413,7 +413,7 @@ library LMPDebt {
 
     function _updateDebtReporting(
         StructuredLinkedList.List storage debtReportQueue,
-        mapping(address => LMPDebt.DestinationInfo) storage destinationInfo,
+        mapping(address => AutoPoolDebt.DestinationInfo) storage destinationInfo,
         uint256 numToProcess
     ) external returns (IdleDebtUpdates memory result) {
         numToProcess = Math.min(numToProcess, debtReportQueue.sizeOf());
@@ -436,7 +436,7 @@ library LMPDebt {
             // total debt value we can roll up later
             uint256 currentShareBalance = destVault.balanceOf(address(this));
 
-            LMPDebt.IdleDebtUpdates memory debtResult = _recalculateDestInfo(
+            AutoPoolDebt.IdleDebtUpdates memory debtResult = _recalculateDestInfo(
                 destinationInfo[address(destVault)], destVault, currentShareBalance, currentShareBalance
             );
 
@@ -504,7 +504,7 @@ library LMPDebt {
         uint256 applicableTotalAssets,
         IAutoPool.AssetBreakdown storage assetBreakdown,
         StructuredLinkedList.List storage withdrawalQueue,
-        mapping(address => LMPDebt.DestinationInfo) storage destinationInfo
+        mapping(address => AutoPoolDebt.DestinationInfo) storage destinationInfo
     ) public returns (uint256 actualAssets, uint256 actualShares, uint256 debtBurned) {
         WithdrawInfo memory info = _initiateWithdrawInfo(assets, assetBreakdown);
 
@@ -690,7 +690,7 @@ library LMPDebt {
         uint256 applicableTotalAssets,
         IAutoPool.AssetBreakdown storage assetBreakdown,
         StructuredLinkedList.List storage withdrawalQueue,
-        mapping(address => LMPDebt.DestinationInfo) storage destinationInfo
+        mapping(address => AutoPoolDebt.DestinationInfo) storage destinationInfo
     ) public returns (uint256 actualAssets, uint256 actualShares, uint256 debtBurned) {
         WithdrawInfo memory info = _initiateWithdrawInfo(assets, assetBreakdown);
 
@@ -891,7 +891,7 @@ library LMPDebt {
         bytes memory functionCallEncoded,
         IAutoPool.AssetBreakdown storage assetBreakdown,
         StructuredLinkedList.List storage withdrawalQueue,
-        mapping(address => LMPDebt.DestinationInfo) storage destinationInfo
+        mapping(address => AutoPoolDebt.DestinationInfo) storage destinationInfo
     ) external returns (uint256 assetsAmount, uint256 sharesAmount) {
         if (msg.sender != address(this)) {
             // Perform a recursive call the function in `funcCallEncoded`.  This will result in a call back to

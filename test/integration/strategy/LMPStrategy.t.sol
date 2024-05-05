@@ -23,8 +23,8 @@ import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
 import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
-import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
-import { LMPStrategyConfig } from "src/strategy/LMPStrategyConfig.sol";
+import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
+import { AutoPoolETHStrategyConfig } from "src/strategy/AutoPoolETHStrategyConfig.sol";
 import { AccToke } from "src/staking/AccToke.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
@@ -38,7 +38,7 @@ import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
 import { ConvexCalculator } from "src/stats/calculators/ConvexCalculator.sol";
 
-contract LMPStrategyInt is Test {
+contract AutoPoolETHStrategyInt is Test {
     address constant V2_DEPLOYER = 0xA6364F394616DD9238B284CfF97Cd7146C57808D;
     address constant SYSTEM_REGISTRY = 0x0406d2D96871f798fcf54d5969F69F55F803eEA4;
 
@@ -141,7 +141,7 @@ contract LMPStrategyInt is Test {
         _stEthOriginalDv = _deployStEthEthOriginalSetupData();
         _stEthNgDv = _deployStEthEthNgSetupData();
 
-        // Setup the LMP Vaults
+        // Setup the AutoPool Vaults
 
         _autoPoolRegistry = new AutoPoolRegistry(_systemRegistry);
         (bool success,) = address(_systemRegistry).call(
@@ -652,9 +652,9 @@ contract LMPStrategyInt is Test {
         );
     }
 
-    function getDefaultConfig() internal pure returns (LMPStrategyConfig.StrategyConfig memory) {
-        return LMPStrategyConfig.StrategyConfig({
-            swapCostOffset: LMPStrategyConfig.SwapCostOffsetConfig({
+    function getDefaultConfig() internal pure returns (AutoPoolETHStrategyConfig.StrategyConfig memory) {
+        return AutoPoolETHStrategyConfig.StrategyConfig({
+            swapCostOffset: AutoPoolETHStrategyConfig.SwapCostOffsetConfig({
                 initInDays: 28,
                 tightenThresholdInViolations: 5,
                 tightenStepInDays: 3,
@@ -663,18 +663,18 @@ contract LMPStrategyInt is Test {
                 maxInDays: 60,
                 minInDays: 10
             }),
-            navLookback: LMPStrategyConfig.NavLookbackConfig({
+            navLookback: AutoPoolETHStrategyConfig.NavLookbackConfig({
                 lookback1InDays: 30,
                 lookback2InDays: 60,
                 lookback3InDays: 90
             }),
-            slippage: LMPStrategyConfig.SlippageConfig({
+            slippage: AutoPoolETHStrategyConfig.SlippageConfig({
                 maxNormalOperationSlippage: 1e16, // 1%
                 maxTrimOperationSlippage: 2e16, // 2%
                 maxEmergencyOperationSlippage: 0.025e18, // 2.5%
                 maxShutdownOperationSlippage: 0.015e18 // 1.5%
              }),
-            modelWeights: LMPStrategyConfig.ModelWeights({
+            modelWeights: AutoPoolETHStrategyConfig.ModelWeights({
                 baseYield: 1e6,
                 feeYield: 1e6,
                 incentiveYield: 0.9e6,
@@ -801,7 +801,7 @@ contract LMPStrategyInt is Test {
     }
 }
 
-contract ValueCheckingStrategy is LMPStrategy, Test {
+contract ValueCheckingStrategy is AutoPoolETHStrategy, Test {
     uint256 private _checkInLpPrice;
     uint256 private _checkOutLpPrice;
 
@@ -811,8 +811,8 @@ contract ValueCheckingStrategy is LMPStrategy, Test {
     constructor(
         ISystemRegistry _systemRegistry,
         address _autoPool,
-        LMPStrategyConfig.StrategyConfig memory conf
-    ) LMPStrategy(_systemRegistry, conf) { }
+        AutoPoolETHStrategyConfig.StrategyConfig memory conf
+    ) AutoPoolETHStrategy(_systemRegistry, conf) { }
 
     function setCheckInLpPrice(uint256 price) external {
         _checkInLpPrice = price;

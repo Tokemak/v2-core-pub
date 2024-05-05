@@ -4,11 +4,11 @@
 pragma solidity 0.8.17;
 
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
-import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
+import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
-import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
+import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
 import { StrategyUtils } from "src/strategy/libs/StrategyUtils.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { Incentives } from "src/strategy/libs/Incentives.sol";
@@ -40,7 +40,7 @@ library SummaryStats {
         IIncentivesPricingStats incentivePricing,
         address destAddress,
         uint256 price,
-        ILMPStrategy.RebalanceDirection direction,
+        IAutoPoolStrategy.RebalanceDirection direction,
         uint256 amount
     ) external returns (IStrategy.SummaryStats memory) {
         // NOTE: creating this as empty to save on variables later
@@ -116,9 +116,9 @@ library SummaryStats {
         result.maxDiscount = interimStats.maxDiscount;
 
         uint256 returnExPrice = (
-            result.baseApr * ILMPStrategy(address(this)).weightBase() / 1e6
-                + result.feeApr * ILMPStrategy(address(this)).weightFee() / 1e6
-                + result.incentiveApr * ILMPStrategy(address(this)).weightIncentive() / 1e6
+            result.baseApr * IAutoPoolStrategy(address(this)).weightBase() / 1e6
+                + result.feeApr * IAutoPoolStrategy(address(this)).weightFee() / 1e6
+                + result.incentiveApr * IAutoPoolStrategy(address(this)).weightIncentive() / 1e6
         );
 
         // price already weighted
@@ -190,7 +190,7 @@ library SummaryStats {
 
     function ensureNotStaleData(string memory name, uint256 dataTimestamp) internal view {
         // slither-disable-next-line timestamp
-        if (block.timestamp - dataTimestamp > ILMPStrategy(address(this)).staleDataToleranceInSeconds()) {
+        if (block.timestamp - dataTimestamp > IAutoPoolStrategy(address(this)).staleDataToleranceInSeconds()) {
             revert StaleData(name);
         }
     }

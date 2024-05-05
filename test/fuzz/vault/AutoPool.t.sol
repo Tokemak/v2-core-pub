@@ -7,8 +7,8 @@ pragma solidity 0.8.17;
 import { ERC4626Test } from "test/fuzz/vault/ERC4626Test.sol";
 import { BaseTest } from "test/BaseTest.t.sol";
 import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
-import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
-import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
+import { AutoPoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutoPoolETHStrategyTestHelpers.sol";
+import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
 
 contract AutoPoolETHTest is ERC4626Test, BaseTest {
     address private autoPoolStrategy = vm.addr(10_001);
@@ -24,7 +24,7 @@ contract AutoPoolETHTest is ERC4626Test, BaseTest {
         // create vault
         bytes memory initData = abi.encode("");
 
-        LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        AutoPoolETHStrategy stratTemplate = new AutoPoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
         AutoPoolETH vault = AutoPoolETH(

@@ -9,10 +9,10 @@ import { Systems } from "script/utils/Constants.sol";
 import { BaseScript, console } from "script/BaseScript.sol";
 import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
 
-contract LMPSystem is BaseScript {
+contract AutoPoolSystem is BaseScript {
     // 🚨 Manually set variables below. 🚨
-    uint256 public defaultRewardRatioLmp = 800;
-    uint256 public defaultRewardBlockDurationLmp = 100;
+    uint256 public defaultRewardRatioAutoPool = 800;
+    uint256 public defaultRewardBlockDurationAutoPool = 100;
     bytes32 public autoPoolType = keccak256("lst-guarded-r1");
 
     function run() external {
@@ -20,15 +20,15 @@ contract LMPSystem is BaseScript {
 
         vm.startBroadcast(privateKey);
 
-        // LMP Factory setup.
+        // AutoPool Factory setup.
         AutoPoolETH autoPoolTemplate = new AutoPoolETH(systemRegistry, wethAddress, true);
-        console.log("LMP Vault WETH Template: %s", address(autoPoolTemplate));
+        console.log("AutoPool Vault WETH Template: %s", address(autoPoolTemplate));
 
         AutoPoolFactory autoPoolFactory = new AutoPoolFactory(
-            systemRegistry, address(autoPoolTemplate), defaultRewardRatioLmp, defaultRewardBlockDurationLmp
+            systemRegistry, address(autoPoolTemplate), defaultRewardRatioAutoPool, defaultRewardBlockDurationAutoPool
         );
         systemRegistry.setAutoPoolFactory(autoPoolType, address(autoPoolFactory));
-        console.log("LMP Vault Factory: %s", address(autoPoolFactory));
+        console.log("AutoPool Vault Factory: %s", address(autoPoolFactory));
 
         vm.stopBroadcast();
     }

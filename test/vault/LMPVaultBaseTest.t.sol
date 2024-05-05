@@ -211,7 +211,7 @@ contract AutoPoolETHBaseTest is BaseTest {
         assertEq(address(autoPool.rewarder()), rewarder);
     }
 
-    function test_LMPRewardManagerRole_CanSetRewarder() public {
+    function test_AutoPoolRewardManagerRole_CanSetRewarder() public {
         assertTrue(accessController.hasRole(Roles.AUTO_POOL_REWARD_MANAGER, address(this)));
 
         address rewarder = makeAddr("REWARDER");

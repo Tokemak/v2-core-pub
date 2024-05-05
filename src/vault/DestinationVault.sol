@@ -84,7 +84,7 @@ abstract contract DestinationVault is
         _disableInitializers();
     }
 
-    modifier onlyAutoPoolETH() {
+    modifier onlyAutoPool() {
         if (!systemRegistry.autoPoolRegistry().isVault(msg.sender)) {
             revert Errors.AccessDenied();
         }
@@ -244,7 +244,7 @@ abstract contract DestinationVault is
     }
 
     /// @inheritdoc IDestinationVault
-    function depositUnderlying(uint256 amount) external onlyAutoPoolETH notShutdown returns (uint256 shares) {
+    function depositUnderlying(uint256 amount) external onlyAutoPool notShutdown returns (uint256 shares) {
         Errors.verifyNotZero(amount, "amount");
 
         emit UnderlyingDeposited(amount, msg.sender);
@@ -258,7 +258,7 @@ abstract contract DestinationVault is
     }
 
     /// @inheritdoc IDestinationVault
-    function withdrawUnderlying(uint256 shares, address to) external onlyAutoPoolETH returns (uint256 amount) {
+    function withdrawUnderlying(uint256 shares, address to) external onlyAutoPool returns (uint256 amount) {
         Errors.verifyNotZero(shares, "shares");
         Errors.verifyNotZero(to, "to");
 
@@ -434,7 +434,7 @@ abstract contract DestinationVault is
 
         // Swap what we receive if not already in base asset
         // This fn is only called during a users withdrawal. The user should be making this
-        // call via the LMP Router, or through one of the other routes where
+        // call via the AutoPilotRouter, or through one of the other routes where
         // slippage is controlled for. 0 min amount is expected here.
         ISwapRouter swapRouter = systemRegistry.swapRouter();
         for (uint256 i = 0; i < nTokens; ++i) {

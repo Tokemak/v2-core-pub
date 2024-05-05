@@ -99,7 +99,7 @@ interface IAutoPilotRouterBase {
     ) external payable returns (uint256 amountOut);
 
     /// @notice Stakes vault token to corresponding rewarder.
-    /// @param vault IERC20 instance of an LMP vault to stake to.
+    /// @param vault IERC20 instance of an AutoPool to stake to.
     /// @param maxAmount Maximum amount for user to stake.  Amount > balanceOf(user) will stake all present tokens.
     /// @return staked Returns total amount staked.
     function stakeVaultToken(IERC20 vault, uint256 maxAmount) external returns (uint256 staked);

@@ -6,7 +6,7 @@ pragma solidity 0.8.17;
 
 import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
-import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
+import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
@@ -23,7 +23,7 @@ import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
-import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
+import { AutoPoolDebt } from "src/vault/libs/AutoPoolDebt.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { CryticIERC4626Internal } from "crytic/properties/contracts/ERC4626/util/IERC4626Internal.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
@@ -309,7 +309,7 @@ contract TestingPool is AutoPoolETH, CryticIERC4626Internal {
     bool private _disableNavDecreaseCheck;
     bool private _nextDepositGetsDoubleShares;
     bool private _enableCryticFns;
-    LMPDebt.IdleDebtUpdates private _nextRebalanceResults;
+    AutoPoolDebt.IdleDebtUpdates private _nextRebalanceResults;
 
     modifier cryticFns() {
         if (_enableCryticFns) {
@@ -331,7 +331,7 @@ contract TestingPool is AutoPoolETH, CryticIERC4626Internal {
         _nextDepositGetsDoubleShares = val;
     }
 
-    function setNextRebalanceResult(LMPDebt.IdleDebtUpdates memory nextRebalanceResults) public {
+    function setNextRebalanceResult(AutoPoolDebt.IdleDebtUpdates memory nextRebalanceResults) public {
         _nextRebalanceResults = nextRebalanceResults;
     }
 
@@ -382,7 +382,7 @@ contract TestingPool is AutoPoolETH, CryticIERC4626Internal {
             address[] memory destinations = getDestinations();
             for (uint256 i = 0; i < destinations.length; i++) {
                 address destVault = destinations[i];
-                LMPDebt.DestinationInfo memory destInfo = _destinationInfo[destVault];
+                AutoPoolDebt.DestinationInfo memory destInfo = _destinationInfo[destVault];
 
                 uint256 destSharesRemaining = IDestinationVault(destVault).balanceOf(address(this));
                 if (destInfo.ownedShares > 0) {
@@ -430,7 +430,7 @@ contract TestingPool is AutoPoolETH, CryticIERC4626Internal {
     //     IERC3156FlashBorrower receiver,
     //     RebalanceParams memory rebalanceParams,
     //     bytes calldata data
-    // ) internal virtual override returns (LMPDebt.IdleDebtUpdates memory result) {
+    // ) internal virtual override returns (AutoPoolDebt.IdleDebtUpdates memory result) {
     //     result = _nextRebalanceResults;
     // }
 
@@ -485,7 +485,7 @@ contract TestAutoPoolRegistry {
     }
 }
 
-contract TestingStrategy is ILMPStrategy {
+contract TestingStrategy is IAutoPoolStrategy {
     bool private _nextRebalanceSuccess;
 
     error BadRebalance();
@@ -549,7 +549,7 @@ contract TestingStrategy is ILMPStrategy {
     /// recommend setting this higher than maxNormalOperationSlippage
     uint256 public immutable maxEmergencyOperationSlippage = 0; // 100% = 1e18
 
-    /// @notice the maximum amount of slippage to allow when the LMPVault has been shutdown
+    /// @notice the maximum amount of slippage to allow when the AutoPoolVault has been shutdown
     uint256 public immutable maxShutdownOperationSlippage = 0; // 100% = 1e18
 
     /// @notice the maximum discount used for price return

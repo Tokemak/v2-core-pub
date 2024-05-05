@@ -13,7 +13,7 @@ import { AutoPoolMainRewarder } from "src/rewarders/AutoPoolMainRewarder.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
-import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
+import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { Roles } from "src/libs/Roles.sol";
 
@@ -156,7 +156,7 @@ contract AutoPoolFactory is SystemComponent, IAutoPoolFactory, SecurityBase {
 
         AutoPoolETH(newVaultAddress).initialize(newStrategy, symbolSuffix, descPrefix, extraParams);
         AutoPoolETH(newVaultAddress).setRewarder(address(mainRewarder));
-        LMPStrategy(strategyTemplate.cloneDeterministic(salt)).initialize(newVaultAddress);
+        AutoPoolETHStrategy(strategyTemplate.cloneDeterministic(salt)).initialize(newVaultAddress);
 
         // add to VaultRegistry
         vaultRegistry.addVault(newVaultAddress);

@@ -50,7 +50,7 @@ contract AutoPoolMainRewarderTest is Test {
     }
 }
 
-contract WithdrawLMPRewarder is AutoPoolMainRewarderTest {
+contract WithdrawAutoPoolRewarder is AutoPoolMainRewarderTest {
     uint256 public withdrawAmount = 450;
 
     function setUp() public override {
@@ -126,7 +126,7 @@ contract WithdrawLMPRewarder is AutoPoolMainRewarderTest {
     }
 }
 
-contract StakeLMPRewarder is AutoPoolMainRewarderTest {
+contract StakeAutoPoolRewarder is AutoPoolMainRewarderTest {
     function test_RevertsWhenStakingMoreThanAvailable() external {
         vm.expectRevert();
         rewarder.stake(staker, stakeAmount + 1);
@@ -165,7 +165,7 @@ contract StakeLMPRewarder is AutoPoolMainRewarderTest {
     }
 }
 
-contract GetRewardLMPRewarder is AutoPoolMainRewarderTest {
+contract GetRewardAutoPoolRewarder is AutoPoolMainRewarderTest {
     function setUp() public override {
         super.setUp();
 

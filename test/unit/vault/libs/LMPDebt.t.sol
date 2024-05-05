@@ -4,14 +4,14 @@ pragma solidity >=0.8.7;
 
 // solhint-disable func-name-mixedcase,max-states-count
 
-import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
+import { AutoPoolDebt } from "src/vault/libs/AutoPoolDebt.sol";
 import { Test } from "forge-std/Test.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { DestinationVaultMocks } from "test/unit/mocks/DestinationVaultMocks.t.sol";
 
-contract LMPDebtTests is Test, DestinationVaultMocks {
+contract AutoPoolDebtTests is Test, DestinationVaultMocks {
     IDestinationVault internal destVaultOne;
-    LMPDebt.DestinationInfo internal destVaultOneInfo;
+    AutoPoolDebt.DestinationInfo internal destVaultOneInfo;
 
     constructor() DestinationVaultMocks(vm) { }
 
@@ -21,14 +21,15 @@ contract LMPDebtTests is Test, DestinationVaultMocks {
     }
 }
 
-contract RecalculateDestInfoTests is LMPDebtTests {
+contract RecalculateDestInfoTests is AutoPoolDebtTests {
     function test_NewDebtIsMidPointOfCurrentMinMaxValue() external {
         uint256 min = 1000e18;
         uint256 max = 2000e18;
         uint256 mid = 1500e18;
         _mockDestVaultRangePricesLP(address(destVaultOne), min, max, true);
 
-        LMPDebt.IdleDebtUpdates memory result = LMPDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
+        AutoPoolDebt.IdleDebtUpdates memory result =
+            AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
 
         assertEq(result.totalDebtIncrease, mid);
 
@@ -41,7 +42,8 @@ contract RecalculateDestInfoTests is LMPDebtTests {
         uint256 max = 2000e18;
         _mockDestVaultRangePricesLP(address(destVaultOne), min, max, true);
 
-        LMPDebt.IdleDebtUpdates memory result = LMPDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
+        AutoPoolDebt.IdleDebtUpdates memory result =
+            AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
 
         assertEq(result.totalMinDebtIncrease, min);
 
@@ -54,7 +56,8 @@ contract RecalculateDestInfoTests is LMPDebtTests {
         uint256 max = 2000e18;
         _mockDestVaultRangePricesLP(address(destVaultOne), min, max, true);
 
-        LMPDebt.IdleDebtUpdates memory result = LMPDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
+        AutoPoolDebt.IdleDebtUpdates memory result =
+            AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
 
         assertEq(result.totalMaxDebtIncrease, max, "maxIncrease");
 
@@ -74,8 +77,8 @@ contract RecalculateDestInfoTests is LMPDebtTests {
         destVaultOneInfo.cachedDebtValue = 90e18;
         destVaultOneInfo.ownedShares = originalShares;
 
-        LMPDebt.IdleDebtUpdates memory result =
-            LMPDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
+        AutoPoolDebt.IdleDebtUpdates memory result =
+            AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
 
         // 90 value @ 10 shares, now we have 5 shares
         // remaining value should be 45;
@@ -94,8 +97,8 @@ contract RecalculateDestInfoTests is LMPDebtTests {
         destVaultOneInfo.cachedMinDebtValue = 90e18;
         destVaultOneInfo.ownedShares = originalShares;
 
-        LMPDebt.IdleDebtUpdates memory result =
-            LMPDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
+        AutoPoolDebt.IdleDebtUpdates memory result =
+            AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
 
         // 90 value @ 10 shares, now we have 5 shares
         // remaining value should be 45;
@@ -114,8 +117,8 @@ contract RecalculateDestInfoTests is LMPDebtTests {
         destVaultOneInfo.cachedMaxDebtValue = 90e18;
         destVaultOneInfo.ownedShares = originalShares;
 
-        LMPDebt.IdleDebtUpdates memory result =
-            LMPDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
+        AutoPoolDebt.IdleDebtUpdates memory result =
+            AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
 
         // 90 value @ 10 shares, now we have 5 shares
         // remaining value should be 45;
@@ -136,8 +139,8 @@ contract RecalculateDestInfoTests is LMPDebtTests {
         destVaultOneInfo.cachedMaxDebtValue = 0;
         destVaultOneInfo.ownedShares = 0;
 
-        LMPDebt.IdleDebtUpdates memory result =
-            LMPDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
+        AutoPoolDebt.IdleDebtUpdates memory result =
+            AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
 
         assertEq(result.totalDebtDecrease, 0);
         assertEq(result.totalMinDebtDecrease, 0);
@@ -150,7 +153,7 @@ contract RecalculateDestInfoTests is LMPDebtTests {
         _mockDestVaultRangePricesLP(address(destVaultOne), min, max, true);
 
         assertNotEq(destVaultOneInfo.lastReport, block.timestamp);
-        LMPDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
+        AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
 
         assertEq(destVaultOneInfo.lastReport, block.timestamp);
     }
@@ -163,7 +166,7 @@ contract RecalculateDestInfoTests is LMPDebtTests {
         _mockDestVaultRangePricesLP(address(destVaultOne), min, max, true);
 
         assertNotEq(destVaultOneInfo.ownedShares, block.timestamp);
-        LMPDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, shares, shares);
+        AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, shares, shares);
 
         assertEq(destVaultOneInfo.ownedShares, shares);
     }

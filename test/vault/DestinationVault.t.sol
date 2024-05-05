@@ -152,20 +152,20 @@ contract DestinationVaultBaseTests is Test {
         assertEq(decimals, underlyer.decimals());
     }
 
-    function testOnlyLmpVaultCanDepositUnderlying() public {
-        mockIsLmpVault(address(this), false);
+    function testOnlyAutoPoolVaultCanDepositUnderlying() public {
+        mockIsAutoPoolVault(address(this), false);
         underlyer.approve(address(testVault), 10);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         testVault.depositUnderlying(10);
 
-        mockIsLmpVault(address(this), true);
+        mockIsAutoPoolVault(address(this), true);
 
         testVault.depositUnderlying(10);
     }
 
     function testShutdownOnlyAccessibleByOwner() public {
-        mockIsLmpVault(address(this), false);
+        mockIsAutoPoolVault(address(this), false);
         underlyer.approve(address(testVault), 10);
 
         address caller = address(5);
@@ -204,9 +204,9 @@ contract DestinationVaultBaseTests is Test {
     }
 
     function testCannotDepositWhenShutdown() public {
-        mockIsLmpVault(address(this), false);
+        mockIsAutoPoolVault(address(this), false);
         underlyer.approve(address(testVault), 10);
-        mockIsLmpVault(address(this), true);
+        mockIsAutoPoolVault(address(this), true);
 
         testVault.shutdown(IDestinationVault.VaultShutdownStatus.Deprecated);
 
@@ -218,7 +218,7 @@ contract DestinationVaultBaseTests is Test {
         uint256 depositAmount = 10;
         uint256 originalBalance = testVault.balanceOf(address(this));
 
-        mockIsLmpVault(address(this), true);
+        mockIsAutoPoolVault(address(this), true);
         underlyer.approve(address(testVault), depositAmount);
         uint256 shares = testVault.depositUnderlying(depositAmount);
 
@@ -232,7 +232,7 @@ contract DestinationVaultBaseTests is Test {
         uint256 depositAmount = 10;
         uint256 originalBalance = underlyer.balanceOf(address(this));
 
-        mockIsLmpVault(address(this), true);
+        mockIsAutoPoolVault(address(this), true);
         underlyer.approve(address(testVault), depositAmount);
         testVault.depositUnderlying(depositAmount);
 
@@ -241,33 +241,33 @@ contract DestinationVaultBaseTests is Test {
         assertEq(originalBalance - afterBalance, depositAmount);
     }
 
-    function testOnlyLmpVaultCanWithdrawUnderlying() public {
+    function testOnlyAutoPoolVaultCanWithdrawUnderlying() public {
         // Deposit
         uint256 depositAmount = 10;
-        mockIsLmpVault(address(this), true);
+        mockIsAutoPoolVault(address(this), true);
         underlyer.approve(address(testVault), depositAmount);
         testVault.depositUnderlying(depositAmount);
 
-        // No Longer LMP
-        mockIsLmpVault(address(this), false);
+        // No Longer AutoPool
+        mockIsAutoPoolVault(address(this), false);
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         testVault.withdrawUnderlying(10, address(this));
 
-        // LMP again
-        mockIsLmpVault(address(this), true);
+        // AutoPool again
+        mockIsAutoPoolVault(address(this), true);
         testVault.withdrawUnderlying(10, address(this));
     }
 
     function testCanWithdrawUnderlyingWhenShutdown() public {
         // Deposit
         uint256 depositAmount = 10;
-        mockIsLmpVault(address(this), true);
+        mockIsAutoPoolVault(address(this), true);
         underlyer.approve(address(testVault), depositAmount);
         testVault.depositUnderlying(depositAmount);
         testVault.shutdown(IDestinationVault.VaultShutdownStatus.Deprecated);
 
-        // LMP again
-        mockIsLmpVault(address(this), true);
+        // AutoPool again
+        mockIsAutoPoolVault(address(this), true);
         testVault.withdrawUnderlying(10, address(this));
     }
 
@@ -277,7 +277,7 @@ contract DestinationVaultBaseTests is Test {
 
         // Deposit
         uint256 depositAmount = 10;
-        mockIsLmpVault(address(this), true);
+        mockIsAutoPoolVault(address(this), true);
         underlyer.approve(address(testVault), depositAmount);
         testVault.depositUnderlying(depositAmount);
         uint256 beforeVaultShareBalance = testVault.balanceOf(address(this));
@@ -438,7 +438,7 @@ contract DestinationVaultBaseTests is Test {
         );
     }
 
-    function mockIsLmpVault(address addr, bool isVault) internal {
+    function mockIsAutoPoolVault(address addr, bool isVault) internal {
         vm.mockCall(
             address(autoPoolRegistry),
             abi.encodeWithSelector(IAutoPoolRegistry.isVault.selector, addr),

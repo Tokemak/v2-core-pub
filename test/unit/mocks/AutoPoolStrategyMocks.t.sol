@@ -5,7 +5,7 @@ pragma solidity >=0.8.7;
 // solhint-disable func-name-mixedcase,max-states-count
 
 import { Vm } from "forge-std/Vm.sol";
-import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
+import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 
 contract AutoPoolStrategyMocks {
@@ -29,7 +29,7 @@ contract AutoPoolStrategyMocks {
 
     function _mockVerifyRebalance(address strategy, bool success, string memory message) internal {
         vm.mockCall(
-            strategy, abi.encodeWithSelector(ILMPStrategy.verifyRebalance.selector), abi.encode(success, message)
+            strategy, abi.encodeWithSelector(IAutoPoolStrategy.verifyRebalance.selector), abi.encode(success, message)
         );
     }
 
@@ -42,18 +42,18 @@ contract AutoPoolStrategyMocks {
     ) internal {
         vm.mockCall(
             strategy,
-            abi.encodeWithSelector(ILMPStrategy.verifyRebalance.selector, params, stats),
+            abi.encodeWithSelector(IAutoPoolStrategy.verifyRebalance.selector, params, stats),
             abi.encode(success, message)
         );
     }
 
     function _mockNavUpdate(address strategy) internal {
-        vm.mockCall(strategy, abi.encodeWithSelector(ILMPStrategy.navUpdate.selector), abi.encode(""));
+        vm.mockCall(strategy, abi.encodeWithSelector(IAutoPoolStrategy.navUpdate.selector), abi.encode(""));
     }
 
     function _mockRebalanceSuccessfullyExecuted(address strategy) internal {
         vm.mockCall(
-            strategy, abi.encodeWithSelector(ILMPStrategy.rebalanceSuccessfullyExecuted.selector), abi.encode("")
+            strategy, abi.encodeWithSelector(IAutoPoolStrategy.rebalanceSuccessfullyExecuted.selector), abi.encode("")
         );
     }
 
@@ -61,7 +61,7 @@ contract AutoPoolStrategyMocks {
         IStrategy.SummaryStats memory ret;
 
         vm.mockCall(
-            strategy, abi.encodeWithSelector(ILMPStrategy.getRebalanceOutSummaryStats.selector), abi.encode(ret)
+            strategy, abi.encodeWithSelector(IAutoPoolStrategy.getRebalanceOutSummaryStats.selector), abi.encode(ret)
         );
     }
 }

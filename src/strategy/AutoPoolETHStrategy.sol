@@ -8,7 +8,7 @@ import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
-import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
+import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
 import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
@@ -16,10 +16,10 @@ import { ViolationTracking } from "src/strategy/ViolationTracking.sol";
 import { NavTracking } from "src/strategy/NavTracking.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
-import { LMPStrategyConfig } from "src/strategy/LMPStrategyConfig.sol";
+import { AutoPoolETHStrategyConfig } from "src/strategy/AutoPoolETHStrategyConfig.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
-import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
+import { AutoPoolDebt } from "src/vault/libs/AutoPoolDebt.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 import { StrategyUtils } from "src/strategy/libs/StrategyUtils.sol";
@@ -27,7 +27,7 @@ import { SubSaturateMath } from "src/strategy/libs/SubSaturateMath.sol";
 import { SummaryStats } from "src/strategy/libs/SummaryStats.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 
-contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBase {
+contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrategy, SecurityBase {
     using ViolationTracking for ViolationTracking.State;
     using NavTracking for NavTracking.State;
     using SubSaturateMath for uint256;
@@ -254,16 +254,16 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         uint256 slippage;
     }
 
-    modifier onlyAutoPoolETH() {
+    modifier onlyAutoPool() {
         if (msg.sender != address(autoPool)) revert NotAutoPoolETH();
         _;
     }
 
     constructor(
         ISystemRegistry _systemRegistry,
-        LMPStrategyConfig.StrategyConfig memory conf
+        AutoPoolETHStrategyConfig.StrategyConfig memory conf
     ) SystemComponent(_systemRegistry) SecurityBase(address(_systemRegistry.accessController())) {
-        LMPStrategyConfig.validate(conf);
+        AutoPoolETHStrategyConfig.validate(conf);
 
         rebalanceTimeGapInSeconds = conf.rebalanceTimeGapInSeconds;
         pauseRebalancePeriodInDays = conf.pauseRebalancePeriodInDays;
@@ -350,7 +350,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         emit IdleThresholdsSet(newLowValue, newHighValue);
     }
 
-    /// @inheritdoc ILMPStrategy
+    /// @inheritdoc IAutoPoolStrategy
     function verifyRebalance(
         IStrategy.RebalanceParams memory params,
         IStrategy.SummaryStats memory outSummary
@@ -566,7 +566,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
             maxSlippage = maxNormalOperationSlippage;
         }
 
-        // Scenario 5: the destination has been moved out of the LMPs active destinations
+        // Scenario 5: the destination has been moved out of the AutoPools active destinations
         if (autoPool.isDestinationQueuedForRemoval(params.destinationOut) && maxNormalOperationSlippage > maxSlippage) {
             reason = RebalanceToIdleReasonEnum.DestinationIsQueuedForRemoval;
             maxSlippage = maxNormalOperationSlippage;
@@ -594,7 +594,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
     function verifyCleanUpOperation(IStrategy.RebalanceParams memory params) internal view returns (bool) {
         IDestinationVault outDest = IDestinationVault(params.destinationOut);
 
-        LMPDebt.DestinationInfo memory destInfo = autoPool.getDestinationInfo(params.destinationOut);
+        AutoPoolDebt.DestinationInfo memory destInfo = autoPool.getDestinationInfo(params.destinationOut);
         // revert if information is too old
         ensureNotStaleData("DestInfo", destInfo.lastReport);
         // shares of the destination currently held by the AutoPoolETH
@@ -614,7 +614,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
     }
 
     function verifyIdleUpOperation(IStrategy.RebalanceParams memory params) internal view returns (bool) {
-        LMPDebt.DestinationInfo memory destInfo = autoPool.getDestinationInfo(params.destinationOut);
+        AutoPoolDebt.DestinationInfo memory destInfo = autoPool.getDestinationInfo(params.destinationOut);
         // revert if information is too old
         ensureNotStaleData("DestInfo", destInfo.lastReport);
         uint256 currentIdle = autoPool.getAssetBreakdown().totalIdle;
@@ -643,7 +643,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
 
         IDestinationVault outDest = IDestinationVault(params.destinationOut);
 
-        LMPDebt.DestinationInfo memory destInfo = autoPool.getDestinationInfo(params.destinationOut);
+        AutoPoolDebt.DestinationInfo memory destInfo = autoPool.getDestinationInfo(params.destinationOut);
         // revert if information is too old
         ensureNotStaleData("DestInfo", destInfo.lastReport);
 
@@ -671,7 +671,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         if (autoPoolAssetsAfterRebalance > 0) {
             return destValueAfterRebalance * 1e18 / autoPoolAssetsAfterRebalance >= trimAmount;
         } else {
-            // LMP assets after rebalance are 0
+            // AutoPool assets after rebalance are 0
             return true;
         }
     }
@@ -731,7 +731,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         }
     }
 
-    /// @inheritdoc ILMPStrategy
+    /// @inheritdoc IAutoPoolStrategy
     function getRebalanceOutSummaryStats(IStrategy.RebalanceParams memory rebalanceParams)
         external
         returns (IStrategy.SummaryStats memory outSummary)
@@ -800,8 +800,8 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         );
     }
 
-    /// @inheritdoc ILMPStrategy
-    function navUpdate(uint256 navPerShare) external onlyAutoPoolETH {
+    /// @inheritdoc IAutoPoolStrategy
+    function navUpdate(uint256 navPerShare) external onlyAutoPool {
         uint40 blockTime = uint40(block.timestamp);
         navTrackingState.insert(navPerShare, blockTime);
 
@@ -823,8 +823,8 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         }
     }
 
-    /// @inheritdoc ILMPStrategy
-    function rebalanceSuccessfullyExecuted(IStrategy.RebalanceParams memory params) external onlyAutoPoolETH {
+    /// @inheritdoc IAutoPoolStrategy
+    function rebalanceSuccessfullyExecuted(IStrategy.RebalanceParams memory params) external onlyAutoPool {
         // clearExpirePause sets _swapCostOffsetPeriod, so skip when possible to avoid double write
         if (!clearExpiredPause()) _swapCostOffsetPeriod = swapCostOffsetPeriodInDays();
 

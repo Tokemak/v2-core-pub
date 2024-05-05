@@ -6,7 +6,7 @@ pragma solidity 0.8.17;
 
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
-import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
+import { AutoPoolDebt } from "src/vault/libs/AutoPoolDebt.sol";
 import { Pausable } from "src/security/Pausable.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
 import { NonReentrant } from "src/utils/NonReentrant.sol";
@@ -18,11 +18,11 @@ import { AutoPool4626 } from "src/vault/libs/AutoPool4626.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { WithdrawalQueue } from "src/strategy/WithdrawalQueue.sol";
-import { LMPDestinations } from "src/vault/libs/LMPDestinations.sol";
+import { AutoPoolDestinations } from "src/vault/libs/AutoPoolDestinations.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
-import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
+import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { StructuredLinkedList } from "src/strategy/StructuredLinkedList.sol";
 import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
@@ -99,7 +99,7 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
 
     /// @notice Lookup of destinationVaultAddress -> Info .. Debt reporting snapshot info
     /// @dev Exposed via `getDestinationInfo`
-    mapping(address => LMPDebt.DestinationInfo) internal _destinationInfo;
+    mapping(address => AutoPoolDebt.DestinationInfo) internal _destinationInfo;
 
     /// @notice Whether or not the vault has been shutdown
     /// @dev Exposed via `isShutdown()`
@@ -143,8 +143,8 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
     /// @notice Main rewarder for this contract
     IMainRewarder public rewarder;
 
-    /// @notice The strategy logic for the LMP
-    ILMPStrategy public autoPoolStrategy;
+    /// @notice The strategy logic for the AutoPool
+    IAutoPoolStrategy public autoPoolStrategy;
 
     /// @notice Temporary restriction of depositors
     mapping(address => bool) public allowedUsers;
@@ -249,7 +249,7 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
 
         AutoPoolFees.initializeFeeSettings(_feeSettings);
 
-        autoPoolStrategy = ILMPStrategy(strategy);
+        autoPoolStrategy = IAutoPoolStrategy(strategy);
 
         // slither-disable-start reentrancy-no-eth
         // Both factory and dead address need permission to use deposit functionality.
@@ -350,7 +350,7 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
         Errors.verifyNotZero(assets, "assets");
 
         //slither-disable-next-line unused-return
-        (uint256 actualAssets, uint256 actualShares,) = LMPDebt.withdraw(
+        (uint256 actualAssets, uint256 actualShares,) = AutoPoolDebt.withdraw(
             assets,
             _totalAssetsTimeChecked(TotalAssetPurpose.Withdraw),
             _assetBreakdown,
@@ -390,7 +390,7 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
 
         //slither-disable-next-line unused-return
         (uint256 actualAssets, uint256 actualShares,) =
-            LMPDebt.redeem(possibleAssets, ta, _assetBreakdown, _withdrawalQueue, _destinationInfo);
+            AutoPoolDebt.redeem(possibleAssets, ta, _assetBreakdown, _withdrawalQueue, _destinationInfo);
 
         assets = actualAssets;
 
@@ -712,7 +712,7 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
         uint256 convertedAssets = convertToAssets(ownerShareBalance, taChecked, totalSupply(), Math.Rounding.Down);
 
         // slither-disable-next-line unused-return
-        (maxAssets,) = LMPDebt.preview(
+        (maxAssets,) = AutoPoolDebt.preview(
             true,
             convertedAssets,
             taChecked,
@@ -734,7 +734,7 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
     }
 
     function _totalAssetsTimeChecked(TotalAssetPurpose purpose) private returns (uint256) {
-        return LMPDebt.totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, purpose);
+        return AutoPoolDebt.totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, purpose);
     }
 
     /// @notice Simulate the effects of a mint at the current block, given current on-chain conditions
@@ -746,7 +746,7 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
     /// @notice Simulate the effects of their withdrawal at the current block, given current on-chain conditions.
     function previewWithdraw(uint256 assets) public virtual returns (uint256 shares) {
         // slither-disable-next-line unused-return
-        (, shares) = LMPDebt.preview(
+        (, shares) = AutoPoolDebt.preview(
             true,
             assets,
             _totalAssetsTimeChecked(TotalAssetPurpose.Withdraw),
@@ -768,7 +768,7 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
         }
 
         // slither-disable-next-line unused-return
-        (assets,) = LMPDebt.preview(
+        (assets,) = AutoPoolDebt.preview(
             false,
             convertedAssets,
             applicableTotalAssets,
@@ -780,7 +780,7 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
     }
 
     function _completeWithdrawal(uint256 assets, uint256 shares, address owner, address receiver) internal virtual {
-        LMPDebt.completeWithdrawal(assets, shares, owner, receiver, _baseAsset, _assetBreakdown, _tokenData);
+        AutoPoolDebt.completeWithdrawal(assets, shares, owner, receiver, _baseAsset, _assetBreakdown, _tokenData);
     }
 
     /// @notice Transfer out non-tracked tokens
@@ -821,8 +821,8 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
         uint256 startingDebt = _assetBreakdown.totalDebt;
 
         // slither-disable-next-line reentrancy-no-eth
-        LMPDebt.IdleDebtUpdates memory result =
-            LMPDebt._updateDebtReporting(_debtReportQueue, _destinationInfo, numToProcess);
+        AutoPoolDebt.IdleDebtUpdates memory result =
+            AutoPoolDebt._updateDebtReporting(_debtReportQueue, _destinationInfo, numToProcess);
 
         uint256 newIdle = startingIdle + result.totalIdleIncrease;
         uint256 newDebt = startingDebt + result.totalDebtIncrease - result.totalDebtDecrease;
@@ -892,11 +892,11 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
     }
 
     function addDestinations(address[] calldata destinations) public hasRole(Roles.AUTO_POOL_DESTINATION_UPDATER) {
-        LMPDestinations.addDestinations(_removalQueue, _destinations, destinations, _systemRegistry);
+        AutoPoolDestinations.addDestinations(_removalQueue, _destinations, destinations, _systemRegistry);
     }
 
     function removeDestinations(address[] calldata destinations) public hasRole(Roles.AUTO_POOL_DESTINATION_UPDATER) {
-        LMPDestinations.removeDestinations(_removalQueue, _destinations, destinations);
+        AutoPoolDestinations.removeDestinations(_removalQueue, _destinations, destinations);
     }
 
     function getRemovalQueue() public view override returns (address[] memory) {
@@ -904,7 +904,7 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
     }
 
     /// @inheritdoc IAutoPool
-    function getDestinationInfo(address destVault) external view returns (LMPDebt.DestinationInfo memory) {
+    function getDestinationInfo(address destVault) external view returns (AutoPoolDebt.DestinationInfo memory) {
         return _destinationInfo[destVault];
     }
 
@@ -914,7 +914,7 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
         RebalanceParams memory rebalanceParams,
         bytes calldata data
     ) public whenNotPaused nonReentrant hasRole(Roles.SOLVER) trackNavOps {
-        LMPDebt.IdleDebtUpdates memory result = _processRebalance(receiver, rebalanceParams, data);
+        AutoPoolDebt.IdleDebtUpdates memory result = _processRebalance(receiver, rebalanceParams, data);
 
         uint256 idle = _assetBreakdown.totalIdle;
         uint256 debt = _assetBreakdown.totalDebt;
@@ -933,10 +933,10 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
         uint256 newTotalSupply = _feeAndProfitHandling(idle + debt, startTotalAssets, false);
 
         // Ensure the destinations are in the queues they should be
-        LMPDestinations._manageQueuesForDestination(
+        AutoPoolDestinations._manageQueuesForDestination(
             rebalanceParams.destinationOut, false, _withdrawalQueue, _debtReportQueue, _removalQueue
         );
-        LMPDestinations._manageQueuesForDestination(
+        AutoPoolDestinations._manageQueuesForDestination(
             rebalanceParams.destinationIn, true, _withdrawalQueue, _debtReportQueue, _removalQueue
         );
 
@@ -957,7 +957,7 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
         IERC3156FlashBorrower receiver,
         RebalanceParams memory rebalanceParams,
         bytes calldata data
-    ) internal virtual returns (LMPDebt.IdleDebtUpdates memory result) {
+    ) internal virtual returns (AutoPoolDebt.IdleDebtUpdates memory result) {
         // make sure there's something to do
         if (rebalanceParams.amountIn == 0 && rebalanceParams.amountOut == 0) {
             revert Errors.InvalidParams();
@@ -969,14 +969,14 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
 
         // Get out destination summary stats
         IStrategy.SummaryStats memory outSummary = autoPoolStrategy.getRebalanceOutSummaryStats(rebalanceParams);
-        result = LMPDebt.flashRebalance(
+        result = AutoPoolDebt.flashRebalance(
             _destinationInfo[rebalanceParams.destinationOut],
             _destinationInfo[rebalanceParams.destinationIn],
             receiver,
             rebalanceParams,
             outSummary,
             autoPoolStrategy,
-            LMPDebt.FlashRebalanceParams({
+            AutoPoolDebt.FlashRebalanceParams({
                 totalIdle: _assetBreakdown.totalIdle,
                 totalDebt: _assetBreakdown.totalDebt,
                 baseAsset: _baseAsset,

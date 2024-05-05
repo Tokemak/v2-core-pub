@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 
-interface ILMPStrategy {
+interface IAutoPoolStrategy {
     enum RebalanceDirection {
         In,
         Out
@@ -92,7 +92,7 @@ interface ILMPStrategy {
     /// recommend setting this higher than maxNormalOperationSlippage
     function maxEmergencyOperationSlippage() external view returns (uint256); // 100% = 1e18
 
-    /// @notice the maximum amount of slippage to allow when the LMPVault has been shutdown
+    /// @notice the maximum amount of slippage to allow when the AutoPool has been shutdown
     function maxShutdownOperationSlippage() external view returns (uint256); // 100% = 1e18
 
     /// @notice the maximum discount used for price return

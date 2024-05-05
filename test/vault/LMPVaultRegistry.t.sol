@@ -11,8 +11,8 @@ import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
 import { IAutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
 import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
-import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
-import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
+import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
+import { AutoPoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutoPoolETHStrategyTestHelpers.sol";
 
 contract AutoPoolRegistryTest is BaseTest {
     AutoPoolETH internal vault;
@@ -30,7 +30,7 @@ contract AutoPoolRegistryTest is BaseTest {
 
         bytes memory initData = abi.encode("");
 
-        LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        AutoPoolETHStrategy stratTemplate = new AutoPoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
         vault = AutoPoolETH(
@@ -70,7 +70,7 @@ contract AddVault is AutoPoolRegistryTest {
 
         bytes memory initData = abi.encode("");
 
-        LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        AutoPoolETHStrategy stratTemplate = new AutoPoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
         AutoPoolETH anotherVault = AutoPoolETH(

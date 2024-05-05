@@ -27,9 +27,9 @@ library Roles {
 
     // Auto Pool Management
     bytes32 public constant AUTO_POOL_DESTINATION_UPDATER = keccak256("DESTINATION_VAULTS_UPDATER");
-    bytes32 public constant AUTO_POOL_FEE_UPDATER = keccak256("LMP_FEE_SETTER_ROLE");
-    bytes32 public constant AUTO_POOL_PERIODIC_FEE_UPDATER = keccak256("LMP_PERIODIC_FEE_SETTER_ROLE");
-    bytes32 public constant AUTO_POOL_REWARD_MANAGER = keccak256("LMP_REWARD_MANAGER_ROLE");
+    bytes32 public constant AUTO_POOL_FEE_UPDATER = keccak256("AUTO_POOL_FEE_SETTER_ROLE");
+    bytes32 public constant AUTO_POOL_PERIODIC_FEE_UPDATER = keccak256("AUTO_POOL_PERIODIC_FEE_SETTER_ROLE");
+    bytes32 public constant AUTO_POOL_REWARD_MANAGER = keccak256("AUTO_POOL_REWARD_MANAGER_ROLE");
     bytes32 public constant AUTO_POOL_MANAGER = keccak256("AUTO_POOL_ADMIN");
     bytes32 public constant REBALANCER = keccak256("REBALANCER_ROLE");
 
@@ -54,7 +54,7 @@ library Roles {
 
     // Miscellaneous Roles
     bytes32 public constant SOLVER = keccak256("SOLVER_ROLE");
-    bytes32 public constant AUTO_POOL_REPORTING_EXECUTOR = keccak256("LMP_UPDATE_DEBT_REPORTING_ROLE");
+    bytes32 public constant AUTO_POOL_REPORTING_EXECUTOR = keccak256("AUTO_POOL_UPDATE_DEBT_REPORTING_ROLE");
 
     // Swapper Roles
     bytes32 public constant SWAP_ROUTER_MANAGER = 0x00; // keccak256("SWAP_ROUTER_MANAGER");

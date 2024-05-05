@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.17;
 
-import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
+import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
 import { StrategyUtils } from "src/strategy/libs/StrategyUtils.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
@@ -12,14 +12,14 @@ library PriceReturn {
     function calculateWeightedPriceReturn(
         int256 priceReturn,
         uint256 reserveValue,
-        ILMPStrategy.RebalanceDirection direction
+        IAutoPoolStrategy.RebalanceDirection direction
     ) external view returns (int256) {
-        ILMPStrategy strategy = ILMPStrategy(address(this));
+        IAutoPoolStrategy strategy = IAutoPoolStrategy(address(this));
 
         // slither-disable-next-line timestamp
         if (priceReturn > 0) {
             // LST trading at a discount
-            if (direction == ILMPStrategy.RebalanceDirection.Out) {
+            if (direction == IAutoPoolStrategy.RebalanceDirection.Out) {
                 return priceReturn * StrategyUtils.convertUintToInt(reserveValue) * strategy.weightPriceDiscountExit()
                     / 1e6;
             } else {
@@ -33,7 +33,7 @@ library PriceReturn {
     }
 
     function calculatePriceReturns(IDexLSTStats.DexLSTStatsData memory stats) external view returns (int256[] memory) {
-        ILMPStrategy strategy = ILMPStrategy(address(this));
+        IAutoPoolStrategy strategy = IAutoPoolStrategy(address(this));
 
         ILSTStats.LSTStatsData[] memory lstStatsData = stats.lstStatsData;
 

@@ -2,10 +2,10 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
+import { AutoPoolDebt } from "src/vault/libs/AutoPoolDebt.sol";
 import { IERC4626 } from "src/interfaces/vault/IERC4626.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
-import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
+import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 
@@ -105,7 +105,7 @@ interface IAutoPool is IERC4626, IERC20Permit {
     function vaultType() external view returns (bytes32);
 
     /// @notice Strategy governing the pools rebalances
-    function autoPoolStrategy() external view returns (ILMPStrategy);
+    function autoPoolStrategy() external view returns (IAutoPoolStrategy);
 
     /// @notice Allow token recoverer to collect dust / unintended transfers (non-tracked assets only)
     function recover(address[] calldata tokens, uint256[] calldata amounts, address[] calldata destinations) external;
@@ -129,7 +129,7 @@ interface IAutoPool is IERC4626, IERC20Permit {
     /// @notice Returns the reason for shutdown (or `Active` if not shutdown)
     function shutdownStatus() external view returns (VaultShutdownStatus);
 
-    /// @notice gets the list of supported destination vaults for the LMP/Strategy
+    /// @notice gets the list of supported destination vaults for the AutoPool/Strategy
     /// @return _destinations List of supported destination vaults
     function getDestinations() external view returns (address[] memory _destinations);
 
@@ -154,7 +154,7 @@ interface IAutoPool is IERC4626, IERC20Permit {
     /// @notice get a destinations last reported debt value
     /// @param destVault the address of the target destination
     /// @return destinations last reported debt value
-    function getDestinationInfo(address destVault) external view returns (LMPDebt.DestinationInfo memory);
+    function getDestinationInfo(address destVault) external view returns (AutoPoolDebt.DestinationInfo memory);
 
     /// @notice check if a destination is registered with the vault
     function isDestinationRegistered(address destination) external view returns (bool);

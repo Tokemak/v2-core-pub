@@ -2,12 +2,12 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { LMPStrategyConfig } from "src/strategy/LMPStrategyConfig.sol";
+import { AutoPoolETHStrategyConfig } from "src/strategy/AutoPoolETHStrategyConfig.sol";
 
-library LMPStrategyTestHelpers {
-    function getDefaultConfig() internal pure returns (LMPStrategyConfig.StrategyConfig memory) {
-        return LMPStrategyConfig.StrategyConfig({
-            swapCostOffset: LMPStrategyConfig.SwapCostOffsetConfig({
+library AutoPoolETHStrategyTestHelpers {
+    function getDefaultConfig() internal pure returns (AutoPoolETHStrategyConfig.StrategyConfig memory) {
+        return AutoPoolETHStrategyConfig.StrategyConfig({
+            swapCostOffset: AutoPoolETHStrategyConfig.SwapCostOffsetConfig({
                 initInDays: 28,
                 tightenThresholdInViolations: 5,
                 tightenStepInDays: 3,
@@ -16,18 +16,18 @@ library LMPStrategyTestHelpers {
                 maxInDays: 60,
                 minInDays: 10
             }),
-            navLookback: LMPStrategyConfig.NavLookbackConfig({
+            navLookback: AutoPoolETHStrategyConfig.NavLookbackConfig({
                 lookback1InDays: 30,
                 lookback2InDays: 60,
                 lookback3InDays: 90
             }),
-            slippage: LMPStrategyConfig.SlippageConfig({
+            slippage: AutoPoolETHStrategyConfig.SlippageConfig({
                 maxNormalOperationSlippage: 1e16, // 1%
                 maxTrimOperationSlippage: 2e16, // 2%
                 maxEmergencyOperationSlippage: 0.025e18, // 2.5%
                 maxShutdownOperationSlippage: 0.015e18 // 1.5%
              }),
-            modelWeights: LMPStrategyConfig.ModelWeights({
+            modelWeights: AutoPoolETHStrategyConfig.ModelWeights({
                 baseYield: 1e6,
                 feeYield: 1e6,
                 incentiveYield: 0.9e6,

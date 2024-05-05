@@ -13,9 +13,9 @@ import { Test } from "forge-std/Test.sol";
 import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
 import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
 import { AccessController } from "src/security/AccessController.sol";
-import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
+import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
-import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
+import { AutoPoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutoPoolETHStrategyTestHelpers.sol";
 import { WETH_MAINNET } from "test/utils/Addresses.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 
@@ -62,7 +62,7 @@ contract AutoPoolFactoryTest is Test {
         _systemSecurity = new SystemSecurity(_systemRegistry);
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
 
-        // Setup the LMP Vault
+        // Setup the AutoPool Vault
 
         _asset = IWETH9(WETH_MAINNET);
         _systemRegistry.addRewardToken(address(_asset));
@@ -75,14 +75,14 @@ contract AutoPoolFactoryTest is Test {
 
         autoPoolInitData = abi.encode("");
 
-        _stratTemplate = address(new LMPStrategy(_systemRegistry, stratHelpers.getDefaultConfig()));
+        _stratTemplate = address(new AutoPoolETHStrategy(_systemRegistry, stratHelpers.getDefaultConfig()));
         _autoPoolFactory.addStrategyTemplate(_stratTemplate);
 
         // Mock AutoPilotRouter call.
         vm.mockCall(
             address(_systemRegistry),
             abi.encodeWithSelector(SystemRegistry.autoPoolRouter.selector),
-            abi.encode(makeAddr("LMP_VAULT_ROUTER"))
+            abi.encode(makeAddr("AutoPool_VAULT_ROUTER"))
         );
     }
 }

@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { LMPVaultMainRewarder } from "src/rewarders/LMPVaultMainRewarder.sol";
+import { AutoPoolMainRewarder } from "src/rewarders/AutoPoolMainRewarder.sol";
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { Errors } from "src/utils/Errors.sol";
 
@@ -12,7 +12,7 @@ import { Test } from "forge-std/Test.sol";
 
 // solhint-disable func-name-mixedcase,max-line-length
 
-contract LMPVaultMainRewarderTest is Test {
+contract AutoPoolMainRewarderTest is Test {
     address public systemRegistry;
     address public accessController;
     MockERC20 public rewardToken;
@@ -24,7 +24,7 @@ contract LMPVaultMainRewarderTest is Test {
     uint256 public durationInBlock = 100;
     uint256 public stakeAmount = 1000;
 
-    LMPVaultMainRewarder public rewarder;
+    AutoPoolMainRewarder public rewarder;
 
     function setUp() public virtual {
         systemRegistry = makeAddr("SYSTEM_REGISTRY");
@@ -37,9 +37,9 @@ contract LMPVaultMainRewarderTest is Test {
         // Mock system registry calls.
         vm.mockCall(systemRegistry, abi.encodeWithSignature("accessController()"), abi.encode(accessController));
         vm.mockCall(systemRegistry, abi.encodeWithSignature("isRewardToken(address)"), abi.encode(true));
-        vm.mockCall(systemRegistry, abi.encodeWithSignature("lmpVaultRouter()"), abi.encode(router));
+        vm.mockCall(systemRegistry, abi.encodeWithSignature("autoPoolRouter()"), abi.encode(router));
 
-        rewarder = new LMPVaultMainRewarder(
+        rewarder = new AutoPoolMainRewarder(
             ISystemRegistry(systemRegistry),
             address(rewardToken),
             newRewardRatio,
@@ -50,7 +50,7 @@ contract LMPVaultMainRewarderTest is Test {
     }
 }
 
-contract WithdrawLMPRewarder is LMPVaultMainRewarderTest {
+contract WithdrawLMPRewarder is AutoPoolMainRewarderTest {
     uint256 public withdrawAmount = 450;
 
     function setUp() public override {
@@ -126,7 +126,7 @@ contract WithdrawLMPRewarder is LMPVaultMainRewarderTest {
     }
 }
 
-contract StakeLMPRewarder is LMPVaultMainRewarderTest {
+contract StakeLMPRewarder is AutoPoolMainRewarderTest {
     function test_RevertsWhenStakingMoreThanAvailable() external {
         vm.expectRevert();
         rewarder.stake(staker, stakeAmount + 1);
@@ -165,7 +165,7 @@ contract StakeLMPRewarder is LMPVaultMainRewarderTest {
     }
 }
 
-contract GetRewardLMPRewarder is LMPVaultMainRewarderTest {
+contract GetRewardLMPRewarder is AutoPoolMainRewarderTest {
     function setUp() public override {
         super.setUp();
 

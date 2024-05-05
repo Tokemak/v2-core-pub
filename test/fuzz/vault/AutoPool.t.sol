@@ -6,12 +6,12 @@ pragma solidity 0.8.17;
 
 import { ERC4626Test } from "test/fuzz/vault/ERC4626Test.sol";
 import { BaseTest } from "test/BaseTest.t.sol";
-import { LMPVault } from "src/vault/LMPVault.sol";
+import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
 import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 
-contract LMPVaultTest is ERC4626Test, BaseTest {
-    address private lmpStrategy = vm.addr(10_001);
+contract AutoPoolETHTest is ERC4626Test, BaseTest {
+    address private autoPoolStrategy = vm.addr(10_001);
 
     function setUp() public override(BaseTest, ERC4626Test) {
         vm.warp(1000 days);
@@ -25,10 +25,10 @@ contract LMPVaultTest is ERC4626Test, BaseTest {
         bytes memory initData = abi.encode("");
 
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
-        lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
+        autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
-        LMPVault vault = LMPVault(
-            lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
+        AutoPoolETH vault = AutoPoolETH(
+            autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT }(
                 address(stratTemplate), "x", "y", keccak256("v8"), initData
             )
         );

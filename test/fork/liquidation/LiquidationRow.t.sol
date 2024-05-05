@@ -40,7 +40,7 @@ contract LiquidationRowTest is Test {
         AsyncSwapperRegistry asyncSwapperRegistry = new AsyncSwapperRegistry(_systemRegistry);
         _systemRegistry.setAsyncSwapperRegistry(address(asyncSwapperRegistry));
 
-        _accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, V2_DEPLOYER);
+        _accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, V2_DEPLOYER);
         BaseAsyncSwapper zeroExSwapper = new BaseAsyncSwapper(ZERO_EX_PROXY);
         asyncSwapperRegistry.register(address(zeroExSwapper));
         _asyncSwapper = address(zeroExSwapper);

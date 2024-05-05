@@ -19,7 +19,7 @@ contract SetupLiquidation is BaseScript {
 
         vm.startBroadcast(privateKey);
 
-        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, owner);
+        accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, owner);
         BaseAsyncSwapper zeroExSwapper = new BaseAsyncSwapper(constants.ext.zeroExProxy);
         console.log("Base Async Swapper: ", address(zeroExSwapper));
 

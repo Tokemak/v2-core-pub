@@ -9,16 +9,16 @@ import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { ISystemRegistry, SystemRegistry } from "src/SystemRegistry.sol";
-import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
-import { LMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
-import { ILMPVaultFactory, LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
+import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
+import { AutoPilotRouter } from "src/vault/AutoPilotRouter.sol";
+import { IAutoPoolFactory, AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
 import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
-import { LMPVaultMainRewarder, MainRewarder } from "src/rewarders/LMPVaultMainRewarder.sol";
-import { LMPVault } from "src/vault/LMPVault.sol";
+import { AutoPoolMainRewarder, MainRewarder } from "src/rewarders/AutoPoolMainRewarder.sol";
+import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
 import { AccToke } from "src/staking/AccToke.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
 import { Roles } from "src/libs/Roles.sol";
@@ -35,9 +35,9 @@ contract BaseTest is Test {
 
     SystemRegistry public systemRegistry;
 
-    LMPVaultRegistry public lmpVaultRegistry;
-    LMPVaultRouter public lmpVaultRouter;
-    ILMPVaultFactory public lmpVaultFactory;
+    AutoPoolRegistry public autoPoolRegistry;
+    AutoPilotRouter public autoPoolRouter;
+    IAutoPoolFactory public autoPoolFactory;
 
     DestinationVaultRegistry public destinationVaultRegistry;
     DestinationVaultFactory public destinationVaultFactory;
@@ -48,7 +48,7 @@ contract BaseTest is Test {
 
     SystemSecurity public systemSecurity;
 
-    address public lmpVaultTemplate;
+    address public autoPoolTemplate;
 
     // -- Staking -- //
     AccToke public accToke;
@@ -105,11 +105,11 @@ contract BaseTest is Test {
 
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
-        lmpVaultRegistry = new LMPVaultRegistry(systemRegistry);
-        systemRegistry.setLMPVaultRegistry(address(lmpVaultRegistry));
-        // TODO: replace below 2 lines with `deployLMPVaultRouter`
-        lmpVaultRouter = new LMPVaultRouter(systemRegistry);
-        systemRegistry.setLMPVaultRouter(address(lmpVaultRouter));
+        autoPoolRegistry = new AutoPoolRegistry(systemRegistry);
+        systemRegistry.setAutoPoolRegistry(address(autoPoolRegistry));
+        // TODO: replace below 2 lines with `deployAutoPilotRouter`
+        autoPoolRouter = new AutoPilotRouter(systemRegistry);
+        systemRegistry.setAutoPilotRouter(address(autoPoolRouter));
 
         systemSecurity = new SystemSecurity(systemRegistry);
         systemRegistry.setSystemSecurity(address(systemSecurity));
@@ -119,25 +119,25 @@ contract BaseTest is Test {
         systemRegistry.addRewardToken(address(baseAsset));
         systemRegistry.addRewardToken(address(TOKE_MAINNET));
 
-        lmpVaultTemplate = address(new LMPVault(systemRegistry, address(baseAsset), restrictPoolUsers));
+        autoPoolTemplate = address(new AutoPoolETH(systemRegistry, address(baseAsset), restrictPoolUsers));
 
-        lmpVaultFactory = new LMPVaultFactory(systemRegistry, lmpVaultTemplate, 800, 100);
+        autoPoolFactory = new AutoPoolFactory(systemRegistry, autoPoolTemplate, 800, 100);
         // NOTE: deployer grants factory permission to update the registry
-        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(lmpVaultFactory));
-        systemRegistry.setLMPVaultFactory(VaultTypes.LST, address(lmpVaultFactory));
+        accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
+        systemRegistry.setAutoPoolFactory(VaultTypes.LST, address(autoPoolFactory));
 
         // NOTE: these pieces were taken out so that each set of tests can init only the components it needs!
         //       Saves a ton of unnecessary setup time and makes fuzzing tests run much much faster
         //       (since these unnecessary (in those cases) setup times add up)
         //       (Left the code for future reference)
-        // lmpVaultRegistry = new LMPVaultRegistry(systemRegistry);
-        // systemRegistry.setLMPVaultRegistry(address(lmpVaultRegistry));
-        // lmpVaultRouter = new LMPVaultRouter(WETH_MAINNET);
-        // systemRegistry.setLMPVaultRouter(address(lmpVaultRouter));
-        // lmpVaultFactory = new LMPVaultFactory(systemRegistry);
-        // systemRegistry.setLMPVaultFactory(VaultTypes.LST, address(lmpVaultFactory));
+        // autoPoolRegistry = new AutoPoolRegistry(systemRegistry);
+        // systemRegistry.setAutoPoolRegistry(address(autoPoolRegistry));
+        // autoPoolRouter = new AutoPilotRouter(WETH_MAINNET);
+        // systemRegistry.setAutoPilotRouter(address(autoPoolRouter));
+        // autoPoolFactory = new AutoPoolFactory(systemRegistry);
+        // systemRegistry.setAutoPoolFactory(VaultTypes.LST, address(autoPoolFactory));
         // // NOTE: deployer grants factory permission to update the registry
-        // accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(lmpVaultFactory));
+        // accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
     }
 
     function fork() internal {
@@ -167,20 +167,20 @@ contract BaseTest is Test {
     }
 
     // solhint-disable-next-line no-unused-vars
-    function createMainRewarder(address asset, address lmpVault, bool allowExtras) public returns (MainRewarder) {
+    function createMainRewarder(address asset, address autoPool, bool allowExtras) public returns (MainRewarder) {
         // We use mock since this function is called not from owner and
         // SystemRegistry.addRewardToken is not accessible from the ownership perspective
         vm.mockCall(
             address(systemRegistry), abi.encodeWithSelector(ISystemRegistry.isRewardToken.selector), abi.encode(true)
         );
         MainRewarder mainRewarder = MainRewarder(
-            new LMPVaultMainRewarder(
+            new AutoPoolMainRewarder(
                 systemRegistry, // registry
                 asset,
                 800, // newRewardRatio
                 100, // durationInBlock
                 allowExtras,
-                lmpVault
+                autoPool
             )
         );
         vm.label(address(mainRewarder), "Main Rewarder");
@@ -203,29 +203,29 @@ contract BaseTest is Test {
         systemRegistry.setAccToke(address(accToke));
     }
 
-    function deployLMPVaultRegistry() public {
-        if (address(lmpVaultRegistry) != address(0)) return;
+    function deployAutoPoolRegistry() public {
+        if (address(autoPoolRegistry) != address(0)) return;
 
-        lmpVaultRegistry = new LMPVaultRegistry(systemRegistry);
-        systemRegistry.setLMPVaultRegistry(address(lmpVaultRegistry));
+        autoPoolRegistry = new AutoPoolRegistry(systemRegistry);
+        systemRegistry.setAutoPoolRegistry(address(autoPoolRegistry));
     }
 
-    function deployLMPVaultRouter() public {
-        if (address(lmpVaultRouter) != address(0)) return;
+    function deployAutoPilotRouter() public {
+        if (address(autoPoolRouter) != address(0)) return;
 
-        lmpVaultRouter = new LMPVaultRouter(systemRegistry);
-        systemRegistry.setLMPVaultRouter(address(lmpVaultRouter));
+        autoPoolRouter = new AutoPilotRouter(systemRegistry);
+        systemRegistry.setAutoPilotRouter(address(autoPoolRouter));
     }
 
-    function deployLMPVaultFactory() public {
-        if (address(lmpVaultFactory) != address(0)) return;
+    function deployAutoPoolFactory() public {
+        if (address(autoPoolFactory) != address(0)) return;
 
-        lmpVaultFactory = new LMPVaultFactory(systemRegistry, lmpVaultTemplate, 800, 100);
-        systemRegistry.setLMPVaultFactory(VaultTypes.LST, address(lmpVaultFactory));
+        autoPoolFactory = new AutoPoolFactory(systemRegistry, autoPoolTemplate, 800, 100);
+        systemRegistry.setAutoPoolFactory(VaultTypes.LST, address(autoPoolFactory));
         // NOTE: deployer grants factory permission to update the registry
-        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(lmpVaultFactory));
+        accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
 
-        vm.label(address(lmpVaultFactory), "LMP Vault Factory");
+        vm.label(address(autoPoolFactory), "LMP Vault Factory");
     }
 
     function createAndPrankUser(string memory label) public returns (address) {

@@ -11,7 +11,7 @@ import { Pausable } from "src/security/Pausable.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
 import { NonReentrant } from "src/utils/NonReentrant.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
-import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 import { AutoPoolFees } from "src/vault/libs/AutoPoolFees.sol";
 import { AutoPoolToken } from "src/vault/libs/AutoPoolToken.sol";
 import { AutoPool4626 } from "src/vault/libs/AutoPool4626.sol";
@@ -30,7 +30,7 @@ import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSe
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 
-contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, SecurityBase, Pausable, NonReentrant {
+contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, SecurityBase, Pausable, NonReentrant {
     using EnumerableSet for EnumerableSet.AddressSet;
     using Math for uint256;
     using WithdrawalQueue for StructuredLinkedList.List;
@@ -119,15 +119,15 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
     /// @notice State and settings related to gradual profit unlock
     /// @dev Exposed via `getProfitUnlockSettings()`
-    ILMPVault.ProfitUnlockSettings internal _profitUnlockSettings;
+    IAutoPool.ProfitUnlockSettings internal _profitUnlockSettings;
 
     /// @notice State and settings related to periodic and streaming fees
     /// @dev Exposed via `getFeeSettings()`
-    ILMPVault.AutoPoolFeeSettings internal _feeSettings;
+    IAutoPool.AutoPoolFeeSettings internal _feeSettings;
 
     /// @notice Asset tracking for idle and debt values
     /// @dev Exposed via `getAssetBreakdown()`
-    ILMPVault.AssetBreakdown internal _assetBreakdown;
+    IAutoPool.AssetBreakdown internal _assetBreakdown;
 
     /// @notice Rewarders that have been replaced.
     /// @dev Exposed via `getPastRewarders()`
@@ -144,7 +144,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     IMainRewarder public rewarder;
 
     /// @notice The strategy logic for the LMP
-    ILMPStrategy public lmpStrategy;
+    ILMPStrategy public autoPoolStrategy;
 
     /// @notice Temporary restriction of depositors
     mapping(address => bool) public allowedUsers;
@@ -240,7 +240,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     ) external virtual initializer {
         Errors.verifyNotEmpty(symbolSuffix, "symbolSuffix");
         Errors.verifyNotEmpty(descPrefix, "descPrefix");
-        Errors.verifyNotZero(strategy, "lmpStrategyAddress");
+        Errors.verifyNotZero(strategy, "autoPoolStrategyAddress");
 
         factory = msg.sender;
 
@@ -249,7 +249,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
         AutoPoolFees.initializeFeeSettings(_feeSettings);
 
-        lmpStrategy = ILMPStrategy(strategy);
+        autoPoolStrategy = ILMPStrategy(strategy);
 
         // slither-disable-start reentrancy-no-eth
         // Both factory and dead address need permission to use deposit functionality.
@@ -401,34 +401,34 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
     /// @notice Enable or disable the high water mark on the rebalance fee
     /// @dev Will revert if set to the same value
-    function setRebalanceFeeHighWaterMarkEnabled(bool enabled) external hasRole(Roles.LMP_VAULT_FEE_UPDATER) {
+    function setRebalanceFeeHighWaterMarkEnabled(bool enabled) external hasRole(Roles.AUTO_POOL_FEE_UPDATER) {
         AutoPoolFees.setRebalanceFeeHighWaterMarkEnabled(_feeSettings, enabled);
     }
 
     /// @notice Set the fee that will be taken when profit is realized
     /// @dev Resets the high water to current value
     /// @param fee Percent. 100% == 10000
-    function setStreamingFeeBps(uint256 fee) external nonReentrant hasRole(Roles.LMP_VAULT_FEE_UPDATER) {
+    function setStreamingFeeBps(uint256 fee) external nonReentrant hasRole(Roles.AUTO_POOL_FEE_UPDATER) {
         AutoPoolFees.setStreamingFeeBps(_feeSettings, fee);
     }
 
     /// @notice Set the periodic fee taken.
     /// @dev Depending on time until next fee take, may update periodicFeeBps directly or queue fee.
     /// @param fee Fee to update periodic fee to.
-    function setPeriodicFeeBps(uint256 fee) external hasRole(Roles.LMP_VAULT_PERIODIC_FEE_UPDATER) {
+    function setPeriodicFeeBps(uint256 fee) external hasRole(Roles.AUTO_POOL_PERIODIC_FEE_UPDATER) {
         AutoPoolFees.setPeriodicFeeBps(_feeSettings, fee);
     }
 
     /// @notice Set the address that will receive fees
     /// @param newFeeSink Address that will receive fees
-    function setFeeSink(address newFeeSink) external hasRole(Roles.LMP_VAULT_FEE_UPDATER) {
+    function setFeeSink(address newFeeSink) external hasRole(Roles.AUTO_POOL_FEE_UPDATER) {
         AutoPoolFees.setFeeSink(_feeSettings, newFeeSink);
     }
 
     /// @notice Sets the address that will receive periodic fees.
     /// @dev Zero address allowable.  Disables fees.
     /// @param newPeriodicFeeSink New periodic fee address.
-    function setPeriodicFeeSink(address newPeriodicFeeSink) external hasRole(Roles.LMP_VAULT_PERIODIC_FEE_UPDATER) {
+    function setPeriodicFeeSink(address newPeriodicFeeSink) external hasRole(Roles.AUTO_POOL_PERIODIC_FEE_UPDATER) {
         AutoPoolFees.setPeriodicFeeSink(_feeSettings, newPeriodicFeeSink);
     }
 
@@ -444,7 +444,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     /// @param _rewarder Address of new rewarder.
     function setRewarder(address _rewarder) external {
         // Factory needs to be able to call for vault creation.
-        if (msg.sender != factory && !_hasRole(Roles.LMP_VAULT_REWARD_MANAGER, msg.sender)) {
+        if (msg.sender != factory && !_hasRole(Roles.AUTO_POOL_REWARD_MANAGER, msg.sender)) {
             revert Errors.AccessDenied();
         }
 
@@ -466,12 +466,12 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         emit RewarderSet(_rewarder, toBeReplaced);
     }
 
-    /// @inheritdoc ILMPVault
+    /// @inheritdoc IAutoPool
     function getPastRewarders() external view returns (address[] memory) {
         return _pastRewarders.values();
     }
 
-    /// @inheritdoc ILMPVault
+    /// @inheritdoc IAutoPool
     function isPastRewarder(address _pastRewarder) external view returns (bool) {
         return _pastRewarders.contains(_pastRewarder);
     }
@@ -495,23 +495,23 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         _name = newName;
     }
 
-    /// @inheritdoc ILMPVault
+    /// @inheritdoc IAutoPool
     function isShutdown() external view returns (bool) {
         return _shutdown;
     }
 
-    /// @inheritdoc ILMPVault
+    /// @inheritdoc IAutoPool
     function shutdownStatus() external view returns (VaultShutdownStatus) {
         return _shutdownStatus;
     }
 
     /// @notice Returns state and settings related to gradual profit unlock
-    function getProfitUnlockSettings() external view returns (ILMPVault.ProfitUnlockSettings memory) {
+    function getProfitUnlockSettings() external view returns (IAutoPool.ProfitUnlockSettings memory) {
         return _profitUnlockSettings;
     }
 
     /// @notice Returns state and settings related to periodic and streaming fees
-    function getFeeSettings() external view returns (ILMPVault.AutoPoolFeeSettings memory) {
+    function getFeeSettings() external view returns (IAutoPool.AutoPoolFeeSettings memory) {
         return _feeSettings;
     }
 
@@ -550,7 +550,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         return AutoPool4626.totalAssets(_assetBreakdown, purpose);
     }
 
-    function getAssetBreakdown() public view override returns (ILMPVault.AssetBreakdown memory) {
+    function getAssetBreakdown() public view override returns (IAutoPool.AssetBreakdown memory) {
         return _assetBreakdown;
     }
 
@@ -792,7 +792,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         AutoPool4626.recover(tokens, amounts, destinations);
     }
 
-    /// @inheritdoc ILMPVault
+    /// @inheritdoc IAutoPool
     function shutdown(VaultShutdownStatus reason) external hasRole(Roles.AUTO_POOL_MANAGER) {
         if (reason == VaultShutdownStatus.Active) {
             revert InvalidShutdownStatus(reason);
@@ -813,7 +813,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     function updateDebtReporting(uint256 numToProcess)
         external
         nonReentrant
-        hasRole(Roles.LMP_DEBT_REPORTING_EXECUTOR)
+        hasRole(Roles.AUTO_POOL_REPORTING_EXECUTOR)
         trackNavOps
     {
         // Persist our change in idle and debt
@@ -874,7 +874,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         );
     }
 
-    function getDestinations() public view override(ILMPVault, IStrategy) returns (address[] memory) {
+    function getDestinations() public view override(IAutoPool, IStrategy) returns (address[] memory) {
         return _destinations.values();
     }
 
@@ -886,16 +886,16 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         return _debtReportQueue.getList();
     }
 
-    /// @inheritdoc ILMPVault
+    /// @inheritdoc IAutoPool
     function isDestinationRegistered(address destination) external view returns (bool) {
         return _destinations.contains(destination);
     }
 
-    function addDestinations(address[] calldata destinations) public hasRole(Roles.LMP_VAULT_DESTINATION_UPDATER) {
+    function addDestinations(address[] calldata destinations) public hasRole(Roles.AUTO_POOL_DESTINATION_UPDATER) {
         LMPDestinations.addDestinations(_removalQueue, _destinations, destinations, _systemRegistry);
     }
 
-    function removeDestinations(address[] calldata destinations) public hasRole(Roles.LMP_VAULT_DESTINATION_UPDATER) {
+    function removeDestinations(address[] calldata destinations) public hasRole(Roles.AUTO_POOL_DESTINATION_UPDATER) {
         LMPDestinations.removeDestinations(_removalQueue, _destinations, destinations);
     }
 
@@ -903,7 +903,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         return _removalQueue.values();
     }
 
-    /// @inheritdoc ILMPVault
+    /// @inheritdoc IAutoPool
     function getDestinationInfo(address destVault) external view returns (LMPDebt.DestinationInfo memory) {
         return _destinationInfo[destVault];
     }
@@ -942,7 +942,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
 
         // Signal to the strategy that everything went well
         // and it can gather its final state/stats
-        lmpStrategy.rebalanceSuccessfullyExecuted(rebalanceParams);
+        autoPoolStrategy.rebalanceSuccessfullyExecuted(rebalanceParams);
 
         _updateStrategyNav(idle + debt, newTotalSupply);
 
@@ -950,7 +950,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
     }
 
     function _updateStrategyNav(uint256 assets, uint256 supply) internal virtual {
-        lmpStrategy.navUpdate(assets * ONE / supply);
+        autoPoolStrategy.navUpdate(assets * ONE / supply);
     }
 
     function _processRebalance(
@@ -968,14 +968,14 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         }
 
         // Get out destination summary stats
-        IStrategy.SummaryStats memory outSummary = lmpStrategy.getRebalanceOutSummaryStats(rebalanceParams);
+        IStrategy.SummaryStats memory outSummary = autoPoolStrategy.getRebalanceOutSummaryStats(rebalanceParams);
         result = LMPDebt.flashRebalance(
             _destinationInfo[rebalanceParams.destinationOut],
             _destinationInfo[rebalanceParams.destinationIn],
             receiver,
             rebalanceParams,
             outSummary,
-            lmpStrategy,
+            autoPoolStrategy,
             LMPDebt.FlashRebalanceParams({
                 totalIdle: _assetBreakdown.totalIdle,
                 totalDebt: _assetBreakdown.totalDebt,
@@ -986,7 +986,7 @@ contract LMPVault is ISystemComponent, Initializable, ILMPVault, IStrategy, Secu
         );
     }
 
-    /// @inheritdoc ILMPVault
+    /// @inheritdoc IAutoPool
     function isDestinationQueuedForRemoval(address dest) external view returns (bool) {
         return _removalQueue.contains(dest);
     }

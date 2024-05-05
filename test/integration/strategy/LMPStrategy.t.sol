@@ -2,7 +2,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-// solhint-disable func-name-mixedcase,max-states-count,no-console,state-visibility,max-line-length
+// solhint-disable func-name-mixedcase,max-states-count,no-console,state-visibility,max-line-length,
+// solhint-disable avoid-low-level-calls,gas-custom-errors
 
 import { Test, console } from "forge-std/Test.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
@@ -18,10 +19,10 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
-import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
+import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
-import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
-import { LMPVault } from "src/vault/LMPVault.sol";
+import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
+import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 import { LMPStrategyConfig } from "src/strategy/LMPStrategyConfig.sol";
 import { AccToke } from "src/staking/AccToke.sol";
@@ -70,10 +71,10 @@ contract LMPStrategyInt is Test {
     DestinationVault _stEthOriginalDv;
     DestinationVault _stEthNgDv;
 
-    LMPVaultRegistry _lmpVaultRegistry;
-    LMPVaultFactory _lmpVaultFactory;
+    AutoPoolRegistry _autoPoolRegistry;
+    AutoPoolFactory _autoPoolFactory;
 
-    LMPVault _vault;
+    AutoPoolETH _vault;
 
     TokenReturnSolver _tokenReturnSolver;
     AccToke _accToke;
@@ -142,34 +143,49 @@ contract LMPStrategyInt is Test {
 
         // Setup the LMP Vaults
 
-        _lmpVaultRegistry = new LMPVaultRegistry(_systemRegistry);
-        _systemRegistry.setLMPVaultRegistry(address(_lmpVaultRegistry));
+        _autoPoolRegistry = new AutoPoolRegistry(_systemRegistry);
+        (bool success,) = address(_systemRegistry).call(
+            abi.encodeWithSignature("setLMPVaultRegistry(address)", address(_autoPoolRegistry))
+        );
+        if (!success) {
+            revert("fail set registry");
+        }
 
-        address lmpTemplate = address(new LMPVault(_systemRegistry, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, false));
-        _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, lmpTemplate, 800, 100);
+        vm.mockCall(
+            address(SYSTEM_REGISTRY),
+            abi.encodeWithSelector(ISystemRegistry.autoPoolRegistry.selector),
+            abi.encode(address(_autoPoolRegistry))
+        );
 
-        _accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(_lmpVaultFactory));
-        _accessController.grantRole(Roles.LMP_VAULT_FACTORY_VAULT_CREATOR, address(this));
-        _accessController.grantRole(Roles.LMP_VAULT_DESTINATION_UPDATER, V2_DEPLOYER);
+        //_systemRegistry.setAutoPoolRegistry(address(_autoPoolRegistry));
+
+        address autoPoolTemplate =
+            address(new AutoPoolETH(_systemRegistry, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, false));
+        _autoPoolFactory = new AutoPoolFactory(_systemRegistry, autoPoolTemplate, 800, 100);
+
+        _accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(_autoPoolFactory));
+        _accessController.grantRole(Roles.AUTO_POOL_FACTORY_VAULT_CREATOR, address(this));
+        _accessController.grantRole(Roles.AUTO_POOL_DESTINATION_UPDATER, V2_DEPLOYER);
         _accessController.grantRole(Roles.SOLVER, address(this));
 
-        bytes32 lmpSalt = keccak256(abi.encode("lmp1"));
-        address lmpVaultAddress = Clones.predictDeterministicAddress(lmpTemplate, lmpSalt, address(_lmpVaultFactory));
+        bytes32 autoPoolSalt = keccak256(abi.encode("autoPool1"));
+        address autoPoolAddress =
+            Clones.predictDeterministicAddress(autoPoolTemplate, autoPoolSalt, address(_autoPoolFactory));
 
         ValueCheckingStrategy _strategyTemplate =
-            new ValueCheckingStrategy(_systemRegistry, lmpVaultAddress, getDefaultConfig());
+            new ValueCheckingStrategy(_systemRegistry, autoPoolAddress, getDefaultConfig());
 
-        _lmpVaultFactory.addStrategyTemplate(address(_strategyTemplate));
+        _autoPoolFactory.addStrategyTemplate(address(_strategyTemplate));
 
-        _vault = LMPVault(
+        _vault = AutoPoolETH(
             address(
-                _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
-                    address(_strategyTemplate), "X", "X", lmpSalt, abi.encode("")
+                _autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT }(
+                    address(_strategyTemplate), "X", "X", autoPoolSalt, abi.encode("")
                 )
             )
         );
 
-        _strategy = ValueCheckingStrategy(address(_vault.lmpStrategy()));
+        _strategy = ValueCheckingStrategy(address(_vault.autoPoolStrategy()));
 
         address[] memory destinations = new address[](2);
         destinations[0] = address(_stEthOriginalDv);
@@ -794,7 +810,7 @@ contract ValueCheckingStrategy is LMPStrategy, Test {
 
     constructor(
         ISystemRegistry _systemRegistry,
-        address _lmpVault,
+        address _autoPool,
         LMPStrategyConfig.StrategyConfig memory conf
     ) LMPStrategy(_systemRegistry, conf) { }
 

@@ -187,7 +187,7 @@ contract Claim is ClaimSetup {
         bytes32 hashedRecipient = rewards.genHash(recipient);
         rewards.setSigner(newWalletPublicKey);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(newWallet, hashedRecipient);
-        vm.startPrank(address(systemRegistry.lmpVaultRouter()));
+        vm.startPrank(address(systemRegistry.autoPoolRouter()));
         uint256 claimedAmount = rewards.claimFor(recipient, v, r, s);
         assertEq(claimedAmount, recipient.amount);
         assertEq(vaultToken.balanceOf(address(rewards)), initialRewardsContractBalance - recipient.amount);

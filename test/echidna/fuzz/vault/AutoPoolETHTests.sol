@@ -7,7 +7,7 @@ pragma solidity 0.8.17;
 import { TestWETH9 } from "test/mocks/TestWETH9.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
-import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 import { AutoPoolFees } from "src/vault/libs/AutoPoolFees.sol";
 import { Numbers } from "test/echidna/fuzz/utils/Numbers.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
@@ -16,7 +16,7 @@ import { BasePoolSetup, TestDestinationVault, TestSolver } from "test/echidna/fu
 
 import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 
-contract LMPVaultUsage is BasePoolSetup, Numbers {
+contract AutoPoolETHUsage is BasePoolSetup, Numbers {
     TestWETH9 internal _vaultAsset;
 
     /// =====================================================
@@ -41,7 +41,7 @@ contract LMPVaultUsage is BasePoolSetup, Numbers {
     /// Modifiers
     /// =====================================================
 
-    modifier opNoNavPerShareChange(ILMPVault.TotalAssetPurpose purpose) {
+    modifier opNoNavPerShareChange(IAutoPool.TotalAssetPurpose purpose) {
         uint256 ts = _pool.totalSupply();
         uint256 start = 0;
         if (ts > 0) {
@@ -215,7 +215,7 @@ contract LMPVaultUsage is BasePoolSetup, Numbers {
         uint8 userScale,
         uint96 assets,
         bool asUser
-    ) public opNoNavPerShareChange(ILMPVault.TotalAssetPurpose.Deposit) {
+    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Deposit) {
         _userDeposit(_userFromScale(userScale), assets, asUser);
     }
 
@@ -224,7 +224,7 @@ contract LMPVaultUsage is BasePoolSetup, Numbers {
         uint96 assets,
         uint8 loops,
         bool asUser
-    ) public opNoNavPerShareChange(ILMPVault.TotalAssetPurpose.Deposit) {
+    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Deposit) {
         address user = _userFromScale(userScale);
         _userDeposit(user, assets, asUser);
         _pool.increaseIdle(assets * 2);
@@ -240,14 +240,14 @@ contract LMPVaultUsage is BasePoolSetup, Numbers {
         uint8 userScale,
         uint96 shares,
         bool asUser
-    ) public opNoNavPerShareChange(ILMPVault.TotalAssetPurpose.Deposit) {
+    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Deposit) {
         _userMint(_userFromScale(userScale), shares, asUser);
     }
 
     function userRedeem(
         uint8 userScale,
         uint96 shares
-    ) public opNoNavPerShareChange(ILMPVault.TotalAssetPurpose.Withdraw) {
+    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Withdraw) {
         _userRedeem(_userFromScale(userScale), shares, address(0));
     }
 
@@ -255,14 +255,14 @@ contract LMPVaultUsage is BasePoolSetup, Numbers {
         uint8 userScale,
         uint96 shares,
         address allowedUser
-    ) public opNoNavPerShareChange(ILMPVault.TotalAssetPurpose.Withdraw) {
+    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Withdraw) {
         _userRedeem(_userFromScale(userScale), shares, allowedUser);
     }
 
     function userWithdraw(
         uint8 userScale,
         uint96 assets
-    ) public opNoNavPerShareChange(ILMPVault.TotalAssetPurpose.Withdraw) {
+    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Withdraw) {
         _userWithdraw(_userFromScale(userScale), assets, address(0));
     }
 
@@ -270,21 +270,21 @@ contract LMPVaultUsage is BasePoolSetup, Numbers {
         uint8 userScale,
         uint96 assets,
         address allowedUser
-    ) public opNoNavPerShareChange(ILMPVault.TotalAssetPurpose.Withdraw) {
+    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Withdraw) {
         _userWithdraw(_userFromScale(userScale), assets, allowedUser);
     }
 
     function userDonate(
         uint8 userScale,
         uint96 assets
-    ) public opNoNavPerShareChange(ILMPVault.TotalAssetPurpose.Global) {
+    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Global) {
         _userDonate(assets, _userFromScale(userScale));
     }
 
     function randomDonate(
         uint96 assets,
         address user
-    ) public opNoNavPerShareChange(ILMPVault.TotalAssetPurpose.Global) {
+    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Global) {
         if (_isValidImpersonatedUserAddress(user)) {
             _userDonate(assets, user);
         }
@@ -294,7 +294,7 @@ contract LMPVaultUsage is BasePoolSetup, Numbers {
         uint8 userScale,
         uint96 shares,
         address destination
-    ) public opNoNavPerShareChange(ILMPVault.TotalAssetPurpose.Global) {
+    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Global) {
         _userTransfer(shares, _userFromScale(userScale), destination);
     }
 
@@ -337,7 +337,7 @@ contract LMPVaultUsage is BasePoolSetup, Numbers {
 
     function _userWithdraw(address user, uint96 assets, address allowedUser) private returns (uint256 actualAssets) {
         uint256 shares = _pool.convertToShares(
-            assets, _pool.totalAssets(ILMPVault.TotalAssetPurpose.Withdraw), _pool.totalSupply(), Math.Rounding.Down
+            assets, _pool.totalAssets(IAutoPool.TotalAssetPurpose.Withdraw), _pool.totalSupply(), Math.Rounding.Down
         );
         uint256 bal = _pool.balanceOf(user);
         if (shares <= bal) {
@@ -376,7 +376,7 @@ contract LMPVaultUsage is BasePoolSetup, Numbers {
 
     function _userMint(address user, uint96 shares, bool asUser) private returns (uint256 actualAssets) {
         uint256 assets = _pool.convertToAssets(
-            shares, _pool.totalAssets(ILMPVault.TotalAssetPurpose.Deposit), _pool.totalSupply(), Math.Rounding.Up
+            shares, _pool.totalAssets(IAutoPool.TotalAssetPurpose.Deposit), _pool.totalSupply(), Math.Rounding.Up
         );
         if (asUser) {
             _vaultAsset.mint(user, assets * 2);
@@ -441,8 +441,8 @@ contract LMPVaultUsage is BasePoolSetup, Numbers {
     }
 }
 
-contract LMPVaultTest is LMPVaultUsage {
-    constructor() LMPVaultUsage() { }
+contract AutoPoolETHTest is AutoPoolETHUsage {
+    constructor() AutoPoolETHUsage() { }
 
     function echidna_nav_per_share_cant_decrease_on_user_op() public view returns (bool) {
         return _navPerShareLastNonOpStart <= _navPerShareLastNonOpEnd;

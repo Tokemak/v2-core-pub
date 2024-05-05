@@ -5,24 +5,45 @@ pragma solidity 0.8.17;
 import { Test } from "forge-std/Test.sol";
 import { Lens } from "src/lens/Lens.sol";
 import { Roles } from "src/libs/Roles.sol";
-import { LMPVault } from "src/vault/LMPVault.sol";
-import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
+import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
 
 // solhint-disable func-name-mixedcase,max-states-count,state-visibility,max-line-length
+// solhint-disable avoid-low-level-calls,gas-custom-errors
 
 contract LensInt is Test {
     address public constant SYSTEM_REGISTRY = 0x0406d2D96871f798fcf54d5969F69F55F803eEA4;
 
     Lens internal _lens;
 
+    IAutoPoolRegistry autoPoolRegistry;
+
     function _setUp(uint256 blockNumber) internal {
         uint256 forkId = vm.createFork(vm.envString("MAINNET_RPC_URL"), blockNumber);
         vm.selectFork(forkId);
 
+        (bool success, bytes memory data) = address(SYSTEM_REGISTRY).call(abi.encodeWithSignature("lmpVaultRegistry()"));
+        if (!success) {
+            revert("fail get registry");
+        }
         _lens = new Lens(ISystemRegistry(SYSTEM_REGISTRY));
+
+        vm.mockCall(address(SYSTEM_REGISTRY), abi.encodeWithSelector(ISystemRegistry.autoPoolRegistry.selector), data);
+        autoPoolRegistry = IAutoPoolRegistry(abi.decode(data, (address)));
+
+        address[] memory vaults = autoPoolRegistry.listVaults();
+
+        for (uint256 i = 0; i < vaults.length; i++) {
+            (bool successStrat, bytes memory stratData) = vaults[i].call(abi.encodeWithSignature("lmpStrategy()"));
+            if (!successStrat) {
+                revert("fail get strat");
+            }
+            vm.mockCall(vaults[i], abi.encodeWithSignature("autoPoolStrategy()"), stratData);
+        }
     }
 
     function _findIndexOfPool(Lens.AutoPool[] memory pools, address toFind) internal returns (uint256) {
@@ -160,10 +181,10 @@ contract LensIntTest4 is LensInt {
     //     uint256 periodicFee = 10;
 
     //     vm.startPrank(admin);
-    //     LMPVault(autoPool).setStreamingFeeBps(streamingFee);
-    //     LMPVault(autoPool).setPeriodicFeeBps(periodicFee);
-    //     LMPVault(autoPool).setRebalanceFeeHighWaterMarkEnabled(true);
-    //     LMPVault(autoPool).shutdown(ILMPVault.VaultShutdownStatus.Exploit);
+    //     AutoPoolETH(autoPool).setStreamingFeeBps(streamingFee);
+    //     AutoPoolETH(autoPool).setPeriodicFeeBps(periodicFee);
+    //     AutoPoolETH(autoPool).setRebalanceFeeHighWaterMarkEnabled(true);
+    //     AutoPoolETH(autoPool).shutdown(IAutoPool.VaultShutdownStatus.Exploit);
     //     vm.stopPrank();
 
     //     Lens.AutoPool[] memory autoPools = _lens.getPools();
@@ -212,14 +233,14 @@ contract LensIntTest5 is LensInt {
         AccessController access = AccessController(address(ISystemRegistry(SYSTEM_REGISTRY).accessController()));
 
         vm.startPrank(admin);
-        access.grantRole(Roles.LMP_VAULT_FEE_UPDATER, admin);
-        access.grantRole(Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, admin);
+        access.grantRole(Roles.AUTO_POOL_FEE_UPDATER, admin);
+        access.grantRole(Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, admin);
         access.grantRole(Roles.AUTO_POOL_MANAGER, admin);
 
-        // LMPVault(autoPool).setStreamingFeeBps(streamingFee);
-        // LMPVault(autoPool).setPeriodicFeeBps(periodicFee);
-        LMPVault(autoPool).setRebalanceFeeHighWaterMarkEnabled(true);
-        LMPVault(autoPool).shutdown(ILMPVault.VaultShutdownStatus.Exploit);
+        // AutoPoolETH(autoPool).setStreamingFeeBps(streamingFee);
+        // AutoPoolETH(autoPool).setPeriodicFeeBps(periodicFee);
+        AutoPoolETH(autoPool).setRebalanceFeeHighWaterMarkEnabled(true);
+        AutoPoolETH(autoPool).shutdown(IAutoPool.VaultShutdownStatus.Exploit);
         vm.stopPrank();
 
         Lens.AutoPool[] memory autoPools = _lens.getPools();
@@ -237,7 +258,7 @@ contract LensIntTest5 is LensInt {
         // assertEq(pool.feeSettingsIncomplete, false, "feeSettingsIncomplete");
         assertEq(pool.feeSettingsIncomplete, true, "feeSettingsIncomplete");
         assertEq(pool.isShutdown, true, "isShutdown");
-        assertEq(uint256(pool.shutdownStatus), uint256(ILMPVault.VaultShutdownStatus.Exploit), "shutdownStatus");
+        assertEq(uint256(pool.shutdownStatus), uint256(IAutoPool.VaultShutdownStatus.Exploit), "shutdownStatus");
         assertEq(pool.rewarder, 0xA5e7672f88C4a8995F191d7B7e4725cD3a6d245B, "rewarder");
         assertEq(pool.strategy, 0xb9058eE7866458cDd6f78b12bC3B401C8D284d8E, "strategy");
         assertEq(pool.totalSupply, 26_235_717_700_643_078_755, "totalSupply");

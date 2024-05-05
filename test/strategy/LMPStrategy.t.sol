@@ -12,7 +12,7 @@ import { AccessController } from "src/security/AccessController.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { TOKE_MAINNET, WETH_MAINNET, LDO_MAINNET } from "test/utils/Addresses.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
-import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 import { LMPStrategyTestHelpers as helpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { IERC4626 } from "openzeppelin-contracts/interfaces/IERC4626.sol";
@@ -37,7 +37,7 @@ import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 contract LMPStrategyTest is Test {
     using NavTracking for NavTracking.State;
 
-    address private mockLMPVault = vm.addr(900);
+    address private mockAutoPoolETH = vm.addr(900);
     address private mockBaseAsset = vm.addr(600);
     address private mockInToken = vm.addr(701);
     address private mockOutToken = vm.addr(702);
@@ -67,7 +67,7 @@ contract LMPStrategyTest is Test {
     function setUp() public {
         vm.warp(startBlockTime);
 
-        vm.label(mockLMPVault, "lmpVault");
+        vm.label(mockAutoPoolETH, "autoPool");
         vm.label(mockBaseAsset, "baseAsset");
         vm.label(mockInDest, "inDest");
         vm.label(mockInToken, "inToken");
@@ -125,14 +125,14 @@ contract LMPStrategyTest is Test {
         LMPStrategyHarness s = LMPStrategyHarness(Clones.clone(address(stratHarness)));
 
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.SystemRegistryMismatch.selector));
-        s.initialize(mockLMPVault);
+        s.initialize(mockAutoPoolETH);
     }
 
-    function test_initialize_RevertIf_lmpVaultZero() public {
+    function test_initialize_RevertIf_autoPoolZero() public {
         LMPStrategyHarness harness =
             new LMPStrategyHarness(ISystemRegistry(address(systemRegistry)), helpers.getDefaultConfig());
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_lmpVault"));
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_autoPool"));
         harness.init(address(0));
     }
 
@@ -180,7 +180,7 @@ contract LMPStrategyTest is Test {
         // ensure the vault has enough assets
         setLmpTotalAssets(1000e18);
         setLmpIdle(400e18);
-        defaultParams.destinationOut = mockLMPVault;
+        defaultParams.destinationOut = mockAutoPoolETH;
         defaultParams.tokenOut = mockBaseAsset;
 
         // 0.50% slippage
@@ -272,7 +272,7 @@ contract LMPStrategyTest is Test {
 
     function test_verifyRebalance_RevertIf_invalidRebalanceToIdle() public {
         setDestinationIsShutdown(mockOutDest, false); // ensure destination is not shutdown
-        setLmpVaultIsShutdown(false); // ensure lmp is not shutdown
+        setLmpVaultIsShutdown(false); // ensure autoPool is not shutdown
         setLmpDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from LMP
 
         // ensure that the out destination should not be trimmed
@@ -297,7 +297,7 @@ contract LMPStrategyTest is Test {
         setDestinationDebtValue(mockOutDest, 200e18, 220e18);
 
         // set the in token to idle
-        defaultParams.destinationIn = mockLMPVault;
+        defaultParams.destinationIn = mockAutoPoolETH;
         defaultParams.tokenIn = mockBaseAsset;
 
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.InvalidRebalanceToIdle.selector));
@@ -307,7 +307,7 @@ contract LMPStrategyTest is Test {
     function test_verifyRebalance_returnTrueOnValidRebalanceToIdleCleanUpDust() public {
         // make the strategy paused to ensure that rebalances to idle can still occur
         setDestinationIsShutdown(mockOutDest, false); // force trim
-        setLmpVaultIsShutdown(false); // ensure lmp is not shutdown
+        setLmpVaultIsShutdown(false); // ensure autoPool is not shutdown
         setLmpDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from LMP
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
@@ -330,7 +330,7 @@ contract LMPStrategyTest is Test {
         setDestinationDebtValue(mockOutDest, 90e17, 99e17);
 
         // set the in token to idle
-        defaultParams.destinationIn = mockLMPVault;
+        defaultParams.destinationIn = mockAutoPoolETH;
         defaultParams.tokenIn = mockBaseAsset;
 
         (bool success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
@@ -340,7 +340,7 @@ contract LMPStrategyTest is Test {
     function test_verifyRebalance_returnTrueOnValidRebalanceToIdleIdleUp() public {
         // make the strategy paused to ensure that rebalances to idle can still occur
         setDestinationIsShutdown(mockOutDest, false); // force trim
-        setLmpVaultIsShutdown(false); // ensure lmp is not shutdown
+        setLmpVaultIsShutdown(false); // ensure autoPool is not shutdown
         setLmpDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from LMP
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
@@ -364,7 +364,7 @@ contract LMPStrategyTest is Test {
         setDestinationDebtValue(mockOutDest, 90e18, 99e18);
 
         // set the in token to idle
-        defaultParams.destinationIn = mockLMPVault;
+        defaultParams.destinationIn = mockAutoPoolETH;
         defaultParams.tokenIn = mockBaseAsset;
 
         // Successful rebalance to Idle
@@ -387,7 +387,7 @@ contract LMPStrategyTest is Test {
         defaultStrat._setPausedTimestamp(10 days);
 
         setDestinationIsShutdown(mockOutDest, true); // force trim
-        setLmpVaultIsShutdown(false); // ensure lmp is not shutdown
+        setLmpVaultIsShutdown(false); // ensure autoPool is not shutdown
         setLmpDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from LMP
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
@@ -410,7 +410,7 @@ contract LMPStrategyTest is Test {
         setDestinationDebtValue(mockOutDest, 200e18, 220e18);
 
         // set the in token to idle
-        defaultParams.destinationIn = mockLMPVault;
+        defaultParams.destinationIn = mockAutoPoolETH;
         defaultParams.tokenIn = mockBaseAsset;
 
         (bool success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
@@ -562,45 +562,51 @@ contract LMPStrategyTest is Test {
     // TODO: Move these to Vault
 
     // function test_updateWithdrawalQueueAfterRebalance_betweenDestinations() public {
-    //     vm.prank(mockLMPVault);
+    //     vm.prank(mockAutoPoolETH);
     //     vm.expectCall(
-    //         address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueHead, defaultParams.destinationOut),
+    //         address(mockAutoPoolETH), abi.encodeCall(IAutoPool.addToWithdrawalQueueHead,
+    // defaultParams.destinationOut),
     // 1
     //     );
     //     vm.expectCall(
-    //         address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueTail, defaultParams.destinationIn), 1
+    //         address(mockAutoPoolETH), abi.encodeCall(IAutoPool.addToWithdrawalQueueTail,
+    // defaultParams.destinationIn), 1
     //     );
 
     //     defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
     // }
 
     // function test_updateWithdrawalQueueAfterRebalance_fromIdle() public {
-    //     defaultParams.destinationOut = address(mockLMPVault);
+    //     defaultParams.destinationOut = address(mockAutoPoolETH);
 
-    //     vm.prank(mockLMPVault);
+    //     vm.prank(mockAutoPoolETH);
 
     //     vm.expectCall(
-    //         address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueHead, defaultParams.destinationOut),
+    //         address(mockAutoPoolETH), abi.encodeCall(IAutoPool.addToWithdrawalQueueHead,
+    // defaultParams.destinationOut),
     // 0
     //     );
     //     vm.expectCall(
-    //         address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueTail, defaultParams.destinationIn), 1
+    //         address(mockAutoPoolETH), abi.encodeCall(IAutoPool.addToWithdrawalQueueTail,
+    // defaultParams.destinationIn), 1
     //     );
 
     //     defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
     // }
 
     // function test_updateWithdrawalQueueAfterRebalance_toIdle() public {
-    //     defaultParams.destinationIn = address(mockLMPVault);
+    //     defaultParams.destinationIn = address(mockAutoPoolETH);
 
-    //     vm.prank(mockLMPVault);
+    //     vm.prank(mockAutoPoolETH);
 
     //     vm.expectCall(
-    //         address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueHead, defaultParams.destinationOut),
+    //         address(mockAutoPoolETH), abi.encodeCall(IAutoPool.addToWithdrawalQueueHead,
+    // defaultParams.destinationOut),
     // 1
     //     );
     //     vm.expectCall(
-    //         address(mockLMPVault), abi.encodeCall(ILMPVault.addToWithdrawalQueueTail, defaultParams.destinationIn), 0
+    //         address(mockAutoPoolETH), abi.encodeCall(IAutoPool.addToWithdrawalQueueTail,
+    // defaultParams.destinationIn), 0
     //     );
 
     //     defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
@@ -670,17 +676,17 @@ contract LMPStrategyTest is Test {
 
     function test_validateRebalanceParams_handlesIdle() public {
         // set in == idle
-        defaultParams.destinationIn = mockLMPVault;
+        defaultParams.destinationIn = mockAutoPoolETH;
         defaultParams.tokenIn = mockBaseAsset;
 
-        // ensure that the lmpVault is not registered
+        // ensure that the autoPool is not registered
         setLmpDestinationRegistered(defaultParams.destinationIn, false);
 
         // expect this not to revert
         defaultStrat._validateRebalanceParams(defaultParams);
     }
 
-    function test_validateRebalanceParams_RevertIf_lmpShutdownAndNotIdle() public {
+    function test_validateRebalanceParams_RevertIf_autoPoolShutdownAndNotIdle() public {
         setLmpVaultIsShutdown(true);
         vm.expectRevert(abi.encodeWithSelector(LMPStrategy.OnlyRebalanceToIdleAvailable.selector));
 
@@ -698,12 +704,12 @@ contract LMPStrategyTest is Test {
 
     function test_validateRebalanceParams_RevertIf_destInIsVaultButTokenNotBase() public {
         // this means we're expecting the baseAsset as the return token
-        defaultParams.destinationIn = mockLMPVault;
+        defaultParams.destinationIn = mockAutoPoolETH;
 
         vm.expectRevert(
             abi.encodeWithSelector(
                 LMPStrategy.RebalanceDestinationUnderlyerMismatch.selector,
-                mockLMPVault,
+                mockAutoPoolETH,
                 defaultParams.tokenIn,
                 mockBaseAsset
             )
@@ -727,12 +733,12 @@ contract LMPStrategyTest is Test {
 
     function test_validateRebalanceParams_RevertIf_destInOutVaultButTokenNotBase() public {
         // this means we're expecting the baseAsset as the return token
-        defaultParams.destinationOut = mockLMPVault;
+        defaultParams.destinationOut = mockAutoPoolETH;
 
         vm.expectRevert(
             abi.encodeWithSelector(
                 LMPStrategy.RebalanceDestinationUnderlyerMismatch.selector,
-                mockLMPVault,
+                mockAutoPoolETH,
                 defaultParams.tokenOut,
                 mockBaseAsset
             )
@@ -741,7 +747,7 @@ contract LMPStrategyTest is Test {
     }
 
     function test_validateRebalanceParams_RevertIf_destOutInsufficientIdle() public {
-        defaultParams.destinationOut = mockLMPVault;
+        defaultParams.destinationOut = mockAutoPoolETH;
         defaultParams.tokenOut = mockBaseAsset;
 
         setLmpIdle(defaultParams.amountOut - 1);
@@ -820,12 +826,12 @@ contract LMPStrategyTest is Test {
         // Setting all other possibilities to something that wouldn't be 1:1
         setDestinationSpotPrice(mockOutDest, 99e16);
         setDestinationSpotPrice(mockInDest, 99e16);
-        setDestinationSpotPrice(mockLMPVault, 99e16);
+        setDestinationSpotPrice(mockAutoPoolETH, 99e16);
 
         uint256 outAmount = 77.7e18;
 
         defaultParams.tokenOut = mockBaseAsset;
-        defaultParams.destinationOut = mockLMPVault;
+        defaultParams.destinationOut = mockAutoPoolETH;
         defaultParams.amountOut = outAmount;
 
         LMPStrategy.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
@@ -838,7 +844,7 @@ contract LMPStrategyTest is Test {
     /* **************************************** */
     function test_verifyRebalanceToIdle_RevertIf_noActiveScenarioFound() public {
         setDestinationIsShutdown(mockOutDest, false); // ensure destination is not shutdown
-        setLmpVaultIsShutdown(false); // ensure lmp is not shutdown
+        setLmpVaultIsShutdown(false); // ensure autoPool is not shutdown
         setLmpDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from LMP
 
         // set the destination to be 29% of the portfolio
@@ -868,7 +874,7 @@ contract LMPStrategyTest is Test {
 
     function test_verifyRebalanceToIdle_trimOperation() public {
         setDestinationIsShutdown(mockOutDest, false); // ensure destination not shutdown
-        setLmpVaultIsShutdown(false); // ensure lmp is not shutdown
+        setLmpVaultIsShutdown(false); // ensure autoPool is not shutdown
         setLmpDestQueuedForRemoval(mockOutDest, false); // ensure not queued for removal
 
         // set trim to 10% of vault
@@ -911,7 +917,7 @@ contract LMPStrategyTest is Test {
 
     function test_verifyRebalanceToIdle_destinationShutdownSlippage() public {
         setDestinationIsShutdown(mockOutDest, true); // set destination to shutdown, 2.5% slippage
-        setLmpVaultIsShutdown(false); // ensure lmp is not shutdown
+        setLmpVaultIsShutdown(false); // ensure autoPool is not shutdown
         setLmpDestQueuedForRemoval(mockOutDest, false); // ensure not queued for removal
 
         // set the destination to be 29% of the portfolio
@@ -942,9 +948,9 @@ contract LMPStrategyTest is Test {
         defaultStrat._verifyRebalanceToIdle(defaultParams, 25e15);
     }
 
-    function test_verifyRebalanceToIdle_lmpShutdownSlippage() public {
+    function test_verifyRebalanceToIdle_autoPoolShutdownSlippage() public {
         setDestinationIsShutdown(mockOutDest, false); // ensure destination not shutdown
-        setLmpVaultIsShutdown(true); // lmp is shutdown, 1.5% slippage
+        setLmpVaultIsShutdown(true); // autoPool is shutdown, 1.5% slippage
         setLmpDestQueuedForRemoval(mockOutDest, false); // ensure not queued for removal
 
         // set the destination to be 29% of the portfolio
@@ -977,7 +983,7 @@ contract LMPStrategyTest is Test {
 
     function test_verifyRebalanceToIdle_queuedForRemovalSlippage() public {
         setDestinationIsShutdown(mockOutDest, false); // ensure destination is not shutdown
-        setLmpVaultIsShutdown(false); // ensure lmp is not shutdown
+        setLmpVaultIsShutdown(false); // ensure autoPool is not shutdown
         setLmpDestQueuedForRemoval(mockOutDest, true); // will return maxNormalOperationSlippage as max (1%)
 
         // set the destination to be 29% of the portfolio
@@ -1150,8 +1156,9 @@ contract LMPStrategyTest is Test {
         setLmpDestinationBalanceOf(mockOutDest, startingBalance);
         setDestinationDebtValue(mockOutDest, 200e18, 220e18);
 
-        // lmpAssetsBeforeRebalance = 1000 (assets)
-        // lmpAssetsAfterRebalance = 1000 (assets) + 50 (amountIn) + 220 (destValueAfter) - 275 (destValueBefore) = 995
+        // autoPoolAssetsBeforeRebalance = 1000 (assets)
+        // autoPoolAssetsAfterRebalance = 1000 (assets) + 50 (amountIn) + 220 (destValueAfter) - 275 (destValueBefore) =
+        // 995
         // destination as % of total (before rebalance) = 275 / 1000 = 27.5%
         // destination as % of total (after rebalance) = 220 / 995 = 22.11%
 
@@ -1203,10 +1210,10 @@ contract LMPStrategyTest is Test {
         setLmpIdle(idle);
 
         IStrategy.SummaryStats memory stats =
-            defaultStrat._getDestinationSummaryStats(mockLMPVault, price, ILMPStrategy.RebalanceDirection.In, 1);
+            defaultStrat._getDestinationSummaryStats(mockAutoPoolETH, price, ILMPStrategy.RebalanceDirection.In, 1);
 
         // only these are populated when destination is idle asset
-        assertEq(stats.destination, mockLMPVault);
+        assertEq(stats.destination, mockAutoPoolETH);
         assertEq(stats.ownedShares, idle);
         assertEq(stats.pricePerShare, price);
 
@@ -1228,7 +1235,7 @@ contract LMPStrategyTest is Test {
         setTokenPrice(mockBaseAsset, 1.9e18);
 
         IStrategy.RebalanceParams memory rebalParams = IStrategy.RebalanceParams({
-            destinationIn: mockLMPVault,
+            destinationIn: mockAutoPoolETH,
             amountIn: 1,
             tokenIn: mockBaseAsset,
             destinationOut: address(1),
@@ -1716,13 +1723,13 @@ contract LMPStrategyTest is Test {
     /* **************************************** */
     /* navUpdate Tests                          */
     /* **************************************** */
-    function test_navUpdate_RevertIf_notLMPVault() public {
-        vm.expectRevert(abi.encodeWithSelector(LMPStrategy.NotLMPVault.selector));
+    function test_navUpdate_RevertIf_notAutoPoolETH() public {
+        vm.expectRevert(abi.encodeWithSelector(LMPStrategy.NotAutoPoolETH.selector));
         defaultStrat.navUpdate(100e18);
     }
 
     function test_navUpdate_shouldUpdateNavTracking() public {
-        vm.startPrank(mockLMPVault);
+        vm.startPrank(mockAutoPoolETH);
         vm.warp(1 days);
         defaultStrat.navUpdate(1e18);
         vm.warp(2 days);
@@ -1740,7 +1747,7 @@ contract LMPStrategyTest is Test {
         defaultStrat._setPausedTimestamp(1 days - 1); // must be > 0
         assertTrue(defaultStrat._expiredPauseState());
 
-        vm.prank(mockLMPVault);
+        vm.prank(mockAutoPoolETH);
         defaultStrat.navUpdate(10e18);
 
         assertFalse(defaultStrat._expiredPauseState());
@@ -1755,7 +1762,7 @@ contract LMPStrategyTest is Test {
 
         LMPStrategyHarness strat = deployStrategy(config);
 
-        vm.startPrank(mockLMPVault);
+        vm.startPrank(mockAutoPoolETH);
         vm.warp(1 days);
         strat.navUpdate(10e18);
         vm.warp(2 days);
@@ -1783,7 +1790,7 @@ contract LMPStrategyTest is Test {
 
         LMPStrategyHarness strat = deployStrategy(config);
 
-        vm.startPrank(mockLMPVault);
+        vm.startPrank(mockAutoPoolETH);
         vm.warp(1 days);
         strat.navUpdate(10e18);
         vm.warp(2 days);
@@ -1809,7 +1816,7 @@ contract LMPStrategyTest is Test {
     /* rebalanceSuccessfullyExecuted Tests      */
     /* **************************************** */
     function test_rebalanceSuccessfullyExecuted_RevertIf_notLmpVault() public {
-        vm.expectRevert(abi.encodeWithSelector(LMPStrategy.NotLMPVault.selector));
+        vm.expectRevert(abi.encodeWithSelector(LMPStrategy.NotAutoPoolETH.selector));
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
     }
 
@@ -1822,7 +1829,7 @@ contract LMPStrategyTest is Test {
         defaultStrat._setPausedTimestamp(1 days - 1); // must be > 0
         assertTrue(defaultStrat._expiredPauseState());
 
-        vm.prank(mockLMPVault);
+        vm.prank(mockAutoPoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
 
         // after clearing the expired pause, swapCostOffset == min
@@ -1839,7 +1846,7 @@ contract LMPStrategyTest is Test {
         // move forward 45 days = 2 relax steps -> 2 * 3 (relaxStep) + 28 (init) = 34
         vm.warp(startBlockTime + 46 days);
 
-        vm.prank(mockLMPVault);
+        vm.prank(mockAutoPoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
 
         assertEq(defaultStrat.swapCostOffsetPeriodInDays(), 34);
@@ -1850,7 +1857,7 @@ contract LMPStrategyTest is Test {
         assertEq(defaultStrat.lastRebalanceTimestamp(), startBlockTime - defaultStrat.rebalanceTimeGapInSeconds());
 
         vm.warp(startBlockTime + 23 days);
-        vm.prank(mockLMPVault);
+        vm.prank(mockAutoPoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
 
         assertEq(defaultStrat.lastRebalanceTimestamp(), startBlockTime + 23 days);
@@ -1861,7 +1868,7 @@ contract LMPStrategyTest is Test {
         assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), 0);
 
         vm.warp(startBlockTime + 23 days);
-        vm.prank(mockLMPVault);
+        vm.prank(mockAutoPoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
 
         assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), startBlockTime + 23 days);
@@ -1874,7 +1881,7 @@ contract LMPStrategyTest is Test {
         defaultStrat._setLastRebalanceTimestamp(60 days);
         vm.warp(60 days);
 
-        vm.startPrank(mockLMPVault);
+        vm.startPrank(mockAutoPoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
         assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), 60 days);
 
@@ -1928,7 +1935,7 @@ contract LMPStrategyTest is Test {
         defaultStrat._setLastRebalanceTimestamp(60 days);
         vm.warp(60 days);
 
-        vm.startPrank(mockLMPVault);
+        vm.startPrank(mockAutoPoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
         assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), 60 days);
 
@@ -1974,7 +1981,7 @@ contract LMPStrategyTest is Test {
         defaultStrat._setLastRebalanceTimestamp(60 days);
         vm.warp(60 days);
 
-        vm.startPrank(mockLMPVault);
+        vm.startPrank(mockAutoPoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
         assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), 60 days);
 
@@ -2011,10 +2018,10 @@ contract LMPStrategyTest is Test {
         assertEq(state.violationCount, 0);
 
         // idle -> destination
-        defaultParams.destinationOut = mockLMPVault;
+        defaultParams.destinationOut = mockAutoPoolETH;
         defaultParams.destinationIn = mockInDest;
 
-        vm.startPrank(mockLMPVault);
+        vm.startPrank(mockAutoPoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
 
         state = defaultStrat._getViolationTrackingState();
@@ -2024,14 +2031,14 @@ contract LMPStrategyTest is Test {
         // check other direction since it skips both in/out of idle
         // destination -> idle
         defaultParams.destinationOut = mockInDest;
-        defaultParams.destinationIn = mockLMPVault;
+        defaultParams.destinationIn = mockAutoPoolETH;
 
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
         state = defaultStrat._getViolationTrackingState();
         assertEq(state.len, 0);
         assertEq(state.violationCount, 0);
 
-        assertEq(defaultStrat.lastAddTimestampByDestination(mockLMPVault), 0);
+        assertEq(defaultStrat.lastAddTimestampByDestination(mockAutoPoolETH), 0);
         assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), startBlockTime + 60 days);
     }
 
@@ -2169,7 +2176,7 @@ contract LMPStrategyTest is Test {
     function deployStrategy(LMPStrategyConfig.StrategyConfig memory cfg) internal returns (LMPStrategyHarness strat) {
         LMPStrategyHarness stratHarness = new LMPStrategyHarness(ISystemRegistry(address(systemRegistry)), cfg);
         strat = LMPStrategyHarness(Clones.clone(address(stratHarness)));
-        strat.initialize(mockLMPVault);
+        strat.initialize(mockAutoPoolETH);
     }
 
     // rebalance params that will pass validation
@@ -2185,7 +2192,7 @@ contract LMPStrategyTest is Test {
     }
 
     /* **************************************** */
-    /* LMPVault Mocks                           */
+    /* AutoPoolETH Mocks                           */
     /* **************************************** */
     function setLmpDefaultMocks() private {
         setLmpVaultIsShutdown(false);
@@ -2199,42 +2206,42 @@ contract LMPStrategyTest is Test {
     }
 
     function setLmpVaultIsShutdown(bool shutdown) private {
-        vm.mockCall(mockLMPVault, abi.encodeWithSelector(ILMPVault.isShutdown.selector), abi.encode(shutdown));
+        vm.mockCall(mockAutoPoolETH, abi.encodeWithSelector(IAutoPool.isShutdown.selector), abi.encode(shutdown));
     }
 
     function setLmpVaultBaseAsset(address asset) private {
-        vm.mockCall(mockLMPVault, abi.encodeWithSelector(IERC4626.asset.selector), abi.encode(asset));
+        vm.mockCall(mockAutoPoolETH, abi.encodeWithSelector(IERC4626.asset.selector), abi.encode(asset));
     }
 
     function setLmpDestQueuedForRemoval(address dest, bool isRemoved) private {
         vm.mockCall(
-            mockLMPVault,
-            abi.encodeWithSelector(ILMPVault.isDestinationQueuedForRemoval.selector, dest),
+            mockAutoPoolETH,
+            abi.encodeWithSelector(IAutoPool.isDestinationQueuedForRemoval.selector, dest),
             abi.encode(isRemoved)
         );
     }
 
     function setLmpIdle(uint256 amount) private {
         vm.mockCall(
-            mockLMPVault,
-            abi.encodeWithSelector(ILMPVault.getAssetBreakdown.selector),
-            abi.encode(ILMPVault.AssetBreakdown({ totalIdle: amount, totalDebt: 0, totalDebtMin: 0, totalDebtMax: 0 }))
+            mockAutoPoolETH,
+            abi.encodeWithSelector(IAutoPool.getAssetBreakdown.selector),
+            abi.encode(IAutoPool.AssetBreakdown({ totalIdle: amount, totalDebt: 0, totalDebtMin: 0, totalDebtMax: 0 }))
         );
     }
 
     function setLmpDestInfo(address dest, LMPDebt.DestinationInfo memory info) private {
         // split up in order to get around formatter issue
-        bytes4 selector = ILMPVault.getDestinationInfo.selector;
-        vm.mockCall(mockLMPVault, abi.encodeWithSelector(selector, dest), abi.encode(info));
+        bytes4 selector = IAutoPool.getDestinationInfo.selector;
+        vm.mockCall(mockAutoPoolETH, abi.encodeWithSelector(selector, dest), abi.encode(info));
     }
 
     function setLmpTotalAssets(uint256 amount) private {
-        vm.mockCall(mockLMPVault, abi.encodeWithSelector(IERC4626.totalAssets.selector), abi.encode(amount));
+        vm.mockCall(mockAutoPoolETH, abi.encodeWithSelector(IERC4626.totalAssets.selector), abi.encode(amount));
     }
 
     function setLmpSystemRegistry(address _systemRegistry) private {
         vm.mockCall(
-            mockLMPVault,
+            mockAutoPoolETH,
             abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector),
             abi.encode(_systemRegistry)
         );
@@ -2242,8 +2249,8 @@ contract LMPStrategyTest is Test {
 
     function setLmpDestinationRegistered(address dest, bool isRegistered) private {
         vm.mockCall(
-            mockLMPVault,
-            abi.encodeWithSelector(ILMPVault.isDestinationRegistered.selector, dest),
+            mockAutoPoolETH,
+            abi.encodeWithSelector(IAutoPool.isDestinationRegistered.selector, dest),
             abi.encode(isRegistered)
         );
     }
@@ -2298,7 +2305,9 @@ contract LMPStrategyTest is Test {
     }
 
     function setLmpDestinationBalanceOf(address dest, uint256 amount) private {
-        vm.mockCall(dest, abi.encodeWithSelector(IERC20.balanceOf.selector, address(mockLMPVault)), abi.encode(amount));
+        vm.mockCall(
+            dest, abi.encodeWithSelector(IERC20.balanceOf.selector, address(mockAutoPoolETH)), abi.encode(amount)
+        );
     }
 
     function setDestinationDebtValue(address dest, uint256 shares, uint256 amount) private {
@@ -2393,8 +2402,8 @@ contract LMPStrategyHarness is LMPStrategy {
         LMPStrategyConfig.StrategyConfig memory conf
     ) LMPStrategy(_systemRegistry, conf) { }
 
-    function init(address lmpVault) public {
-        _initialize(lmpVault);
+    function init(address autoPool) public {
+        _initialize(autoPool);
     }
 
     function _validateRebalanceParams(IStrategy.RebalanceParams memory params) public view {
@@ -2486,7 +2495,7 @@ contract LMPStrategyHarness is LMPStrategy {
         uint256 amount
     ) public returns (IStrategy.SummaryStats memory) {
         return SummaryStats.getDestinationSummaryStats(
-            lmpVault, systemRegistry.incentivePricing(), destAddress, price, direction, amount
+            autoPool, systemRegistry.incentivePricing(), destAddress, price, direction, amount
         );
     }
 

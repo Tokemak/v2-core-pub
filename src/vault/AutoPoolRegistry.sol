@@ -6,15 +6,15 @@ import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSe
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { Roles } from "src/libs/Roles.sol";
 
-import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
-import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
+import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
 import { Errors } from "src/utils/Errors.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 
-contract LMPVaultRegistry is SystemComponent, ILMPVaultRegistry, SecurityBase {
+contract AutoPoolRegistry is SystemComponent, IAutoPoolRegistry, SecurityBase {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private _vaults;
@@ -31,7 +31,7 @@ contract LMPVaultRegistry is SystemComponent, ILMPVaultRegistry, SecurityBase {
     { }
 
     modifier onlyUpdater() {
-        if (!_hasRole(Roles.LMP_VAULT_REGISTRY_UPDATER, msg.sender)) revert Errors.AccessDenied();
+        if (!_hasRole(Roles.AUTO_POOL_REGISTRY_UPDATER, msg.sender)) revert Errors.AccessDenied();
         _;
     }
 
@@ -44,7 +44,7 @@ contract LMPVaultRegistry is SystemComponent, ILMPVaultRegistry, SecurityBase {
     function addVault(address vaultAddress) external onlyUpdater {
         Errors.verifyNotZero(vaultAddress, "vaultAddress");
 
-        ILMPVault vault = ILMPVault(vaultAddress);
+        IAutoPool vault = IAutoPool(vaultAddress);
 
         address asset = vault.asset();
         bytes32 vaultType = vault.vaultType();
@@ -65,7 +65,7 @@ contract LMPVaultRegistry is SystemComponent, ILMPVaultRegistry, SecurityBase {
         // remove from vaults list
         if (!_vaults.remove(vaultAddress)) revert VaultNotFound(vaultAddress);
 
-        ILMPVault vault = ILMPVault(vaultAddress);
+        IAutoPool vault = IAutoPool(vaultAddress);
         address asset = vault.asset();
         bytes32 vaultType = vault.vaultType();
 

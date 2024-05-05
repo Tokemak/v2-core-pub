@@ -87,7 +87,7 @@ contract Rewards is IRewards, SecurityBase, SystemComponent, EIP712 {
         bytes32 r,
         bytes32 s
     ) external override returns (uint256) {
-        if (msg.sender != address(systemRegistry.lmpVaultRouter())) {
+        if (msg.sender != address(systemRegistry.autoPoolRouter())) {
             revert Errors.AccessDenied();
         }
 

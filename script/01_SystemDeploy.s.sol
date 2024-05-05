@@ -11,10 +11,10 @@ import { BaseScript, console } from "./BaseScript.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
-import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
-import { LMPVault } from "src/vault/LMPVault.sol";
-import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
-import { LMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
+import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
+import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
+import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
+import { AutoPilotRouter } from "src/vault/AutoPilotRouter.sol";
 import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
@@ -57,25 +57,25 @@ contract DeploySystem is BaseScript {
     uint256 public defaultRewardBlockDurationLmp = 100;
     uint256 public defaultRewardRatioDest = 1;
     uint256 public defaultRewardBlockDurationDest = 1000;
-    bytes32 public lmpVaultType = keccak256("lst-weth-v1");
+    bytes32 public autoPoolType = keccak256("lst-weth-v1");
     uint256 public startEpoch = block.timestamp;
     uint256 public minStakeDuration = 30 days;
-    uint256 public lmp1SupplyLimit = type(uint112).max;
-    uint256 public lmp1WalletLimit = type(uint112).max;
-    string public lmp1SymbolSuffix = "EST";
-    string public lmp1DescPrefix = "Established";
-    bytes32 public lmp1Salt = keccak256("established");
-    uint256 public lmp2SupplyLimit = type(uint112).max;
-    uint256 public lmp2WalletLimit = type(uint112).max;
-    string public lmp2SymbolSuffix = "EMRG";
-    string public lmp2DescPrefix = "Emerging";
-    bytes32 public lmp2Salt = keccak256("emerging");
+    uint256 public autoPool1SupplyLimit = type(uint112).max;
+    uint256 public autoPool1WalletLimit = type(uint112).max;
+    string public autoPool1SymbolSuffix = "EST";
+    string public autoPool1DescPrefix = "Established";
+    bytes32 public autoPool1Salt = keccak256("established");
+    uint256 public autoPool2SupplyLimit = type(uint112).max;
+    uint256 public autoPool2WalletLimit = type(uint112).max;
+    string public autoPool2SymbolSuffix = "EMRG";
+    string public autoPool2DescPrefix = "Emerging";
+    bytes32 public autoPool2Salt = keccak256("emerging");
 
     SystemSecurity public systemSecurity;
-    LMPVaultRegistry public lmpRegistry;
-    LMPVault public lmpVaultTemplate;
-    LMPVaultFactory public lmpFactory;
-    LMPVaultRouter public lmpRouter;
+    AutoPoolRegistry public autoPoolRegistry;
+    AutoPoolETH public autoPoolTemplate;
+    AutoPoolFactory public autoPoolFactory;
+    AutoPilotRouter public autoPoolRouter;
     DestinationRegistry public destRegistry;
     DestinationVaultRegistry public destVaultRegistry;
     DestinationVaultFactory public destVaultFactory;
@@ -110,34 +110,36 @@ contract DeploySystem is BaseScript {
         console.log("System Security address: ", address(systemSecurity));
 
         // LMP Registry setup.
-        lmpRegistry = new LMPVaultRegistry(systemRegistry);
-        systemRegistry.setLMPVaultRegistry(address(lmpRegistry));
-        console.log("LMP Vault Registry address: ", address(lmpRegistry));
+        autoPoolRegistry = new AutoPoolRegistry(systemRegistry);
+        systemRegistry.setAutoPoolRegistry(address(autoPoolRegistry));
+        console.log("LMP Vault Registry address: ", address(autoPoolRegistry));
 
         // Deploy LMP Template.
-        lmpVaultTemplate = new LMPVault(systemRegistry, wethAddress, false);
-        console.log("LMP Template address: ", address(lmpVaultTemplate));
+        autoPoolTemplate = new AutoPoolETH(systemRegistry, wethAddress, false);
+        console.log("LMP Template address: ", address(autoPoolTemplate));
 
         // LMP Factory setup.
-        lmpFactory = new LMPVaultFactory(
-            systemRegistry, address(lmpVaultTemplate), defaultRewardRatioLmp, defaultRewardBlockDurationLmp
+        autoPoolFactory = new AutoPoolFactory(
+            systemRegistry, address(autoPoolTemplate), defaultRewardRatioLmp, defaultRewardBlockDurationLmp
         );
-        systemRegistry.setLMPVaultFactory(lmpVaultType, address(lmpFactory));
-        accessController.setupRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(lmpFactory));
-        console.log("LMP Factory address: ", address(lmpFactory));
+        systemRegistry.setAutoPoolFactory(autoPoolType, address(autoPoolFactory));
+        accessController.setupRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
+        console.log("LMP Factory address: ", address(autoPoolFactory));
 
         // Initial LMP Vault creation.
         // address establishedLmp =
-        //     lmpFactory.createVault(lmp1SupplyLimit, lmp1WalletLimit, lmp1SymbolSuffix, lmp1DescPrefix, lmp1Salt, "");
+        //     autoPoolFactory.createVault(autoPool1SupplyLimit, autoPool1WalletLimit, autoPool1SymbolSuffix,
+        // autoPool1DescPrefix, autoPool1Salt, "");
         // address emergingLmp =
-        //     lmpFactory.createVault(lmp2SupplyLimit, lmp2WalletLimit, lmp2SymbolSuffix, lmp2DescPrefix, lmp2Salt, "");
+        //     autoPoolFactory.createVault(autoPool2SupplyLimit, autoPool2WalletLimit, autoPool2SymbolSuffix,
+        // autoPool2DescPrefix, autoPool2Salt, "");
         // console.log("Established LMP Vault address: ", establishedLmp);
         // console.log("Emerging LMP Vault address: ", emergingLmp);
 
         // LMP router setup.
-        lmpRouter = new LMPVaultRouter(systemRegistry);
-        systemRegistry.setLMPVaultRouter(address(lmpRouter));
-        console.log("LMP Router address: ", address(lmpRouter));
+        autoPoolRouter = new AutoPilotRouter(systemRegistry);
+        systemRegistry.setAutoPilotRouter(address(autoPoolRouter));
+        console.log("LMP Router address: ", address(autoPoolRouter));
 
         // Destination registry setup.
         destRegistry = new DestinationRegistry(systemRegistry);
@@ -188,11 +190,11 @@ contract DeploySystem is BaseScript {
         }
 
         // Setup the 0x swapper
-        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, owner);
+        accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, owner);
         BaseAsyncSwapper zeroExSwapper = new BaseAsyncSwapper(constants.ext.zeroExProxy);
         asyncSwapperRegistry.register(address(zeroExSwapper));
         console.log("Base Async Swapper: ", address(zeroExSwapper));
-        accessController.revokeRole(Roles.LMP_VAULT_REGISTRY_UPDATER, owner);
+        accessController.revokeRole(Roles.AUTO_POOL_REGISTRY_UPDATER, owner);
 
         // Lens
         Lens lens = new Lens(systemRegistry);

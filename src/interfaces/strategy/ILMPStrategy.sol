@@ -17,17 +17,17 @@ interface ILMPStrategy {
         IStrategy.SummaryStats memory
     ) external returns (bool, string memory message);
 
-    /// @notice called by the LMPVault when NAV is updated
-    /// @dev can only be called by the strategy's registered LMPVault
+    /// @notice called by the AutoPool when NAV is updated
+    /// @dev can only be called by the strategy's registered AutoPool
     /// @param navPerShare The navPerShare to record
     function navUpdate(uint256 navPerShare) external;
 
-    /// @notice called by the LMPVault when a rebalance is completed
-    /// @dev can only be called by the strategy's registered LMPVault
+    /// @notice called by the AutoPool when a rebalance is completed
+    /// @dev can only be called by the strategy's registered AutoPool
     /// @param rebalanceParams The parameters for the rebalance that was executed
     function rebalanceSuccessfullyExecuted(IStrategy.RebalanceParams memory rebalanceParams) external;
 
-    /// @notice called by the LMPVault during rebalance process
+    /// @notice called by the AutoPool during rebalance process
     /// @param rebalanceParams The parameters for the rebalance that was executed
     function getRebalanceOutSummaryStats(IStrategy.RebalanceParams memory rebalanceParams)
         external

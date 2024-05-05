@@ -11,14 +11,14 @@ import { Test } from "forge-std/Test.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
-import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
+import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
 
 contract SystemSecurityTests is Test {
     SystemRegistry private _systemRegistry;
     AccessController private _accessController;
     SystemSecurity private _systemSecurity;
 
-    ILMPVaultRegistry private _lmpVaultRegistry;
+    IAutoPoolRegistry private _autoPoolRegistry;
 
     event SystemPaused(address account);
     event SystemUnpaused(address account);
@@ -34,11 +34,11 @@ contract SystemSecurityTests is Test {
 
         _accessController.grantRole(Roles.EMERGENCY_PAUSER, address(this));
 
-        // Set lmp vault registry for permissions
-        _lmpVaultRegistry = ILMPVaultRegistry(vm.addr(237_894));
-        vm.label(address(_lmpVaultRegistry), "lmpVaultRegistry");
-        _mockSystemBound(address(_systemRegistry), address(_lmpVaultRegistry));
-        _systemRegistry.setLMPVaultRegistry(address(_lmpVaultRegistry));
+        // Set autoPool registry for permissions
+        _autoPoolRegistry = IAutoPoolRegistry(vm.addr(237_894));
+        vm.label(address(_autoPoolRegistry), "autoPoolRegistry");
+        _mockSystemBound(address(_systemRegistry), address(_autoPoolRegistry));
+        _systemRegistry.setAutoPoolRegistry(address(_autoPoolRegistry));
 
         _mockIsVault(address(this), true);
     }
@@ -169,8 +169,8 @@ contract SystemSecurityTests is Test {
 
     function _mockIsVault(address vault, bool isVault) internal {
         vm.mockCall(
-            address(_lmpVaultRegistry),
-            abi.encodeWithSelector(ILMPVaultRegistry.isVault.selector, vault),
+            address(_autoPoolRegistry),
+            abi.encodeWithSelector(IAutoPoolRegistry.isVault.selector, vault),
             abi.encode(isVault)
         );
     }

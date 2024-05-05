@@ -84,8 +84,8 @@ abstract contract DestinationVault is
         _disableInitializers();
     }
 
-    modifier onlyLMPVault() {
-        if (!systemRegistry.lmpVaultRegistry().isVault(msg.sender)) {
+    modifier onlyAutoPoolETH() {
+        if (!systemRegistry.autoPoolRegistry().isVault(msg.sender)) {
             revert Errors.AccessDenied();
         }
         _;
@@ -244,7 +244,7 @@ abstract contract DestinationVault is
     }
 
     /// @inheritdoc IDestinationVault
-    function depositUnderlying(uint256 amount) external onlyLMPVault notShutdown returns (uint256 shares) {
+    function depositUnderlying(uint256 amount) external onlyAutoPoolETH notShutdown returns (uint256 shares) {
         Errors.verifyNotZero(amount, "amount");
 
         emit UnderlyingDeposited(amount, msg.sender);
@@ -258,7 +258,7 @@ abstract contract DestinationVault is
     }
 
     /// @inheritdoc IDestinationVault
-    function withdrawUnderlying(uint256 shares, address to) external onlyLMPVault returns (uint256 amount) {
+    function withdrawUnderlying(uint256 shares, address to) external onlyAutoPoolETH returns (uint256 amount) {
         Errors.verifyNotZero(shares, "shares");
         Errors.verifyNotZero(to, "to");
 
@@ -477,7 +477,7 @@ abstract contract DestinationVault is
     function _validateCalculator(address calculator) internal virtual;
 
     /// @inheritdoc IDestinationVault
-    function setMessage(bytes32 hash, bool flag) external hasRole(Roles.LMP_VAULT_DESTINATION_UPDATER) {
+    function setMessage(bytes32 hash, bool flag) external hasRole(Roles.AUTO_POOL_DESTINATION_UPDATER) {
         signedMessages[hash] = flag;
 
         emit UpdateSignedMessage(hash, flag);

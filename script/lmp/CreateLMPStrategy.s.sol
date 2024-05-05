@@ -7,7 +7,7 @@ pragma solidity 0.8.17;
 import { Systems } from "script/utils/Constants.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 import { BaseScript, console } from "script/BaseScript.sol";
-import { ILMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
+import { IAutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
 import { LMPStrategyConfig } from "src/strategy/LMPStrategyConfig.sol";
 
 /**
@@ -17,7 +17,7 @@ import { LMPStrategyConfig } from "src/strategy/LMPStrategyConfig.sol";
  */
 contract CreateLMPStrategy is BaseScript {
     // 🚨 Manually set variables below. 🚨
-    bytes32 public lmpVaultType = keccak256("lst-guarded-r1");
+    bytes32 public autoPoolType = keccak256("lst-guarded-r1");
 
     LMPStrategyConfig.StrategyConfig config = LMPStrategyConfig.StrategyConfig({
         swapCostOffset: LMPStrategyConfig.SwapCostOffsetConfig({
@@ -60,13 +60,13 @@ contract CreateLMPStrategy is BaseScript {
         vm.startBroadcast(privateKey);
 
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, config);
-        ILMPVaultFactory lmpFactory = systemRegistry.getLMPVaultFactoryByType(lmpVaultType);
+        IAutoPoolFactory autoPoolFactory = systemRegistry.getAutoPoolFactoryByType(autoPoolType);
 
-        if (address(lmpFactory) == address(0)) {
+        if (address(autoPoolFactory) == address(0)) {
             revert("LMP Vault Factory not set for lst-guarded-r1 type");
         }
 
-        lmpFactory.addStrategyTemplate(address(stratTemplate));
+        autoPoolFactory.addStrategyTemplate(address(stratTemplate));
         console.log("LMP Strategy address: %s", address(stratTemplate));
 
         vm.stopBroadcast();

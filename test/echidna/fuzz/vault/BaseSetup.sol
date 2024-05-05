@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 /* solhint-disable func-name-mixedcase,max-states-count,max-line-length,no-console,gas-custom-errors */
 
-import { LMPVault } from "src/vault/LMPVault.sol";
+import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -15,7 +15,7 @@ import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { MockRootOracle } from "test/echidna/fuzz/mocks/MockRootOracle.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
-import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 import { DestinationVault } from "src/vault/DestinationVault.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { Numbers } from "test/echidna/fuzz/utils/Numbers.sol";
@@ -88,8 +88,8 @@ contract BasePoolSetup {
         _systemSecurity = new SystemSecurity(_systemRegistry);
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
 
-        TestLMPVaultRegistry lmpVaultRegistry = new TestLMPVaultRegistry(_systemRegistry);
-        _systemRegistry.setLMPVaultRegistry(address(lmpVaultRegistry));
+        TestAutoPoolRegistry autoPoolRegistry = new TestAutoPoolRegistry(_systemRegistry);
+        _systemRegistry.setAutoPoolRegistry(address(autoPoolRegistry));
 
         // Setup Strategy
         _strategy = new TestingStrategy();
@@ -305,7 +305,7 @@ contract TestingAccessController {
     function verifyOwner(address) external view { }
 }
 
-contract TestingPool is LMPVault, CryticIERC4626Internal {
+contract TestingPool is AutoPoolETH, CryticIERC4626Internal {
     bool private _disableNavDecreaseCheck;
     bool private _nextDepositGetsDoubleShares;
     bool private _enableCryticFns;
@@ -317,7 +317,7 @@ contract TestingPool is LMPVault, CryticIERC4626Internal {
         }
     }
 
-    constructor(ISystemRegistry sr, address va) LMPVault(sr, va, false) { }
+    constructor(ISystemRegistry sr, address va) AutoPoolETH(sr, va, false) { }
 
     function setCryticFnsEnabled(bool val) public {
         _enableCryticFns = val;
@@ -437,7 +437,7 @@ contract TestingPool is LMPVault, CryticIERC4626Internal {
     function _ensureNoNavPerShareDecrease(
         uint256 oldNav,
         uint256 startingTotalSupply,
-        ILMPVault.TotalAssetPurpose purpose
+        IAutoPool.TotalAssetPurpose purpose
     ) internal view override {
         if (!_disableNavDecreaseCheck) {
             super._ensureNoNavPerShareDecrease(oldNav, startingTotalSupply, purpose);
@@ -473,7 +473,7 @@ contract TestSolver is Numbers, IERC3156FlashBorrower {
     }
 }
 
-contract TestLMPVaultRegistry {
+contract TestAutoPoolRegistry {
     address public getSystemRegistry;
 
     constructor(ISystemRegistry systemRegistry) {

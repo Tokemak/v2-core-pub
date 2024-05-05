@@ -26,8 +26,8 @@ contract SystemSecurity is SystemComponent, SecurityBase, ISystemSecurity {
     /// @notice How many NAV/share changing operations are in progress in the system
     uint256 public navOpsInProgress = 0;
 
-    modifier onlyLMPVault() {
-        if (!systemRegistry.lmpVaultRegistry().isVault(msg.sender)) {
+    modifier onlyAutoPoolETH() {
+        if (!systemRegistry.autoPoolRegistry().isVault(msg.sender)) {
             revert Errors.AccessDenied();
         }
         _;
@@ -44,12 +44,12 @@ contract SystemSecurity is SystemComponent, SecurityBase, ISystemSecurity {
     }
 
     /// @notice Enters a NAV/share changing operation from the LMP
-    function enterNavOperation() external override onlyLMPVault {
+    function enterNavOperation() external override onlyAutoPoolETH {
         ++navOpsInProgress;
     }
 
     /// @notice Exits a NAV/share changing operation from the LMP
-    function exitNavOperation() external override onlyLMPVault {
+    function exitNavOperation() external override onlyAutoPoolETH {
         --navOpsInProgress;
     }
 

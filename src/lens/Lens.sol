@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
-import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
@@ -27,7 +27,7 @@ contract Lens is SystemComponent {
         bool feeHighMarkEnabled;
         bool feeSettingsIncomplete;
         bool isShutdown;
-        ILMPVault.VaultShutdownStatus shutdownStatus;
+        IAutoPool.VaultShutdownStatus shutdownStatus;
         address rewarder;
         address strategy;
         uint256 totalSupply;
@@ -120,8 +120,8 @@ contract Lens is SystemComponent {
     /// @dev Structure of this return struct has been updated a few times and will fail on the decode. This is paired
     /// with the _fillInFeeSettings call to ensure the failure doesn't bubble up
     /// @param poolAddress Address of the AutoPool to query
-    function proxyGetFeeSettings(address poolAddress) public view returns (ILMPVault.AutoPoolFeeSettings memory) {
-        return ILMPVault(poolAddress).getFeeSettings();
+    function proxyGetFeeSettings(address poolAddress) public view returns (IAutoPool.AutoPoolFeeSettings memory) {
+        return IAutoPool(poolAddress).getFeeSettings();
     }
 
     /// =====================================================
@@ -129,14 +129,14 @@ contract Lens is SystemComponent {
     /// =====================================================
 
     /// @dev Returns AutoPool information for those currently registered in the system
-    function _getPools() private view returns (AutoPool[] memory lmpVaults) {
-        address[] memory lmpAddresses = systemRegistry.lmpVaultRegistry().listVaults();
-        lmpVaults = new AutoPool[](lmpAddresses.length);
+    function _getPools() private view returns (AutoPool[] memory autoPools) {
+        address[] memory autoPoolAddresses = systemRegistry.autoPoolRegistry().listVaults();
+        autoPools = new AutoPool[](autoPoolAddresses.length);
 
-        for (uint256 i = 0; i < lmpAddresses.length; ++i) {
-            address poolAddress = lmpAddresses[i];
-            ILMPVault vault = ILMPVault(poolAddress);
-            lmpVaults[i] = AutoPool({
+        for (uint256 i = 0; i < autoPoolAddresses.length; ++i) {
+            address poolAddress = autoPoolAddresses[i];
+            IAutoPool vault = IAutoPool(poolAddress);
+            autoPools[i] = AutoPool({
                 poolAddress: poolAddress,
                 name: vault.name(),
                 symbol: vault.symbol(),
@@ -149,14 +149,14 @@ contract Lens is SystemComponent {
                 isShutdown: vault.isShutdown(),
                 shutdownStatus: vault.shutdownStatus(),
                 rewarder: address(vault.rewarder()),
-                strategy: address(vault.lmpStrategy()),
+                strategy: address(vault.autoPoolStrategy()),
                 totalSupply: vault.totalSupply(),
                 totalAssets: vault.totalAssets(),
                 totalIdle: vault.getAssetBreakdown().totalIdle,
                 totalDebt: vault.getAssetBreakdown().totalDebt,
                 navPerShare: vault.convertToAssets(10 ** vault.decimals())
             });
-            _fillInFeeSettings(lmpVaults[i]);
+            _fillInFeeSettings(autoPools[i]);
         }
     }
 
@@ -164,7 +164,7 @@ contract Lens is SystemComponent {
     /// @param pool AutoPool to fill in fees far
     function _fillInFeeSettings(AutoPool memory pool) private view {
         try Lens(address(this)).proxyGetFeeSettings(pool.poolAddress) returns (
-            ILMPVault.AutoPoolFeeSettings memory settings
+            IAutoPool.AutoPoolFeeSettings memory settings
         ) {
             pool.streamingFeeBps = settings.streamingFeeBps;
             pool.periodicFeeBps = settings.periodicFeeBps;
@@ -191,8 +191,8 @@ contract Lens is SystemComponent {
     /// @dev Returns destination information for those currently related to the AutoPool
     /// @param autoPool AutoPool to query destinations for
     function _getDestinations(address autoPool) private returns (DestinationVault[] memory destinations) {
-        address[] memory poolDestinations = ILMPVault(autoPool).getDestinations();
-        address[] memory poolQueuedDestRemovals = ILMPVault(autoPool).getRemovalQueue();
+        address[] memory poolDestinations = IAutoPool(autoPool).getDestinations();
+        address[] memory poolQueuedDestRemovals = IAutoPool(autoPool).getRemovalQueue();
         destinations = new DestinationVault[](poolDestinations.length + poolQueuedDestRemovals.length);
 
         for (uint256 i = 0; i < destinations.length; ++i) {
@@ -201,7 +201,7 @@ contract Lens is SystemComponent {
             (IDexLSTStats.DexLSTStatsData memory currentStats, bool statsIncomplete) =
                 _safeDestinationGetStats(destinationAddress);
             address[] memory destinationTokens = IDestinationVault(destinationAddress).underlyingTokens();
-            LMPDebt.DestinationInfo memory vaultDestInfo = ILMPVault(autoPool).getDestinationInfo(destinationAddress);
+            LMPDebt.DestinationInfo memory vaultDestInfo = IAutoPool(autoPool).getDestinationInfo(destinationAddress);
             uint256 vaultBalOfDest = IDestinationVault(destinationAddress).balanceOf(autoPool);
 
             destinations[i] = DestinationVault({

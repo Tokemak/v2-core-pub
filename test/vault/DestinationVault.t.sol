@@ -11,7 +11,7 @@ import { Test } from "forge-std/Test.sol";
 import { IDestinationVault, DestinationVault } from "src/vault/DestinationVault.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
-import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
+import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
@@ -29,7 +29,7 @@ contract DestinationVaultBaseTests is Test {
     SystemRegistry private systemRegistry;
     IAccessController private accessController;
     IMainRewarder private mainRewarder;
-    ILMPVaultRegistry private lmpVaultRegistry;
+    IAutoPoolRegistry private autoPoolRegistry;
 
     TestERC20 private baseAsset;
     TestERC20 private underlyer;
@@ -52,17 +52,17 @@ contract DestinationVaultBaseTests is Test {
         testUser2 = vm.addr(2);
         pool = vm.addr(234_234);
         mainRewarder = IMainRewarder(vm.addr(3));
-        lmpVaultRegistry = ILMPVaultRegistry(vm.addr(3));
+        autoPoolRegistry = IAutoPoolRegistry(vm.addr(3));
 
         _weth = address(new TestERC20("weth", "weth"));
         vm.label(_weth, "weth");
 
         systemRegistry = new SystemRegistry(vm.addr(100), _weth);
-        mockSystemBound(address(lmpVaultRegistry), address(systemRegistry));
+        mockSystemBound(address(autoPoolRegistry), address(systemRegistry));
 
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
-        systemRegistry.setLMPVaultRegistry(address(lmpVaultRegistry));
+        systemRegistry.setAutoPoolRegistry(address(autoPoolRegistry));
 
         accessController.grantRole(Roles.DESTINATION_VAULT_MANAGER, address(this));
 
@@ -403,7 +403,7 @@ contract DestinationVaultBaseTests is Test {
 
     function test_setMessage() public {
         bytes32 testHash = keccak256("TEST HASH GENERATION");
-        accessController.grantRole(Roles.LMP_VAULT_DESTINATION_UPDATER, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_DESTINATION_UPDATER, address(this));
 
         testVault.setMessage(testHash, true);
 
@@ -421,7 +421,7 @@ contract DestinationVaultBaseTests is Test {
     function test_isValidSignature() public {
         bytes4 magicValue = 0x1626ba7e;
         bytes32 testHash = keccak256("TEST HASH GENERATION");
-        accessController.grantRole(Roles.LMP_VAULT_DESTINATION_UPDATER, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_DESTINATION_UPDATER, address(this));
 
         testVault.setMessage(testHash, true);
         bytes4 returnedValue = testVault.isValidSignature(testHash, bytes(""));
@@ -440,8 +440,8 @@ contract DestinationVaultBaseTests is Test {
 
     function mockIsLmpVault(address addr, bool isVault) internal {
         vm.mockCall(
-            address(lmpVaultRegistry),
-            abi.encodeWithSelector(ILMPVaultRegistry.isVault.selector, addr),
+            address(autoPoolRegistry),
+            abi.encodeWithSelector(IAutoPoolRegistry.isVault.selector, addr),
             abi.encode(isVault)
         );
     }

@@ -18,7 +18,7 @@ contract AccessController is SystemComponent, AccessControlEnumerable, IAccessCo
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(Roles.REBALANCER, msg.sender);
-        _setupRole(Roles.LMP_VAULT_FACTORY_VAULT_CREATOR, msg.sender);
+        _setupRole(Roles.AUTO_POOL_FACTORY_VAULT_CREATOR, msg.sender);
     }
 
     // ------------------------------------------------------------

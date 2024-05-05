@@ -7,7 +7,7 @@ import { Errors } from "src/utils/Errors.sol";
 import { AutoPoolFees } from "src/vault/libs/AutoPoolFees.sol";
 import { AutoPoolToken } from "src/vault/libs/AutoPoolToken.sol";
 import { LMPDebt } from "src/vault/libs/LMPDebt.sol";
-import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { StructuredLinkedList } from "src/strategy/StructuredLinkedList.sol";
@@ -32,7 +32,7 @@ library AutoPool4626 {
     /// @dev Subtracts any unlocked profit shares that will be burned when account is the Vault itself
     function balanceOf(
         AutoPoolToken.TokenData storage tokenData,
-        ILMPVault.ProfitUnlockSettings storage profitUnlockSettings,
+        IAutoPool.ProfitUnlockSettings storage profitUnlockSettings,
         address account
     ) public view returns (uint256) {
         if (account == address(this)) {
@@ -43,8 +43,8 @@ library AutoPool4626 {
 
     /// @notice Returns the total amount of the underlying asset that is “managed” by Vault.
     /// @dev Utilizes the "Global" purpose internally
-    function totalAssets(ILMPVault.AssetBreakdown storage assetBreakdown) public view returns (uint256) {
-        return totalAssets(assetBreakdown, ILMPVault.TotalAssetPurpose.Global);
+    function totalAssets(IAutoPool.AssetBreakdown storage assetBreakdown) public view returns (uint256) {
+        return totalAssets(assetBreakdown, IAutoPool.TotalAssetPurpose.Global);
     }
 
     /// @notice Returns the total amount of the underlying asset that is “managed” by the Vault with respect to its
@@ -52,14 +52,14 @@ library AutoPool4626 {
     /// @dev Value changes based on purpose. Global is an avg. Deposit is valued higher. Withdraw is valued lower.
     /// @param purpose The calculation the total assets will be used in
     function totalAssets(
-        ILMPVault.AssetBreakdown storage assetBreakdown,
-        ILMPVault.TotalAssetPurpose purpose
+        IAutoPool.AssetBreakdown storage assetBreakdown,
+        IAutoPool.TotalAssetPurpose purpose
     ) public view returns (uint256) {
-        if (purpose == ILMPVault.TotalAssetPurpose.Global) {
+        if (purpose == IAutoPool.TotalAssetPurpose.Global) {
             return assetBreakdown.totalIdle + assetBreakdown.totalDebt;
-        } else if (purpose == ILMPVault.TotalAssetPurpose.Deposit) {
+        } else if (purpose == IAutoPool.TotalAssetPurpose.Deposit) {
             return assetBreakdown.totalIdle + assetBreakdown.totalDebtMax;
-        } else if (purpose == ILMPVault.TotalAssetPurpose.Withdraw) {
+        } else if (purpose == IAutoPool.TotalAssetPurpose.Withdraw) {
             return assetBreakdown.totalIdle + assetBreakdown.totalDebtMin;
         } else {
             revert InvalidTotalAssetPurpose();
@@ -68,7 +68,7 @@ library AutoPool4626 {
 
     function maxMint(
         AutoPoolToken.TokenData storage tokenData,
-        ILMPVault.ProfitUnlockSettings storage profitUnlockSettings,
+        IAutoPool.ProfitUnlockSettings storage profitUnlockSettings,
         StructuredLinkedList.List storage debtReportQueue,
         mapping(address => LMPDebt.DestinationInfo) storage destinationInfo,
         address,
@@ -90,7 +90,7 @@ library AutoPool4626 {
         // We know totalSupply greater than zero now so if totalAssets is zero
         // the vault is in an invalid state and users would be able to mint shares for free
         uint256 ta =
-            LMPDebt.totalAssetsTimeChecked(debtReportQueue, destinationInfo, ILMPVault.TotalAssetPurpose.Deposit);
+            LMPDebt.totalAssetsTimeChecked(debtReportQueue, destinationInfo, IAutoPool.TotalAssetPurpose.Deposit);
         if (ta == 0) {
             return 0;
         }
@@ -102,16 +102,16 @@ library AutoPool4626 {
     /// @dev Subtracts any unlocked profit shares that will be burned
     function totalSupply(
         AutoPoolToken.TokenData storage tokenData,
-        ILMPVault.ProfitUnlockSettings storage profitUnlockSettings
+        IAutoPool.ProfitUnlockSettings storage profitUnlockSettings
     ) public view returns (uint256 shares) {
         shares = tokenData.totalSupply - AutoPoolFees.unlockedShares(profitUnlockSettings, tokenData);
     }
 
     function transferAndMint(
         IERC20Metadata baseAsset,
-        ILMPVault.AssetBreakdown storage assetBreakdown,
+        IAutoPool.AssetBreakdown storage assetBreakdown,
         AutoPoolToken.TokenData storage tokenData,
-        ILMPVault.ProfitUnlockSettings storage profitUnlockSettings,
+        IAutoPool.ProfitUnlockSettings storage profitUnlockSettings,
         uint256 assets,
         uint256 shares,
         address receiver

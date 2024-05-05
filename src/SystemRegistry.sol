@@ -24,10 +24,10 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
-import { ILMPVaultRouter } from "src/interfaces/vault/ILMPVaultRouter.sol";
-import { ILMPVaultFactory } from "src/interfaces/vault/ILMPVaultFactory.sol";
+import { IAutoPilotRouter } from "src/interfaces/vault/IAutoPilotRouter.sol";
+import { IAutoPoolFactory } from "src/interfaces/vault/IAutoPoolFactory.sol";
 import { ISystemSecurity } from "src/interfaces/security/ISystemSecurity.sol";
-import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
+import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
@@ -61,19 +61,19 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     /// =====================================================
 
     IAccToke private _accToke;
-    ILMPVaultRegistry private _lmpVaultRegistry;
+    IAutoPoolRegistry private _autoPoolRegistry;
     IDestinationVaultRegistry private _destinationVaultRegistry;
     IAccessController private _accessController;
     IDestinationRegistry private _destinationTemplateRegistry;
-    ILMPVaultRouter private _lmpVaultRouter;
+    IAutoPilotRouter private _autoPoolRouter;
     IRootPriceOracle private _rootPriceOracle;
     IAsyncSwapperRegistry private _asyncSwapperRegistry;
     ISwapRouter private _swapRouter;
     ICurveResolver private _curveResolver;
     IIncentivesPricingStats private _incentivePricingStats;
     ISystemSecurity private _systemSecurity;
-    mapping(bytes32 => ILMPVaultFactory) private _lmpVaultFactoryByType;
-    EnumerableSet.Bytes32Set private _lmpVaultFactoryTypes;
+    mapping(bytes32 => IAutoPoolFactory) private _autoPoolFactoryByType;
+    EnumerableSet.Bytes32Set private _autoPoolFactoryTypes;
     IStatsCalculatorRegistry private _statsCalculatorRegistry;
     EnumerableSet.AddressSet private _rewardTokens;
 
@@ -82,13 +82,13 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     /// =====================================================
 
     event AccTokeSet(address newAddress);
-    event LMPVaultRegistrySet(address newAddress);
+    event AutoPoolRegistrySet(address newAddress);
     event DestinationVaultRegistrySet(address newAddress);
     event AccessControllerSet(address newAddress);
     event DestinationTemplateRegistrySet(address newAddress);
-    event LMPVaultRouterSet(address newAddress);
-    event LMPVaultFactorySet(bytes32 vaultType, address factoryAddress);
-    event LMPVaultFactoryRemoved(bytes32 vaultType, address factoryAddress);
+    event AutoPilotRouterSet(address newAddress);
+    event AutoPoolFactorySet(bytes32 vaultType, address factoryAddress);
+    event AutoPoolFactoryRemoved(bytes32 vaultType, address factoryAddress);
     event StatsCalculatorRegistrySet(address newAddress);
     event RootPriceOracleSet(address rootPriceOracle);
     event AsyncSwapperRegistrySet(address newAddress);
@@ -141,16 +141,16 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     /// @notice Set the LMP Vault Registry for this instance of the system
     /// @dev Should only be able to set this value one time
     /// @param registry Address of the registry
-    function setLMPVaultRegistry(address registry) external onlyOwner {
-        Errors.verifyNotZero(registry, "lmpVaultRegistry");
+    function setAutoPoolRegistry(address registry) external onlyOwner {
+        Errors.verifyNotZero(registry, "autoPoolRegistry");
 
-        if (address(_lmpVaultRegistry) != address(0)) {
-            revert Errors.AlreadySet("lmpVaultRegistry");
+        if (address(_autoPoolRegistry) != address(0)) {
+            revert Errors.AlreadySet("autoPoolRegistry");
         }
 
-        emit LMPVaultRegistrySet(registry);
+        emit AutoPoolRegistrySet(registry);
 
-        _lmpVaultRegistry = ILMPVaultRegistry(registry);
+        _autoPoolRegistry = IAutoPoolRegistry(registry);
 
         _verifySystemsAgree(registry);
     }
@@ -158,16 +158,16 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     /// @notice Set the LMP Vault Router for this instance of the system
     /// @dev allows setting multiple times
     /// @param router Address of the LMP Vault Router
-    function setLMPVaultRouter(address router) external onlyOwner {
-        Errors.verifyNotZero(router, "lmpVaultRouter");
+    function setAutoPilotRouter(address router) external onlyOwner {
+        Errors.verifyNotZero(router, "autoPoolRouter");
 
-        if (address(_lmpVaultRouter) == router) {
+        if (address(_autoPoolRouter) == router) {
             revert DuplicateSet(router);
         }
 
-        emit LMPVaultRouterSet(router);
+        emit AutoPilotRouterSet(router);
 
-        _lmpVaultRouter = ILMPVaultRouter(router);
+        _autoPoolRouter = IAutoPilotRouter(router);
 
         _verifySystemsAgree(router);
     }
@@ -352,35 +352,35 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
 
     /// @notice Configure an AutoPool factory for type
     /// @param vaultType Type of AutoPool to configure
-    function setLMPVaultFactory(bytes32 vaultType, address factoryAddress) external onlyOwner {
+    function setAutoPoolFactory(bytes32 vaultType, address factoryAddress) external onlyOwner {
         Errors.verifyNotZero(factoryAddress, "factoryAddress");
         Errors.verifyNotZero(vaultType, "vaultType");
 
         // We don't care if the type already exists in the list
         // slither-disable-next-line unused-return
-        _lmpVaultFactoryTypes.add(vaultType);
+        _autoPoolFactoryTypes.add(vaultType);
 
-        _lmpVaultFactoryByType[vaultType] = ILMPVaultFactory(factoryAddress);
+        _autoPoolFactoryByType[vaultType] = IAutoPoolFactory(factoryAddress);
 
-        emit LMPVaultFactorySet(vaultType, factoryAddress);
+        emit AutoPoolFactorySet(vaultType, factoryAddress);
 
         _verifySystemsAgree(factoryAddress);
     }
 
     /// @notice Remove a previously configured AutoPool factory
     /// @param vaultType AutoPool type to remove the factory for
-    function removeLMPVaultFactory(bytes32 vaultType) external onlyOwner {
+    function removeAutoPoolFactory(bytes32 vaultType) external onlyOwner {
         Errors.verifyNotZero(vaultType, "vaultType");
-        address factoryAddress = address(_lmpVaultFactoryByType[vaultType]);
+        address factoryAddress = address(_autoPoolFactoryByType[vaultType]);
 
         // if returned false when trying to remove, means item wasn't in the list
-        if (!_lmpVaultFactoryTypes.remove(vaultType)) {
+        if (!_autoPoolFactoryTypes.remove(vaultType)) {
             revert Errors.ItemNotFound();
         }
 
-        delete _lmpVaultFactoryByType[vaultType];
+        delete _autoPoolFactoryByType[vaultType];
 
-        emit LMPVaultFactoryRemoved(vaultType, factoryAddress);
+        emit AutoPoolFactoryRemoved(vaultType, factoryAddress);
     }
 
     /// @notice Set the System Security instance for this system
@@ -406,8 +406,8 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     }
 
     /// @inheritdoc ISystemRegistry
-    function lmpVaultRegistry() external view returns (ILMPVaultRegistry) {
-        return _lmpVaultRegistry;
+    function autoPoolRegistry() external view returns (IAutoPoolRegistry) {
+        return _autoPoolRegistry;
     }
 
     /// @inheritdoc ISystemRegistry
@@ -426,17 +426,17 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     }
 
     /// @inheritdoc ISystemRegistry
-    function lmpVaultRouter() external view returns (ILMPVaultRouter router) {
-        return _lmpVaultRouter;
+    function autoPoolRouter() external view returns (IAutoPilotRouter router) {
+        return _autoPoolRouter;
     }
 
     /// @inheritdoc ISystemRegistry
-    function getLMPVaultFactoryByType(bytes32 vaultType) external view returns (ILMPVaultFactory vaultFactory) {
-        if (!_lmpVaultFactoryTypes.contains(vaultType)) {
+    function getAutoPoolFactoryByType(bytes32 vaultType) external view returns (IAutoPoolFactory vaultFactory) {
+        if (!_autoPoolFactoryTypes.contains(vaultType)) {
             revert Errors.ItemNotFound();
         }
 
-        return _lmpVaultFactoryByType[vaultType];
+        return _autoPoolFactoryByType[vaultType];
     }
 
     /// @inheritdoc ISystemRegistry

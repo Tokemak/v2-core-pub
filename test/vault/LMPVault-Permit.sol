@@ -7,12 +7,12 @@ pragma solidity >=0.8.7;
 import { Test } from "forge-std/Test.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { ERC2612 } from "test/utils/ERC2612.sol";
-import { LMPVault } from "src/vault/LMPVault.sol";
+import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
-import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
+import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
-import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
+import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
@@ -21,13 +21,13 @@ import { TestWETH9 } from "test/mocks/TestWETH9.sol";
 contract PermitTests is Test {
     SystemRegistry private _systemRegistry;
     AccessController private _accessController;
-    LMPVaultRegistry private _lmpVaultRegistry;
-    LMPVaultFactory private _lmpVaultFactory;
+    AutoPoolRegistry private _autoPoolRegistry;
+    AutoPoolFactory private _autoPoolFactory;
     SystemSecurity private _systemSecurity;
 
     TestERC20 private _asset;
     TestERC20 private _toke;
-    LMPVault private _lmpVault;
+    AutoPoolETH private _autoPool;
     TestWETH9 private _weth;
 
     function setUp() public {
@@ -46,8 +46,8 @@ contract PermitTests is Test {
         _accessController = new AccessController(address(_systemRegistry));
         _systemRegistry.setAccessController(address(_accessController));
 
-        _lmpVaultRegistry = new LMPVaultRegistry(_systemRegistry);
-        _systemRegistry.setLMPVaultRegistry(address(_lmpVaultRegistry));
+        _autoPoolRegistry = new AutoPoolRegistry(_systemRegistry);
+        _systemRegistry.setAutoPoolRegistry(address(_autoPoolRegistry));
 
         _systemSecurity = new SystemSecurity(_systemRegistry);
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
@@ -58,34 +58,34 @@ contract PermitTests is Test {
         _systemRegistry.addRewardToken(address(_asset));
         vm.label(address(_asset), "asset");
 
-        LMPVault template = new LMPVault(_systemRegistry, address(_asset), false);
-        uint256 lmpInitDeposit = template.WETH_INIT_DEPOSIT();
+        AutoPoolETH template = new AutoPoolETH(_systemRegistry, address(_asset), false);
+        uint256 autoPoolInitDeposit = template.WETH_INIT_DEPOSIT();
 
-        _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, address(template), 800, 100);
-        _accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(_lmpVaultFactory));
+        _autoPoolFactory = new AutoPoolFactory(_systemRegistry, address(template), 800, 100);
+        _accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(_autoPoolFactory));
 
         bytes memory initData = abi.encode("");
 
         LMPStrategy strategyTemplate = new LMPStrategy(_systemRegistry, stratHelpers.getDefaultConfig());
-        _lmpVaultFactory.addStrategyTemplate(address(strategyTemplate));
+        _autoPoolFactory.addStrategyTemplate(address(strategyTemplate));
 
-        // Mock LMPVaultRouter call for LMPVault creation.
+        // Mock AutoPilotRouter call for AutoPoolETH creation.
         vm.mockCall(
             address(_systemRegistry),
-            abi.encodeWithSelector(SystemRegistry.lmpVaultRouter.selector),
+            abi.encodeWithSelector(SystemRegistry.autoPoolRouter.selector),
             abi.encode(makeAddr("LMP_VAULT_ROUTER"))
         );
 
-        _lmpVault = LMPVault(
-            _lmpVaultFactory.createVault{ value: lmpInitDeposit }(
+        _autoPool = AutoPoolETH(
+            _autoPoolFactory.createVault{ value: autoPoolInitDeposit }(
                 address(strategyTemplate), "x", "y", keccak256("v1"), initData
             )
         );
-        vm.label(address(_lmpVault), "lmpVault");
+        vm.label(address(_autoPool), "autoPool");
     }
 
     function test_SetUpState() public {
-        assertEq(18, _lmpVault.decimals());
+        assertEq(18, _autoPool.decimals());
     }
 
     function test_RedeemCanPerformAsResultOfPermit() public {
@@ -98,26 +98,26 @@ contract PermitTests is Test {
 
         // Mints from the contract to the User
         _asset.mint(address(this), amount);
-        _asset.approve(address(_lmpVault), amount);
-        _lmpVault.deposit(amount, user);
+        _asset.approve(address(_autoPool), amount);
+        _autoPool.deposit(amount, user);
 
         // Setup for the Spender to spend the Users tokens
         uint256 deadline = block.timestamp + 100;
         (uint8 v, bytes32 r, bytes32 s) =
-            ERC2612.getPermitSignature(_lmpVault.DOMAIN_SEPARATOR(), signerKey, user, spender, amount, 0, deadline);
+            ERC2612.getPermitSignature(_autoPool.DOMAIN_SEPARATOR(), signerKey, user, spender, amount, 0, deadline);
 
         // Execute the permit as the contract
-        _lmpVault.permit(user, spender, amount, deadline, v, r, s);
+        _autoPool.permit(user, spender, amount, deadline, v, r, s);
 
-        assertEq(_lmpVault.balanceOf(user), amount);
+        assertEq(_autoPool.balanceOf(user), amount);
         assertEq(_asset.balanceOf(user), 0);
 
         // Redeem as the Spender back to the User, mimicking the router here
         vm.startPrank(spender);
-        _lmpVault.redeem(amount, user, user);
+        _autoPool.redeem(amount, user, user);
         vm.stopPrank();
 
-        assertEq(_lmpVault.balanceOf(user), 0);
+        assertEq(_autoPool.balanceOf(user), 0);
         assertEq(_asset.balanceOf(user), amount);
     }
 
@@ -132,27 +132,27 @@ contract PermitTests is Test {
 
         // Mints from the contract to the User
         _asset.mint(address(this), amount);
-        _asset.approve(address(_lmpVault), amount);
-        _lmpVault.deposit(amount, user);
+        _asset.approve(address(_autoPool), amount);
+        _autoPool.deposit(amount, user);
 
         // Setup for the Spender to spend the Users tokens
         uint256 deadline = block.timestamp + 100;
         (uint8 v, bytes32 r, bytes32 s) =
-            ERC2612.getPermitSignature(_lmpVault.DOMAIN_SEPARATOR(), signerKey, user, spender, amount, 0, deadline);
+            ERC2612.getPermitSignature(_autoPool.DOMAIN_SEPARATOR(), signerKey, user, spender, amount, 0, deadline);
 
         // Execute the permit as the contract
-        _lmpVault.permit(user, spender, amount, deadline, v, r, s);
+        _autoPool.permit(user, spender, amount, deadline, v, r, s);
 
-        assertEq(_lmpVault.balanceOf(user), amount);
+        assertEq(_autoPool.balanceOf(user), amount);
         assertEq(_asset.balanceOf(user), 0);
         assertEq(_asset.balanceOf(receiver), 0);
 
         // Withdraw as the Spender back to the User, mimicking the router here
         vm.startPrank(spender);
-        _lmpVault.withdraw(amount, receiver, user);
+        _autoPool.withdraw(amount, receiver, user);
         vm.stopPrank();
 
-        assertEq(_lmpVault.balanceOf(user), 0);
+        assertEq(_autoPool.balanceOf(user), 0);
         assertEq(_asset.balanceOf(receiver), amount);
     }
 
@@ -167,28 +167,28 @@ contract PermitTests is Test {
 
         // Mints from the contract to the User
         _asset.mint(address(this), amount);
-        _asset.approve(address(_lmpVault), amount);
-        _lmpVault.deposit(amount, user);
+        _asset.approve(address(_autoPool), amount);
+        _autoPool.deposit(amount, user);
 
         // Setup for the Spender to spend the Users tokens
         uint256 deadline = block.timestamp + 100;
         (uint8 v, bytes32 r, bytes32 s) =
-            ERC2612.getPermitSignature(_lmpVault.DOMAIN_SEPARATOR(), signerKey, user, spender, amount, 0, deadline);
+            ERC2612.getPermitSignature(_autoPool.DOMAIN_SEPARATOR(), signerKey, user, spender, amount, 0, deadline);
 
         // Execute the permit as the contract
-        _lmpVault.permit(user, spender, amount, deadline, v, r, s);
+        _autoPool.permit(user, spender, amount, deadline, v, r, s);
 
-        assertEq(_lmpVault.balanceOf(user), amount);
-        assertEq(_lmpVault.balanceOf(spender), 0);
-        assertEq(_lmpVault.balanceOf(receiver), 0);
+        assertEq(_autoPool.balanceOf(user), amount);
+        assertEq(_autoPool.balanceOf(spender), 0);
+        assertEq(_autoPool.balanceOf(receiver), 0);
 
         // Withdraw as the Spender back to the User, mimicking the router here
         vm.startPrank(spender);
-        _lmpVault.transferFrom(user, receiver, amount);
+        _autoPool.transferFrom(user, receiver, amount);
         vm.stopPrank();
 
-        assertEq(_lmpVault.balanceOf(user), 0);
-        assertEq(_lmpVault.balanceOf(spender), 0);
-        assertEq(_lmpVault.balanceOf(receiver), amount);
+        assertEq(_autoPool.balanceOf(user), 0);
+        assertEq(_autoPool.balanceOf(spender), 0);
+        assertEq(_autoPool.balanceOf(receiver), amount);
     }
 }

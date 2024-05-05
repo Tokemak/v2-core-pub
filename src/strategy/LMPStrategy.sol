@@ -9,7 +9,7 @@ import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
-import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ViolationTracking } from "src/strategy/ViolationTracking.sol";
@@ -97,7 +97,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
     /// recommend setting this higher than maxNormalOperationSlippage
     uint256 public immutable maxEmergencyOperationSlippage; // 100% = 1e18
 
-    /// @notice the maximum amount of slippage to allow when the LMPVault has been shutdown
+    /// @notice the maximum amount of slippage to allow when the AutoPoolETH has been shutdown
     uint256 public immutable maxShutdownOperationSlippage; // 100% = 1e18
 
     /// @notice the maximum discount used for price return
@@ -154,8 +154,8 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
     /// between low & high threshold, it does not trigger new idle to be added.
     uint256 public idleHighThreshold;
 
-    /// @notice The LMPVault that this strategy is associated with
-    ILMPVault public lmpVault;
+    /// @notice The AutoPoolETH that this strategy is associated with
+    IAutoPool public autoPool;
 
     /// @notice The timestamp for when rebalancing was last paused
     uint40 public lastPausedTimestamp;
@@ -180,7 +180,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
 
     enum RebalanceToIdleReasonEnum {
         DestinationIsShutdown,
-        LMPVaultIsShutdown,
+        AutoPoolETHIsShutdown,
         TrimDustPosition,
         DestinationIsQueuedForRemoval,
         DestinationViolatedConstraint,
@@ -224,7 +224,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
     /* ******************************** */
     /* Errors                           */
     /* ******************************** */
-    error NotLMPVault();
+    error NotAutoPoolETH();
     error StrategyPaused();
     error RebalanceTimeGapNotMet();
     error RebalanceDestinationsMatch();
@@ -254,8 +254,8 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         uint256 slippage;
     }
 
-    modifier onlyLMPVault() {
-        if (msg.sender != address(lmpVault)) revert NotLMPVault();
+    modifier onlyAutoPoolETH() {
+        if (msg.sender != address(autoPool)) revert NotAutoPoolETH();
         _;
     }
 
@@ -298,18 +298,18 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         _disableInitializers();
     }
 
-    function initialize(address _lmpVault) external virtual initializer {
-        _initialize(_lmpVault);
+    function initialize(address _autoPool) external virtual initializer {
+        _initialize(_autoPool);
     }
 
-    function _initialize(address _lmpVault) internal virtual {
-        Errors.verifyNotZero(_lmpVault, "_lmpVault");
+    function _initialize(address _autoPool) internal virtual {
+        Errors.verifyNotZero(_autoPool, "_autoPool");
 
-        if (ISystemComponent(_lmpVault).getSystemRegistry() != address(systemRegistry)) {
+        if (ISystemComponent(_autoPool).getSystemRegistry() != address(systemRegistry)) {
             revert SystemRegistryMismatch();
         }
 
-        lmpVault = ILMPVault(_lmpVault);
+        autoPool = IAutoPool(_autoPool);
 
         lastRebalanceTimestamp = uint40(block.timestamp) - uint40(rebalanceTimeGapInSeconds);
         _swapCostOffsetPeriod = swapCostOffsetInit;
@@ -359,7 +359,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
 
         // moves from a destination back to eth only happen under specific scenarios
         // if the move is valid, the constraints are different than if assets are moving to a normal destination
-        if (params.destinationIn == address(lmpVault)) {
+        if (params.destinationIn == address(autoPool)) {
             verifyRebalanceToIdle(params, valueStats.slippage);
             // slither-disable-next-line reentrancy-events
             emit RebalanceToIdle(valueStats, outSummary, params);
@@ -383,12 +383,12 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
 
         // ensure that idle is not depleted below the high threshold if we are pulling from Idle assets
         // totalAssets will be reduced by swap cost amount.
-        if (params.destinationOut == address(lmpVault)) {
-            uint256 totalAssets = lmpVault.totalAssets().subSaturate(valueStats.swapCost);
-            if (lmpVault.getAssetBreakdown().totalIdle < valueStats.outEthValue) {
+        if (params.destinationOut == address(autoPool)) {
+            uint256 totalAssets = autoPool.totalAssets().subSaturate(valueStats.swapCost);
+            if (autoPool.getAssetBreakdown().totalIdle < valueStats.outEthValue) {
                 revert IdleHighThresholdViolated();
             } else if (
-                (lmpVault.getAssetBreakdown().totalIdle - valueStats.outEthValue)
+                (autoPool.getAssetBreakdown().totalIdle - valueStats.outEthValue)
                     < ((totalAssets * idleHighThreshold) / 1e18)
             ) {
                 revert IdleHighThresholdViolated();
@@ -444,15 +444,15 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         ensureDestinationRegistered(params.destinationOut);
 
         // when a vault is shutdown, rebalancing can only pull assets from destinations back to the vault
-        if (lmpVault.isShutdown() && params.destinationIn != address(lmpVault)) revert OnlyRebalanceToIdleAvailable();
+        if (autoPool.isShutdown() && params.destinationIn != address(autoPool)) revert OnlyRebalanceToIdleAvailable();
 
         if (params.destinationIn == params.destinationOut) revert RebalanceDestinationsMatch();
 
-        address baseAsset = lmpVault.asset();
+        address baseAsset = autoPool.asset();
 
-        // if the in/out destination is the LMPVault then the in/out token must be the baseAsset
-        // if the in/out is not the LMPVault then the in/out token must match the destinations underlying token
-        if (params.destinationIn == address(lmpVault)) {
+        // if the in/out destination is the AutoPoolETH then the in/out token must be the baseAsset
+        // if the in/out is not the AutoPoolETH then the in/out token must match the destinations underlying token
+        if (params.destinationIn == address(autoPool)) {
             if (params.tokenIn != baseAsset) {
                 revert RebalanceDestinationUnderlyerMismatch(params.destinationIn, params.tokenIn, baseAsset);
             }
@@ -463,11 +463,11 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
             }
         }
 
-        if (params.destinationOut == address(lmpVault)) {
+        if (params.destinationOut == address(autoPool)) {
             if (params.tokenOut != baseAsset) {
                 revert RebalanceDestinationUnderlyerMismatch(params.destinationOut, params.tokenOut, baseAsset);
             }
-            if (params.amountOut > lmpVault.getAssetBreakdown().totalIdle) {
+            if (params.amountOut > autoPool.getAssetBreakdown().totalIdle) {
                 revert InsufficientAssets(params.tokenOut);
             }
         } else {
@@ -477,15 +477,15 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
                     params.destinationOut, outDest.underlying(), params.tokenOut
                 );
             }
-            if (params.amountOut > outDest.balanceOf(address(lmpVault))) {
+            if (params.amountOut > outDest.balanceOf(address(autoPool))) {
                 revert InsufficientAssets(params.tokenOut);
             }
         }
     }
 
     function ensureDestinationRegistered(address dest) private view {
-        if (dest == address(lmpVault)) return;
-        if (!(lmpVault.isDestinationRegistered(dest) || lmpVault.isDestinationQueuedForRemoval(dest))) {
+        if (dest == address(autoPool)) return;
+        if (!(autoPool.isDestinationRegistered(dest) || autoPool.isDestinationQueuedForRemoval(dest))) {
             revert UnregisteredDestination(dest);
         }
     }
@@ -496,7 +496,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
     {
         uint8 tokenOutDecimals = IERC20Metadata(params.tokenOut).decimals();
         uint8 tokenInDecimals = IERC20Metadata(params.tokenIn).decimals();
-        address lmpVaultAddress = address(lmpVault);
+        address autoPoolAddress = address(autoPool);
 
         // Prices are all in terms of the base asset, so when its a rebalance back to the vault
         // or out of the vault, We can just take things as 1:1
@@ -504,21 +504,21 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         // Get the price of one unit of the underlying lp token, the params.tokenOut/tokenIn
         // Prices are calculated using the spot of price of the constituent tokens
         // validated to be within a tolerance of the safe price of those tokens
-        uint256 outPrice = params.destinationOut != lmpVaultAddress
+        uint256 outPrice = params.destinationOut != autoPoolAddress
             ? IDestinationVault(params.destinationOut).getValidatedSpotPrice()
             : 10 ** tokenOutDecimals;
 
-        uint256 inPrice = params.destinationIn != lmpVaultAddress
+        uint256 inPrice = params.destinationIn != autoPoolAddress
             ? IDestinationVault(params.destinationIn).getValidatedSpotPrice()
             : 10 ** tokenInDecimals;
 
         // prices are 1e18 and we want values in 1e18, so divide by token decimals
-        uint256 outEthValue = params.destinationOut != lmpVaultAddress
+        uint256 outEthValue = params.destinationOut != autoPoolAddress
             ? outPrice * params.amountOut / 10 ** tokenOutDecimals
             : params.amountOut;
 
         // amountIn is a minimum to receive, but it is OK if we receive more
-        uint256 inEthValue = params.destinationIn != lmpVaultAddress
+        uint256 inEthValue = params.destinationIn != autoPoolAddress
             ? inPrice * params.amountIn / 10 ** tokenInDecimals
             : params.amountIn;
 
@@ -548,9 +548,9 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
             maxSlippage = maxEmergencyOperationSlippage;
         }
 
-        // Scenario 2: the LMPVault has been shutdown
-        if (lmpVault.isShutdown() && maxShutdownOperationSlippage > maxSlippage) {
-            reason = RebalanceToIdleReasonEnum.LMPVaultIsShutdown;
+        // Scenario 2: the AutoPoolETH has been shutdown
+        if (autoPool.isShutdown() && maxShutdownOperationSlippage > maxSlippage) {
+            reason = RebalanceToIdleReasonEnum.AutoPoolETHIsShutdown;
             maxSlippage = maxShutdownOperationSlippage;
         }
 
@@ -567,7 +567,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         }
 
         // Scenario 5: the destination has been moved out of the LMPs active destinations
-        if (lmpVault.isDestinationQueuedForRemoval(params.destinationOut) && maxNormalOperationSlippage > maxSlippage) {
+        if (autoPool.isDestinationQueuedForRemoval(params.destinationOut) && maxNormalOperationSlippage > maxSlippage) {
             reason = RebalanceToIdleReasonEnum.DestinationIsQueuedForRemoval;
             maxSlippage = maxNormalOperationSlippage;
         }
@@ -594,11 +594,11 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
     function verifyCleanUpOperation(IStrategy.RebalanceParams memory params) internal view returns (bool) {
         IDestinationVault outDest = IDestinationVault(params.destinationOut);
 
-        LMPDebt.DestinationInfo memory destInfo = lmpVault.getDestinationInfo(params.destinationOut);
+        LMPDebt.DestinationInfo memory destInfo = autoPool.getDestinationInfo(params.destinationOut);
         // revert if information is too old
         ensureNotStaleData("DestInfo", destInfo.lastReport);
-        // shares of the destination currently held by the LMPVault
-        uint256 currentShares = outDest.balanceOf(address(lmpVault));
+        // shares of the destination currently held by the AutoPoolETH
+        uint256 currentShares = outDest.balanceOf(address(autoPool));
         // withdrawals reduce totalAssets, but do not update the destinationInfo
         // adjust the current debt based on the currently owned shares
         uint256 currentDebt =
@@ -606,7 +606,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
 
         // If the current position is the minimum portion, trim to idle is allowed
         // slither-disable-next-line divide-before-multiply
-        if ((currentDebt * 1e18) < ((lmpVault.totalAssets() * 1e18) / dustPositionPortions)) {
+        if ((currentDebt * 1e18) < ((autoPool.totalAssets() * 1e18) / dustPositionPortions)) {
             return true;
         }
 
@@ -614,12 +614,12 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
     }
 
     function verifyIdleUpOperation(IStrategy.RebalanceParams memory params) internal view returns (bool) {
-        LMPDebt.DestinationInfo memory destInfo = lmpVault.getDestinationInfo(params.destinationOut);
+        LMPDebt.DestinationInfo memory destInfo = autoPool.getDestinationInfo(params.destinationOut);
         // revert if information is too old
         ensureNotStaleData("DestInfo", destInfo.lastReport);
-        uint256 currentIdle = lmpVault.getAssetBreakdown().totalIdle;
+        uint256 currentIdle = autoPool.getAssetBreakdown().totalIdle;
         uint256 newIdle = currentIdle + params.amountIn;
-        uint256 totalAssets = lmpVault.totalAssets();
+        uint256 totalAssets = autoPool.totalAssets();
         // If idle is below low threshold, then allow replinishing Idle. New idle after rebalance should be above high
         // threshold. While totalAssets after this rebalance will be lower by swap loss, the ratio idle / total assets
         // as used is conservative.
@@ -643,12 +643,12 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
 
         IDestinationVault outDest = IDestinationVault(params.destinationOut);
 
-        LMPDebt.DestinationInfo memory destInfo = lmpVault.getDestinationInfo(params.destinationOut);
+        LMPDebt.DestinationInfo memory destInfo = autoPool.getDestinationInfo(params.destinationOut);
         // revert if information is too old
         ensureNotStaleData("DestInfo", destInfo.lastReport);
 
-        // shares of the destination currently held by the LMPVault
-        uint256 currentShares = outDest.balanceOf(address(lmpVault));
+        // shares of the destination currently held by the AutoPoolETH
+        uint256 currentShares = outDest.balanceOf(address(autoPool));
 
         // withdrawals reduce totalAssets, but do not update the destinationInfo
         // adjust the current debt based on the currently owned shares
@@ -661,15 +661,15 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         // current value of the destination shares, not cached from debt reporting
         uint256 destValueAfterRebalance = outDest.debtValue(sharesAfterRebalance);
 
-        // calculate the total value of the lmpVault after the rebalance is made
+        // calculate the total value of the autoPool after the rebalance is made
         // note that only the out destination value is adjusted to current
         // amountIn is a minimum to receive, but it is OK if we receive more
-        uint256 lmpAssetsAfterRebalance =
-            (lmpVault.totalAssets() + params.amountIn + destValueAfterRebalance - currentDebt);
+        uint256 autoPoolAssetsAfterRebalance =
+            (autoPool.totalAssets() + params.amountIn + destValueAfterRebalance - currentDebt);
 
         // trimming may occur over multiple rebalances, so we only want to ensure we aren't removing too much
-        if (lmpAssetsAfterRebalance > 0) {
-            return destValueAfterRebalance * 1e18 / lmpAssetsAfterRebalance >= trimAmount;
+        if (autoPoolAssetsAfterRebalance > 0) {
+            return destValueAfterRebalance * 1e18 / autoPoolAssetsAfterRebalance >= trimAmount;
         } else {
             // LMP assets after rebalance are 0
             return true;
@@ -681,7 +681,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         uint256 discountDaysThreshold = 7; // number of last 10 days that it was >= discountThreshold
         uint256 discountThresholdTwo = 5e5; // 5% 1e7 precision, discount required to completely exit
 
-        // this is always the out destination and guaranteed not to be the LMPVault idle asset
+        // this is always the out destination and guaranteed not to be the AutoPoolETH idle asset
         IDexLSTStats.DexLSTStatsData memory stats = dest.getStats().current();
 
         ILSTStats.LSTStatsData[] memory lstStats = stats.lstStatsData;
@@ -739,9 +739,9 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         validateRebalanceParams(rebalanceParams);
         // Verify spot & safe price for the individual tokens in the pool are not far apart.
         // Call to verify before remove/add liquidity to the dest in the rebalance txn
-        // if the in dest is not LMPVault i.e. this is not a rebalance to idle txn, verify price tolerance
-        if (rebalanceParams.destinationIn != address(lmpVault)) {
-            if (!SummaryStats.verifyLSTPriceGap(lmpVault, rebalanceParams, lstPriceGapTolerance)) {
+        // if the in dest is not the AutoPool i.e. this is not a rebalance to idle txn, verify price tolerance
+        if (rebalanceParams.destinationIn != address(autoPool)) {
+            if (!SummaryStats.verifyLSTPriceGap(autoPool, rebalanceParams, lstPriceGapTolerance)) {
                 revert LSTPriceGapToleranceExceeded();
             }
         }
@@ -757,7 +757,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         uint256 outPrice = _getInOutTokenPriceInEth(rebalanceParams.tokenOut, rebalanceParams.destinationOut);
         outSummary = (
             SummaryStats.getDestinationSummaryStats(
-                lmpVault,
+                autoPool,
                 systemRegistry.incentivePricing(),
                 rebalanceParams.destinationOut,
                 outPrice,
@@ -770,7 +770,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
     /// @dev Price the tokens from rebalance params with the appropriate method
     function _getInOutTokenPriceInEth(address token, address destination) private returns (uint256) {
         IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
-        if (destination == address(lmpVault)) {
+        if (destination == address(autoPool)) {
             // When the destination is the autoPool then the token is the underlying asset
             // which means its not an LP token so we use this pricing fn
             return pricer.getPriceInEth(token);
@@ -790,7 +790,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
         uint256 inPrice = _getInOutTokenPriceInEth(rebalanceParams.tokenIn, rebalanceParams.destinationIn);
         inSummary = (
             SummaryStats.getDestinationSummaryStats(
-                lmpVault,
+                autoPool,
                 systemRegistry.incentivePricing(),
                 rebalanceParams.destinationIn,
                 inPrice,
@@ -801,7 +801,7 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
     }
 
     /// @inheritdoc ILMPStrategy
-    function navUpdate(uint256 navPerShare) external onlyLMPVault {
+    function navUpdate(uint256 navPerShare) external onlyAutoPoolETH {
         uint40 blockTime = uint40(block.timestamp);
         navTrackingState.insert(navPerShare, blockTime);
 
@@ -824,22 +824,22 @@ contract LMPStrategy is SystemComponent, Initializable, ILMPStrategy, SecurityBa
     }
 
     /// @inheritdoc ILMPStrategy
-    function rebalanceSuccessfullyExecuted(IStrategy.RebalanceParams memory params) external onlyLMPVault {
+    function rebalanceSuccessfullyExecuted(IStrategy.RebalanceParams memory params) external onlyAutoPoolETH {
         // clearExpirePause sets _swapCostOffsetPeriod, so skip when possible to avoid double write
         if (!clearExpiredPause()) _swapCostOffsetPeriod = swapCostOffsetPeriodInDays();
 
-        address lmpAddress = address(lmpVault);
+        address autoPoolAddress = address(autoPool);
 
         // update the destination that had assets added
         // moves into idle are not tracked for violations
-        if (params.destinationIn != lmpAddress) {
+        if (params.destinationIn != autoPoolAddress) {
             // Update to lastRebalanceTimestamp excludes rebalances to idle as those skip swapCostOffset logic
             lastRebalanceTimestamp = uint40(block.timestamp);
             lastAddTimestampByDestination[params.destinationIn] = lastRebalanceTimestamp;
         }
 
         // violations are only tracked when moving between non-idle assets
-        if (params.destinationOut != lmpAddress && params.destinationIn != lmpAddress) {
+        if (params.destinationOut != autoPoolAddress && params.destinationIn != autoPoolAddress) {
             uint40 lastAddForRemoveDestination = lastAddTimestampByDestination[params.destinationOut];
             uint40 swapCostOffsetPeriod = uint40(swapCostOffsetPeriodInDays());
             if (

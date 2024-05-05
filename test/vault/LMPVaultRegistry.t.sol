@@ -7,15 +7,15 @@ pragma solidity 0.8.17;
 import { BaseTest } from "test/BaseTest.t.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
-import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
-import { ILMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
-import { LMPVault } from "src/vault/LMPVault.sol";
+import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
+import { IAutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
+import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrategyTestHelpers.sol";
 
-contract LMPVaultRegistryTest is BaseTest {
-    LMPVault internal vault;
+contract AutoPoolRegistryTest is BaseTest {
+    AutoPoolETH internal vault;
 
     event VaultAdded(address indexed asset, address indexed vault);
     event VaultRemoved(address indexed asset, address indexed vault);
@@ -25,16 +25,16 @@ contract LMPVaultRegistryTest is BaseTest {
 
         super._setUp(false);
 
-        lmpVaultRegistry = new LMPVaultRegistry(systemRegistry);
-        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(this));
+        autoPoolRegistry = new AutoPoolRegistry(systemRegistry);
+        accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(this));
 
         bytes memory initData = abi.encode("");
 
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
-        lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
+        autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
-        vault = LMPVault(
-            lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
+        vault = AutoPoolETH(
+            autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT }(
                 address(stratTemplate), "x", "y", keccak256("v8"), initData
             )
         );
@@ -50,45 +50,45 @@ contract LMPVaultRegistryTest is BaseTest {
     }
 }
 
-contract AddVault is LMPVaultRegistryTest {
+contract AddVault is AutoPoolRegistryTest {
     function test_AddVault() public {
         vm.expectEmit(true, true, false, true);
         emit VaultAdded(vault.asset(), address(vault));
 
-        lmpVaultRegistry.addVault(address(vault));
+        autoPoolRegistry.addVault(address(vault));
 
-        assert(lmpVaultRegistry.isVault(address(vault)));
-        assert(lmpVaultRegistry.listVaultsForAsset(vault.asset()).length > 0);
-        assert(lmpVaultRegistry.listVaultsForType(VaultTypes.LST).length > 0);
-        assert(_contains(lmpVaultRegistry.listVaults(), address(vault)));
+        assert(autoPoolRegistry.isVault(address(vault)));
+        assert(autoPoolRegistry.listVaultsForAsset(vault.asset()).length > 0);
+        assert(autoPoolRegistry.listVaultsForType(VaultTypes.LST).length > 0);
+        assert(_contains(autoPoolRegistry.listVaults(), address(vault)));
     }
 
     function test_AddMultipleVaults() public {
         vm.expectEmit(true, true, false, true);
         emit VaultAdded(vault.asset(), address(vault));
-        lmpVaultRegistry.addVault(address(vault));
+        autoPoolRegistry.addVault(address(vault));
 
         bytes memory initData = abi.encode("");
 
         LMPStrategy stratTemplate = new LMPStrategy(systemRegistry, stratHelpers.getDefaultConfig());
-        lmpVaultFactory.addStrategyTemplate(address(stratTemplate));
+        autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
-        LMPVault anotherVault = LMPVault(
-            lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
+        AutoPoolETH anotherVault = AutoPoolETH(
+            autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT }(
                 address(stratTemplate), "x", "y", keccak256("v9"), initData
             )
         );
 
         vm.expectEmit(true, true, false, true);
         emit VaultAdded(anotherVault.asset(), address(anotherVault));
-        lmpVaultRegistry.addVault(address(anotherVault));
+        autoPoolRegistry.addVault(address(anotherVault));
 
-        assert(lmpVaultRegistry.isVault(address(vault)));
-        assert(lmpVaultRegistry.isVault(address(anotherVault)));
-        assertEq(lmpVaultRegistry.listVaultsForAsset(vault.asset()).length, 2);
-        assertEq(lmpVaultRegistry.listVaultsForType(VaultTypes.LST).length, 2);
-        assert(_contains(lmpVaultRegistry.listVaults(), address(vault)));
-        assert(_contains(lmpVaultRegistry.listVaults(), address(anotherVault)));
+        assert(autoPoolRegistry.isVault(address(vault)));
+        assert(autoPoolRegistry.isVault(address(anotherVault)));
+        assertEq(autoPoolRegistry.listVaultsForAsset(vault.asset()).length, 2);
+        assertEq(autoPoolRegistry.listVaultsForType(VaultTypes.LST).length, 2);
+        assert(_contains(autoPoolRegistry.listVaults(), address(vault)));
+        assert(_contains(autoPoolRegistry.listVaults(), address(anotherVault)));
     }
 
     // Covering https://github.com/Tokemak/2023-06-sherlock-judging/blob/main/068-M/068.md
@@ -96,90 +96,90 @@ contract AddVault is LMPVaultRegistryTest {
         vm.expectEmit(true, true, false, true);
         emit VaultAdded(vault.asset(), address(vault));
 
-        lmpVaultRegistry.addVault(address(vault));
+        autoPoolRegistry.addVault(address(vault));
 
-        assert(lmpVaultRegistry.isVault(address(vault)));
-        assert(lmpVaultRegistry.listVaultsForAsset(vault.asset()).length > 0);
-        assert(lmpVaultRegistry.listVaultsForType(VaultTypes.LST).length > 0);
-        assert(_contains(lmpVaultRegistry.listVaults(), address(vault)));
+        assert(autoPoolRegistry.isVault(address(vault)));
+        assert(autoPoolRegistry.listVaultsForAsset(vault.asset()).length > 0);
+        assert(autoPoolRegistry.listVaultsForType(VaultTypes.LST).length > 0);
+        assert(_contains(autoPoolRegistry.listVaults(), address(vault)));
 
         vm.expectEmit(true, true, false, true);
         emit VaultRemoved(vault.asset(), address(vault));
-        lmpVaultRegistry.removeVault(address(vault));
+        autoPoolRegistry.removeVault(address(vault));
 
-        assertFalse(lmpVaultRegistry.isVault(address(vault)));
-        assertEq(lmpVaultRegistry.listVaultsForAsset(vault.asset()).length, 0);
-        assertEq(lmpVaultRegistry.listVaultsForType(VaultTypes.LST).length, 0);
-        assertFalse(_contains(lmpVaultRegistry.listVaults(), address(vault)));
+        assertFalse(autoPoolRegistry.isVault(address(vault)));
+        assertEq(autoPoolRegistry.listVaultsForAsset(vault.asset()).length, 0);
+        assertEq(autoPoolRegistry.listVaultsForType(VaultTypes.LST).length, 0);
+        assertFalse(_contains(autoPoolRegistry.listVaults(), address(vault)));
 
         vm.expectEmit(true, true, false, true);
         emit VaultAdded(vault.asset(), address(vault));
 
-        lmpVaultRegistry.addVault(address(vault));
+        autoPoolRegistry.addVault(address(vault));
 
-        assert(lmpVaultRegistry.isVault(address(vault)));
-        assert(lmpVaultRegistry.listVaultsForAsset(vault.asset()).length > 0);
-        assert(lmpVaultRegistry.listVaultsForType(VaultTypes.LST).length > 0);
-        assert(_contains(lmpVaultRegistry.listVaults(), address(vault)));
+        assert(autoPoolRegistry.isVault(address(vault)));
+        assert(autoPoolRegistry.listVaultsForAsset(vault.asset()).length > 0);
+        assert(autoPoolRegistry.listVaultsForType(VaultTypes.LST).length > 0);
+        assert(_contains(autoPoolRegistry.listVaults(), address(vault)));
     }
 
     function test_RevertIf_AddingVaultWithNoPermission() public {
-        accessController.revokeRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(this));
+        accessController.revokeRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(this));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        lmpVaultRegistry.addVault(address(vault));
+        autoPoolRegistry.addVault(address(vault));
     }
 
     function test_RevertIf_AddingExistingVault() public {
-        lmpVaultRegistry.addVault(address(vault));
+        autoPoolRegistry.addVault(address(vault));
 
-        vm.expectRevert(abi.encodeWithSelector(ILMPVaultRegistry.VaultAlreadyExists.selector, address(vault)));
-        lmpVaultRegistry.addVault(address(vault));
+        vm.expectRevert(abi.encodeWithSelector(IAutoPoolRegistry.VaultAlreadyExists.selector, address(vault)));
+        autoPoolRegistry.addVault(address(vault));
     }
 
     function test_RevertIf_AddingZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "vaultAddress"));
-        lmpVaultRegistry.addVault(address(0));
+        autoPoolRegistry.addVault(address(0));
     }
 }
 
-contract RemoveVault is LMPVaultRegistryTest {
+contract RemoveVault is AutoPoolRegistryTest {
     function test_RemoveVault() public {
         vm.expectEmit(true, true, false, true);
         emit VaultAdded(vault.asset(), address(vault));
 
-        lmpVaultRegistry.addVault(address(vault));
+        autoPoolRegistry.addVault(address(vault));
 
         vm.expectEmit(true, true, false, true);
         emit VaultRemoved(vault.asset(), address(vault));
-        lmpVaultRegistry.removeVault(address(vault));
+        autoPoolRegistry.removeVault(address(vault));
 
-        assertFalse(lmpVaultRegistry.isVault(address(vault)));
-        assertEq(lmpVaultRegistry.listVaultsForAsset(vault.asset()).length, 0);
-        assertEq(lmpVaultRegistry.listVaultsForType(VaultTypes.LST).length, 0);
-        assertFalse(_contains(lmpVaultRegistry.listVaults(), address(vault)));
+        assertFalse(autoPoolRegistry.isVault(address(vault)));
+        assertEq(autoPoolRegistry.listVaultsForAsset(vault.asset()).length, 0);
+        assertEq(autoPoolRegistry.listVaultsForType(VaultTypes.LST).length, 0);
+        assertFalse(_contains(autoPoolRegistry.listVaults(), address(vault)));
     }
 
     function test_RevertIf_RemovingVaultWithNoPermission() public {
-        lmpVaultRegistry.addVault(address(vault));
+        autoPoolRegistry.addVault(address(vault));
 
-        accessController.revokeRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(this));
+        accessController.revokeRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(this));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        lmpVaultRegistry.removeVault(address(vault));
+        autoPoolRegistry.removeVault(address(vault));
     }
 
     function test_RevertIf_RemovingZeroAddress() public {
-        lmpVaultRegistry.addVault(address(vault));
+        autoPoolRegistry.addVault(address(vault));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "vaultAddress"));
-        lmpVaultRegistry.removeVault(address(0));
+        autoPoolRegistry.removeVault(address(0));
     }
 
     function test_RevertIf_RemovingNonExistingVault() public {
-        lmpVaultRegistry.addVault(address(vault));
+        autoPoolRegistry.addVault(address(vault));
 
-        vm.expectRevert(abi.encodeWithSelector(ILMPVaultRegistry.VaultNotFound.selector, address(123)));
-        lmpVaultRegistry.removeVault(address(123));
+        vm.expectRevert(abi.encodeWithSelector(IAutoPoolRegistry.VaultNotFound.selector, address(123)));
+        autoPoolRegistry.removeVault(address(123));
     }
 }

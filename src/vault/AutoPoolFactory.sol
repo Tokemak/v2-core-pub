@@ -4,12 +4,12 @@ pragma solidity 0.8.17;
 
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import { ISystemRegistry, IWETH9 } from "src/interfaces/ISystemRegistry.sol";
-import { ILMPVaultFactory } from "src/interfaces/vault/ILMPVaultFactory.sol";
-import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
-import { LMPVault } from "src/vault/LMPVault.sol";
+import { IAutoPoolFactory } from "src/interfaces/vault/IAutoPoolFactory.sol";
+import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
+import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
-import { LMPVaultMainRewarder } from "src/rewarders/LMPVaultMainRewarder.sol";
+import { AutoPoolMainRewarder } from "src/rewarders/AutoPoolMainRewarder.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
@@ -17,7 +17,7 @@ import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { Roles } from "src/libs/Roles.sol";
 
-contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
+contract AutoPoolFactory is SystemComponent, IAutoPoolFactory, SecurityBase {
     using Clones for address;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -29,7 +29,7 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
     /// @dev Exposed via `getStrategyTemplates() and isStrategyTemplate()`
     EnumerableSet.AddressSet internal _strategyTemplates;
 
-    ILMPVaultRegistry public immutable vaultRegistry;
+    IAutoPoolRegistry public immutable vaultRegistry;
 
     address public immutable template;
 
@@ -48,7 +48,7 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
     /// =====================================================
 
     modifier onlyVaultCreator() {
-        if (!_hasRole(Roles.LMP_VAULT_FACTORY_VAULT_CREATOR, msg.sender)) {
+        if (!_hasRole(Roles.AUTO_POOL_FACTORY_VAULT_CREATOR, msg.sender)) {
             revert Errors.AccessDenied();
         }
         _;
@@ -84,7 +84,7 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
 
         // slither-disable-next-line missing-zero-check
         template = _template;
-        vaultRegistry = systemRegistry.lmpVaultRegistry();
+        vaultRegistry = systemRegistry.autoPoolRegistry();
 
         // Zero is valid here
         _setDefaultRewardRatio(_defaultRewardRatio);
@@ -95,7 +95,7 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
     /// Functions - External
     /// =====================================================
 
-    function addStrategyTemplate(address strategyTemplate) external hasRole(Roles.LMP_VAULT_FACTORY_MANAGER) {
+    function addStrategyTemplate(address strategyTemplate) external hasRole(Roles.AUTO_POOL_FACTORY_MANAGER) {
         if (!_strategyTemplates.add(strategyTemplate)) {
             revert Errors.ItemExists();
         }
@@ -103,7 +103,7 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
         emit StrategyTemplateAdded(strategyTemplate);
     }
 
-    function removeStrategyTemplate(address strategyTemplate) external hasRole(Roles.LMP_VAULT_FACTORY_MANAGER) {
+    function removeStrategyTemplate(address strategyTemplate) external hasRole(Roles.AUTO_POOL_FACTORY_MANAGER) {
         if (!_strategyTemplates.remove(strategyTemplate)) {
             revert Errors.ItemNotFound();
         }
@@ -111,11 +111,11 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
         emit StrategyTemplateRemoved(strategyTemplate);
     }
 
-    function setDefaultRewardRatio(uint256 rewardRatio) external hasRole(Roles.LMP_VAULT_FACTORY_MANAGER) {
+    function setDefaultRewardRatio(uint256 rewardRatio) external hasRole(Roles.AUTO_POOL_FACTORY_MANAGER) {
         _setDefaultRewardRatio(rewardRatio);
     }
 
-    function setDefaultRewardBlockDuration(uint256 blockDuration) external hasRole(Roles.LMP_VAULT_FACTORY_MANAGER) {
+    function setDefaultRewardBlockDuration(uint256 blockDuration) external hasRole(Roles.AUTO_POOL_FACTORY_MANAGER) {
         _setDefaultRewardBlockDuration(blockDuration);
     }
 
@@ -136,7 +136,7 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
         address newToken = template.predictDeterministicAddress(salt);
         address newStrategy = strategyTemplate.predictDeterministicAddress(salt);
 
-        LMPVaultMainRewarder mainRewarder = new LMPVaultMainRewarder{ salt: salt }(
+        AutoPoolMainRewarder mainRewarder = new AutoPoolMainRewarder{ salt: salt }(
             systemRegistry,
             address(systemRegistry.toke()),
             defaultRewardRatio,
@@ -148,14 +148,14 @@ contract LMPVaultFactory is SystemComponent, ILMPVaultFactory, SecurityBase {
         newVaultAddress = template.cloneDeterministic(salt);
 
         // For Autopool deposit on initialization.
-        uint256 wethInitAmount = LMPVault(newVaultAddress).WETH_INIT_DEPOSIT();
+        uint256 wethInitAmount = AutoPoolETH(newVaultAddress).WETH_INIT_DEPOSIT();
         IWETH9 weth = systemRegistry.weth();
         if (msg.value != wethInitAmount) revert InvalidEthAmount(msg.value);
         weth.deposit{ value: wethInitAmount }();
         LibAdapter._approve(weth, newVaultAddress, wethInitAmount);
 
-        LMPVault(newVaultAddress).initialize(newStrategy, symbolSuffix, descPrefix, extraParams);
-        LMPVault(newVaultAddress).setRewarder(address(mainRewarder));
+        AutoPoolETH(newVaultAddress).initialize(newStrategy, symbolSuffix, descPrefix, extraParams);
+        AutoPoolETH(newVaultAddress).setRewarder(address(mainRewarder));
         LMPStrategy(strategyTemplate.cloneDeterministic(salt)).initialize(newVaultAddress);
 
         // add to VaultRegistry

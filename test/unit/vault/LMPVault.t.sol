@@ -12,7 +12,7 @@ import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { DestinationVaultMocks } from "test/unit/mocks/DestinationVaultMocks.t.sol";
 import { AccessControllerMocks } from "test/unit/mocks/AccessControllerMocks.t.sol";
 import { AutoPoolStrategyMocks } from "test/unit/mocks/AutoPoolStrategyMocks.t.sol";
-import { LMPVault } from "src/vault/LMPVault.sol";
+import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { SystemRegistryMocks } from "test/unit/mocks/SystemRegistryMocks.t.sol";
@@ -24,7 +24,7 @@ import { SystemSecurityMocks } from "test/unit/mocks/SystemSecurityMocks.t.sol";
 import { TestBase } from "test/base/TestBase.sol";
 import { StructuredLinkedList } from "src/strategy/StructuredLinkedList.sol";
 import { WithdrawalQueue } from "src/strategy/WithdrawalQueue.sol";
-import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import { AutoPoolToken } from "src/vault/libs/AutoPoolToken.sol";
 import { console } from "forge-std/console.sol";
@@ -38,7 +38,7 @@ import { TokenReturnSolver } from "test/mocks/TokenReturnSolver.sol";
 import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
 import { Events } from "test/unit/vault/AutoPool.Events.sol";
 
-contract LMPVaultTests is
+contract AutoPoolETHTests is
     Test,
     TestBase,
     SystemRegistryMocks,
@@ -62,14 +62,14 @@ contract LMPVaultTests is
     ISystemRegistry internal systemRegistry;
     IAccessController internal accessController;
     ISystemSecurity internal systemSecurity;
-    address internal lmpStrategy;
+    address internal autoPoolStrategy;
 
     TestERC20 internal vaultAsset;
 
     FeeAndProfitTestVault internal vault;
 
     struct DVSetup {
-        FeeAndProfitTestVault lmpVault;
+        FeeAndProfitTestVault autoPool;
         uint256 dvSharesToLMP;
         uint256 valuePerShare;
         uint256 minDebtValue;
@@ -116,10 +116,10 @@ contract LMPVaultTests is
 
         vm.label(address(vaultAsset), "baseAsset");
 
-        lmpStrategy = makeAddr("lmpStrategy");
+        autoPoolStrategy = makeAddr("autoPoolStrategy");
         bytes memory initData = abi.encode("");
 
-        _mockNavUpdate(lmpStrategy);
+        _mockNavUpdate(autoPoolStrategy);
 
         vaultAsset = new TestERC20("mockWETH", "Mock WETH");
         vaultAsset.setDecimals(9);
@@ -130,7 +130,7 @@ contract LMPVaultTests is
         vaultAsset.mint(address(this), WETH_INIT_DEPOSIT);
         vaultAsset.approve(address(vault), WETH_INIT_DEPOSIT);
 
-        vault.initialize(lmpStrategy, "1", "1", initData);
+        vault.initialize(autoPoolStrategy, "1", "1", initData);
         vm.label(address(vault), "FeeAndProfitTestVaultProxy");
 
         // AutoPool init weth deposit was added later, breaks many tests in this file.  Zero out to avoid issues.
@@ -181,10 +181,10 @@ contract LMPVaultTests is
         // Create the destination vault
         TestERC20 dvToken = new TestERC20("DV", "DV");
         dvToken.setDecimals(tokenDecimals);
-        dv = new DestinationVaultFake(dvToken, TestERC20(setup.lmpVault.asset()));
+        dv = new DestinationVaultFake(dvToken, TestERC20(setup.autoPool.asset()));
 
         // We have our debt reporting snapshot
-        setup.lmpVault.setDestinationInfo(
+        setup.autoPool.setDestinationInfo(
             address(dv),
             (setup.minDebtValue + setup.maxDebtValue) / 2,
             setup.minDebtValue,
@@ -207,14 +207,14 @@ contract LMPVaultTests is
         // Set the price that the dv shares are worth.
         // This also affects how much base asset is returned when shares are burned
         dv.setDebtValuePerShare(setup.valuePerShare);
-        dv.mint(setup.dvSharesToLMP, address(setup.lmpVault));
+        dv.mint(setup.dvSharesToLMP, address(setup.autoPool));
 
         // Act as though we've rebalanced into this destination
         // ------------------------------------------------------------------
 
         // We should be in the withdrawal queue if we've rebalanced here
-        setup.lmpVault.addToWithdrawalQueueTail(address(dv));
-        setup.lmpVault.addToDebtReportingTail(address(dv));
+        setup.autoPool.addToWithdrawalQueueTail(address(dv));
+        setup.autoPool.addToDebtReportingTail(address(dv));
 
         // We have a corresponding total debt value
         vault.increaseTotalDebts((setup.minDebtValue + setup.maxDebtValue) / 2, setup.minDebtValue, setup.maxDebtValue);
@@ -223,11 +223,11 @@ contract LMPVaultTests is
     }
 
     function _mockSuccessfulRebalance() internal {
-        _mockSuccessfulRebalance(lmpStrategy);
+        _mockSuccessfulRebalance(autoPoolStrategy);
     }
 
     function _mockFailingRebalance(string memory message) internal {
-        _mockFailingRebalance(lmpStrategy, message);
+        _mockFailingRebalance(autoPoolStrategy, message);
     }
 
     function _ensureNoStateChanges(VmSafe.AccountAccess[] memory records) internal {
@@ -259,7 +259,7 @@ contract LMPVaultTests is
     }
 }
 
-contract BaseConstructionTests is LMPVaultTests {
+contract BaseConstructionTests is AutoPoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -270,11 +270,11 @@ contract BaseConstructionTests is LMPVaultTests {
 
     function test_setFeeSink_RevertIf_CallerMissingFeeSetterRole() public {
         // This test is allowed
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         // notAdmin is not allowed
         address notAdmin = makeAddr("notAdmin");
-        _mockAccessControllerHasRole(accessController, notAdmin, Roles.LMP_VAULT_FEE_UPDATER, false);
+        _mockAccessControllerHasRole(accessController, notAdmin, Roles.AUTO_POOL_FEE_UPDATER, false);
 
         address feeSink = makeAddr("feeSink");
 
@@ -292,11 +292,11 @@ contract BaseConstructionTests is LMPVaultTests {
         vault.setTotalSupply(WETH_INIT_DEPOSIT);
 
         // This test is allowed
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         // notAdmin is not allowed
         address notAdmin = makeAddr("notAdmin");
-        _mockAccessControllerHasRole(accessController, notAdmin, Roles.LMP_VAULT_FEE_UPDATER, false);
+        _mockAccessControllerHasRole(accessController, notAdmin, Roles.AUTO_POOL_FEE_UPDATER, false);
 
         vm.startPrank(notAdmin);
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
@@ -308,11 +308,11 @@ contract BaseConstructionTests is LMPVaultTests {
 
     function test_setPeriodicFeeSink_RevertIf_CallerMissingMgmtFeeSetterRole() public {
         // This test is allowed
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, true);
 
         // notAdmin is not allowed
         address notAdmin = makeAddr("notAdmin");
-        _mockAccessControllerHasRole(accessController, notAdmin, Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, false);
+        _mockAccessControllerHasRole(accessController, notAdmin, Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, false);
 
         address feeSink = makeAddr("feeSink");
 
@@ -326,11 +326,11 @@ contract BaseConstructionTests is LMPVaultTests {
 
     function test_setPeriodicFeeBps_RevertIf_CallerMissingMgmtFeeSetterRole() public {
         // This test is allowed
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, true);
 
         // notAdmin is not allowed
         address notAdmin = makeAddr("notAdmin");
-        _mockAccessControllerHasRole(accessController, notAdmin, Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, false);
+        _mockAccessControllerHasRole(accessController, notAdmin, Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, false);
 
         vm.startPrank(notAdmin);
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
@@ -341,7 +341,7 @@ contract BaseConstructionTests is LMPVaultTests {
     }
 
     function test_setPeriodicFeeBps_RevertIf_FeeIsGreaterThanTenPercent() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, true);
 
         vm.expectRevert(abi.encodeWithSelector(AutoPoolFees.InvalidFee.selector, 1001));
         vault.setPeriodicFeeBps(1001);
@@ -350,7 +350,7 @@ contract BaseConstructionTests is LMPVaultTests {
     }
 
     function test_setPeriodicFeeSink_SetsAndEmitsAddress() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, true);
 
         address runOne = makeAddr("runOne");
         vm.expectEmit(false, false, false, true);
@@ -368,23 +368,24 @@ contract BaseConstructionTests is LMPVaultTests {
     }
 }
 
-contract InitializationTests is LMPVaultTests {
+contract InitializationTests is AutoPoolETHTests {
     address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
-    TestLMPVault public initTestVault;
-    LMPVault public initTestVaultRestricted;
+    TestAutoPoolETH public initTestVault;
+    AutoPoolETH public initTestVaultRestricted;
 
     error ValueSharesMismatch(uint256 value, uint256 shares);
 
     function setUp() public virtual override {
         super.setUp();
 
-        TestLMPVault initTestVaultTemplate = new TestLMPVault(systemRegistry, address(vaultAsset));
-        LMPVault initTestVaultRestrictedTemplate = new LMPVault(systemRegistry, address(vaultAsset), true);
+        TestAutoPoolETH initTestVaultTemplate = new TestAutoPoolETH(systemRegistry, address(vaultAsset));
+        AutoPoolETH initTestVaultRestrictedTemplate = new AutoPoolETH(systemRegistry, address(vaultAsset), true);
 
-        initTestVault = TestLMPVault(Clones.cloneDeterministic(address(initTestVaultTemplate), "salt1"));
+        initTestVault = TestAutoPoolETH(Clones.cloneDeterministic(address(initTestVaultTemplate), "salt1"));
         // solhint-disable-next-line max-line-length
-        initTestVaultRestricted = LMPVault(Clones.cloneDeterministic(address(initTestVaultRestrictedTemplate), "salt2"));
+        initTestVaultRestricted =
+            AutoPoolETH(Clones.cloneDeterministic(address(initTestVaultRestrictedTemplate), "salt2"));
 
         vaultAsset.mint(address(this), WETH_INIT_DEPOSIT);
         vaultAsset.approve(address(initTestVault), WETH_INIT_DEPOSIT);
@@ -392,14 +393,14 @@ contract InitializationTests is LMPVaultTests {
     }
 
     function test_Reverts_EmptyAndZero() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "lmpStrategyAddress"));
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "autoPoolStrategyAddress"));
         initTestVault.initialize(address(0), "suffix", "prefix", "");
 
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "symbolSuffix"));
-        initTestVault.initialize(lmpStrategy, "", "prefix", "");
+        initTestVault.initialize(autoPoolStrategy, "", "prefix", "");
 
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "descPrefix"));
-        initTestVault.initialize(lmpStrategy, "suffix", "", "");
+        initTestVault.initialize(autoPoolStrategy, "suffix", "", "");
     }
 
     function test_SetsState() public {
@@ -407,13 +408,13 @@ contract InitializationTests is LMPVaultTests {
         string memory suffix = "symbolSuffix";
         string memory prefix = "descPrefix";
 
-        initTestVault.initialize(lmpStrategy, suffix, prefix, "");
+        initTestVault.initialize(autoPoolStrategy, suffix, prefix, "");
 
         assertEq(initTestVault.symbol(), suffix);
         assertEq(initTestVault.name(), prefix);
-        assertEq(address(initTestVault.lmpStrategy()), lmpStrategy);
+        assertEq(address(initTestVault.autoPoolStrategy()), autoPoolStrategy);
 
-        ILMPVault.AutoPoolFeeSettings memory feeSettings = initTestVault.getFeeSettings();
+        IAutoPool.AutoPoolFeeSettings memory feeSettings = initTestVault.getFeeSettings();
         assertEq(feeSettings.lastPeriodicFeeTake, blockTimestamp);
         assertEq(feeSettings.navPerShareLastFeeMark, AutoPoolFees.FEE_DIVISOR);
         assertEq(feeSettings.navPerShareLastFeeMarkTimestamp, blockTimestamp);
@@ -422,7 +423,7 @@ contract InitializationTests is LMPVaultTests {
     function test_RestrictedVault_AllowsInitDeposit() public {
         uint256 vaultInitAssetAmountBefore = vaultAsset.balanceOf(address(this));
 
-        initTestVaultRestricted.initialize(lmpStrategy, "suffix", "prefix", "");
+        initTestVaultRestricted.initialize(autoPoolStrategy, "suffix", "prefix", "");
 
         assertEq(initTestVaultRestricted.balanceOf(DEAD_ADDRESS), WETH_INIT_DEPOSIT);
         assertEq(initTestVaultRestricted.balanceOf(address(initTestVaultRestricted)), 0);
@@ -435,7 +436,7 @@ contract InitializationTests is LMPVaultTests {
     function test_NonRestrictedVault_AllowsInitDeposit() public {
         uint256 vaultInitAssetAmountBefore = vaultAsset.balanceOf(address(this));
 
-        initTestVault.initialize(lmpStrategy, "suffix", "prefix", "");
+        initTestVault.initialize(autoPoolStrategy, "suffix", "prefix", "");
 
         assertEq(initTestVault.balanceOf(DEAD_ADDRESS), WETH_INIT_DEPOSIT);
         assertEq(initTestVault.balanceOf(address(initTestVault)), 0);
@@ -455,11 +456,11 @@ contract InitializationTests is LMPVaultTests {
                 ValueSharesMismatch.selector, WETH_INIT_DEPOSIT, initTestVault.convertToShares(100_000)
             )
         );
-        initTestVault.initialize(lmpStrategy, "suffix", "prefix", "");
+        initTestVault.initialize(autoPoolStrategy, "suffix", "prefix", "");
     }
 }
 
-contract Deposit is LMPVaultTests {
+contract Deposit is AutoPoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -516,7 +517,7 @@ contract Deposit is LMPVaultTests {
 
         _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 5e18,
@@ -526,9 +527,9 @@ contract Deposit is LMPVaultTests {
         );
         vault.setTotalIdle(0);
 
-        uint256 calculatedShares = vault.convertToShares(1e18, ILMPVault.TotalAssetPurpose.Deposit);
-        uint256 withdrawShares = vault.convertToShares(1e18, ILMPVault.TotalAssetPurpose.Withdraw);
-        uint256 globalShares = vault.convertToShares(1e18, ILMPVault.TotalAssetPurpose.Global);
+        uint256 calculatedShares = vault.convertToShares(1e18, IAutoPool.TotalAssetPurpose.Deposit);
+        uint256 withdrawShares = vault.convertToShares(1e18, IAutoPool.TotalAssetPurpose.Withdraw);
+        uint256 globalShares = vault.convertToShares(1e18, IAutoPool.TotalAssetPurpose.Global);
         uint256 actualShares = _depositFor(user, 1e18);
 
         assertEq(actualShares, calculatedShares, "actual");
@@ -543,7 +544,7 @@ contract Deposit is LMPVaultTests {
         // Mimic a deployment
         DestinationVaultFake destVault = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 9e18,
@@ -554,7 +555,7 @@ contract Deposit is LMPVaultTests {
         vault.setTotalIdle(0);
 
         // Get the expected shares based on the value at the last deployment
-        uint256 calculatedShares = vault.convertToShares(1e18, ILMPVault.TotalAssetPurpose.Deposit);
+        uint256 calculatedShares = vault.convertToShares(1e18, IAutoPool.TotalAssetPurpose.Deposit);
 
         // We had a valuePerShare of 1e18 when we deployed, lets value each LP at 5e18
         // This is the idea that when a pool is attacked and skewed to one side we will take the highest priced
@@ -574,7 +575,7 @@ contract Deposit is LMPVaultTests {
         // Mimic a deployment
         DestinationVaultFake destVault = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e9,
                 minDebtValue: 9e9,
@@ -586,7 +587,7 @@ contract Deposit is LMPVaultTests {
         vault.setTotalIdle(0);
 
         // Get the expected shares based on the value at the last deployment
-        uint256 calculatedShares = vault.convertToShares(1e18, ILMPVault.TotalAssetPurpose.Deposit);
+        uint256 calculatedShares = vault.convertToShares(1e18, IAutoPool.TotalAssetPurpose.Deposit);
 
         // We had a valuePerShare of 1e18 when we deployed, lets value each LP at 0.5e18
         // This is the idea that when a pool is attacked and skewed to one side we will take the highest priced
@@ -607,7 +608,7 @@ contract Deposit is LMPVaultTests {
         // Mimic a deployment
         DestinationVaultFake staleDv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 8e9,
@@ -617,7 +618,7 @@ contract Deposit is LMPVaultTests {
         );
         DestinationVaultFake staleDv2 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 5e9,
@@ -627,7 +628,7 @@ contract Deposit is LMPVaultTests {
         );
         _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9e9,
@@ -651,7 +652,7 @@ contract Deposit is LMPVaultTests {
         // Get the expected shares based on the value at the last deployment
         // We'd use the max debt value on deposit, (40e9 debt + 2 idle), and 2e9 existing shares
         // 1e9 * 2e9 / 42e9 = 47619047
-        uint256 calculatedShares = vault.convertToShares(1e9, ILMPVault.TotalAssetPurpose.Deposit);
+        uint256 calculatedShares = vault.convertToShares(1e9, IAutoPool.TotalAssetPurpose.Deposit);
         assertEq(calculatedShares, 47_619_047);
 
         // We use the ceiling price during a repricing
@@ -787,7 +788,7 @@ contract Deposit is LMPVaultTests {
 
         vault.nextDepositGetsDoubleShares();
 
-        vm.expectRevert(abi.encodeWithSelector(LMPVault.NavDecreased.selector, 10_000, 7500));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavDecreased.selector, 10_000, 7500));
         vault.deposit(1e18, user);
     }
 
@@ -796,9 +797,9 @@ contract Deposit is LMPVaultTests {
         vaultAsset.approve(address(vault), 1e18);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
 
-        vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626DepositExceedsMax.selector, 1000, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626DepositExceedsMax.selector, 1000, 0));
         vault.deposit(1000, address(this));
     }
 
@@ -808,7 +809,7 @@ contract Deposit is LMPVaultTests {
         vaultAsset.mint(address(this), 1e18);
         vaultAsset.approve(address(vault), 1e18);
 
-        vm.expectRevert(abi.encodeWithSelector(LMPVault.NavOpsInProgress.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavOpsInProgress.selector));
         vault.deposit(1000, address(this));
 
         _mockSysSecurityNavOpsInProgress(systemSecurity, 0);
@@ -842,7 +843,7 @@ contract Deposit is LMPVaultTests {
 
         vault.pause();
 
-        vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626DepositExceedsMax.selector, 1000, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626DepositExceedsMax.selector, 1000, 0));
         vault.deposit(1000, address(this));
 
         vault.unpause();
@@ -859,7 +860,7 @@ contract Deposit is LMPVaultTests {
 
         _mockSysSecurityIsSystemPaused(systemSecurity, true);
 
-        vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626DepositExceedsMax.selector, 1000, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626DepositExceedsMax.selector, 1000, 0));
         vault.deposit(1000, address(this));
 
         _mockSysSecurityIsSystemPaused(systemSecurity, false);
@@ -881,7 +882,7 @@ contract Deposit is LMPVaultTests {
             vault.toggleAllowedUser(address(this));
         }
 
-        vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626DepositExceedsMax.selector, 2e18, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626DepositExceedsMax.selector, 2e18, 0));
         vault.deposit(2e18, user);
 
         vault.setTotalIdle(2e18);
@@ -894,12 +895,12 @@ contract Deposit is LMPVaultTests {
         vaultAsset.approve(address(vault), type(uint112).max);
         vault.deposit(type(uint112).max, address(this));
 
-        vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626DepositExceedsMax.selector, 1, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626DepositExceedsMax.selector, 1, 0));
         vault.deposit(1, address(this));
     }
 }
 
-contract MaxDepositTests is LMPVaultTests {
+contract MaxDepositTests is AutoPoolETHTests {
     function test_CalculatesAtOneToOne() public {
         address user = makeAddr("user1");
         uint256 depositAmount = 1e18;
@@ -951,7 +952,7 @@ contract MaxDepositTests is LMPVaultTests {
 
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -983,7 +984,7 @@ contract MaxDepositTests is LMPVaultTests {
 
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -1010,7 +1011,7 @@ contract MaxDepositTests is LMPVaultTests {
     }
 }
 
-contract PreviewDepositTests is LMPVaultTests {
+contract PreviewDepositTests is AutoPoolETHTests {
     function test_CalculatesAtOneToOne() public {
         address user = makeAddr("user1");
         uint256 depositAmount = 1e18;
@@ -1031,7 +1032,7 @@ contract PreviewDepositTests is LMPVaultTests {
 
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -1055,7 +1056,7 @@ contract PreviewDepositTests is LMPVaultTests {
     }
 }
 
-contract MintTests is LMPVaultTests {
+contract MintTests is AutoPoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -1115,7 +1116,7 @@ contract MintTests is LMPVaultTests {
 
         _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 5e18,
@@ -1125,9 +1126,9 @@ contract MintTests is LMPVaultTests {
         );
         vault.setTotalIdle(0);
 
-        uint256 calculatedAssets = vault.convertToAssets(1e18, ILMPVault.TotalAssetPurpose.Deposit);
-        uint256 withdrawAssets = vault.convertToAssets(1e18, ILMPVault.TotalAssetPurpose.Withdraw);
-        uint256 globalAssets = vault.convertToAssets(1e18, ILMPVault.TotalAssetPurpose.Global);
+        uint256 calculatedAssets = vault.convertToAssets(1e18, IAutoPool.TotalAssetPurpose.Deposit);
+        uint256 withdrawAssets = vault.convertToAssets(1e18, IAutoPool.TotalAssetPurpose.Withdraw);
+        uint256 globalAssets = vault.convertToAssets(1e18, IAutoPool.TotalAssetPurpose.Global);
         uint256 actualAssets = _mintFor(user, calculatedAssets, 1e18);
 
         assertEq(actualAssets, calculatedAssets, "actual");
@@ -1146,7 +1147,7 @@ contract MintTests is LMPVaultTests {
         // Mimic a deployment
         DestinationVaultFake destVault = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 9e18,
@@ -1157,7 +1158,7 @@ contract MintTests is LMPVaultTests {
         vault.setTotalIdle(0);
 
         // Get the assets required for the shares we want to deposit
-        uint256 calculatedAssets = vault.convertToAssets(1e18, ILMPVault.TotalAssetPurpose.Deposit);
+        uint256 calculatedAssets = vault.convertToAssets(1e18, IAutoPool.TotalAssetPurpose.Deposit);
 
         // We had a valuePerShare of 1e18 when we deployed, lets value each LP at 5e18
         // This is the idea that when a pool is attacked and skewed to one side we will take the highest priced
@@ -1180,7 +1181,7 @@ contract MintTests is LMPVaultTests {
         // Mimic a deployment
         DestinationVaultFake destVault = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e9,
                 minDebtValue: 9e9,
@@ -1192,7 +1193,7 @@ contract MintTests is LMPVaultTests {
         vault.setTotalIdle(0);
 
         // Get the expected shares based on the value at the last deployment
-        uint256 calculatedShares = vault.convertToShares(1e18, ILMPVault.TotalAssetPurpose.Deposit);
+        uint256 calculatedShares = vault.convertToShares(1e18, IAutoPool.TotalAssetPurpose.Deposit);
 
         // We had a valuePerShare of 1e18 when we deployed, lets value each LP at 0.5e18
         // This is the idea that when a pool is attacked and skewed to one side we will take the highest priced
@@ -1211,7 +1212,7 @@ contract MintTests is LMPVaultTests {
         // Mimic a deployment
         DestinationVaultFake staleDv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 8e9,
@@ -1221,7 +1222,7 @@ contract MintTests is LMPVaultTests {
         );
         DestinationVaultFake staleDv2 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 5e9,
@@ -1231,7 +1232,7 @@ contract MintTests is LMPVaultTests {
         );
         _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9e9,
@@ -1255,7 +1256,7 @@ contract MintTests is LMPVaultTests {
         // Get the expected shares based on the value at the last deployment
         // We'd use the max debt value on deposit, (40e9 debt + 2 idle), and 2e9 existing shares
         // 1e9 * 42e9 / 2e9 = 47619047
-        uint256 calculatedShares = vault.convertToAssets(1e9, ILMPVault.TotalAssetPurpose.Deposit);
+        uint256 calculatedShares = vault.convertToAssets(1e9, IAutoPool.TotalAssetPurpose.Deposit);
         assertEq(calculatedShares, 21e9);
 
         // We use the ceiling price during a repricing
@@ -1311,7 +1312,7 @@ contract MintTests is LMPVaultTests {
 
         vault.nextDepositGetsDoubleShares();
 
-        vm.expectRevert(abi.encodeWithSelector(LMPVault.NavDecreased.selector, 10_000, 7500));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavDecreased.selector, 10_000, 7500));
         vault.mint(1e18, user);
     }
 
@@ -1320,9 +1321,9 @@ contract MintTests is LMPVaultTests {
         vaultAsset.approve(address(vault), 1e18);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
 
-        vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626MintExceedsMax.selector, 1000, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626MintExceedsMax.selector, 1000, 0));
         vault.mint(1000, address(this));
     }
 
@@ -1332,7 +1333,7 @@ contract MintTests is LMPVaultTests {
         vaultAsset.mint(address(this), 1e18);
         vaultAsset.approve(address(vault), 1e18);
 
-        vm.expectRevert(abi.encodeWithSelector(LMPVault.NavOpsInProgress.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavOpsInProgress.selector));
         vault.mint(1000, address(this));
 
         _mockSysSecurityNavOpsInProgress(systemSecurity, 0);
@@ -1348,7 +1349,7 @@ contract MintTests is LMPVaultTests {
 
         vault.pause();
 
-        vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626MintExceedsMax.selector, 1000, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626MintExceedsMax.selector, 1000, 0));
         vault.mint(1000, address(this));
 
         vault.unpause();
@@ -1365,7 +1366,7 @@ contract MintTests is LMPVaultTests {
 
         _mockSysSecurityIsSystemPaused(systemSecurity, true);
 
-        vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626MintExceedsMax.selector, 1000, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626MintExceedsMax.selector, 1000, 0));
         vault.mint(1000, address(this));
 
         _mockSysSecurityIsSystemPaused(systemSecurity, false);
@@ -1387,7 +1388,7 @@ contract MintTests is LMPVaultTests {
             vault.toggleAllowedUser(address(this));
         }
 
-        vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626MintExceedsMax.selector, 2e18, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626MintExceedsMax.selector, 2e18, 0));
         vault.mint(2e18, user);
 
         vault.setTotalIdle(2e18);
@@ -1400,12 +1401,12 @@ contract MintTests is LMPVaultTests {
         vaultAsset.approve(address(vault), type(uint112).max);
         vault.deposit(type(uint112).max, address(this));
 
-        vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626MintExceedsMax.selector, 1, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626MintExceedsMax.selector, 1, 0));
         vault.mint(1, address(this));
     }
 }
 
-contract MaxMintTests is LMPVaultTests {
+contract MaxMintTests is AutoPoolETHTests {
     function test_CalculatesAtOneToOne() public {
         address user = makeAddr("user1");
         uint256 depositAmount = 1e18;
@@ -1441,7 +1442,7 @@ contract MaxMintTests is LMPVaultTests {
 
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -1478,7 +1479,7 @@ contract MaxMintTests is LMPVaultTests {
     }
 }
 
-contract PreviewMintTests is LMPVaultTests {
+contract PreviewMintTests is AutoPoolETHTests {
     function test_CalculatesAtOneToOne() public {
         address user = makeAddr("user1");
         uint256 depositAmount = 1e18;
@@ -1499,7 +1500,7 @@ contract PreviewMintTests is LMPVaultTests {
 
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -1523,7 +1524,7 @@ contract PreviewMintTests is LMPVaultTests {
     }
 }
 
-contract Withdraw is LMPVaultTests {
+contract Withdraw is AutoPoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -1562,7 +1563,7 @@ contract Withdraw is LMPVaultTests {
         address user = makeAddr("user1");
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
@@ -1604,7 +1605,7 @@ contract Withdraw is LMPVaultTests {
         address user = makeAddr("user1");
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
@@ -1635,7 +1636,7 @@ contract Withdraw is LMPVaultTests {
         address user = makeAddr("user1");
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
@@ -1668,7 +1669,7 @@ contract Withdraw is LMPVaultTests {
 
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
@@ -1719,7 +1720,7 @@ contract Withdraw is LMPVaultTests {
 
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 9e9,
                 valuePerShare: 1e9,
                 minDebtValue: 8.99e9,
@@ -1771,7 +1772,7 @@ contract Withdraw is LMPVaultTests {
 
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 9e9,
                 valuePerShare: 1e9,
                 minDebtValue: 8.99e9,
@@ -1820,7 +1821,7 @@ contract Withdraw is LMPVaultTests {
 
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
@@ -1942,7 +1943,7 @@ contract Withdraw is LMPVaultTests {
         // Mimic a deployment
         _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 5e18,
@@ -2002,7 +2003,7 @@ contract Withdraw is LMPVaultTests {
         address user = makeAddr("user1");
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
@@ -2027,7 +2028,7 @@ contract Withdraw is LMPVaultTests {
         address user = makeAddr("user1");
         _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
@@ -2050,7 +2051,7 @@ contract Withdraw is LMPVaultTests {
 
     function test_UserReceivesNoMoreThanCachedValueIfValueIncreases() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         address user = makeAddr("user");
         uint256 amount = 1000e9;
@@ -2059,7 +2060,7 @@ contract Withdraw is LMPVaultTests {
         // Deployed 200 assets to DV1
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 100e9,
                 valuePerShare: 2e9,
                 minDebtValue: 1.95e9 * 100,
@@ -2071,7 +2072,7 @@ contract Withdraw is LMPVaultTests {
         // Deployed 800 assets to DV1
         DestinationVaultFake destVault2 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
@@ -2125,7 +2126,7 @@ contract Withdraw is LMPVaultTests {
 
     function test_UserReceivesLessAssetsIfPricesDrops() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         address user = makeAddr("user");
         uint256 amount = 1000e9;
@@ -2134,7 +2135,7 @@ contract Withdraw is LMPVaultTests {
         // Deployed 200 assets to DV1
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 100e9,
                 valuePerShare: 2e9,
                 minDebtValue: 1.95e9 * 100,
@@ -2146,7 +2147,7 @@ contract Withdraw is LMPVaultTests {
         // Deployed 800 assets to DV1
         DestinationVaultFake destVault2 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
@@ -2212,7 +2213,7 @@ contract Withdraw is LMPVaultTests {
 
     function test_StaleDestinationIsRepriced() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         address user = makeAddr("user");
         uint256 amount = 1000e9;
@@ -2220,7 +2221,7 @@ contract Withdraw is LMPVaultTests {
 
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
@@ -2233,7 +2234,7 @@ contract Withdraw is LMPVaultTests {
 
         // Get how many shares we'd expect this to take
         // 1 * 1000 / 760 = ~1.3e9
-        uint256 calculatedShares = vault.convertToShares(1e9, ILMPVault.TotalAssetPurpose.Withdraw);
+        uint256 calculatedShares = vault.convertToShares(1e9, IAutoPool.TotalAssetPurpose.Withdraw);
 
         // We knock the price of our assets nearly in half though
         // 1 * 1000 / 400 (.5 price * 800 shares) = 2.5
@@ -2252,7 +2253,7 @@ contract Withdraw is LMPVaultTests {
         _depositFor(user, 2e9);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
 
         assertEq(vaultAsset.balanceOf(user), 0, "prevBal");
 
@@ -2268,7 +2269,7 @@ contract Withdraw is LMPVaultTests {
 
         _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -2282,7 +2283,7 @@ contract Withdraw is LMPVaultTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -2307,7 +2308,7 @@ contract Withdraw is LMPVaultTests {
 
         _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -2321,7 +2322,7 @@ contract Withdraw is LMPVaultTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -2339,7 +2340,7 @@ contract Withdraw is LMPVaultTests {
 
         _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -2353,7 +2354,7 @@ contract Withdraw is LMPVaultTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -2372,7 +2373,7 @@ contract Withdraw is LMPVaultTests {
 
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -2386,7 +2387,7 @@ contract Withdraw is LMPVaultTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -2414,7 +2415,7 @@ contract Withdraw is LMPVaultTests {
         vault.setNextWithdrawHalvesIdle();
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(LMPVault.NavDecreased.selector, 10_000, 5000));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavDecreased.selector, 10_000, 5000));
         vault.withdraw(1e18, user, user);
         vm.stopPrank();
     }
@@ -2424,14 +2425,14 @@ contract Withdraw is LMPVaultTests {
         _depositFor(user, 2e9);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
 
         assertEq(vaultAsset.balanceOf(user), 0, "prevBal");
 
         _mockSysSecurityNavOpsInProgress(systemSecurity, 1);
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(LMPVault.NavOpsInProgress.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavOpsInProgress.selector));
         vault.withdraw(1e9, user, user);
         vm.stopPrank();
 
@@ -2501,7 +2502,7 @@ contract Withdraw is LMPVaultTests {
     }
 }
 
-contract MaxWithdrawTests is LMPVaultTests {
+contract MaxWithdrawTests is AutoPoolETHTests {
     function test_CalculatesAtOneToOne() public {
         address user = makeAddr("user1");
         uint256 depositAmount = 1e18;
@@ -2552,7 +2553,7 @@ contract MaxWithdrawTests is LMPVaultTests {
 
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -2592,7 +2593,7 @@ contract MaxWithdrawTests is LMPVaultTests {
 
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -2627,7 +2628,7 @@ contract MaxWithdrawTests is LMPVaultTests {
     }
 }
 
-contract Redeem is LMPVaultTests {
+contract Redeem is AutoPoolETHTests {
     using WithdrawalQueue for StructuredLinkedList.List;
 
     function setUp() public virtual override {
@@ -2677,7 +2678,7 @@ contract Redeem is LMPVaultTests {
         address user = makeAddr("user1");
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
@@ -2709,7 +2710,7 @@ contract Redeem is LMPVaultTests {
         address user = makeAddr("user1");
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
@@ -2742,7 +2743,7 @@ contract Redeem is LMPVaultTests {
         address user = makeAddr("user1");
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
@@ -2869,7 +2870,7 @@ contract Redeem is LMPVaultTests {
         // Mimic a deployment
         _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 5e9,
@@ -2913,7 +2914,7 @@ contract Redeem is LMPVaultTests {
         address user = makeAddr("user1");
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 9.99e18,
@@ -2938,7 +2939,7 @@ contract Redeem is LMPVaultTests {
         address user = makeAddr("user1");
         _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
@@ -2961,7 +2962,7 @@ contract Redeem is LMPVaultTests {
 
     function test_UserReceivesNoMoreThanCachedValueIfValueIncreases() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         address user = makeAddr("user");
         uint256 amount = 1000e9;
@@ -2970,7 +2971,7 @@ contract Redeem is LMPVaultTests {
         // Deployed 200 assets to DV1
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 100e9,
                 valuePerShare: 2e9,
                 minDebtValue: 1.95e9 * 100,
@@ -2982,7 +2983,7 @@ contract Redeem is LMPVaultTests {
         // Deployed 800 assets to DV1
         DestinationVaultFake destVault2 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
@@ -3036,7 +3037,7 @@ contract Redeem is LMPVaultTests {
 
     function test_UserReceivesLessAssetsIfPricesDrops() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         address user = makeAddr("user");
         uint256 amount = 1000e9;
@@ -3045,7 +3046,7 @@ contract Redeem is LMPVaultTests {
         // Deployed 200 assets to DV1
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 100e9,
                 valuePerShare: 2e9,
                 minDebtValue: 1.95e9 * 100,
@@ -3057,7 +3058,7 @@ contract Redeem is LMPVaultTests {
         // Deployed 800 assets to DV1
         DestinationVaultFake destVault2 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
@@ -3107,7 +3108,7 @@ contract Redeem is LMPVaultTests {
 
     function test_StaleDestinationIsRepriced() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         address user = makeAddr("user");
         uint256 amount = 1000e9;
@@ -3115,7 +3116,7 @@ contract Redeem is LMPVaultTests {
 
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
@@ -3128,7 +3129,7 @@ contract Redeem is LMPVaultTests {
 
         // Get how many shares we'd expect this to take
         // 1 * 760 / 1000 = .76
-        uint256 calculatedAssets = vault.convertToAssets(1e9, ILMPVault.TotalAssetPurpose.Withdraw);
+        uint256 calculatedAssets = vault.convertToAssets(1e9, IAutoPool.TotalAssetPurpose.Withdraw);
 
         // We knock the price of our assets nearly in half though
         // 1 * 400 / 100 = .4
@@ -3147,7 +3148,7 @@ contract Redeem is LMPVaultTests {
         _depositFor(user, 2e9);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
 
         assertEq(vaultAsset.balanceOf(user), 0, "prevBal");
 
@@ -3163,7 +3164,7 @@ contract Redeem is LMPVaultTests {
 
         _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -3177,7 +3178,7 @@ contract Redeem is LMPVaultTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -3202,7 +3203,7 @@ contract Redeem is LMPVaultTests {
 
         _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -3216,7 +3217,7 @@ contract Redeem is LMPVaultTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -3234,7 +3235,7 @@ contract Redeem is LMPVaultTests {
 
         _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -3248,7 +3249,7 @@ contract Redeem is LMPVaultTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -3267,7 +3268,7 @@ contract Redeem is LMPVaultTests {
 
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -3281,7 +3282,7 @@ contract Redeem is LMPVaultTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        ILMPVault.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -3307,7 +3308,7 @@ contract Redeem is LMPVaultTests {
         vault.setNextWithdrawHalvesIdle();
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(LMPVault.NavDecreased.selector, 10_000, 5000));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavDecreased.selector, 10_000, 5000));
         vault.redeem(1e18, user, user);
         vm.stopPrank();
     }
@@ -3317,14 +3318,14 @@ contract Redeem is LMPVaultTests {
         _depositFor(user, 2e9);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
 
         assertEq(vaultAsset.balanceOf(user), 0, "prevBal");
 
         _mockSysSecurityNavOpsInProgress(systemSecurity, 1);
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(LMPVault.NavOpsInProgress.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavOpsInProgress.selector));
         vault.redeem(1e9, user, user);
         vm.stopPrank();
 
@@ -3405,13 +3406,13 @@ contract Redeem is LMPVaultTests {
         }
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(ILMPVault.ERC4626ExceededMaxRedeem.selector, user, 1e18, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626ExceededMaxRedeem.selector, user, 1e18, 0));
         vault.redeem(1e18, user, user);
         vm.stopPrank();
     }
 }
 
-contract MaxRedeem is LMPVaultTests {
+contract MaxRedeem is AutoPoolETHTests {
     function test_CalculatesAtOneToOne() public {
         address user = makeAddr("user1");
         uint256 depositAmount = 1e18;
@@ -3447,7 +3448,7 @@ contract MaxRedeem is LMPVaultTests {
 
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -3484,7 +3485,7 @@ contract MaxRedeem is LMPVaultTests {
     }
 }
 
-contract Shutdown is LMPVaultTests {
+contract Shutdown is AutoPoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -3494,7 +3495,7 @@ contract Shutdown is LMPVaultTests {
 
         assertEq(vault.isShutdown(), false, "before");
 
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
 
         assertEq(vault.isShutdown(), true, "after");
     }
@@ -3502,49 +3503,49 @@ contract Shutdown is LMPVaultTests {
     function test_SetsShutdownStatusToProvidedValue() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
-        assertEq(uint256(vault.shutdownStatus()), uint256(ILMPVault.VaultShutdownStatus.Active), "before");
+        assertEq(uint256(vault.shutdownStatus()), uint256(IAutoPool.VaultShutdownStatus.Active), "before");
 
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
 
-        assertEq(uint256(vault.shutdownStatus()), uint256(ILMPVault.VaultShutdownStatus.Deprecated), "after");
+        assertEq(uint256(vault.shutdownStatus()), uint256(IAutoPool.VaultShutdownStatus.Deprecated), "after");
     }
 
     function test_EmitsEventDeprecated() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
-        emit Events.Shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        emit Events.Shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
     }
 
     function test_EmitsEventExploit() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
-        emit Events.Shutdown(ILMPVault.VaultShutdownStatus.Exploit);
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Exploit);
+        emit Events.Shutdown(IAutoPool.VaultShutdownStatus.Exploit);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Exploit);
     }
 
     function test_RevertIf_NotCalledByAdmin() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, false);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
     }
 
     function test_RevertIf_TriedToSetToActiveStatus() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
         vm.expectRevert(
-            abi.encodeWithSelector(ILMPVault.InvalidShutdownStatus.selector, ILMPVault.VaultShutdownStatus.Active)
+            abi.encodeWithSelector(IAutoPool.InvalidShutdownStatus.selector, IAutoPool.VaultShutdownStatus.Active)
         );
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Active);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Active);
     }
 }
 
-contract Recover is LMPVaultTests {
+contract Recover is AutoPoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -3683,7 +3684,7 @@ contract Recover is LMPVaultTests {
     //     address dv = address(
     //         _setupDestinationVault(
     //             DVSetup({
-    //                 lmpVault: vault,
+    //                 autoPool: vault,
     //                 dvSharesToLMP: 10e18,
     //                 valuePerShare: 1e18,
     //                 minDebtValue: 5e18,
@@ -3704,7 +3705,7 @@ contract Recover is LMPVaultTests {
     // }
 }
 
-contract PeriodicFees is LMPVaultTests {
+contract PeriodicFees is AutoPoolETHTests {
     function setUp() public virtual override {
         super.setUp();
 
@@ -3716,14 +3717,14 @@ contract PeriodicFees is LMPVaultTests {
     }
 
     function test_CannotSetPeriodicFee_OverMax() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, true);
         vm.expectRevert(abi.encodeWithSignature("InvalidFee(uint256)", 1e18));
 
         vault.setPeriodicFeeBps(1e18);
     }
 
     function test_ProperlySetsFee_EmitsEvent() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, true);
 
         vm.expectEmit(false, false, false, true);
         emit PeriodicFeeSet(500);
@@ -3733,8 +3734,8 @@ contract PeriodicFees is LMPVaultTests {
 
     function test_CollectsPeriodicFeeCorrectly() public {
         // Grant roles
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
 
         //
         // First fee take set up, execution, and checks.
@@ -3862,7 +3863,7 @@ contract PeriodicFees is LMPVaultTests {
 
     function test_LastPeriodicFeeTake_StillUpdatedWhen_FeeNotTaken() public {
         // Grant roles
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
 
         // Local vars.
         uint256 warpAmount = block.timestamp + 10 days;
@@ -3890,7 +3891,7 @@ contract PeriodicFees is LMPVaultTests {
     }
 }
 
-contract TransferFrom is LMPVaultTests {
+contract TransferFrom is AutoPoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -3965,7 +3966,7 @@ contract TransferFrom is LMPVaultTests {
     }
 }
 
-contract Transfer is LMPVaultTests {
+contract Transfer is AutoPoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -4007,7 +4008,7 @@ contract Transfer is LMPVaultTests {
     }
 }
 
-contract Approve is LMPVaultTests {
+contract Approve is AutoPoolETHTests {
     function test_RevertIf_ApprovingFromAddressZero() public {
         vm.startPrank(address(0));
 
@@ -4027,14 +4028,14 @@ contract Approve is LMPVaultTests {
     }
 }
 
-contract SetSymbolAndDescTests is LMPVaultTests {
+contract SetSymbolAndDescTests is AutoPoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
 
     function test_EmitsEvent() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
 
         vm.expectEmit(true, true, true, true);
         emit SymbolAndDescSet("A", "B");
@@ -4043,7 +4044,7 @@ contract SetSymbolAndDescTests is LMPVaultTests {
 
     function test_SetsNewSymbolAndName() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
 
         string memory newSymbol = "A";
         string memory newName = "B";
@@ -4067,7 +4068,7 @@ contract SetSymbolAndDescTests is LMPVaultTests {
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
         vault.setSymbolAndDescAfterShutdown("A", "B");
     }
 
@@ -4075,18 +4076,18 @@ contract SetSymbolAndDescTests is LMPVaultTests {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
         vm.expectRevert(
-            abi.encodeWithSelector(ILMPVault.InvalidShutdownStatus.selector, ILMPVault.VaultShutdownStatus.Active)
+            abi.encodeWithSelector(IAutoPool.InvalidShutdownStatus.selector, IAutoPool.VaultShutdownStatus.Active)
         );
         vault.setSymbolAndDescAfterShutdown("A", "B");
 
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
 
         vault.setSymbolAndDescAfterShutdown("A", "B");
     }
 
     function test_RevertIf_NewSymbolIsBlank() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "newSymbol"));
         vault.setSymbolAndDescAfterShutdown("", "B");
         vault.setSymbolAndDescAfterShutdown("A", "B");
@@ -4094,14 +4095,14 @@ contract SetSymbolAndDescTests is LMPVaultTests {
 
     function test_RevertIf_NewNameIsBlank() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "newName"));
         vault.setSymbolAndDescAfterShutdown("A", "");
         vault.setSymbolAndDescAfterShutdown("A", "B");
     }
 }
 
-contract FeeAndProfitTests is LMPVaultTests {
+contract FeeAndProfitTests is AutoPoolETHTests {
     using Math for uint256;
 
     struct ProfitSetupState {
@@ -4886,7 +4887,7 @@ contract FeeAndProfitTests is LMPVaultTests {
     }
 }
 
-contract FlashRebalanceSetup is LMPVaultTests {
+contract FlashRebalanceSetup is AutoPoolETHTests {
     DestinationVaultFake internal dv1;
     DestinationVaultFake internal dv2;
     TokenReturnSolver internal solver;
@@ -4896,7 +4897,7 @@ contract FlashRebalanceSetup is LMPVaultTests {
 
         dv1 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 0e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0e9,
@@ -4907,7 +4908,7 @@ contract FlashRebalanceSetup is LMPVaultTests {
 
         dv2 = _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 0e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0e9,
@@ -5143,7 +5144,7 @@ contract FlashRebalance is FlashRebalanceSetup {
         address dv1Underlyer = address(dv1.underlyer());
         address asset = vault.asset();
 
-        vm.expectCall(lmpStrategy, abi.encodeWithSelector(ILMPStrategy.rebalanceSuccessfullyExecuted.selector));
+        vm.expectCall(autoPoolStrategy, abi.encodeWithSelector(ILMPStrategy.rebalanceSuccessfullyExecuted.selector));
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5209,7 +5210,7 @@ contract FlashRebalance is FlashRebalanceSetup {
     function test_DestinationRemovedFromQueuesWhenBalanceEmpty() public {
         address user = makeAddr("user");
         _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_DESTINATION_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_DESTINATION_UPDATER, true);
         _mockSuccessfulRebalance();
 
         _depositFor(user, 100e9);
@@ -5569,7 +5570,7 @@ contract FlashRebalance is FlashRebalanceSetup {
 
         // Idle to Idle
         address baseAsset = vault.asset();
-        vm.expectRevert(abi.encodeWithSelector(LMPVault.RebalanceDestinationsMatch.selector, address(vault)));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.RebalanceDestinationsMatch.selector, address(vault)));
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5588,7 +5589,7 @@ contract FlashRebalance is FlashRebalanceSetup {
         _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
         address dv1Underlyer = address(dv1.underlyer());
 
-        vm.expectRevert(abi.encodeWithSelector(LMPVault.RebalanceDestinationsMatch.selector, address(dv1)));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.RebalanceDestinationsMatch.selector, address(dv1)));
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5615,7 +5616,7 @@ contract FlashRebalance is FlashRebalanceSetup {
         bytes memory data = solver.buildDataForDvIn(address(dv1), 50e9);
         _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
 
-        vault.shutdown(ILMPVault.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
 
         address dv1Underlyer = address(dv1.underlyer());
         address tokenOut = vault.asset();
@@ -5824,7 +5825,7 @@ contract FlashRebalance is FlashRebalanceSetup {
         for (uint256 i = 0; i < n; i++) {
             ret[i] = _createAddDestinationVault(
                 DVSetup({
-                    lmpVault: vault,
+                    autoPool: vault,
                     dvSharesToLMP: 0e9,
                     valuePerShare: 1e9,
                     minDebtValue: 0e9,
@@ -5837,19 +5838,19 @@ contract FlashRebalance is FlashRebalanceSetup {
     }
 }
 
-contract UpdateDebtReporting is LMPVaultTests {
+contract UpdateDebtReporting is AutoPoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
 
     function test_NoUnderflowOnDebtDecreaseScenario() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
 
         address user = makeAddr("user");
 
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
@@ -5876,13 +5877,13 @@ contract UpdateDebtReporting is LMPVaultTests {
     }
 
     function test_EarnedAutoCompoundsAreFactoredIntoIdle() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
 
         address user = makeAddr("user");
 
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
@@ -5894,7 +5895,7 @@ contract UpdateDebtReporting is LMPVaultTests {
 
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
@@ -5921,13 +5922,13 @@ contract UpdateDebtReporting is LMPVaultTests {
     }
 
     function test_EarnedAutoCompoundsLeaveNavShareUnaffected() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
 
         address user = makeAddr("user");
 
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
@@ -5939,7 +5940,7 @@ contract UpdateDebtReporting is LMPVaultTests {
 
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
@@ -5973,13 +5974,13 @@ contract UpdateDebtReporting is LMPVaultTests {
     }
 
     function test_EarnedAutoCompoundsPriceAppreciationLeaveNavShareUnaffected() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
 
         address user = makeAddr("user");
 
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
@@ -5991,7 +5992,7 @@ contract UpdateDebtReporting is LMPVaultTests {
 
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
@@ -6025,9 +6026,9 @@ contract UpdateDebtReporting is LMPVaultTests {
     }
 
     function test_CoveredPeriodicFeesLeaveNavShareUnaffected() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         address user = makeAddr("user");
 
@@ -6044,7 +6045,7 @@ contract UpdateDebtReporting is LMPVaultTests {
 
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -6056,7 +6057,7 @@ contract UpdateDebtReporting is LMPVaultTests {
 
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -6094,9 +6095,9 @@ contract UpdateDebtReporting is LMPVaultTests {
     }
 
     function test_CoveredPeriodicAndStreamingFeesLeaveNavShareUnaffected() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         address user = makeAddr("user");
 
@@ -6116,7 +6117,7 @@ contract UpdateDebtReporting is LMPVaultTests {
 
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -6128,7 +6129,7 @@ contract UpdateDebtReporting is LMPVaultTests {
 
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -6169,9 +6170,9 @@ contract UpdateDebtReporting is LMPVaultTests {
     }
 
     function test_NavShareDecreasesWhenPeriodicFeeNotCovered() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_PERIODIC_FEE_UPDATER, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         address user = makeAddr("user");
 
@@ -6188,7 +6189,7 @@ contract UpdateDebtReporting is LMPVaultTests {
 
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -6200,7 +6201,7 @@ contract UpdateDebtReporting is LMPVaultTests {
 
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -6236,7 +6237,7 @@ contract UpdateDebtReporting is LMPVaultTests {
     }
 
     function test_BurnedSharesViaWithdrawReduceTotals() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
 
         // Disable unlock period so profit hits immediately
         vault.setProfitUnlockPeriod(0);
@@ -6247,7 +6248,7 @@ contract UpdateDebtReporting is LMPVaultTests {
 
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9e9,
@@ -6259,7 +6260,7 @@ contract UpdateDebtReporting is LMPVaultTests {
 
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 5e9,
                 valuePerShare: 1e9,
                 minDebtValue: 4.5e9,
@@ -6355,7 +6356,7 @@ contract UpdateDebtReporting is LMPVaultTests {
         // DV2 has 5 shares so we burn 3.889 of them. They're worth 1:1 so we pulled an
         // extra 0.3889 which drops into idle. Cached values don't change, only totals
 
-        ILMPVault.AssetBreakdown memory s5 = vault.getAssetBreakdown();
+        IAutoPool.AssetBreakdown memory s5 = vault.getAssetBreakdown();
         assertEq(s5.totalIdle, 1.138888888e9, /* .75 + .3889*/ "stage5Idle");
         assertEq(s5.totalDebt, 1.111111112e9, /* 1.11111111 shares left @ 1 */ "stage5Debt");
         assertEq(s5.totalDebtMin, 1e9, /* 1.11111111 shares left @ .9 */ "stage5DebtMin");
@@ -6372,7 +6373,7 @@ contract UpdateDebtReporting is LMPVaultTests {
         vault.updateDebtReporting(4);
 
         // Reflect exhausted DV1 and updated cached DV2
-        ILMPVault.AssetBreakdown memory s6 = vault.getAssetBreakdown();
+        IAutoPool.AssetBreakdown memory s6 = vault.getAssetBreakdown();
         assertEq(s6.totalIdle, 1.138888888e9, "stage6Idle");
         assertEq(s6.totalDebt, 2.222222224e9, "stage6Debt");
         assertEq(s6.totalDebtMin, 2.000000001e9, "stage6DebtMin");
@@ -6390,7 +6391,7 @@ contract UpdateDebtReporting is LMPVaultTests {
         uint256 assets = vault.redeem(1e9, user, user);
         vm.stopPrank();
 
-        ILMPVault.AssetBreakdown memory s7 = vault.getAssetBreakdown();
+        IAutoPool.AssetBreakdown memory s7 = vault.getAssetBreakdown();
         assertEq(vault.totalSupply(), 0, "stage7TotalSupply");
         assertEq(assets, 2.25e9, /* totalIdle + remaining dv2 @ 1:1 price from stage6 */ "stage7AssetsRet");
         assertEq(s7.totalIdle, 0, "stage7Idle");
@@ -6407,7 +6408,7 @@ contract UpdateDebtReporting is LMPVaultTests {
         // Final debt reporting that should clear out the remaining cached values
         vault.updateDebtReporting(4);
 
-        ILMPVault.AssetBreakdown memory s8 = vault.getAssetBreakdown();
+        IAutoPool.AssetBreakdown memory s8 = vault.getAssetBreakdown();
         assertEq(s8.totalIdle, 0, "stage8Idle");
         assertEq(s8.totalDebt, 0, "stage8Debt");
         assertEq(s8.totalDebtMin, 0, "stage8DebtMin");
@@ -6421,7 +6422,7 @@ contract UpdateDebtReporting is LMPVaultTests {
     }
 
     function test_DestinationsExhaustedThroughWithdrawLeaveDebtQueue() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
 
         address user = makeAddr("user");
 
@@ -6429,7 +6430,7 @@ contract UpdateDebtReporting is LMPVaultTests {
 
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
@@ -6457,8 +6458,8 @@ contract UpdateDebtReporting is LMPVaultTests {
     }
 
     function test_HighWaterMarkPreventsStreamingFeesTaken() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         address streamingFeeReceiver = makeAddr("streamingFeeReceiver");
 
@@ -6521,8 +6522,8 @@ contract UpdateDebtReporting is LMPVaultTests {
     }
 
     function test_DisabledHighWaterMarkAllowsStreamingFeesTaken() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         address streamingFeeReceiver = makeAddr("streamingFeeReceiver");
 
@@ -6575,8 +6576,8 @@ contract UpdateDebtReporting is LMPVaultTests {
     }
 
     function test_CanTakeFeesWhenHighWaterMarkDecays() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         address streamingFeeReceiver = makeAddr("streamingFeeReceiver");
 
@@ -6636,8 +6637,8 @@ contract UpdateDebtReporting is LMPVaultTests {
     }
 
     function test_CanTakeFeesWhenWeReachMaxDecay() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         address streamingFeeReceiver = makeAddr("streamingFeeReceiver");
 
@@ -6706,7 +6707,7 @@ contract UpdateDebtReporting is LMPVaultTests {
     }
 
     function test_RevertIf_NotCalledByRole() public {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_DEBT_REPORTING_EXECUTOR, false);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, false);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         vault.updateDebtReporting(1);
@@ -6726,7 +6727,7 @@ contract UpdateDebtReporting is LMPVaultTests {
     }
 }
 
-contract AddDestinations is LMPVaultTests {
+contract AddDestinations is AutoPoolETHTests {
     IDestinationVaultRegistry private _destVaultRegistry;
 
     event DestinationVaultAdded(address destination);
@@ -6819,7 +6820,7 @@ contract AddDestinations is LMPVaultTests {
         address dest2 = address(
             _setupDestinationVault(
                 DVSetup({
-                    lmpVault: vault,
+                    autoPool: vault,
                     dvSharesToLMP: 10e18,
                     valuePerShare: 1e18,
                     minDebtValue: 5e18,
@@ -6926,7 +6927,7 @@ contract AddDestinations is LMPVaultTests {
     }
 
     function _allowTestToCallAdd() private {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_DESTINATION_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_DESTINATION_UPDATER, true);
     }
 
     function _mockDestIsRegistered(address destVault, bool isRegistered) private {
@@ -6950,7 +6951,7 @@ contract AddDestinations is LMPVaultTests {
     }
 }
 
-contract RemoveDestinations is LMPVaultTests {
+contract RemoveDestinations is AutoPoolETHTests {
     IDestinationVaultRegistry private _destVaultRegistry;
 
     event DestinationVaultRemoved(address destination);
@@ -7067,7 +7068,7 @@ contract RemoveDestinations is LMPVaultTests {
     }
 
     function _allowTestToCallAdd() private {
-        _mockAccessControllerHasRole(accessController, address(this), Roles.LMP_VAULT_DESTINATION_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_DESTINATION_UPDATER, true);
     }
 
     function _mockDestIsRegistered(address destVault, bool isRegistered) private {
@@ -7091,7 +7092,7 @@ contract RemoveDestinations is LMPVaultTests {
     }
 }
 
-contract TotalAssets is LMPVaultTests {
+contract TotalAssets is AutoPoolETHTests {
     function test_TotalAssetsTimeCheckedDoesNotAllowGlobalUsage() public {
         address user = makeAddr("user1");
         _depositFor(user, 2e18);
@@ -7099,7 +7100,7 @@ contract TotalAssets is LMPVaultTests {
         // Mimic a deployment
         _setupDestinationVault(
             DVSetup({
-                lmpVault: vault,
+                autoPool: vault,
                 dvSharesToLMP: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 9e18,
@@ -7110,7 +7111,7 @@ contract TotalAssets is LMPVaultTests {
         vault.setTotalIdle(0);
 
         vm.expectRevert(abi.encodeWithSelector(LMPDebt.InvalidTotalAssetPurpose.selector));
-        vault.totalAssetsTimeChecked(ILMPVault.TotalAssetPurpose.Global);
+        vault.totalAssetsTimeChecked(IAutoPool.TotalAssetPurpose.Global);
     }
 }
 
@@ -7369,7 +7370,7 @@ contract DestinationVaultFake {
     }
 }
 
-contract TestLMPVault is LMPVault {
+contract TestAutoPoolETH is AutoPoolETH {
     using WithdrawalQueue for StructuredLinkedList.List;
     using EnumerableSet for EnumerableSet.AddressSet;
     using AutoPoolToken for AutoPoolToken.TokenData;
@@ -7377,7 +7378,10 @@ contract TestLMPVault is LMPVault {
     bool private _nextDepositGetsDoubleShares;
     bool private _nextWithdrawHalvesIdle;
 
-    constructor(ISystemRegistry _systemRegistry, address _vaultAsset) LMPVault(_systemRegistry, _vaultAsset, false) { }
+    constructor(
+        ISystemRegistry _systemRegistry,
+        address _vaultAsset
+    ) AutoPoolETH(_systemRegistry, _vaultAsset, false) { }
 
     function directTransfer(address to, uint256 value) external {
         AutoPoolToken.transfer(_tokenData, to, value);
@@ -7504,18 +7508,18 @@ contract TestLMPVault is LMPVault {
     }
 }
 
-contract FeeAndProfitTestVault is TestLMPVault {
+contract FeeAndProfitTestVault is TestAutoPoolETH {
     using WithdrawalQueue for StructuredLinkedList.List;
 
     uint256 private _feeSharesToBeCollected;
     bool private _useRealCollectFees;
 
-    constructor(ISystemRegistry _systemRegistry, address _vaultAsset) TestLMPVault(_systemRegistry, _vaultAsset) { }
+    constructor(ISystemRegistry _systemRegistry, address _vaultAsset) TestAutoPoolETH(_systemRegistry, _vaultAsset) { }
 
     function _updateStrategyNav(uint256 assets, uint256 supply) internal override {
         // If these tests we have 0'd total supply. This can't happen under normal circumstances
         if (supply == 0) {
-            lmpStrategy.navUpdate(0);
+            autoPoolStrategy.navUpdate(0);
             return;
         }
         super._updateStrategyNav(assets, supply);

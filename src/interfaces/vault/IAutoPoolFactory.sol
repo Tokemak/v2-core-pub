@@ -2,13 +2,13 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-interface ILMPVaultFactory {
+interface IAutoPoolFactory {
     ///////////////////////////////////////////////////////////////////
     //                        Vault Creation
     ///////////////////////////////////////////////////////////////////
 
     /**
-     * @notice Spin up a new LMPVault
+     * @notice Spin up a new AutoPoolETH
      * @param strategy Strategy template address
      * @param symbolSuffix Symbol suffix of the new token
      * @param descPrefix Description prefix of the new token

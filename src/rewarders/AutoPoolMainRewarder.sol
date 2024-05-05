@@ -8,11 +8,11 @@ import { MainRewarder, ISystemRegistry, Errors } from "src/rewarders/MainRewarde
 import { Roles } from "src/libs/Roles.sol";
 
 /**
- * @title LMPVaultMainRewarder
+ * @title AutoPoolMainRewarder
  * @notice Main rewarder for LMP Vault contracts.  This is used to enforce role based
  *      access control for LMP rewarders.
  */
-contract LMPVaultMainRewarder is MainRewarder {
+contract AutoPoolMainRewarder is MainRewarder {
     using SafeERC20 for IERC20;
 
     /// @notice IERC20 instance of token being staked in rewarder.
@@ -32,7 +32,7 @@ contract LMPVaultMainRewarder is MainRewarder {
             _rewardToken,
             _newRewardRatio,
             _durationInBlock,
-            Roles.LMP_VAULT_REWARD_MANAGER,
+            Roles.AUTO_POOL_REWARD_MANAGER,
             _allowExtraReward
         )
     {
@@ -50,7 +50,7 @@ contract LMPVaultMainRewarder is MainRewarder {
      * @param claim Whether or not to claim rewards.
      */
     function withdraw(address account, uint256 amount, bool claim) public {
-        if (msg.sender != account && msg.sender != address(systemRegistry.lmpVaultRouter())) {
+        if (msg.sender != account && msg.sender != address(systemRegistry.autoPoolRouter())) {
             revert Errors.AccessDenied();
         }
 
@@ -78,7 +78,7 @@ contract LMPVaultMainRewarder is MainRewarder {
      * @param account Account to claim rewards for
      */
     function getReward(address account, bool claimExtras) public {
-        if (msg.sender != account && msg.sender != address(systemRegistry.lmpVaultRouter())) {
+        if (msg.sender != account && msg.sender != address(systemRegistry.autoPoolRouter())) {
             revert Errors.AccessDenied();
         }
 

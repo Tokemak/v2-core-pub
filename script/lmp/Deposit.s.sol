@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import { BaseScript } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
-import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 
 contract Deposit is BaseScript {
     // 🚨 Manually set variables below. 🚨
@@ -15,7 +15,7 @@ contract Deposit is BaseScript {
     function run() external {
         setUp(Systems.LST_GEN1_MAINNET);
 
-        ILMPVault vault = ILMPVault(VAULT_ADDRESS);
+        IAutoPool vault = IAutoPool(VAULT_ADDRESS);
 
         vm.startBroadcast(privateKey);
 

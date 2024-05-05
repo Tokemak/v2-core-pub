@@ -9,7 +9,7 @@ import { Test } from "forge-std/Test.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
-import { LMPVault } from "src/vault/LMPVault.sol";
+import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { CurveV1StableSwap } from "src/swapper/adapters/CurveV1StableSwap.sol";
 import { AccessController } from "src/security/AccessController.sol";
@@ -63,7 +63,7 @@ contract RedeemTests is AutoPoolTests {
     function test_Redeem() public {
         vm.startPrank(V2_DEPLOYER);
 
-        LMPVault pool = LMPVault(0x21eB47113E148839c30E1A9CA2b00Ea1317b50ed);
+        AutoPoolETH pool = AutoPoolETH(0x21eB47113E148839c30E1A9CA2b00Ea1317b50ed);
         IWETH9 weth = IWETH9(pool.asset());
         uint256 startingBalance = weth.balanceOf(V2_DEPLOYER);
         assertEq(startingBalance, 0.699e18, "startingBalance");
@@ -72,7 +72,7 @@ contract RedeemTests is AutoPoolTests {
         uint256 sharesToBurn = pool.balanceOf(sharesHolder);
 
         AccessController accessController = AccessController(address(_systemRegistry.accessController()));
-        accessController.grantRole(Roles.LMP_DEBT_REPORTING_EXECUTOR, V2_DEPLOYER);
+        accessController.grantRole(Roles.AUTO_POOL_REPORTING_EXECUTOR, V2_DEPLOYER);
 
         uint256 assets = pool.redeem(sharesToBurn, V2_DEPLOYER, sharesHolder);
 
@@ -83,12 +83,12 @@ contract RedeemTests is AutoPoolTests {
 }
 
 contract ShutdownDestination is AutoPoolTests {
-    LMPVault internal _pool;
+    AutoPoolETH internal _pool;
     SystemRegistry internal _systemRegistry;
 
     function setUp() public {
         _setUp(19_640_105);
-        _pool = LMPVault(0x57FA6bb127a428Fe268104AB4d170fe4a99B73B6);
+        _pool = AutoPoolETH(0x57FA6bb127a428Fe268104AB4d170fe4a99B73B6);
         _systemRegistry = SystemRegistry(address(_pool.getSystemRegistry()));
     }
 

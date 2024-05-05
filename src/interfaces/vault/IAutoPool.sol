@@ -9,7 +9,7 @@ import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 
-interface ILMPVault is IERC4626, IERC20Permit {
+interface IAutoPool is IERC4626, IERC20Permit {
     enum VaultShutdownStatus {
         Active,
         Deprecated,
@@ -105,7 +105,7 @@ interface ILMPVault is IERC4626, IERC20Permit {
     function vaultType() external view returns (bytes32);
 
     /// @notice Strategy governing the pools rebalances
-    function lmpStrategy() external view returns (ILMPStrategy);
+    function autoPoolStrategy() external view returns (ILMPStrategy);
 
     /// @notice Allow token recoverer to collect dust / unintended transfers (non-tracked assets only)
     function recover(address[] calldata tokens, uint256[] calldata amounts, address[] calldata destinations) external;
@@ -159,7 +159,7 @@ interface ILMPVault is IERC4626, IERC20Permit {
     /// @notice check if a destination is registered with the vault
     function isDestinationRegistered(address destination) external view returns (bool);
 
-    /// @notice get if a destinationVault is queued for removal by the LMPVault
+    /// @notice get if a destinationVault is queued for removal by the AutoPoolETH
     function isDestinationQueuedForRemoval(address destination) external view returns (bool);
 
     /// @notice Returns instance of vault rewarder.

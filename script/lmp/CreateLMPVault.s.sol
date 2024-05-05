@@ -7,40 +7,45 @@ pragma solidity 0.8.17;
 import { BaseScript, console } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
 import { Roles } from "src/libs/Roles.sol";
-import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
+import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
 
 /**
  * @dev This contract:
  *      1. Creates a new LMP Vault using the `lst-guarded-r1` LMP Vault Factory and the specified strategy template.
  */
-contract CreateLMPVault is BaseScript {
+contract CreateAutoPoolETH is BaseScript {
     // 🚨 Manually set variables below. 🚨
-    string public lmp1SymbolSuffix = "autoETH_guarded";
-    string public lmp1DescPrefix = "Tokemak Guarded autoETH ";
+    string public autoPool1SymbolSuffix = "autoETH_guarded";
+    string public autoPool1DescPrefix = "Tokemak Guarded autoETH ";
     address public strategyTemplateAddress = 0x86Bd762B375f5B17e6e3a964B01980a53536E3b2;
 
-    bytes32 public lmpVaultType = keccak256("lst-guarded-r1");
+    bytes32 public autoPoolType = keccak256("lst-guarded-r1");
 
     function run() external {
         setUp(Systems.LST_GEN1_MAINNET);
 
         vm.startBroadcast(privateKey);
 
-        LMPVaultFactory lmpFactory = LMPVaultFactory(address(systemRegistry.getLMPVaultFactoryByType(lmpVaultType)));
+        AutoPoolFactory autoPoolFactory =
+            AutoPoolFactory(address(systemRegistry.getAutoPoolFactoryByType(autoPoolType)));
 
-        accessController.setupRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(lmpFactory));
+        accessController.setupRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
 
-        bool isTemplate = lmpFactory.isStrategyTemplate(strategyTemplateAddress);
+        bool isTemplate = autoPoolFactory.isStrategyTemplate(strategyTemplateAddress);
 
         if (!isTemplate) {
             revert("Strategy template not found");
         }
 
         // Initial LMP Vault creation.
-        address lmpVault = lmpFactory.createVault(
-            strategyTemplateAddress, lmp1SymbolSuffix, lmp1DescPrefix, keccak256(abi.encodePacked(block.number)), ""
+        address autoPool = autoPoolFactory.createVault(
+            strategyTemplateAddress,
+            autoPool1SymbolSuffix,
+            autoPool1DescPrefix,
+            keccak256(abi.encodePacked(block.number)),
+            ""
         );
-        console.log("LMP Vault address: ", lmpVault);
+        console.log("LMP Vault address: ", autoPool);
 
         vm.stopBroadcast();
     }

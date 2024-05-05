@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 /// @title Keep track of Vaults created through the Vault Factory
-interface ILMPVaultRegistry {
+interface IAutoPoolRegistry {
     ///////////////////////////////////////////////////////////////////
     //                        Errors
     ///////////////////////////////////////////////////////////////////

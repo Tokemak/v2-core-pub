@@ -6,17 +6,17 @@ pragma solidity 0.8.17;
 
 import { Systems } from "./utils/Constants.sol";
 import { BaseScript, console } from "./BaseScript.sol";
-import { LMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
+import { AutoPilotRouter } from "src/vault/AutoPilotRouter.sol";
 
 contract DeployLens is BaseScript {
     function run() external {
         setUp(Systems.LST_GEN1_GOERLI);
         vm.startBroadcast(privateKey);
 
-        LMPVaultRouter o = new LMPVaultRouter(systemRegistry);
+        AutoPilotRouter o = new AutoPilotRouter(systemRegistry);
         console.log("Router Address: %s", address(o));
 
-        systemRegistry.setLMPVaultRouter(address(o));
+        systemRegistry.setAutoPilotRouter(address(o));
 
         vm.stopBroadcast();
     }

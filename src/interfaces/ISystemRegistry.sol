@@ -5,12 +5,12 @@ pragma solidity 0.8.17;
 
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { IAccToke } from "src/interfaces/staking/IAccToke.sol";
-import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
+import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
-import { ILMPVaultRouter } from "src/interfaces/vault/ILMPVaultRouter.sol";
-import { ILMPVaultFactory } from "src/interfaces/vault/ILMPVaultFactory.sol";
+import { IAutoPilotRouter } from "src/interfaces/vault/IAutoPilotRouter.sol";
+import { IAutoPoolFactory } from "src/interfaces/vault/IAutoPoolFactory.sol";
 import { ISystemSecurity } from "src/interfaces/security/ISystemSecurity.sol";
 import { IDestinationRegistry } from "src/interfaces/destinations/IDestinationRegistry.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
@@ -35,9 +35,9 @@ interface ISystemRegistry {
     /// @return accToke instance of the accToke contract for the system
     function gpToke() external view returns (IAccToke);
 
-    /// @notice Get the LMP Vault registry for this system
+    /// @notice Get the AutoPoolRegistry for this system
     /// @return registry instance of the registry for this system
-    function lmpVaultRegistry() external view returns (ILMPVaultRegistry registry);
+    function autoPoolRegistry() external view returns (IAutoPoolRegistry registry);
 
     /// @notice Get the destination Vault registry for this system
     /// @return registry instance of the registry for this system
@@ -51,13 +51,13 @@ interface ISystemRegistry {
     /// @return registry instance of the registry for this system
     function destinationTemplateRegistry() external view returns (IDestinationRegistry registry);
 
-    /// @notice LMP Vault Router
-    /// @return router instance of the lmp vault router
-    function lmpVaultRouter() external view returns (ILMPVaultRouter router);
+    /// @notice Auto Pilot Router
+    /// @return router instance of the system
+    function autoPoolRouter() external view returns (IAutoPilotRouter router);
 
     /// @notice Vault factory lookup by type
     /// @return vaultFactory instance of the vault factory for this vault type
-    function getLMPVaultFactoryByType(bytes32 vaultType) external view returns (ILMPVaultFactory vaultFactory);
+    function getAutoPoolFactoryByType(bytes32 vaultType) external view returns (IAutoPoolFactory vaultFactory);
 
     /// @notice Get the stats calculator registry for this system
     /// @return registry instance of the registry for this system

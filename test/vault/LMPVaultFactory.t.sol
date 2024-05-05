@@ -6,12 +6,12 @@ pragma solidity 0.8.17;
 
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
-import { LMPVault } from "src/vault/LMPVault.sol";
+import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { Test } from "forge-std/Test.sol";
-import { LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
-import { LMPVaultFactory } from "src/vault/LMPVaultFactory.sol";
+import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
+import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { LMPStrategy } from "src/strategy/LMPStrategy.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
@@ -19,14 +19,14 @@ import { LMPStrategyTestHelpers as stratHelpers } from "test/strategy/LMPStrateg
 import { WETH_MAINNET } from "test/utils/Addresses.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 
-contract LMPVaultFactoryTest is Test {
+contract AutoPoolFactoryTest is Test {
     uint256 public constant WETH_INIT_DEPOSIT = 100_000;
     address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     SystemRegistry internal _systemRegistry;
     AccessController internal _accessController;
-    LMPVaultRegistry internal _lmpVaultRegistry;
-    LMPVaultFactory internal _lmpVaultFactory;
+    AutoPoolRegistry internal _autoPoolRegistry;
+    AutoPoolFactory internal _autoPoolFactory;
     SystemSecurity internal _systemSecurity;
 
     IWETH9 internal _asset;
@@ -34,7 +34,7 @@ contract LMPVaultFactoryTest is Test {
 
     address internal _template;
     address internal _stratTemplate;
-    bytes internal lmpVaultInitData;
+    bytes internal autoPoolInitData;
 
     // ERC20 transfer event.
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -56,8 +56,8 @@ contract LMPVaultFactoryTest is Test {
         _accessController = new AccessController(address(_systemRegistry));
         _systemRegistry.setAccessController(address(_accessController));
 
-        _lmpVaultRegistry = new LMPVaultRegistry(_systemRegistry);
-        _systemRegistry.setLMPVaultRegistry(address(_lmpVaultRegistry));
+        _autoPoolRegistry = new AutoPoolRegistry(_systemRegistry);
+        _systemRegistry.setAutoPoolRegistry(address(_autoPoolRegistry));
 
         _systemSecurity = new SystemSecurity(_systemRegistry);
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
@@ -68,54 +68,54 @@ contract LMPVaultFactoryTest is Test {
         _systemRegistry.addRewardToken(address(_asset));
         vm.label(address(_asset), "asset");
 
-        _template = address(new LMPVault(_systemRegistry, address(_asset), false));
+        _template = address(new AutoPoolETH(_systemRegistry, address(_asset), false));
 
-        _lmpVaultFactory = new LMPVaultFactory(_systemRegistry, _template, 800, 100);
-        _accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(_lmpVaultFactory));
+        _autoPoolFactory = new AutoPoolFactory(_systemRegistry, _template, 800, 100);
+        _accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(_autoPoolFactory));
 
-        lmpVaultInitData = abi.encode("");
+        autoPoolInitData = abi.encode("");
 
         _stratTemplate = address(new LMPStrategy(_systemRegistry, stratHelpers.getDefaultConfig()));
-        _lmpVaultFactory.addStrategyTemplate(_stratTemplate);
+        _autoPoolFactory.addStrategyTemplate(_stratTemplate);
 
-        // Mock LMPVaultRouter call.
+        // Mock AutoPilotRouter call.
         vm.mockCall(
             address(_systemRegistry),
-            abi.encodeWithSelector(SystemRegistry.lmpVaultRouter.selector),
+            abi.encodeWithSelector(SystemRegistry.autoPoolRouter.selector),
             abi.encode(makeAddr("LMP_VAULT_ROUTER"))
         );
     }
 }
 
-contract Constructor is LMPVaultFactoryTest {
+contract Constructor is AutoPoolFactoryTest {
     function test_RevertIf_TemplateIsZero() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "template"));
-        new LMPVaultFactory(_systemRegistry, address(0), 800, 100);
+        new AutoPoolFactory(_systemRegistry, address(0), 800, 100);
     }
 
     function test_SetDefaultRewardRatio() public {
-        assertEq(_lmpVaultFactory.defaultRewardRatio(), 800);
+        assertEq(_autoPoolFactory.defaultRewardRatio(), 800);
     }
 
     function test_SetTemplate() public {
-        assertEq(_lmpVaultFactory.template(), _template);
+        assertEq(_autoPoolFactory.template(), _template);
     }
 
     function test_SetVaultRegistry() public {
-        assertEq(address(_lmpVaultFactory.vaultRegistry()), address(_lmpVaultRegistry));
+        assertEq(address(_autoPoolFactory.vaultRegistry()), address(_autoPoolRegistry));
     }
 
     function test_SetDefaultRewardBlockDuration() public {
-        assertEq(_lmpVaultFactory.defaultRewardBlockDuration(), 100);
+        assertEq(_autoPoolFactory.defaultRewardBlockDuration(), 100);
     }
 }
 
-contract AddStrategyTemplate is LMPVaultFactoryTest {
+contract AddStrategyTemplate is AutoPoolFactoryTest {
     event StrategyTemplateAdded(address template);
 
     function test_RevertIf_ItemAlreadyExists() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ItemExists.selector));
-        _lmpVaultFactory.addStrategyTemplate(_stratTemplate);
+        _autoPoolFactory.addStrategyTemplate(_stratTemplate);
     }
 
     function test_EmitStrategyTemplateAdded() public {
@@ -124,49 +124,49 @@ contract AddStrategyTemplate is LMPVaultFactoryTest {
         vm.expectEmit(true, true, true, true);
         emit StrategyTemplateAdded(random);
 
-        _lmpVaultFactory.addStrategyTemplate(random);
+        _autoPoolFactory.addStrategyTemplate(random);
     }
 }
 
-contract RemoveStrategyTemplate is LMPVaultFactoryTest {
+contract RemoveStrategyTemplate is AutoPoolFactoryTest {
     event StrategyTemplateRemoved(address template);
 
     function test_RevertIf_ItemNotFound() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ItemNotFound.selector));
-        _lmpVaultFactory.removeStrategyTemplate(address(0));
+        _autoPoolFactory.removeStrategyTemplate(address(0));
     }
 
     function test_EmitStrategyTemplateRemoved() public {
         vm.expectEmit(true, true, true, true);
         emit StrategyTemplateRemoved(_stratTemplate);
 
-        _lmpVaultFactory.removeStrategyTemplate(_stratTemplate);
+        _autoPoolFactory.removeStrategyTemplate(_stratTemplate);
     }
 }
 
-contract SetDefaultRewardRatio is LMPVaultFactoryTest {
+contract SetDefaultRewardRatio is AutoPoolFactoryTest {
     event DefaultRewardRatioSet(uint256 rewardRatio);
 
     function test_EmitDefaultRewardRatioSet() public {
         vm.expectEmit(true, true, true, true);
         emit DefaultRewardRatioSet(900);
 
-        _lmpVaultFactory.setDefaultRewardRatio(900);
+        _autoPoolFactory.setDefaultRewardRatio(900);
     }
 }
 
-contract SetDefaultRewardBlockDuration is LMPVaultFactoryTest {
+contract SetDefaultRewardBlockDuration is AutoPoolFactoryTest {
     event DefaultBlockDurationSet(uint256 blockDuration);
 
     function test_EmitDefaultBlockDurationSet() public {
         vm.expectEmit(true, true, true, true);
         emit DefaultBlockDurationSet(900);
 
-        _lmpVaultFactory.setDefaultRewardBlockDuration(900);
+        _autoPoolFactory.setDefaultRewardBlockDuration(900);
     }
 }
 
-contract CreateVault is LMPVaultFactoryTest {
+contract CreateVault is AutoPoolFactoryTest {
     error InvalidStrategy();
 
     function test_RevertIf_NotVaultCreator() public {
@@ -174,8 +174,8 @@ contract CreateVault is LMPVaultFactoryTest {
         deal(pranker, 3 ether);
         vm.startPrank(pranker);
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
-            _stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData
+        _autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT }(
+            _stratTemplate, "x", "y", keccak256("v1"), autoPoolInitData
         );
     }
 
@@ -183,46 +183,46 @@ contract CreateVault is LMPVaultFactoryTest {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "salt"));
         bytes32 salt = bytes32(0);
 
-        _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(_stratTemplate, "x", "y", salt, lmpVaultInitData);
+        _autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT }(_stratTemplate, "x", "y", salt, autoPoolInitData);
     }
 
     function test_RevertIf_StrategyTemplateDoesNotExist() public {
-        vm.expectRevert(abi.encodeWithSelector(LMPVaultFactory.InvalidStrategy.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolFactory.InvalidStrategy.selector));
 
-        _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
-            makeAddr("random"), "x", "y", keccak256("v1"), lmpVaultInitData
+        _autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT }(
+            makeAddr("random"), "x", "y", keccak256("v1"), autoPoolInitData
         );
     }
 
     function test_RevertIf_InvalidEthAmount() public {
-        vm.expectRevert(abi.encodeWithSelector(LMPVaultFactory.InvalidEthAmount.selector, WETH_INIT_DEPOSIT + 1));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolFactory.InvalidEthAmount.selector, WETH_INIT_DEPOSIT + 1));
 
-        _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT + 1 }(
-            _stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData
+        _autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT + 1 }(
+            _stratTemplate, "x", "y", keccak256("v1"), autoPoolInitData
         );
     }
 
     function test_AddVaultToRegistry() public {
-        address newVault = _lmpVaultFactory.createVault{ value: WETH_INIT_DEPOSIT }(
-            _stratTemplate, "x", "y", keccak256("v1"), lmpVaultInitData
+        address newVault = _autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT }(
+            _stratTemplate, "x", "y", keccak256("v1"), autoPoolInitData
         );
 
-        assertTrue(_lmpVaultRegistry.isVault(newVault));
+        assertTrue(_autoPoolRegistry.isVault(newVault));
     }
 }
 
-contract GetStrategyTemplates is LMPVaultFactoryTest {
+contract GetStrategyTemplates is AutoPoolFactoryTest {
     function test_ReturnsStrategyTemplates() public {
-        assertEq(_lmpVaultFactory.getStrategyTemplates()[0], _stratTemplate);
+        assertEq(_autoPoolFactory.getStrategyTemplates()[0], _stratTemplate);
     }
 }
 
-contract IsStrategyTemplate is LMPVaultFactoryTest {
+contract IsStrategyTemplate is AutoPoolFactoryTest {
     function test_ReturnsTrueIfStrategyTemplate() public {
-        assertTrue(_lmpVaultFactory.isStrategyTemplate(_stratTemplate));
+        assertTrue(_autoPoolFactory.isStrategyTemplate(_stratTemplate));
     }
 
     function test_ReturnsFalseIfNotStrategyTemplate() public {
-        assertFalse(_lmpVaultFactory.isStrategyTemplate(makeAddr("random")));
+        assertFalse(_autoPoolFactory.isStrategyTemplate(makeAddr("random")));
     }
 }

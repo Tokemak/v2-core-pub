@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.17;
 
-import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { AutoPoolToken } from "src/vault/libs/AutoPoolToken.sol";
 
@@ -40,7 +40,7 @@ library AutoPoolFees {
 
     /// @notice Returns the amount of unlocked profit shares that will be burned
     function unlockedShares(
-        ILMPVault.ProfitUnlockSettings storage profitUnlockSettings,
+        IAutoPool.ProfitUnlockSettings storage profitUnlockSettings,
         AutoPoolToken.TokenData storage tokenData
     ) public view returns (uint256 shares) {
         uint256 fullTime = profitUnlockSettings.fullProfitUnlockTime;
@@ -52,7 +52,7 @@ library AutoPoolFees {
         }
     }
 
-    function initializeFeeSettings(ILMPVault.AutoPoolFeeSettings storage settings) external {
+    function initializeFeeSettings(IAutoPool.AutoPoolFeeSettings storage settings) external {
         uint256 timestamp = block.timestamp;
         settings.lastPeriodicFeeTake = timestamp; // Stops fees from being able to be claimed before init timestamp.
         settings.navPerShareLastFeeMark = FEE_DIVISOR;
@@ -61,7 +61,7 @@ library AutoPoolFees {
     }
 
     function burnUnlockedShares(
-        ILMPVault.ProfitUnlockSettings storage profitUnlockSettings,
+        IAutoPool.ProfitUnlockSettings storage profitUnlockSettings,
         AutoPoolToken.TokenData storage tokenData
     ) external {
         uint256 shares = unlockedShares(profitUnlockSettings, tokenData);
@@ -75,7 +75,7 @@ library AutoPoolFees {
     }
 
     function _calculateEffectiveNavPerShareLastFeeMark(
-        ILMPVault.AutoPoolFeeSettings storage settings,
+        IAutoPool.AutoPoolFeeSettings storage settings,
         uint256 currentBlock,
         uint256 currentNavPerShare,
         uint256 aumCurrent
@@ -98,7 +98,7 @@ library AutoPoolFees {
             return currentNavPerShare;
         }
         if (daysSinceLastFeeEarned > 60 && daysSinceLastFeeEarned <= 600) {
-            uint8 decimals = ILMPVault(address(this)).decimals();
+            uint8 decimals = IAutoPool(address(this)).decimals();
 
             uint256 one = 10 ** decimals;
             uint256 aumHighMark = settings.totalAssetsHighMark;
@@ -137,7 +137,7 @@ library AutoPoolFees {
     function collectFees(
         uint256 totalAssets,
         uint256 currentTotalSupply,
-        ILMPVault.AutoPoolFeeSettings storage settings,
+        IAutoPool.AutoPoolFeeSettings storage settings,
         AutoPoolToken.TokenData storage tokenData,
         bool collectPeriodicFees
     ) external returns (uint256) {
@@ -281,7 +281,7 @@ library AutoPoolFees {
 
     /// @dev If set to 0, existing shares will unlock immediately and increase nav/share. This is intentional
     function setProfitUnlockPeriod(
-        ILMPVault.ProfitUnlockSettings storage settings,
+        IAutoPool.ProfitUnlockSettings storage settings,
         AutoPoolToken.TokenData storage tokenData,
         uint48 newUnlockPeriodInSeconds
     ) external {
@@ -305,7 +305,7 @@ library AutoPoolFees {
     }
 
     function calculateProfitLocking(
-        ILMPVault.ProfitUnlockSettings storage settings,
+        IAutoPool.ProfitUnlockSettings storage settings,
         AutoPoolToken.TokenData storage tokenData,
         uint256 feeShares,
         uint256 newTotalAssets,
@@ -383,7 +383,7 @@ library AutoPoolFees {
     }
 
     function _updateProfitUnlockTimings(
-        ILMPVault.ProfitUnlockSettings storage settings,
+        IAutoPool.ProfitUnlockSettings storage settings,
         uint256 unlockPeriod,
         uint256 previousLockToBurn,
         uint256 previousLockShares,
@@ -412,7 +412,7 @@ library AutoPoolFees {
     /// @notice Enable or disable the high water mark on the rebalance fee
     /// @dev Will revert if set to the same value
     function setRebalanceFeeHighWaterMarkEnabled(
-        ILMPVault.AutoPoolFeeSettings storage feeSettings,
+        IAutoPool.AutoPoolFeeSettings storage feeSettings,
         bool enabled
     ) external {
         if (feeSettings.rebalanceFeeHighWaterMarkEnabled == enabled) {
@@ -427,14 +427,14 @@ library AutoPoolFees {
     /// @notice Set the fee that will be taken when profit is realized
     /// @dev Resets the high water to current value
     /// @param fee Percent. 100% == 10000
-    function setStreamingFeeBps(ILMPVault.AutoPoolFeeSettings storage feeSettings, uint256 fee) external {
+    function setStreamingFeeBps(IAutoPool.AutoPoolFeeSettings storage feeSettings, uint256 fee) external {
         if (fee >= FEE_DIVISOR) {
             revert InvalidFee(fee);
         }
 
         feeSettings.streamingFeeBps = fee;
 
-        ILMPVault vault = ILMPVault(address(this));
+        IAutoPool vault = IAutoPool(address(this));
 
         // Set the high mark when we change the fee so we aren't able to go farther back in
         // time than one debt reporting and claim fee's against past profits
@@ -453,7 +453,7 @@ library AutoPoolFees {
     /// @notice Set the periodic fee taken.
     /// @dev Zero is allowed, no fee taken.
     /// @param fee Fee to update periodic fee to.
-    function setPeriodicFeeBps(ILMPVault.AutoPoolFeeSettings storage feeSettings, uint256 fee) external {
+    function setPeriodicFeeBps(IAutoPool.AutoPoolFeeSettings storage feeSettings, uint256 fee) external {
         if (fee > MAX_PERIODIC_FEE_BPS) {
             revert InvalidFee(fee);
         }
@@ -465,7 +465,7 @@ library AutoPoolFees {
 
     /// @notice Set the address that will receive fees
     /// @param newFeeSink Address that will receive fees
-    function setFeeSink(ILMPVault.AutoPoolFeeSettings storage feeSettings, address newFeeSink) external {
+    function setFeeSink(IAutoPool.AutoPoolFeeSettings storage feeSettings, address newFeeSink) external {
         emit FeeSinkSet(newFeeSink);
 
         // Zero is valid. One way to disable taking fees
@@ -477,7 +477,7 @@ library AutoPoolFees {
     /// @dev Zero address allowable.  Disables fees.
     /// @param newPeriodicFeeSink New periodic fee address.
     function setPeriodicFeeSink(
-        ILMPVault.AutoPoolFeeSettings storage feeSettings,
+        IAutoPool.AutoPoolFeeSettings storage feeSettings,
         address newPeriodicFeeSink
     ) external {
         emit PeriodicFeeSinkSet(newPeriodicFeeSink);

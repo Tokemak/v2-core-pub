@@ -7,9 +7,9 @@ pragma solidity 0.8.17;
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
-import { LMPVaultRouter } from "src/vault/LMPVaultRouter.sol";
-import { ILMPVault } from "src/vault/LMPVault.sol";
-import { ISystemRegistry } from "src/vault/LMPVaultRouterBase.sol";
+import { AutoPilotRouter } from "src/vault/AutoPilotRouter.sol";
+import { IAutoPool } from "src/vault/AutoPoolETH.sol";
+import { ISystemRegistry } from "src/vault/AutoPilotRouterBase.sol";
 import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { AsyncSwapperRegistry } from "src/liquidation/AsyncSwapperRegistry.sol";
 import { hevm } from "test/echidna/fuzz/utils/Hevm.sol";
@@ -18,10 +18,10 @@ import { PropertiesAsserts } from "crytic/properties/contracts/util/PropertiesHe
 import { ERC2612 } from "test/utils/ERC2612.sol";
 import { TestWETH9, TestERC20 } from "test/mocks/TestWETH9.sol";
 
-contract TestRouter is LMPVaultRouter {
+contract TestRouter is AutoPilotRouter {
     using SafeERC20 for IERC20;
 
-    constructor(ISystemRegistry _systemRegistry) LMPVaultRouter(_systemRegistry) { }
+    constructor(ISystemRegistry _systemRegistry) AutoPilotRouter(_systemRegistry) { }
 
     /// @notice Intentionally vulnerable. Will filter out for normal runs but used to test checks are working
     function pullTokenFrom(IERC20 token, uint256 amount, address from, address recipient) public payable {
@@ -40,9 +40,9 @@ contract SwapperMock is BaseAsyncSwapper {
     }
 }
 
-abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
+abstract contract AutoPilotRouterUsage is BasePoolSetup, PropertiesAsserts {
     TestERC20 internal _vaultAsset;
-    TestRouter internal lmpVaultRouter;
+    TestRouter internal autoPoolRouter;
     SwapperMock internal swapperMock;
 
     /// @dev The caller of the operation
@@ -85,13 +85,13 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         _pool.setDisableNavDecreaseCheck(true);
         _pool.setCryticFnsEnabled(false);
 
-        lmpVaultRouter = new TestRouter(_systemRegistry);
+        autoPoolRouter = new TestRouter(_systemRegistry);
 
         _pool.toggleAllowedUser(address(this));
         _pool.toggleAllowedUser(_user1);
         _pool.toggleAllowedUser(_user2);
         _pool.toggleAllowedUser(_user3);
-        _pool.toggleAllowedUser(address(lmpVaultRouter));
+        _pool.toggleAllowedUser(address(autoPoolRouter));
 
         AsyncSwapperRegistry asyncSwapperRegistry = new AsyncSwapperRegistry(_systemRegistry);
         _systemRegistry.setAsyncSwapperRegistry(address(asyncSwapperRegistry));
@@ -103,7 +103,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
     // Multicall
     function executeMulticall() public updateUser1Balance {
         _startPrank(msg.sender);
-        lmpVaultRouter.multicall(queuedCalls);
+        autoPoolRouter.multicall(queuedCalls);
         _stopPrank();
 
         delete queuedCalls;
@@ -112,13 +112,13 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
     // Approve
     function approveAssetsToRouter(uint256 amount) public updateUser1Balance {
         _startPrank(msg.sender);
-        _vaultAsset.approve(address(lmpVaultRouter), amount);
+        _vaultAsset.approve(address(autoPoolRouter), amount);
         _stopPrank();
     }
 
     function approveSharesToRouter(uint256 amount) public updateUser1Balance {
         _startPrank(msg.sender);
-        _pool.approve(address(lmpVaultRouter), amount);
+        _pool.approve(address(autoPoolRouter), amount);
         _stopPrank();
     }
 
@@ -126,28 +126,28 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address to = _resolveUserFromSeed(toSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.approve(_vaultAsset, to, amount);
+        autoPoolRouter.approve(_vaultAsset, to, amount);
         _stopPrank();
     }
 
     function queueApproveAsset(uint256 toSeed, uint256 amount) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
 
-        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.approve.selector, _vaultAsset, to, amount));
+        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.approve.selector, _vaultAsset, to, amount));
     }
 
     function approveShare(uint256 toSeed, uint256 amount) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.approve(_pool, to, amount);
+        autoPoolRouter.approve(_pool, to, amount);
         _stopPrank();
     }
 
     function queueApproveShare(uint256 toSeed, uint256 amount) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
 
-        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.approve.selector, _pool, to, amount));
+        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.approve.selector, _pool, to, amount));
     }
 
     // Mint
@@ -160,55 +160,55 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
 
     function mint(uint256 toSeed, uint256 shares, uint256 maxAmountIn) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
-        IERC20 baseAsset = IERC20(ILMPVault(_pool).asset());
+        IERC20 baseAsset = IERC20(IAutoPool(_pool).asset());
 
         _startPrank(msg.sender);
-        lmpVaultRouter.pullToken(baseAsset, shares, address(lmpVaultRouter));
-        lmpVaultRouter.approve(baseAsset, address(_pool), shares);
-        lmpVaultRouter.mint(_pool, to, shares, maxAmountIn);
+        autoPoolRouter.pullToken(baseAsset, shares, address(autoPoolRouter));
+        autoPoolRouter.approve(baseAsset, address(_pool), shares);
+        autoPoolRouter.mint(_pool, to, shares, maxAmountIn);
         _stopPrank();
     }
 
     function queueMint(uint256 toSeed, uint256 shares, uint256 maxAmountIn) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
-        IERC20 baseAsset = IERC20(ILMPVault(_pool).asset());
-        queuedCalls.push(abi.encodeCall(lmpVaultRouter.pullToken, (baseAsset, shares, address(lmpVaultRouter))));
-        queuedCalls.push(abi.encodeCall(lmpVaultRouter.approve, (baseAsset, address(_pool), shares)));
-        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.mint.selector, _pool, to, shares, maxAmountIn));
+        IERC20 baseAsset = IERC20(IAutoPool(_pool).asset());
+        queuedCalls.push(abi.encodeCall(autoPoolRouter.pullToken, (baseAsset, shares, address(autoPoolRouter))));
+        queuedCalls.push(abi.encodeCall(autoPoolRouter.approve, (baseAsset, address(_pool), shares)));
+        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.mint.selector, _pool, to, shares, maxAmountIn));
     }
 
     // Deposit
     function deposit(uint256 toSeed, uint256 amount, uint256 minSharesOut) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
-        IERC20 baseAsset = IERC20(ILMPVault(_pool).asset());
+        IERC20 baseAsset = IERC20(IAutoPool(_pool).asset());
 
         _startPrank(msg.sender);
-        lmpVaultRouter.pullToken(baseAsset, amount, address(lmpVaultRouter));
-        lmpVaultRouter.approve(baseAsset, address(_pool), amount);
-        lmpVaultRouter.deposit(_pool, to, amount, minSharesOut);
+        autoPoolRouter.pullToken(baseAsset, amount, address(autoPoolRouter));
+        autoPoolRouter.approve(baseAsset, address(_pool), amount);
+        autoPoolRouter.deposit(_pool, to, amount, minSharesOut);
         _stopPrank();
     }
 
     function queueDeposit(uint256 toSeed, uint256 amount, uint256 minSharesOut) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
-        IERC20 baseAsset = IERC20(ILMPVault(_pool).asset());
-        queuedCalls.push(abi.encodeCall(lmpVaultRouter.pullToken, (baseAsset, amount, address(lmpVaultRouter))));
-        queuedCalls.push(abi.encodeCall(lmpVaultRouter.approve, (baseAsset, address(_pool), amount)));
-        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.deposit.selector, _pool, to, amount, minSharesOut));
+        IERC20 baseAsset = IERC20(IAutoPool(_pool).asset());
+        queuedCalls.push(abi.encodeCall(autoPoolRouter.pullToken, (baseAsset, amount, address(autoPoolRouter))));
+        queuedCalls.push(abi.encodeCall(autoPoolRouter.approve, (baseAsset, address(_pool), amount)));
+        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.deposit.selector, _pool, to, amount, minSharesOut));
     }
 
     function depositMax(uint256 toSeed, uint256 minSharesOut) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.depositMax(_pool, to, minSharesOut);
+        autoPoolRouter.depositMax(_pool, to, minSharesOut);
         _stopPrank();
     }
 
     function queueDepositMax(uint256 toSeed, uint256 minSharesOut) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
 
-        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.depositMax.selector, _pool, to, minSharesOut));
+        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.depositMax.selector, _pool, to, minSharesOut));
     }
 
     // Permit
@@ -220,11 +220,11 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         // Setup for the Spender to spend the Users tokens
         uint256 deadline = block.timestamp + 100;
         (uint8 v, bytes32 r, bytes32 s) = ERC2612.getPermitSignature(
-            _pool.DOMAIN_SEPARATOR(), signerKey, user, address(lmpVaultRouter), amount, 0, deadline
+            _pool.DOMAIN_SEPARATOR(), signerKey, user, address(autoPoolRouter), amount, 0, deadline
         );
 
         _startPrank(sender);
-        lmpVaultRouter.selfPermit(address(_pool), amount, deadline, v, r, s);
+        autoPoolRouter.selfPermit(address(_pool), amount, deadline, v, r, s);
         _stopPrank();
     }
 
@@ -235,11 +235,11 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         // Setup for the Spender to spend the Users tokens
         uint256 deadline = block.timestamp + 100;
         (uint8 v, bytes32 r, bytes32 s) = ERC2612.getPermitSignature(
-            _pool.DOMAIN_SEPARATOR(), signerKey, user, address(lmpVaultRouter), amount, 0, deadline
+            _pool.DOMAIN_SEPARATOR(), signerKey, user, address(autoPoolRouter), amount, 0, deadline
         );
 
         queuedCalls.push(
-            abi.encodeWithSelector(lmpVaultRouter.selfPermit.selector, address(_pool), amount, deadline, v, r, s)
+            abi.encodeWithSelector(autoPoolRouter.selfPermit.selector, address(_pool), amount, deadline, v, r, s)
         );
     }
 
@@ -251,7 +251,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address from = _resolveUserFromSeed(fromSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.pullTokenFrom(_vaultAsset, amount, from, recipient);
+        autoPoolRouter.pullTokenFrom(_vaultAsset, amount, from, recipient);
         _stopPrank();
     }
 
@@ -265,7 +265,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address from = _resolveUserFromSeed(fromSeed);
 
         queuedCalls.push(
-            abi.encodeWithSelector(lmpVaultRouter.pullTokenFrom.selector, _vaultAsset, amount, from, recipient)
+            abi.encodeWithSelector(autoPoolRouter.pullTokenFrom.selector, _vaultAsset, amount, from, recipient)
         );
     }
 
@@ -273,51 +273,51 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address recipient = _resolveUserFromSeed(recipientSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.pullToken(_vaultAsset, amount, recipient);
+        autoPoolRouter.pullToken(_vaultAsset, amount, recipient);
         _stopPrank();
     }
 
     function queuePullTokenAsset(uint256 amount, uint256 recipientSeed) public updateUser1Balance {
         address recipient = _resolveUserFromSeed(recipientSeed);
 
-        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.pullToken.selector, _vaultAsset, amount, recipient));
+        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.pullToken.selector, _vaultAsset, amount, recipient));
     }
 
     function pullTokenShare(uint256 amount, uint256 recipientSeed) public updateUser1Balance {
         address recipient = _resolveUserFromSeed(recipientSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.pullToken(_pool, amount, recipient);
+        autoPoolRouter.pullToken(_pool, amount, recipient);
         _stopPrank();
     }
 
     function queuePullTokenShare(uint256 amount, uint256 recipientSeed) public updateUser1Balance {
         address recipient = _resolveUserFromSeed(recipientSeed);
 
-        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.pullToken.selector, _pool, amount, recipient));
+        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.pullToken.selector, _pool, amount, recipient));
     }
 
     function pullTokenAssetToRouter(uint256 amount) public updateUser1Balance {
         _startPrank(msg.sender);
-        lmpVaultRouter.pullToken(_vaultAsset, amount, address(lmpVaultRouter));
+        autoPoolRouter.pullToken(_vaultAsset, amount, address(autoPoolRouter));
         _stopPrank();
     }
 
     function queuePullTokenAssetToRouter(uint256 amount) public updateUser1Balance {
         queuedCalls.push(
-            abi.encodeWithSelector(lmpVaultRouter.pullToken.selector, _vaultAsset, amount, address(lmpVaultRouter))
+            abi.encodeWithSelector(autoPoolRouter.pullToken.selector, _vaultAsset, amount, address(autoPoolRouter))
         );
     }
 
     function pullTokenShareToRouter(uint256 amount) public updateUser1Balance {
         _startPrank(msg.sender);
-        lmpVaultRouter.pullToken(_pool, amount, address(lmpVaultRouter));
+        autoPoolRouter.pullToken(_pool, amount, address(autoPoolRouter));
         _stopPrank();
     }
 
     function queuePullTokenShareToRouter(uint256 amount) public updateUser1Balance {
         queuedCalls.push(
-            abi.encodeWithSelector(lmpVaultRouter.pullToken.selector, _pool, amount, address(lmpVaultRouter))
+            abi.encodeWithSelector(autoPoolRouter.pullToken.selector, _pool, amount, address(autoPoolRouter))
         );
     }
 
@@ -326,28 +326,28 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address recipient = _resolveUserFromSeed(recipientSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.sweepToken(_vaultAsset, amountMin, recipient);
+        autoPoolRouter.sweepToken(_vaultAsset, amountMin, recipient);
         _stopPrank();
     }
 
     function queueSweepTokenAsset(uint256 amountMin, uint256 recipientSeed) public updateUser1Balance {
         address recipient = _resolveUserFromSeed(recipientSeed);
 
-        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.sweepToken.selector, _vaultAsset, amountMin, recipient));
+        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.sweepToken.selector, _vaultAsset, amountMin, recipient));
     }
 
     function sweepTokenShare(uint256 amountMin, uint256 recipientSeed) public updateUser1Balance {
         address recipient = _resolveUserFromSeed(recipientSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.sweepToken(_pool, amountMin, recipient);
+        autoPoolRouter.sweepToken(_pool, amountMin, recipient);
         _stopPrank();
     }
 
     function queueSweepTokenShare(uint256 amountMin, uint256 recipientSeed) public updateUser1Balance {
         address recipient = _resolveUserFromSeed(recipientSeed);
 
-        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.sweepToken.selector, _pool, amountMin, recipient));
+        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.sweepToken.selector, _pool, amountMin, recipient));
     }
 
     // Withdraw
@@ -355,7 +355,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address to = _resolveUserFromSeed(toSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.withdraw(_pool, to, amount, maxSharesOut);
+        autoPoolRouter.withdraw(_pool, to, amount, maxSharesOut);
         _stopPrank();
     }
 
@@ -368,7 +368,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address to = _resolveUserFromSeed(toSeed);
 
         queuedCalls.push(
-            abi.encodeWithSelector(lmpVaultRouter.withdraw.selector, _pool, to, amount, maxSharesOut, unwrapWETH)
+            abi.encodeWithSelector(autoPoolRouter.withdraw.selector, _pool, to, amount, maxSharesOut, unwrapWETH)
         );
     }
 
@@ -381,7 +381,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address to = _resolveUserFromSeed(toSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.withdrawToDeposit(_pool, _pool, to, amount, maxSharesIn, minSharesOut);
+        autoPoolRouter.withdrawToDeposit(_pool, _pool, to, amount, maxSharesIn, minSharesOut);
         _stopPrank();
     }
 
@@ -395,7 +395,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
 
         queuedCalls.push(
             abi.encodeWithSelector(
-                lmpVaultRouter.withdrawToDeposit.selector, _pool, _pool, to, amount, maxSharesIn, minSharesOut
+                autoPoolRouter.withdrawToDeposit.selector, _pool, _pool, to, amount, maxSharesIn, minSharesOut
             )
         );
     }
@@ -419,11 +419,11 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
 
         bytes[] memory calls = new bytes[](3);
 
-        calls[0] = abi.encodeCall(lmpVaultRouter.pullToken, (IERC20(address(_weth)), amount, address(lmpVaultRouter)));
-        calls[1] = abi.encodeCall(lmpVaultRouter.swapToken, (address(swapperMock), swapParams));
-        calls[2] = abi.encodeCall(lmpVaultRouter.depositBalance, (_pool, to, minSharesOut));
+        calls[0] = abi.encodeCall(autoPoolRouter.pullToken, (IERC20(address(_weth)), amount, address(autoPoolRouter)));
+        calls[1] = abi.encodeCall(autoPoolRouter.swapToken, (address(swapperMock), swapParams));
+        calls[2] = abi.encodeCall(autoPoolRouter.depositBalance, (_pool, to, minSharesOut));
 
-        lmpVaultRouter.multicall(calls);
+        autoPoolRouter.multicall(calls);
         _stopPrank();
     }
 
@@ -445,10 +445,10 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address to = _resolveUserFromSeed(toSeed);
 
         queuedCalls.push(
-            abi.encodeCall(lmpVaultRouter.pullToken, (IERC20(address(_weth)), amount, address(lmpVaultRouter)))
+            abi.encodeCall(autoPoolRouter.pullToken, (IERC20(address(_weth)), amount, address(autoPoolRouter)))
         );
-        queuedCalls.push(abi.encodeCall(lmpVaultRouter.swapToken, (address(swapperMock), swapParams)));
-        queuedCalls.push(abi.encodeCall(lmpVaultRouter.depositBalance, (_pool, to, minSharesOut)));
+        queuedCalls.push(abi.encodeCall(autoPoolRouter.swapToken, (address(swapperMock), swapParams)));
+        queuedCalls.push(abi.encodeCall(autoPoolRouter.depositBalance, (_pool, to, minSharesOut)));
     }
 
     // Redeem
@@ -456,7 +456,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address to = _resolveUserFromSeed(toSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.redeem(_pool, to, shares, minAmountOut);
+        autoPoolRouter.redeem(_pool, to, shares, minAmountOut);
         _stopPrank();
     }
 
@@ -469,7 +469,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address to = _resolveUserFromSeed(toSeed);
 
         queuedCalls.push(
-            abi.encodeWithSelector(lmpVaultRouter.redeem.selector, _pool, to, shares, minAmountOut, unwrapWETH)
+            abi.encodeWithSelector(autoPoolRouter.redeem.selector, _pool, to, shares, minAmountOut, unwrapWETH)
         );
     }
 
@@ -477,14 +477,14 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address to = _resolveUserFromSeed(toSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.redeemMax(_pool, to, minAmountOut);
+        autoPoolRouter.redeemMax(_pool, to, minAmountOut);
         _stopPrank();
     }
 
     function queueRedeemMax(uint256 toSeed, uint256 minAmountOut) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
 
-        queuedCalls.push(abi.encodeWithSelector(lmpVaultRouter.redeemMax.selector, _pool, to, minAmountOut));
+        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.redeemMax.selector, _pool, to, minAmountOut));
     }
 
     ///@dev Anyone but User1 can try redeem to deposit
@@ -492,7 +492,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address to = _resolveUserFromSeed(toSeed);
 
         _startPrank(msg.sender);
-        lmpVaultRouter.redeemToDeposit(_pool, _pool, to, shares, minSharesOut);
+        autoPoolRouter.redeemToDeposit(_pool, _pool, to, shares, minSharesOut);
         _stopPrank();
     }
 
@@ -500,7 +500,7 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
         address to = _resolveUserFromSeed(toSeed);
 
         queuedCalls.push(
-            abi.encodeWithSelector(lmpVaultRouter.redeemToDeposit.selector, _pool, _pool, to, shares, minSharesOut)
+            abi.encodeWithSelector(autoPoolRouter.redeemToDeposit.selector, _pool, _pool, to, shares, minSharesOut)
         );
     }
 
@@ -529,8 +529,8 @@ abstract contract LMPVaultRouterUsage is BasePoolSetup, PropertiesAsserts {
 }
 
 // Echidna test
-contract LMPVaultRouterTest is LMPVaultRouterUsage {
-    constructor() LMPVaultRouterUsage() { }
+contract AutoPilotRouterTest is AutoPilotRouterUsage {
+    constructor() AutoPilotRouterUsage() { }
 
     // Check that User 1 balances didn't change
     function echidna_only_user_initiated_tx_can_decrease_users_balances_through_router() public view returns (bool) {

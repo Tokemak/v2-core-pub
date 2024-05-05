@@ -13,7 +13,7 @@ import { StrategyUtils } from "src/strategy/libs/StrategyUtils.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { Incentives } from "src/strategy/libs/Incentives.sol";
 import { PriceReturn } from "src/strategy/libs/PriceReturn.sol";
-import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -36,7 +36,7 @@ library SummaryStats {
     }
 
     function getDestinationSummaryStats(
-        ILMPVault autoPool,
+        IAutoPool autoPool,
         IIncentivesPricingStats incentivePricing,
         address destAddress,
         uint256 price,
@@ -130,7 +130,7 @@ library SummaryStats {
     // Calculate the largest difference between spot & safe price for the underlying LST tokens.
     // This does not support Curve meta pools
     function verifyLSTPriceGap(
-        ILMPVault autoPool,
+        IAutoPool autoPool,
         IStrategy.RebalanceParams memory params,
         uint256 tolerance
     ) external returns (bool) {

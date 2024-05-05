@@ -15,7 +15,7 @@ import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC315
 import { ILMPStrategy } from "src/interfaces/strategy/ILMPStrategy.sol";
 import { StructuredLinkedList } from "src/strategy/StructuredLinkedList.sol";
 import { WithdrawalQueue } from "src/strategy/WithdrawalQueue.sol";
-import { ILMPVault } from "src/interfaces/vault/ILMPVault.sol";
+import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { AutoPoolToken } from "src/vault/libs/AutoPoolToken.sol";
 
@@ -126,7 +126,7 @@ library LMPDebt {
         IERC3156FlashBorrower receiver,
         IStrategy.RebalanceParams memory params,
         IStrategy.SummaryStats memory destSummaryOut,
-        ILMPStrategy lmpStrategy,
+        ILMPStrategy autoPoolStrategy,
         FlashRebalanceParams memory flashParams,
         bytes calldata data
     ) external returns (IdleDebtUpdates memory result) {
@@ -173,7 +173,7 @@ library LMPDebt {
 
             {
                 // make sure we have a valid path
-                (bool success, string memory message) = lmpStrategy.verifyRebalance(params, destSummaryOut);
+                (bool success, string memory message) = autoPoolStrategy.verifyRebalance(params, destSummaryOut);
                 if (!success) {
                     revert RebalanceFailed(message);
                 }
@@ -348,10 +348,10 @@ library LMPDebt {
     function totalAssetsTimeChecked(
         StructuredLinkedList.List storage debtReportQueue,
         mapping(address => LMPDebt.DestinationInfo) storage destinationInfo,
-        ILMPVault.TotalAssetPurpose purpose
+        IAutoPool.TotalAssetPurpose purpose
     ) external returns (uint256) {
         IDestinationVault destVault = IDestinationVault(debtReportQueue.peekHead());
-        uint256 recalculatedTotalAssets = ILMPVault(address(this)).totalAssets(purpose);
+        uint256 recalculatedTotalAssets = IAutoPool(address(this)).totalAssets(purpose);
 
         while (address(destVault) != address(0)) {
             uint256 lastReport = destinationInfo[address(destVault)].lastReport;
@@ -370,7 +370,7 @@ library LMPDebt {
                 uint256 extremePrice;
 
                 // Figure out exactly which price to use based on its purpose
-                if (purpose == ILMPVault.TotalAssetPurpose.Deposit) {
+                if (purpose == IAutoPool.TotalAssetPurpose.Deposit) {
                     // We use max value so that anything deposited is worth less
                     extremePrice = destVault.getUnderlyerCeilingPrice();
 
@@ -379,7 +379,7 @@ library LMPDebt {
                     staleDebt = destinationInfo[address(destVault)].cachedMaxDebtValue.mulDiv(
                         currentShares, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Down
                     );
-                } else if (purpose == ILMPVault.TotalAssetPurpose.Withdraw) {
+                } else if (purpose == IAutoPool.TotalAssetPurpose.Withdraw) {
                     // We use min value so that we value the shares as worth less
                     extremePrice = destVault.getUnderlyerFloorPrice();
                     // Round up. We are subtracting this value out of the total so if we take a little
@@ -396,9 +396,9 @@ library LMPDebt {
                 // value we have represents that, then use it. Otherwise, use the new one.
                 uint256 newValue = (currentShares * extremePrice) / destVault.ONE();
 
-                if (purpose == ILMPVault.TotalAssetPurpose.Deposit && staleDebt > newValue) {
+                if (purpose == IAutoPool.TotalAssetPurpose.Deposit && staleDebt > newValue) {
                     newValue = staleDebt;
-                } else if (purpose == ILMPVault.TotalAssetPurpose.Withdraw && staleDebt < newValue) {
+                } else if (purpose == IAutoPool.TotalAssetPurpose.Withdraw && staleDebt < newValue) {
                     newValue = staleDebt;
                 }
 
@@ -426,10 +426,10 @@ library LMPDebt {
             // Main rewarder on DV's store the earned and liquidated rewards
             // Extra rewarders are disabled at the DV level
             uint256 claimGasUsed = gasleft();
-            uint256 beforeBaseAsset = IERC20(ILMPVault(address(this)).asset()).balanceOf(address(this));
+            uint256 beforeBaseAsset = IERC20(IAutoPool(address(this)).asset()).balanceOf(address(this));
             IMainRewarder(destVault.rewarder()).getReward(address(this), false);
             uint256 claimedRewardValue =
-                IERC20(ILMPVault(address(this)).asset()).balanceOf(address(this)) - beforeBaseAsset;
+                IERC20(IAutoPool(address(this)).asset()).balanceOf(address(this)) - beforeBaseAsset;
             result.totalIdleIncrease += claimedRewardValue;
 
             // Recalculate the debt info figuring out the change in
@@ -463,7 +463,7 @@ library LMPDebt {
 
     function _initiateWithdrawInfo(
         uint256 assets,
-        ILMPVault.AssetBreakdown storage assetBreakdown
+        IAutoPool.AssetBreakdown storage assetBreakdown
     ) private view returns (WithdrawInfo memory) {
         uint256 idle = assetBreakdown.totalIdle;
         WithdrawInfo memory info = WithdrawInfo({
@@ -502,7 +502,7 @@ library LMPDebt {
     function withdraw(
         uint256 assets,
         uint256 applicableTotalAssets,
-        ILMPVault.AssetBreakdown storage assetBreakdown,
+        IAutoPool.AssetBreakdown storage assetBreakdown,
         StructuredLinkedList.List storage withdrawalQueue,
         mapping(address => LMPDebt.DestinationInfo) storage destinationInfo
     ) public returns (uint256 actualAssets, uint256 actualShares, uint256 debtBurned) {
@@ -650,10 +650,10 @@ library LMPDebt {
             revert TooFewAssets(assets, actualAssets);
         }
 
-        actualShares = ILMPVault(address(this)).convertToShares(
+        actualShares = IAutoPool(address(this)).convertToShares(
             Math.max(actualAssets, debtBurned),
             applicableTotalAssets,
-            ILMPVault(address(this)).totalSupply(),
+            IAutoPool(address(this)).totalSupply(),
             Math.Rounding.Up
         );
 
@@ -688,7 +688,7 @@ library LMPDebt {
     function redeem(
         uint256 assets,
         uint256 applicableTotalAssets,
-        ILMPVault.AssetBreakdown storage assetBreakdown,
+        IAutoPool.AssetBreakdown storage assetBreakdown,
         StructuredLinkedList.List storage withdrawalQueue,
         mapping(address => LMPDebt.DestinationInfo) storage destinationInfo
     ) public returns (uint256 actualAssets, uint256 actualShares, uint256 debtBurned) {
@@ -799,8 +799,8 @@ library LMPDebt {
         debtBurned = info.assetsFromIdle + info.debtMinDecrease;
         actualAssets = info.assetsFromIdle + info.assetsPulled;
 
-        actualShares = ILMPVault(address(this)).convertToShares(
-            debtBurned, applicableTotalAssets, ILMPVault(address(this)).totalSupply(), Math.Rounding.Up
+        actualShares = IAutoPool(address(this)).convertToShares(
+            debtBurned, applicableTotalAssets, IAutoPool(address(this)).totalSupply(), Math.Rounding.Up
         );
 
         // Subtract what's taken out of idle from totalIdle
@@ -846,11 +846,11 @@ library LMPDebt {
         address owner,
         address receiver,
         IERC20 baseAsset,
-        ILMPVault.AssetBreakdown storage assetBreakdown,
+        IAutoPool.AssetBreakdown storage assetBreakdown,
         AutoPoolToken.TokenData storage tokenData
     ) external {
         if (msg.sender != owner) {
-            uint256 allowed = ILMPVault(address(this)).allowance(owner, msg.sender);
+            uint256 allowed = IAutoPool(address(this)).allowance(owner, msg.sender);
             if (allowed != type(uint256).max) {
                 if (shares > allowed) revert AmountExceedsAllowance(shares, allowed);
 
@@ -862,7 +862,7 @@ library LMPDebt {
 
         tokenData.burn(owner, shares);
 
-        uint256 ts = ILMPVault(address(this)).totalSupply();
+        uint256 ts = IAutoPool(address(this)).totalSupply();
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
@@ -889,7 +889,7 @@ library LMPDebt {
         uint256 assets,
         uint256 applicableTotalAssets,
         bytes memory functionCallEncoded,
-        ILMPVault.AssetBreakdown storage assetBreakdown,
+        IAutoPool.AssetBreakdown storage assetBreakdown,
         StructuredLinkedList.List storage withdrawalQueue,
         mapping(address => LMPDebt.DestinationInfo) storage destinationInfo
     ) external returns (uint256 assetsAmount, uint256 sharesAmount) {

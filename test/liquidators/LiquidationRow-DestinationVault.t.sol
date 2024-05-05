@@ -12,7 +12,7 @@ import { SystemRegistry } from "src/SystemRegistry.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
 import { LiquidationRow, ILiquidationRow } from "src/liquidation/LiquidationRow.sol";
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
-import { ILMPVaultRegistry, LMPVaultRegistry } from "src/vault/LMPVaultRegistry.sol";
+import { IAutoPoolRegistry, AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
 import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { IConvexRewardPool } from "src/interfaces/external/convex/IConvexRewardPool.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
@@ -59,7 +59,7 @@ import { TestPriceOracle } from "test/mocks/TestPriceOracle.sol";
 contract LiquidationRowTest is Test {
     SystemRegistry internal systemRegistry;
     DestinationVaultRegistry internal destinationVaultRegistry;
-    LMPVaultRegistry internal lmpVaultRegistry;
+    AutoPoolRegistry internal autoPoolRegistry;
     DestinationVaultFactory internal destinationVaultFactory;
     DestinationRegistry internal destinationTemplateRegistry;
     IAccessController internal accessController;
@@ -86,7 +86,7 @@ contract LiquidationRowTest is Test {
         accessController.grantRole(Roles.REWARD_LIQUIDATION_EXECUTOR, address(this));
         accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
         accessController.grantRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, address(this));
-        accessController.grantRole(Roles.LMP_VAULT_REGISTRY_UPDATER, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(this));
         accessController.grantRole(Roles.ORACLE_MANAGER, address(this));
 
         destinationTemplateRegistry = new DestinationRegistry(systemRegistry);
@@ -98,8 +98,8 @@ contract LiquidationRowTest is Test {
         destinationVaultFactory = new DestinationVaultFactory(systemRegistry, 1, 1000);
         destinationVaultRegistry.setVaultFactory(address(destinationVaultFactory));
 
-        lmpVaultRegistry = new LMPVaultRegistry(systemRegistry);
-        systemRegistry.setLMPVaultRegistry(address(lmpVaultRegistry));
+        autoPoolRegistry = new AutoPoolRegistry(systemRegistry);
+        systemRegistry.setAutoPoolRegistry(address(autoPoolRegistry));
 
         CurveResolverMainnet curveResolver = new CurveResolverMainnet(ICurveMetaRegistry(CURVE_META_REGISTRY_MAINNET));
         systemRegistry.setCurveResolver(address(curveResolver));
@@ -115,7 +115,7 @@ contract LiquidationRowTest is Test {
         // This contract (address(this)) will be calling the destination vaults as a Vault.
         // We don't want to implement IVault in this contract, so we just mock this part of the system.
         vm.mockCall(
-            address(lmpVaultRegistry), abi.encodeWithSelector(ILMPVaultRegistry.isVault.selector), abi.encode(true)
+            address(autoPoolRegistry), abi.encodeWithSelector(IAutoPoolRegistry.isVault.selector), abi.encode(true)
         );
 
         systemRegistry.addRewardToken(WETH_MAINNET);

@@ -11,7 +11,7 @@ import { DestinationVault, IDestinationVault } from "src/vault/DestinationVault.
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
-import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
+import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
@@ -49,7 +49,7 @@ contract BalancerAuraDestinationVaultTests is Test {
     DestinationVaultRegistry private _destinationVaultRegistry;
     DestinationRegistry private _destinationTemplateRegistry;
 
-    ILMPVaultRegistry private _lmpVaultRegistry;
+    IAutoPoolRegistry private _autoPoolRegistry;
     IRootPriceOracle private _rootPriceOracle;
 
     IWETH9 private _asset;
@@ -158,11 +158,11 @@ contract BalancerAuraDestinationVaultTests is Test {
         _mockSystemBound(address(_systemRegistry), address(_rootPriceOracle));
         _systemRegistry.setRootPriceOracle(address(_rootPriceOracle));
 
-        // Set lmp vault registry for permissions
-        _lmpVaultRegistry = ILMPVaultRegistry(vm.addr(237_894));
-        vm.label(address(_lmpVaultRegistry), "lmpVaultRegistry");
-        _mockSystemBound(address(_systemRegistry), address(_lmpVaultRegistry));
-        _systemRegistry.setLMPVaultRegistry(address(_lmpVaultRegistry));
+        // Set autoPool registry for permissions
+        _autoPoolRegistry = IAutoPoolRegistry(vm.addr(237_894));
+        vm.label(address(_autoPoolRegistry), "autoPoolRegistry");
+        _mockSystemBound(address(_systemRegistry), address(_autoPoolRegistry));
+        _systemRegistry.setAutoPoolRegistry(address(_autoPoolRegistry));
     }
 
     function test_initializer_ConfiguresVault() public {
@@ -681,8 +681,8 @@ contract BalancerAuraDestinationVaultTests is Test {
 
     function _mockIsVault(address vault, bool isVault) internal {
         vm.mockCall(
-            address(_lmpVaultRegistry),
-            abi.encodeWithSelector(ILMPVaultRegistry.isVault.selector, vault),
+            address(_autoPoolRegistry),
+            abi.encodeWithSelector(IAutoPoolRegistry.isVault.selector, vault),
             abi.encode(isVault)
         );
     }

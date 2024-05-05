@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import { ILMPVault, ILMPVaultRouterBase, IMainRewarder } from "src/interfaces/vault/ILMPVaultRouterBase.sol";
+import { IAutoPool, IAutoPilotRouterBase, IMainRewarder } from "src/interfaces/vault/IAutoPilotRouterBase.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
 import { SelfPermit } from "src/utils/SelfPermit.sol";
@@ -12,11 +12,11 @@ import { Multicall } from "src/utils/Multicall.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 
-import { LMPVault } from "src/vault/LMPVault.sol";
+import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
 
-/// @title LMPVault Router Base Contract
-abstract contract LMPVaultRouterBase is
-    ILMPVaultRouterBase,
+/// @title AutoPoolETH Router Base Contract
+abstract contract AutoPilotRouterBase is
+    IAutoPilotRouterBase,
     SelfPermit,
     Multicall,
     PeripheryPayments,
@@ -24,8 +24,8 @@ abstract contract LMPVaultRouterBase is
 {
     error UserNotAllowed();
 
-    modifier onlyAllowedUsers(ILMPVault vault, address user) {
-        if (LMPVault(address(vault))._checkUsers() && !LMPVault(address(vault)).allowedUsers(user)) {
+    modifier onlyAllowedUsers(IAutoPool vault, address user) {
+        if (AutoPoolETH(address(vault))._checkUsers() && !AutoPoolETH(address(vault)).allowedUsers(user)) {
             revert UserNotAllowed();
         }
         _;
@@ -38,9 +38,9 @@ abstract contract LMPVaultRouterBase is
     { }
 
     //compose a multi call here
-    /// @inheritdoc ILMPVaultRouterBase
+    /// @inheritdoc IAutoPilotRouterBase
     function mint(
-        ILMPVault vault,
+        IAutoPool vault,
         address to,
         uint256 shares,
         uint256 maxAmountIn
@@ -59,9 +59,9 @@ abstract contract LMPVaultRouterBase is
         }
     }
 
-    /// @inheritdoc ILMPVaultRouterBase
+    /// @inheritdoc IAutoPilotRouterBase
     function deposit(
-        ILMPVault vault,
+        IAutoPool vault,
         address to,
         uint256 amount,
         uint256 minSharesOut
@@ -71,9 +71,9 @@ abstract contract LMPVaultRouterBase is
         }
     }
 
-    /// @inheritdoc ILMPVaultRouterBase
+    /// @inheritdoc IAutoPilotRouterBase
     function withdraw(
-        ILMPVault vault,
+        IAutoPool vault,
         address to,
         uint256 amount,
         uint256 maxSharesOut
@@ -92,9 +92,9 @@ abstract contract LMPVaultRouterBase is
         }
     }
 
-    /// @inheritdoc ILMPVaultRouterBase
+    /// @inheritdoc IAutoPilotRouterBase
     function redeem(
-        ILMPVault vault,
+        IAutoPool vault,
         address to,
         uint256 shares,
         uint256 minAmountOut
@@ -112,24 +112,24 @@ abstract contract LMPVaultRouterBase is
         }
     }
 
-    /// @inheritdoc ILMPVaultRouterBase
+    /// @inheritdoc IAutoPilotRouterBase
     function stakeVaultToken(IERC20 vault, uint256 maxAmount) external returns (uint256) {
         _checkVault(address(vault));
-        IMainRewarder lmpRewarder = ILMPVault(address(vault)).rewarder();
+        IMainRewarder autoPoolRewarder = IAutoPool(address(vault)).rewarder();
 
         uint256 userBalance = vault.balanceOf(address(this));
         if (userBalance < maxAmount) {
             maxAmount = userBalance;
         }
 
-        lmpRewarder.stake(msg.sender, maxAmount);
+        autoPoolRewarder.stake(msg.sender, maxAmount);
 
         return maxAmount;
     }
 
-    /// @inheritdoc ILMPVaultRouterBase
+    /// @inheritdoc IAutoPilotRouterBase
     function withdrawVaultToken(
-        ILMPVault vault,
+        IAutoPool vault,
         IMainRewarder rewarder,
         uint256 maxAmount,
         bool claim
@@ -147,8 +147,8 @@ abstract contract LMPVaultRouterBase is
         return maxAmount;
     }
 
-    /// @inheritdoc ILMPVaultRouterBase
-    function claimAutoPoolRewards(ILMPVault vault, IMainRewarder rewarder) external {
+    /// @inheritdoc IAutoPilotRouterBase
+    function claimAutoPoolRewards(IAutoPool vault, IMainRewarder rewarder) external {
         _checkVault(address(vault));
         _checkRewarder(vault, address(rewarder));
 
@@ -158,12 +158,12 @@ abstract contract LMPVaultRouterBase is
 
     // Helper function for repeat functionalities.
     function _checkVault(address vault) internal view {
-        if (!systemRegistry.lmpVaultRegistry().isVault(vault)) {
+        if (!systemRegistry.autoPoolRegistry().isVault(vault)) {
             revert Errors.ItemNotFound();
         }
     }
 
-    function _checkRewarder(ILMPVault vault, address rewarder) internal view {
+    function _checkRewarder(IAutoPool vault, address rewarder) internal view {
         if (rewarder != address(vault.rewarder()) && !vault.isPastRewarder(rewarder)) {
             revert Errors.ItemNotFound();
         }

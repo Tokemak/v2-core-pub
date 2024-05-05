@@ -5,12 +5,12 @@ pragma solidity >=0.8.7;
 // solhint-disable func-name-mixedcase, no-console
 
 import { Test } from "forge-std/Test.sol";
-import { LMPVault } from "src/vault/LMPVault.sol";
-import { LMPVaultUsage } from "test/echidna/fuzz/vault/LMPVaultTests.sol";
+import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
+import { AutoPoolETHUsage } from "test/echidna/fuzz/vault/AutoPoolETHTests.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-contract LMPVaultTests is Test, LMPVaultUsage {
-    constructor() LMPVaultUsage() { }
+contract AutoPoolETHTests is Test, AutoPoolETHUsage {
+    constructor() AutoPoolETHUsage() { }
 
     function test_Construction() public {
         assertTrue(address(_pool) != address(0), "pool");
@@ -40,7 +40,7 @@ contract LMPVaultTests is Test, LMPVaultUsage {
 
         _pool.setDisableNavDecreaseCheck(false);
 
-        vm.expectRevert(abi.encodeWithSelector(LMPVault.NavDecreased.selector, 10_000, 7500));
+        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavDecreased.selector, 10_000, 7500));
         _pool.deposit(1e18, user);
 
         _pool.setDisableNavDecreaseCheck(true);
@@ -315,8 +315,8 @@ contract LMPVaultTests is Test, LMPVaultUsage {
     }
 }
 
-contract Scenarios is Test, LMPVaultUsage {
-    constructor() LMPVaultUsage() { }
+contract Scenarios is Test, AutoPoolETHUsage {
+    constructor() AutoPoolETHUsage() { }
 
     function test_NavPerShareDecrease_Scenario1() public {
         // User 1 deposit, asUser == false so a deposit on behalf of

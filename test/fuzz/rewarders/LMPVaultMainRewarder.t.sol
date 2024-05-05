@@ -12,10 +12,10 @@ import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { WETH_MAINNET, TOKE_MAINNET } from "test/utils/Addresses.sol";
-import { LMPVaultMainRewarder } from "src/rewarders/LMPVaultMainRewarder.sol";
+import { AutoPoolMainRewarder } from "src/rewarders/AutoPoolMainRewarder.sol";
 
-contract LMPVaultMainRewarderTest is Test {
-    LMPVaultMainRewarder public rewarder;
+contract AutoPoolMainRewarderTest is Test {
+    AutoPoolMainRewarder public rewarder;
     ERC20Mock public rewardToken;
     ERC20Mock public stakingToken;
     SystemRegistry public systemRegistry;
@@ -40,11 +40,11 @@ contract LMPVaultMainRewarderTest is Test {
         systemRegistry.setAccessController(address(accessController));
         rewardToken = new ERC20Mock("MAIN_REWARD", "MAIN_REWARD", address(this), 0);
         stakingToken = new ERC20Mock("stakingToken", "stakingToken", address(this), 0);
-        rewarder = new LMPVaultMainRewarder(
+        rewarder = new AutoPoolMainRewarder(
             systemRegistry, address(rewardToken), newRewardRatio, durationInBlock, true, address(stakingToken)
         );
         accessController.grantRole(Roles.LIQUIDATOR_MANAGER, address(this));
-        accessController.grantRole(Roles.LMP_VAULT_REWARD_MANAGER, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_REWARD_MANAGER, address(this));
     }
 
     /// @notice Tests that users can't withdraw more than their staked amount.

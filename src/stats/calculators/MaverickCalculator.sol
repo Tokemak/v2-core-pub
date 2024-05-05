@@ -3,7 +3,6 @@
 pragma solidity 0.8.17;
 
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
-import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
@@ -16,7 +15,7 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { BaseStatsCalculator } from "src/stats/calculators/base/BaseStatsCalculator.sol";
 
-contract MaverickCalculator is BaseStatsCalculator, Initializable, IDexLSTStats {
+contract MaverickCalculator is BaseStatsCalculator, IDexLSTStats {
     IDexLSTStats public underlyerStats;
     IReward public boostedRewarder;
     IPoolPositionSlim public boostedPosition;
@@ -77,9 +76,7 @@ contract MaverickCalculator is BaseStatsCalculator, Initializable, IDexLSTStats 
         uint256 decayInitTimestamp
     );
 
-    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) {
-        _disableInitializers();
-    }
+    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
 
     /// @inheritdoc IStatsCalculator
     function initialize(bytes32[] calldata, bytes calldata initData) public virtual override initializer {

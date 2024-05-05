@@ -7,7 +7,6 @@ import { Errors } from "src/utils/Errors.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
-import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 import { BaseStatsCalculator } from "src/stats/calculators/base/BaseStatsCalculator.sol";
 import { IStatsCalculatorRegistry } from "src/interfaces/stats/IStatsCalculatorRegistry.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
@@ -19,7 +18,7 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 /// @title Balancer Stable Pool Calculator Base
 /// @notice Generates stats for Balancer Stable pools
-abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCalculator, Initializable {
+abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCalculator {
     /// @notice The configured vault address
     IVault public immutable balancerVault;
 
@@ -68,8 +67,6 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
     constructor(ISystemRegistry _systemRegistry, address _balancerVault) BaseStatsCalculator(_systemRegistry) {
         Errors.verifyNotZero(_balancerVault, "_balancerVault");
         balancerVault = IVault(_balancerVault);
-
-        _disableInitializers();
     }
 
     /// @inheritdoc IStatsCalculator

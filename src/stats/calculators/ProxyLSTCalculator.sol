@@ -2,14 +2,12 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
-
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { BaseStatsCalculator } from "src/stats/calculators/base/BaseStatsCalculator.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 
-contract ProxyLSTCalculator is ILSTStats, BaseStatsCalculator, Initializable {
+contract ProxyLSTCalculator is ILSTStats, BaseStatsCalculator {
     ILSTStats public statsCalculator;
     address public lstTokenAddress;
 
@@ -22,9 +20,7 @@ contract ProxyLSTCalculator is ILSTStats, BaseStatsCalculator, Initializable {
         bool isRebasing;
     }
 
-    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) {
-        _disableInitializers();
-    }
+    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
 
     /// @inheritdoc IStatsCalculator
     function initialize(bytes32[] calldata, bytes calldata initData) external override initializer {

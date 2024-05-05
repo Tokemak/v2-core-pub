@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 import { Errors } from "src/utils/Errors.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
-import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 import { BaseStatsCalculator } from "src/stats/calculators/base/BaseStatsCalculator.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
@@ -19,7 +18,7 @@ import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { IStatsCalculatorRegistry } from "src/interfaces/stats/IStatsCalculatorRegistry.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-contract MaverickDexCalculator is IDexLSTStats, BaseStatsCalculator, Initializable {
+contract MaverickDexCalculator is IDexLSTStats, BaseStatsCalculator {
     uint256 public lastSnapshotTimestamp;
 
     ILSTStats[2] public lstStats;
@@ -49,9 +48,7 @@ contract MaverickDexCalculator is IDexLSTStats, BaseStatsCalculator, Initializab
     error DependentAprIdsNot2();
     error BoostedPositionPoolDoesNotMatchInitPool();
 
-    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) {
-        _disableInitializers();
-    }
+    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
 
     function initialize(bytes32[] calldata dependentAprIds, bytes calldata initData) external override initializer {
         InitData memory decodedInitData = abi.decode(initData, (InitData));

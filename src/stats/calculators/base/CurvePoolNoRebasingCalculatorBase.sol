@@ -7,7 +7,6 @@ import { Errors } from "src/utils/Errors.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
-import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 import { BaseStatsCalculator } from "src/stats/calculators/base/BaseStatsCalculator.sol";
 import { IStatsCalculatorRegistry } from "src/interfaces/stats/IStatsCalculatorRegistry.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
@@ -19,7 +18,7 @@ import { CurveUtils } from "src/stats/utils/CurveUtils.sol";
 /// @title Curve Pool No Rebasing Calculator Base
 /// @notice Generates stats for Curve pools that do not include any rebasing tokens
 /// @dev Contract is cheaper to snapshot because it tracks less state on snapshots
-abstract contract CurvePoolNoRebasingCalculatorBase is IDexLSTStats, BaseStatsCalculator, Initializable {
+abstract contract CurvePoolNoRebasingCalculatorBase is IDexLSTStats, BaseStatsCalculator {
     /// @notice The stats contracts for the underlying LSTs
     /// @return the LST stats contract for the specified index
     ILSTStats[] public lstStats;
@@ -58,9 +57,7 @@ abstract contract CurvePoolNoRebasingCalculatorBase is IDexLSTStats, BaseStatsCa
     error DependentAprIdsMismatchTokens(uint256 numDependentAprIds, uint256 numCoins);
     error InvalidPool(address poolAddress);
 
-    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) {
-        _disableInitializers();
-    }
+    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
 
     /// @inheritdoc IStatsCalculator
     function getAddressId() external view returns (address) {

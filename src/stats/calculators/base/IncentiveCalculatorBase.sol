@@ -3,8 +3,6 @@
 pragma solidity 0.8.17;
 
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
-import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
-
 import { IBaseRewardPool } from "src/interfaces/external/convex/IBaseRewardPool.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -14,7 +12,7 @@ import { Errors } from "src/utils/Errors.sol";
 import { Stats } from "src/stats/Stats.sol";
 import { BaseStatsCalculator } from "src/stats/calculators/base/BaseStatsCalculator.sol";
 
-abstract contract IncentiveCalculatorBase is BaseStatsCalculator, Initializable, IDexLSTStats {
+abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
     /// @dev Interval between two consecutive snapshot steps during the snapshot process.
     uint256 public constant SNAPSHOT_INTERVAL = 3 hours;
 
@@ -94,9 +92,7 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, Initializable,
         uint256 safeTotalSupply
     );
 
-    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) {
-        _disableInitializers();
-    }
+    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
 
     /// @inheritdoc IStatsCalculator
     function initialize(bytes32[] calldata, bytes calldata initData) public virtual override initializer {

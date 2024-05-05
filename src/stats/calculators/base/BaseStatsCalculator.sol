@@ -8,11 +8,12 @@ import { SecurityBase } from "src/security/SecurityBase.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
+import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 
 /// @title Base Stats Calculator
 /// @notice Captures common behavior across all calculators
 /// @dev Performs security checks and general roll-up behavior
-abstract contract BaseStatsCalculator is IStatsCalculator, SecurityBase, SystemComponent {
+abstract contract BaseStatsCalculator is IStatsCalculator, SecurityBase, SystemComponent, Initializable {
     modifier onlyStatsSnapshot() {
         if (!_hasRole(Roles.STATS_SNAPSHOT_EXECUTOR, msg.sender)) {
             revert Errors.MissingRole(Roles.STATS_SNAPSHOT_EXECUTOR, msg.sender);
@@ -23,7 +24,9 @@ abstract contract BaseStatsCalculator is IStatsCalculator, SecurityBase, SystemC
     constructor(ISystemRegistry _systemRegistry)
         SystemComponent(_systemRegistry)
         SecurityBase(address(_systemRegistry.accessController()))
-    { }
+    {
+        _disableInitializers();
+    }
 
     /// @inheritdoc IStatsCalculator
     function snapshot() external override onlyStatsSnapshot {

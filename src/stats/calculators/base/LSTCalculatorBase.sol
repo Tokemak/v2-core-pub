@@ -3,14 +3,13 @@
 pragma solidity 0.8.17;
 
 import { BaseStatsCalculator } from "src/stats/calculators/base/BaseStatsCalculator.sol";
-import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { Stats } from "src/stats/Stats.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 
-abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializable {
+abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
     /// @notice time in seconds between apr snapshots
     uint256 public constant APR_SNAPSHOT_INTERVAL_IN_SEC = 3 * 24 * 60 * 60; // 3 days
 
@@ -89,9 +88,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator, Initializ
 
     event SlashingEventRecorded(uint256 slashingCost, uint256 slashingTimestamp);
 
-    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) {
-        _disableInitializers();
-    }
+    constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
 
     /// @inheritdoc IStatsCalculator
     function initialize(bytes32[] calldata, bytes memory initData) public virtual override initializer {

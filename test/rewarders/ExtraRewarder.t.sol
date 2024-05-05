@@ -28,7 +28,13 @@ contract ExtraRewarderTest is Test {
     uint256 public durationInBlock = 100;
     uint256 public totalSupply = 100;
 
-    function setUp() public {
+    event Withdrawn(address indexed user, uint256 amount);
+
+    event UserRewardUpdated(
+        address indexed user, uint256 amount, uint256 rewardPerTokenStored, uint256 lastUpdateBlock
+    );
+
+    function setUp() public virtual {
         systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
@@ -50,6 +56,50 @@ contract ExtraRewarderTest is Test {
     }
 }
 
+contract ConstructorTest is ExtraRewarderTest {
+    function test_RevertIf_MainReward_AddressZero() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_mainReward"));
+
+        new ExtraRewarder(systemRegistry, address(rewardToken), address(0), newRewardRatio, durationInBlock);
+    }
+
+    function test_SetsMainRewarder() public {
+        rewarder = new ExtraRewarder(
+            systemRegistry, address(rewardToken), address(mainRewarder), newRewardRatio, durationInBlock
+        );
+
+        assertEq(address(rewarder.mainReward()), address(mainRewarder));
+    }
+}
+
+contract WithdrawTest is ExtraRewarderTest {
+    uint256 public constant STAKE_WITHDRAW_AMOUNT = 1e18;
+
+    address public stakeWithdrawFor = makeAddr("STAKE_WITHDRAW_FOR");
+
+    function setUp() public virtual override {
+        super.setUp();
+
+        vm.startPrank(address(mainRewarder));
+        rewarder.stake(stakeWithdrawFor, STAKE_WITHDRAW_AMOUNT);
+        vm.stopPrank();
+    }
+
+    function test_RevertIf_NotMainRewarder() public {
+        vm.expectRevert(ExtraRewarder.MainRewardOnly.selector);
+        rewarder.withdraw(stakeWithdrawFor, STAKE_WITHDRAW_AMOUNT);
+    }
+
+    function test_WithdrawWorks() public {
+        vm.prank(address(mainRewarder));
+
+        vm.expectEmit(true, true, true, true);
+        emit Withdrawn(stakeWithdrawFor, STAKE_WITHDRAW_AMOUNT);
+
+        rewarder.withdraw(stakeWithdrawFor, STAKE_WITHDRAW_AMOUNT);
+    }
+}
+
 contract GetReward is ExtraRewarderTest {
     function test_RevertIf_ClaimForOther() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
@@ -68,6 +118,15 @@ contract GetReward is ExtraRewarderTest {
 
         vm.prank(mainRewarder);
         rewarder.getReward(RANDOM);
+    }
+
+    function test_UserCanClaimRewardDirectly() public {
+        vm.mockCall(address(mainRewarder), abi.encodeWithSelector(IBaseRewarder.balanceOf.selector), abi.encode(10));
+
+        vm.expectEmit(true, true, true, false);
+        emit UserRewardUpdated(address(this), 0, 0, 0);
+
+        rewarder.getReward();
     }
 }
 

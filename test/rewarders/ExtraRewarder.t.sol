@@ -136,7 +136,7 @@ contract RoleBasedAccessControlTests is ExtraRewarderTest {
         // Mock registry / accToke calls.
         address fakeAccToke = makeAddr("FAKE_ACCTOKE");
         vm.mockCall(
-            address(systemRegistry), abi.encodeWithSelector(ISystemRegistry.gpToke.selector), abi.encode(fakeAccToke)
+            address(systemRegistry), abi.encodeWithSelector(ISystemRegistry.accToke.selector), abi.encode(fakeAccToke)
         );
         vm.mockCall(fakeAccToke, abi.encodeWithSignature("minStakeDuration()"), abi.encode(0));
 

@@ -258,8 +258,8 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
     function setTokeLockDuration(uint256 _tokeLockDuration) external hasRole(rewardRole) {
         // if duration is not set to 0 (that would turn off functionality), make sure it's long enough for accToke
         if (_tokeLockDuration > 0) {
-            Errors.verifyNotZero(address(systemRegistry.gpToke()), "accToke");
-            if (_tokeLockDuration < systemRegistry.gpToke().minStakeDuration()) {
+            Errors.verifyNotZero(address(systemRegistry.accToke()), "accToke");
+            if (_tokeLockDuration < systemRegistry.accToke().minStakeDuration()) {
                 revert IAccToke.StakingDurationTooShort();
             }
         }
@@ -303,7 +303,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
         Errors.verifyNotZero(account, "account");
 
         uint256 reward = earned(account);
-        (IAccToke accToke, address tokeAddress) = (systemRegistry.gpToke(), address(systemRegistry.toke()));
+        (IAccToke accToke, address tokeAddress) = (systemRegistry.accToke(), address(systemRegistry.toke()));
 
         // slither-disable-next-line incorrect-equality
         if (reward == 0) return;

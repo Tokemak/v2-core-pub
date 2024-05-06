@@ -102,7 +102,7 @@ contract DVRewarderGetRewardTest is DestinationVaultRewarderTest {
         // Mock calls specifically for reward claiming.
         vm.mockCall(accessController, abi.encodeWithSignature("hasRole(bytes32,address)"), abi.encode(true));
         vm.mockCall(
-            systemRegistry, abi.encodeWithSelector(ISystemRegistry.gpToke.selector), abi.encode(makeAddr("ACC_TOKE"))
+            systemRegistry, abi.encodeWithSelector(ISystemRegistry.accToke.selector), abi.encode(makeAddr("ACC_TOKE"))
         );
         vm.mockCall(systemRegistry, abi.encodeWithSelector(ISystemRegistry.toke.selector), abi.encode(makeAddr("TOKE")));
 

@@ -34,7 +34,7 @@ interface ISystemRegistry {
 
     /// @notice Get the AccToke staking contract
     /// @return accToke instance of the accToke contract for the system
-    function gpToke() external view returns (IAccToke);
+    function accToke() external view returns (IAccToke);
 
     /// @notice Get the AutopoolRegistry for this system
     /// @return registry instance of the registry for this system

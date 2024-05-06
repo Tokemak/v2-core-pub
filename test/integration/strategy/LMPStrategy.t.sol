@@ -157,6 +157,9 @@ contract AutopoolETHStrategyInt is Test {
             abi.encode(address(_autoPoolRegistry))
         );
 
+        vm.mockCall(
+            address(SYSTEM_REGISTRY), abi.encodeWithSelector(ISystemRegistry.accToke.selector), abi.encode(address(1))
+        );
         //_systemRegistry.setAutopoolRegistry(address(_autoPoolRegistry));
 
         address autoPoolTemplate = address(new AutopoolETH(_systemRegistry, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));

@@ -848,7 +848,7 @@ contract AutopilotRouterTest is BaseTest {
         // Neccessary because rewarder uses Toke as reward token.
         accessController.grantRole(Roles.LIQUIDATOR_MANAGER, TREASURY);
 
-        // Make sure Toke is not going to be sent to GPToke contract.
+        // Make sure Toke is not going to be sent to AccToke contract.
         assertEq(autoPoolRewarder.tokeLockDuration(), 0);
 
         // Prank treasury to approve rewarder and queue toke rewards.
@@ -1033,7 +1033,7 @@ contract AutopilotRouterTest is BaseTest {
         // Neccessary because rewarder uses Toke as reward token.
         accessController.grantRole(Roles.LIQUIDATOR_MANAGER, TREASURY);
 
-        // Make sure Toke is not going to be sent to GPToke contract.
+        // Make sure Toke is not going to be sent to AccToke contract.
         assertEq(autoPoolRewarder.tokeLockDuration(), 0);
 
         // Prank treasury to approve rewarder and queue toke rewards.

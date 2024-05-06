@@ -56,9 +56,9 @@ contract WithdrawAutopoolRewarder is AutopoolMainRewarderTest {
     function setUp() public override {
         super.setUp();
 
-        // Mock GPToke and Toke calls.
+        // Mock AccToke and Toke calls.
         vm.mockCall(
-            systemRegistry, abi.encodeWithSelector(ISystemRegistry.gpToke.selector), abi.encode(makeAddr("ACC_TOKE"))
+            systemRegistry, abi.encodeWithSelector(ISystemRegistry.accToke.selector), abi.encode(makeAddr("ACC_TOKE"))
         );
         vm.mockCall(systemRegistry, abi.encodeWithSelector(ISystemRegistry.toke.selector), abi.encode(makeAddr("TOKE")));
 
@@ -183,7 +183,7 @@ contract GetRewardAutopoolRewarder is AutopoolMainRewarderTest {
         // Mocks calls.
         vm.mockCall(accessController, abi.encodeWithSignature("hasRole(bytes32,address)"), abi.encode(true));
         vm.mockCall(
-            systemRegistry, abi.encodeWithSelector(ISystemRegistry.gpToke.selector), abi.encode(makeAddr("GP_TOKE"))
+            systemRegistry, abi.encodeWithSelector(ISystemRegistry.accToke.selector), abi.encode(makeAddr("GP_TOKE"))
         );
         vm.mockCall(
             systemRegistry, abi.encodeWithSelector(ISystemRegistry.toke.selector), abi.encode(makeAddr("toke()"))

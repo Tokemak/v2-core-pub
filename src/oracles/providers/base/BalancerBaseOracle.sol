@@ -56,8 +56,11 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
         (price, actualQuoteToken) = _getSpotPrice(token, pool, tokens, requestedQuoteToken);
     }
 
-    function getTotalSupply(address lpToken) public virtual returns (uint256 totalSupply);
-    function getPoolTokens(address pool) public virtual returns (IERC20[] memory tokens, uint256[] memory balances);
+    function getTotalSupply_(address lpToken) internal virtual returns (uint256 totalSupply);
+    function getPoolTokens_(address pool)
+        internal
+        virtual
+        returns (IERC20[] memory tokens, uint256[] memory balances);
 
     ///@notice Returns the total supply of the pool and the reserves (without pool token for composable pools)
     function getSafeSpotPriceInfo(
@@ -69,10 +72,10 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
         Errors.verifyNotZero(lpToken, "lpToken");
         Errors.verifyNotZero(quoteToken, "quoteToken");
 
-        totalLPSupply = getTotalSupply(pool);
+        totalLPSupply = getTotalSupply_(pool);
 
         // Get the pool tokens/reserves
-        (IERC20[] memory tokens, uint256[] memory balances) = getPoolTokens(pool);
+        (IERC20[] memory tokens, uint256[] memory balances) = getPoolTokens_(pool);
 
         uint256 nTokens = tokens.length;
         reserves = new ReserveItemInfo[](nTokens);

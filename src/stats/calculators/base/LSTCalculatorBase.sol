@@ -97,6 +97,8 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
 
     event SlashingEventRecorded(uint256 slashingCost, uint256 slashingTimestamp);
 
+    event DestinationMessageSendSet(bool destinationMessageSend);
+
     constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
 
     /// @inheritdoc IStatsCalculator

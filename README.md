@@ -48,10 +48,10 @@ Basic unit tests, integrations tests, and Foundry based fuzz tests with a low de
 forge test
 ```
 
-ERC4626 prop fuzz tests from a16z can be executed against the AutoPool with:
+ERC4626 prop fuzz tests from a16z can be executed against the Autopool with:
 
 ```
-forge test --match-path test/fuzz/vault/AutoPool.t.sol --fuzz-runs 10000
+forge test --match-path test/fuzz/vault/Autopool.t.sol --fuzz-runs 10000
 ```
 
 ## Glossary

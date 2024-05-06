@@ -2550,7 +2550,7 @@ contract Withdraw is AutopoolETHTests {
     }
 }
 
-contract MaxWithdrawTests is AutopoolETHTests {
+contract MaxWithdraw is AutopoolETHTests {
     function test_CalculatesAtOneToOne() public {
         address user = makeAddr("user1");
         uint256 depositAmount = 1e18;

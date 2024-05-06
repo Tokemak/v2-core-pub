@@ -335,6 +335,9 @@ contract TestingPool is AutopoolETH, CryticIERC4626Internal {
 
     /// @notice Called by the Crytic property tests.
     function recognizeProfit(uint256 profit) public cryticFns {
+        if (profit > type(uint112).max) {
+            revert("Can't happen");
+        }
         uint256 startingTotalAssets = totalAssets();
         _assetBreakdown.totalIdle += profit;
 

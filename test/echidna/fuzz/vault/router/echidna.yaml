@@ -12,8 +12,8 @@ codeSize: 0xffffff
 coverage: false
 filterFunctions:
     [
-        "AutopilotRouterTests.pullTokenFromAsset(uint256,uint256,uint256)",
-        "AutopilotRouterTests.queuePullTokenFromAsset(uint256,uint256,uint256)",
+        "AutopilotRouterTest.pullTokenFromAsset(uint256,uint256,uint256)",
+        "AutopilotRouterTest.queuePullTokenFromAsset(uint256,uint256,uint256)",
     ]
 filterBlacklist: true
 allowFFI: true

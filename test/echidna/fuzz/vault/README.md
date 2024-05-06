@@ -6,6 +6,8 @@ Based on: https://github.com/crytic/properties?tab=readme-ov-file#erc4626-tests
 echidna test/echidna/fuzz/vault/CryticProperties.sol --contract CryticERC4626Harness --config test/echidna/fuzz/vault/echidna.yaml --test-mode assertion --sender "0x10000" --deployer "0x10000"
 ```
 
+Some failures will occur from these properties as the underlying interface being used still has `view` for the preview and max functions so we know that won't work.
+
 ## Autopool Interactions and Externals
 
 Mimics interactions and environmental changes that would influence the Autopool. Safety checks around nav/share changes are disabled as we are checking to see if its possible. Possible interactions:

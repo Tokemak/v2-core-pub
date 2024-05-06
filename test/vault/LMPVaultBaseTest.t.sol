@@ -62,7 +62,13 @@ contract AutopoolETHBaseTest is BaseTest {
         accessController.grantRole(Roles.AUTO_POOL_REWARD_MANAGER, address(this));
 
         // create test autoPool
-        IAutopoolFactory vaultFactory = systemRegistry.getAutopoolFactoryByType(VaultTypes.LST);
+        IAutoPoolFactory vaultFactory = systemRegistry.getAutoPoolFactoryByType(VaultTypes.LST);
+
+        vm.mockCall(
+            autoPoolStrategy,
+            abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector),
+            abi.encode(systemRegistry)
+        );
         vaultFactory.addStrategyTemplate(autoPoolStrategy);
         accessController.grantRole(Roles.AUTO_POOL_FACTORY_VAULT_CREATOR, address(vaultFactory));
 
@@ -70,12 +76,6 @@ contract AutopoolETHBaseTest is BaseTest {
         // SystemRegistry.addRewardToken is not accessible from the ownership perspective
         vm.mockCall(
             address(systemRegistry), abi.encodeWithSelector(SystemRegistry.isRewardToken.selector), abi.encode(true)
-        );
-
-        vm.mockCall(
-            autoPoolStrategy,
-            abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector),
-            abi.encode(systemRegistry)
         );
 
         bytes memory initData = abi.encode("");

@@ -68,7 +68,7 @@ contract StatsCalculatorFactory is SystemComponent, IStatsCalculatorFactory, Sec
         Errors.verifyNotZero(aprTemplateId, "aprTemplateId");
         Errors.verifyNotZero(newTemplate, "template");
 
-        _verifySystemRegistry(SystemComponent(newTemplate).getSystemRegistry());
+        Errors.verifySystemsMatch(address(this), newTemplate);
 
         // Cannot overwrite an existing template
         if (templates[aprTemplateId] != address(0)) {
@@ -101,7 +101,7 @@ contract StatsCalculatorFactory is SystemComponent, IStatsCalculatorFactory, Sec
             revert TemplateReplaceMatches(aprTemplateId, templates[aprTemplateId], oldTemplate);
         }
 
-        _verifySystemRegistry(SystemComponent(newTemplate).getSystemRegistry());
+        Errors.verifySystemsMatch(address(this), newTemplate);
 
         emit TemplateReplaced(aprTemplateId, oldTemplate, newTemplate);
 

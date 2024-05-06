@@ -31,7 +31,6 @@ contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, S
     event StatCalculatorRegistered(bytes32 aprId, address calculatorAddress, address caller);
 
     error OnlyFactory();
-    error SystemMismatch(address ours, address theirs);
     error AlreadyRegistered(bytes32 aprId, address calculator);
 
     constructor(ISystemRegistry _systemRegistry)
@@ -68,15 +67,9 @@ contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, S
     /// @inheritdoc IStatsCalculatorRegistry
     function setCalculatorFactory(address calculatorFactory) external hasRole(Roles.STATS_CALC_REGISTRY_MANAGER) {
         Errors.verifyNotZero(address(calculatorFactory), "factory");
-
-        factory = IStatsCalculatorFactory(calculatorFactory);
+        Errors.verifySystemsMatch(address(this), calculatorFactory);
 
         emit FactorySet(calculatorFactory);
-
-        ISystemRegistry factorySystem = ISystemRegistry(factory.getSystemRegistry());
-
-        if (factorySystem != systemRegistry) {
-            revert SystemMismatch(address(systemRegistry), address(factorySystem));
-        }
+        factory = IStatsCalculatorFactory(calculatorFactory);
     }
 }

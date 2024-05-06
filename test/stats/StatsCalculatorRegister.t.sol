@@ -143,7 +143,7 @@ contract StatsCalculatorRegistryTests is Test {
         ISystemRegistry newRegistry = ISystemRegistry(vm.addr(34_343));
         address newFactory = generateFactory(newRegistry);
         vm.expectRevert(
-            abi.encodeWithSelector(StatsCalculatorRegistry.SystemMismatch.selector, systemRegistry, newRegistry)
+            abi.encodeWithSelector(Errors.SystemMismatch.selector, address(statsRegistry), address(newFactory))
         );
         statsRegistry.setCalculatorFactory(newFactory);
     }

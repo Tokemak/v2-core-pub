@@ -49,7 +49,7 @@ contract StatsCalculatorFactoryTests is Test {
         ensureTemplateManagerRole();
         vm.mockCall(template, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(fakeRegistry));
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(systemRegistry), fakeRegistry));
+        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(factory), template));
         factory.registerTemplate(aprTemplateId, template);
     }
 
@@ -58,6 +58,7 @@ contract StatsCalculatorFactoryTests is Test {
         bytes32 aprTemplateId = keccak256("CurveConvex1");
         ensureTemplateManagerRole();
 
+        vm.mockCall(template, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(address(systemRegistry)));
         vm.expectEmit(true, true, true, true);
         emit TemplateRegistered(aprTemplateId, template);
         factory.registerTemplate(aprTemplateId, template);
@@ -79,6 +80,7 @@ contract StatsCalculatorFactoryTests is Test {
         bytes32 aprTemplateId = keccak256("CurveConvex1");
         ensureTemplateManagerRole();
 
+        vm.mockCall(template, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(address(systemRegistry)));
         factory.registerTemplate(aprTemplateId, template);
 
         vm.expectEmit(true, true, true, true);
@@ -107,8 +109,7 @@ contract StatsCalculatorFactoryTests is Test {
         factory.registerTemplate(aprTemplateId, template);
 
         vm.mockCall(templateNew, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(fakeRegistry));
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(systemRegistry), fakeRegistry));
+        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(factory), templateNew));
         factory.replaceTemplate(aprTemplateId, template, templateNew);
     }
 
@@ -118,8 +119,10 @@ contract StatsCalculatorFactoryTests is Test {
         bytes32 aprTemplateId = keccak256("CurveConvex1");
         ensureTemplateManagerRole();
 
+        vm.mockCall(template, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(address(systemRegistry)));
         factory.registerTemplate(aprTemplateId, template);
 
+        vm.mockCall(templateNew, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(address(systemRegistry)));
         vm.expectEmit(true, true, true, true);
         emit TemplateReplaced(aprTemplateId, template, templateNew);
         factory.replaceTemplate(aprTemplateId, template, templateNew);
@@ -144,6 +147,9 @@ contract StatsCalculatorFactoryTests is Test {
         ensureTemplateManagerRole();
         ensureCalcCreatorRole();
 
+        vm.mockCall(
+            address(template), abi.encodeWithSignature("getSystemRegistry()"), abi.encode(address(systemRegistry))
+        );
         factory.registerTemplate(aprTemplateId, address(template));
 
         address poolAddress = vm.addr(2000);

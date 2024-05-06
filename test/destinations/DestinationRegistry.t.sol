@@ -45,6 +45,9 @@ contract DestinationRegistryTest is Test {
 
         registry.addToWhitelist(destinationTypes);
 
+        _mockCallSystemVerification(PRANK_ADDRESS);
+        _mockCallSystemVerification(RANDOM);
+
         vm.expectRevert(abi.encodeWithSelector(Errors.ArrayLengthMismatch.selector, 1, 2, "types+targets"));
         registry.register(destinationTypes, targets);
     }
@@ -84,6 +87,8 @@ contract DestinationRegistryTest is Test {
         address[] memory targets = new address[](1);
         targets[0] = PRANK_ADDRESS;
 
+        _mockCallSystemVerification(PRANK_ADDRESS);
+
         registry.addToWhitelist(destinationTypes);
         registry.register(destinationTypes, targets);
 
@@ -115,7 +120,7 @@ contract DestinationRegistryTest is Test {
 
         vm.mockCall(PRANK_ADDRESS, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(fakeRegistry));
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(systemRegistry), fakeRegistry));
+        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(registry), PRANK_ADDRESS));
         registry.register(destinationTypes, targets);
     }
 
@@ -127,6 +132,8 @@ contract DestinationRegistryTest is Test {
         targets[0] = PRANK_ADDRESS;
 
         registry.addToWhitelist(destinationTypes);
+
+        _mockCallSystemVerification(PRANK_ADDRESS);
 
         vm.expectEmit(true, true, false, true);
         emit Register(destinationTypes, targets);
@@ -144,6 +151,9 @@ contract DestinationRegistryTest is Test {
 
         registry.addToWhitelist(destinationTypes);
 
+        _mockCallSystemVerification(PRANK_ADDRESS);
+        _mockCallSystemVerification(RANDOM);
+
         vm.expectEmit(true, true, false, true);
         emit Register(destinationTypes, targets);
         registry.register(destinationTypes, targets);
@@ -159,6 +169,7 @@ contract DestinationRegistryTest is Test {
 
         registry.addToWhitelist(destinationTypes);
 
+        _mockCallSystemVerification(PRANK_ADDRESS);
         registry.register(destinationTypes, targets);
 
         targets = new address[](2);
@@ -178,6 +189,7 @@ contract DestinationRegistryTest is Test {
 
         registry.addToWhitelist(destinationTypes);
 
+        _mockCallSystemVerification(PRANK_ADDRESS);
         registry.register(destinationTypes, targets);
 
         targets = new address[](1);
@@ -198,6 +210,7 @@ contract DestinationRegistryTest is Test {
 
         registry.addToWhitelist(destinationTypes);
 
+        _mockCallSystemVerification(PRANK_ADDRESS);
         registry.register(destinationTypes, targets);
 
         targets[0] = address(0);
@@ -214,6 +227,8 @@ contract DestinationRegistryTest is Test {
 
         registry.addToWhitelist(destinationTypes);
 
+        _mockCallSystemVerification(PRANK_ADDRESS);
+
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "existingDestination"));
         registry.replace(destinationTypes, targets);
     }
@@ -226,6 +241,8 @@ contract DestinationRegistryTest is Test {
         targets[0] = PRANK_ADDRESS;
 
         registry.addToWhitelist(destinationTypes);
+
+        _mockCallSystemVerification(PRANK_ADDRESS);
 
         registry.register(destinationTypes, targets);
 
@@ -249,7 +266,7 @@ contract DestinationRegistryTest is Test {
         targets[0] = RANDOM;
 
         vm.mockCall(RANDOM, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(fakeRegistry));
-        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(systemRegistry), fakeRegistry));
+        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(registry), RANDOM));
 
         registry.replace(destinationTypes, targets);
     }
@@ -263,7 +280,11 @@ contract DestinationRegistryTest is Test {
 
         registry.addToWhitelist(destinationTypes);
 
+        _mockCallSystemVerification(PRANK_ADDRESS);
+
         registry.register(destinationTypes, targets);
+
+        _mockCallSystemVerification(RANDOM);
 
         targets[0] = RANDOM;
         vm.expectEmit(true, true, false, true);
@@ -292,6 +313,8 @@ contract DestinationRegistryTest is Test {
 
         registry.addToWhitelist(destinationTypes);
 
+        _mockCallSystemVerification(PRANK_ADDRESS);
+
         registry.register(destinationTypes, targets);
 
         vm.expectEmit(true, true, false, true);
@@ -308,6 +331,7 @@ contract DestinationRegistryTest is Test {
         targets[0] = PRANK_ADDRESS;
 
         registry.addToWhitelist(destinationTypes);
+        _mockCallSystemVerification(PRANK_ADDRESS);
         registry.register(destinationTypes, targets);
 
         vm.startPrank(vm.addr(55));
@@ -335,6 +359,7 @@ contract DestinationRegistryTest is Test {
 
         registry.addToWhitelist(destinationTypes);
 
+        _mockCallSystemVerification(PRANK_ADDRESS);
         registry.register(destinationTypes, targets);
 
         IDestinationAdapter result = registry.getAdapter(BALANCER_BEETHOVEN_ADAPTER);
@@ -409,6 +434,8 @@ contract DestinationRegistryTest is Test {
 
         registry.addToWhitelist(destinationTypes);
 
+        _mockCallSystemVerification(PRANK_ADDRESS);
+
         vm.expectEmit(true, true, false, true);
         emit Register(destinationTypes, targets);
         registry.register(destinationTypes, targets);
@@ -469,5 +496,9 @@ contract DestinationRegistryTest is Test {
 
         bool destinationIsWhitelisted = registry.isWhitelistedDestination(destinationTypes[0]);
         assert(destinationIsWhitelisted);
+    }
+
+    function _mockCallSystemVerification(address _toCall) internal {
+        vm.mockCall(_toCall, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(address(systemRegistry)));
     }
 }

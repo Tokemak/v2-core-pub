@@ -82,7 +82,9 @@ contract AutopoolFactory is SystemComponent, IAutopoolFactory, SecurityBase {
     ) SystemComponent(_systemRegistry) SecurityBase(address(_systemRegistry.accessController())) {
         Errors.verifyNotZero(_template, "template");
 
-        _verifySystemRegistry(SystemComponent(_template).getSystemRegistry());
+        if (address(_systemRegistry) != SystemComponent(_template).getSystemRegistry()) {
+            revert Errors.SystemMismatch(address(this), _template);
+        }
 
         // slither-disable-next-line missing-zero-check
         template = _template;
@@ -98,7 +100,7 @@ contract AutopoolFactory is SystemComponent, IAutopoolFactory, SecurityBase {
     /// =====================================================
 
     function addStrategyTemplate(address strategyTemplate) external hasRole(Roles.AUTO_POOL_FACTORY_MANAGER) {
-        _verifySystemRegistry(SystemComponent(strategyTemplate).getSystemRegistry());
+        Errors.verifySystemsMatch(address(this), strategyTemplate);
 
         if (!_strategyTemplates.add(strategyTemplate)) {
             revert Errors.ItemExists();

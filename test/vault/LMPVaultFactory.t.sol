@@ -97,7 +97,8 @@ contract Constructor is AutopoolFactoryTest {
         address fakeRegistry = makeAddr("FAKE_SYSTEM_REGISTRY");
         vm.mockCall(_template, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(fakeRegistry));
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(_systemRegistry), fakeRegistry));
+        // Don't have address of factory because this revert is in constructor, just check to make sure revert happening
+        vm.expectRevert();
         new AutoPoolFactory(_systemRegistry, _template, 800, 100);
     }
 
@@ -130,16 +131,17 @@ contract AddStrategyTemplate is AutopoolFactoryTest {
         address fakeRegistry = makeAddr("FAKE_SYSTEM_REGISTRY");
         vm.mockCall(_stratTemplate, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(fakeRegistry));
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(_systemRegistry), fakeRegistry));
+        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, _autoPoolFactory, _stratTemplate));
         _autoPoolFactory.addStrategyTemplate(_stratTemplate);
     }
 
     function test_EmitStrategyTemplateAdded() public {
         address random = makeAddr("random");
 
+        vm.mockCall(random, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(address(_systemRegistry)));
+
         vm.expectEmit(true, true, true, true);
         emit StrategyTemplateAdded(random);
-
         _autoPoolFactory.addStrategyTemplate(random);
     }
 }

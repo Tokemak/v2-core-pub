@@ -38,7 +38,7 @@ contract DestinationRegistry is SystemComponent, SecurityBase, IDestinationRegis
                 revert DestinationAlreadySet();
             }
 
-            _verifySystemRegistry(SystemComponent(target).getSystemRegistry());
+            Errors.verifySystemsMatch(address(this), target);
 
             destinations[destination] = IDestinationAdapter(target);
         }
@@ -55,7 +55,7 @@ contract DestinationRegistry is SystemComponent, SecurityBase, IDestinationRegis
             address target = targets[i];
             Errors.verifyNotZero(target, "target");
 
-            _verifySystemRegistry(SystemComponent(target).getSystemRegistry());
+            Errors.verifySystemsMatch(address(this), target);
 
             bytes32 destination = destinationTypes[i];
             IDestinationAdapter existingDestination = destinations[destination];

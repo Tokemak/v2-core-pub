@@ -10,6 +10,8 @@ import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaul
 import { SystemComponent } from "src/SystemComponent.sol";
 import { Roles } from "src/libs/Roles.sol";
 
+import { console } from "forge-std/console.sol";
+
 contract DestinationVaultRegistry is SystemComponent, IDestinationVaultRegistry, SecurityBase {
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -17,6 +19,8 @@ contract DestinationVaultRegistry is SystemComponent, IDestinationVaultRegistry,
     EnumerableSet.AddressSet private vaults;
 
     modifier onlyFactory() {
+        console.log(msg.sender);
+        console.log(address(factory));
         if (msg.sender != address(factory)) {
             revert OnlyFactory();
         }
@@ -28,7 +32,6 @@ contract DestinationVaultRegistry is SystemComponent, IDestinationVaultRegistry,
 
     error OnlyFactory();
     error AlreadyRegistered(address vaultAddress);
-    error SystemMismatch(address ours, address theirs);
 
     constructor(ISystemRegistry _systemRegistry)
         SystemComponent(_systemRegistry)
@@ -66,15 +69,9 @@ contract DestinationVaultRegistry is SystemComponent, IDestinationVaultRegistry,
     /// @param newAddress Address of the new factory
     function setVaultFactory(address newAddress) external hasRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER) {
         Errors.verifyNotZero(newAddress, "newAddress");
-
-        factory = IDestinationVaultFactory(newAddress);
+        Errors.verifySystemsMatch(address(this), newAddress);
 
         emit FactorySet(newAddress);
-
-        ISystemRegistry factorySystem = ISystemRegistry(factory.getSystemRegistry());
-
-        if (factorySystem != systemRegistry) {
-            revert SystemMismatch(address(systemRegistry), address(factorySystem));
-        }
+        factory = IDestinationVaultFactory(newAddress);
     }
 }

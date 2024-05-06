@@ -139,9 +139,7 @@ contract DestinationVaultRegistryBaseTests is Test {
     function testSetFactoryValidatesSystemMatch() public {
         SystemRegistry newRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
         address newFactory = generateFactory(newRegistry);
-        vm.expectRevert(
-            abi.encodeWithSelector(DestinationVaultRegistry.SystemMismatch.selector, systemRegistry, newRegistry)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(registry), address(newFactory)));
         registry.setVaultFactory(newFactory);
     }
 

@@ -18,10 +18,4 @@ contract SystemComponent is ISystemComponent {
     function getSystemRegistry() external view returns (address) {
         return address(systemRegistry);
     }
-
-    function _verifySystemRegistry(address _registryToVerify) internal view {
-        if (address(systemRegistry) != _registryToVerify) {
-            revert Errors.SystemMismatch(address(systemRegistry), _registryToVerify);
-        }
-    }
 }

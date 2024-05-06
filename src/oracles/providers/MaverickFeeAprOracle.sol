@@ -38,8 +38,8 @@ contract MaverickFeeAprOracle is SystemComponent, SecurityBase, IMaverickFeeAprO
     {
         maxFeeAprLatency = 7 days;
     }
-    /// @inheritdoc IMaverickFeeAprOracle
 
+    /// @inheritdoc IMaverickFeeAprOracle
     function setFeeApr(
         address boostedPosition,
         uint256 feeApr,
@@ -82,6 +82,7 @@ contract MaverickFeeAprOracle is SystemComponent, SecurityBase, IMaverickFeeAprO
         emit MaxFeeAprLatencySet(_maxFeeAprLatency);
     }
 
+    /// @inheritdoc IMaverickFeeAprOracle
     function setMaxFeeAprLatency(uint256 _maxFeeAprLatency) external hasRole(Roles.ORACLE_MANAGER) {
         _setMaxFeeAprLatency(_maxFeeAprLatency);
     }

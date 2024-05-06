@@ -20,6 +20,7 @@ contract DestinationRegistry is SystemComponent, SecurityBase, IDestinationRegis
         SecurityBase(address(_systemRegistry.accessController()))
     { }
 
+    /// @inheritdoc IDestinationRegistry
     function register(
         bytes32[] calldata destinationTypes,
         address[] calldata targets
@@ -41,6 +42,7 @@ contract DestinationRegistry is SystemComponent, SecurityBase, IDestinationRegis
         emit Register(destinationTypes, targets);
     }
 
+    /// @inheritdoc IDestinationRegistry
     function replace(
         bytes32[] calldata destinationTypes,
         address[] calldata targets
@@ -62,6 +64,7 @@ contract DestinationRegistry is SystemComponent, SecurityBase, IDestinationRegis
         emit Replace(destinationTypes, targets);
     }
 
+    /// @inheritdoc IDestinationRegistry
     function unregister(bytes32[] calldata destinationTypes)
         public
         override
@@ -76,11 +79,13 @@ contract DestinationRegistry is SystemComponent, SecurityBase, IDestinationRegis
         emit Unregister(destinationTypes);
     }
 
+    /// @inheritdoc IDestinationRegistry
     function getAdapter(bytes32 destinationType) public view override returns (IDestinationAdapter target) {
         target = destinations[destinationType];
         Errors.verifyNotZero(address(target), "target");
     }
 
+    /// @inheritdoc IDestinationRegistry
     function addToWhitelist(bytes32[] calldata destinationTypes)
         external
         override
@@ -95,6 +100,7 @@ contract DestinationRegistry is SystemComponent, SecurityBase, IDestinationRegis
         emit Whitelist(destinationTypes);
     }
 
+    /// @inheritdoc IDestinationRegistry
     function removeFromWhitelist(bytes32[] calldata destinationTypes)
         external
         override
@@ -115,6 +121,7 @@ contract DestinationRegistry is SystemComponent, SecurityBase, IDestinationRegis
         emit RemoveFromWhitelist(destinationTypes);
     }
 
+    /// @inheritdoc IDestinationRegistry
     function isWhitelistedDestination(bytes32 destinationType) public view override returns (bool) {
         return allowedTypes[destinationType];
     }

@@ -22,11 +22,7 @@ contract RedstoneOracle is BaseAggregatorV3OracleInformation {
         return "redstone";
     }
 
-    /**
-     * @notice Fetches the price of a token in ETH denomination.
-     * @param token Address of token.
-     * @return priceInEth Price of token in ETH.
-     */
+    /// @inheritdoc IPriceOracle
     function getPriceInEth(address token) external returns (uint256 priceInEth) {
         OracleInfo memory oracleInfo = BaseAggregatorV3OracleInformation._getOracleInfo(token);
         // slither-disable-next-line unused-return

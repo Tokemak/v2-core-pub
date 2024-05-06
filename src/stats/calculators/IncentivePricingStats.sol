@@ -122,6 +122,7 @@ contract IncentivePricingStats is IIncentivesPricingStats, SystemComponent, Secu
         return (info.fastFilterPrice, info.slowFilterPrice);
     }
 
+    /// @inheritdoc IIncentivesPricingStats
     function getPriceOrZero(
         address token,
         uint40 staleCheck

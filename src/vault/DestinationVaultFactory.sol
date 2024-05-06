@@ -47,10 +47,12 @@ contract DestinationVaultFactory is SystemComponent, IDestinationVaultFactory, S
         _setDefaultRewardBlockDuration(_defaultRewardBlockDuration);
     }
 
+    /// @inheritdoc IDestinationVaultFactory
     function setDefaultRewardRatio(uint256 rewardRatio) public hasRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER) {
         _setDefaultRewardRatio(rewardRatio);
     }
 
+    /// @inheritdoc IDestinationVaultFactory
     function setDefaultRewardBlockDuration(uint256 blockDuration)
         public
         hasRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER)

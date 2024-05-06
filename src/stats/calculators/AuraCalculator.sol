@@ -35,6 +35,7 @@ contract AuraCalculator is IncentiveCalculatorBase {
         }
     }
 
+    /// @inheritdoc IncentiveCalculatorBase
     function getPlatformTokenMintAmount(
         address _platformToken,
         uint256 _annualizedReward

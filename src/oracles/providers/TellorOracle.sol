@@ -131,6 +131,7 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
     }
 
     /**
+     * @inheritdoc IPriceOracle
      * @dev Tellor always returns prices with 18 decimals of precision for spot pricing, so we do not need
      *      to worry about increasing or decreasing precision here.  See here:
      *      https://github.com/tellor-io/dataSpecs/blob/main/types/SpotPrice.md

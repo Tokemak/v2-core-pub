@@ -16,4 +16,21 @@ interface IStatsCalculatorFactory is ISystemComponent {
         bytes32[] calldata dependentAprIds,
         bytes calldata initData
     ) external returns (address calculatorAddress);
+
+    /// @notice Register a new template
+    /// @dev Does not allow overwriting an aprTemplateId, must replace or remove first
+    /// @param aprTemplateId id of the template
+    /// @param newTemplate address of the template
+    function registerTemplate(bytes32 aprTemplateId, address newTemplate) external;
+
+    /// @dev Requires an existing registration. Specified old template must match. New can't match old
+    /// @param aprTemplateId id of the template
+    /// @param oldTemplate address of currently registered template
+    /// @param newTemplate address of new template to register with id
+    function replaceTemplate(bytes32 aprTemplateId, address oldTemplate, address newTemplate) external;
+
+    /// @notice Remove a registered template
+    /// @dev Must have a template set with id or will revert
+    /// @param aprTemplateId id of the template
+    function removeTemplate(bytes32 aprTemplateId) external;
 }

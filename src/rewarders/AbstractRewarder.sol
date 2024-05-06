@@ -134,21 +134,12 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
         emit UserRewardUpdated(account, earnedRewards, rewardPerTokenStored, lastUpdateBlock);
     }
 
-    /**
-     * @notice Determines the last block number applicable for rewards calculation.
-     * @return The block number used for rewards calculation.
-     * @dev If the current block number is less than the period finish => current block number,
-     *      Else => the period finish block number.
-     */
+    /// @inheritdoc IBaseRewarder
     function lastBlockRewardApplicable() public view returns (uint256) {
         return block.number < periodInBlockFinish ? block.number : periodInBlockFinish;
     }
 
-    /**
-     * @notice Calculates the current reward per token value.
-     * @return The reward per token value.
-     * @dev It takes into account the total supply, reward rate, and duration of the reward period.
-     */
+    /// @inheritdoc IBaseRewarder
     function rewardPerToken() public view returns (uint256) {
         uint256 total = totalSupply();
         if (total == 0) {
@@ -159,7 +150,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
     }
 
     /**
-     * @notice Calculates the amount of rewards earned by an account.
+     * @inheritdoc IBaseRewarder
      * @dev
      * The function calculates the earned rewards based on the balance of the account,
      * the total supply of the staked tokens, the rewards per token and the last reward rate
@@ -175,17 +166,13 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
      *   amount of rewards the account has earned since it last claimed rewards.
      * - Finally, the function adds the rewards that have not yet been claimed by the
      *   user to find the total amount of earned rewards.
-     *
-     * @param account The address of the account to calculate the earned rewards for.
-     * @return The total amount of rewards that the account has earned.
      */
     function earned(address account) public view returns (uint256) {
         return (balanceOf(account) * (rewardPerToken() - userRewardPerTokenPaid[account]) / 1e18) + rewards[account];
     }
 
     /**
-     * @notice Queues the specified amount of new rewards for distribution to stakers.
-     * @param newRewards The amount of new rewards.
+     * @inheritdoc IBaseRewarder
      * @dev The function transfers the new rewards from the caller to this contract,
      *      ensuring that the deposited amount matches the declared rewards.
      *      Irrespective of whether we're near the start or the end of a reward period, if the accrued rewards
@@ -263,11 +250,10 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
     }
 
     /**
-     * @notice Sets the lock duration for staked Toke tokens.
+     * inheritdoc IBaseRewarder
      * @dev If the lock duration is set to 0, it turns off the staking functionality for Toke tokens.
      * @dev If the lock duration is greater than 0, it should be long enough to satisfy the minimum staking duration
      * requirement of the accToke contract.
-     * @param _tokeLockDuration The lock duration for staked Toke tokens.
      */
     function setTokeLockDuration(uint256 _tokeLockDuration) external hasRole(rewardRole) {
         // if duration is not set to 0 (that would turn off functionality), make sure it's long enough for accToke
@@ -282,10 +268,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
         emit TokeLockDurationUpdated(_tokeLockDuration);
     }
 
-    /**
-     * @notice Add an address to the whitelist.
-     * @param wallet The address to be added to the whitelist.
-     */
+    /// @inheritdoc IBaseRewarder
     function addToWhitelist(address wallet) external override hasRole(rewardRole) {
         Errors.verifyNotZero(wallet, "wallet");
         if (whitelistedAddresses[wallet]) {
@@ -296,10 +279,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
         emit AddedToWhitelist(wallet);
     }
 
-    /**
-     * @notice Remove an address from the whitelist.
-     * @param wallet The address to be removed from the whitelist.
-     */
+    /// @inheritdoc IBaseRewarder
     function removeFromWhitelist(address wallet) external override hasRole(rewardRole) {
         if (!whitelistedAddresses[wallet]) {
             revert Errors.ItemNotFound();
@@ -310,11 +290,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
         emit RemovedFromWhitelist(wallet);
     }
 
-    /**
-     * @notice Check if an address is whitelisted.
-     * @param wallet The address to be checked.
-     * @return bool indicating if the address is whitelisted.
-     */
+    /// @inheritdoc IBaseRewarder
     function isWhitelisted(address wallet) external view override returns (bool) {
         return whitelistedAddresses[wallet];
     }
@@ -381,7 +357,9 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
         emit Staked(account, amount);
     }
 
+    /// @inheritdoc IBaseRewarder
     function totalSupply() public view virtual returns (uint256);
 
+    /// @inheritdoc IBaseRewarder
     function balanceOf(address account) public view virtual returns (uint256);
 }

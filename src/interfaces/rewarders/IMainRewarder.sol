@@ -19,6 +19,11 @@ interface IMainRewarder is IBaseRewarder {
     function addExtraReward(address reward) external;
 
     /**
+     * @notice Removes a list of ExtraRewarder contract addresses from the extraRewards array.
+     */
+    function removeExtraRewards(address[] calldata _rewards) external;
+
+    /**
      * @notice Withdraws the specified amount of tokens from the vault for the specified account, and transfers all
      * rewards for the account from this contract and any linked extra reward contracts.
      * @param account The address of the account to withdraw tokens and claim rewards for.
@@ -46,6 +51,11 @@ interface IMainRewarder is IBaseRewarder {
      * @notice Number of extra rewards currently registered
      */
     function extraRewardsLength() external view returns (uint256);
+
+    /**
+     * @notice Get the extra rewards array values
+     */
+    function extraRewards() external view returns (address[] memory);
 
     /**
      * @notice Get the rewarder at the specified index

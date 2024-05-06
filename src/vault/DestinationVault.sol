@@ -298,6 +298,7 @@ abstract contract DestinationVault is
         virtual
         returns (address[] memory tokens, uint256[] memory amounts);
 
+    /// @inheritdoc IDestinationVault
     function recover(
         address[] calldata tokens,
         uint256[] calldata amounts,

@@ -38,16 +38,19 @@ contract SystemSecurity is SystemComponent, SecurityBase, ISystemSecurity {
         SecurityBase(address(_systemRegistry.accessController()))
     { }
 
+    /// @inheritdoc ISystemSecurity
     /// @notice Returns true when the entire system is paused
     function isSystemPaused() external view returns (bool) {
         return _systemPaused;
     }
 
+    /// @inheritdoc ISystemSecurity
     /// @notice Enters a NAV/share changing operation from an AutoPool
     function enterNavOperation() external override onlyAutoPool {
         ++navOpsInProgress;
     }
 
+    /// @inheritdoc ISystemSecurity
     /// @notice Exits a NAV/share changing operation from an AutoPool
     function exitNavOperation() external override onlyAutoPool {
         --navOpsInProgress;

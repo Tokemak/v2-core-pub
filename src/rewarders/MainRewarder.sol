@@ -45,10 +45,12 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         allowExtraRewards = _allowExtraRewards;
     }
 
+    /// @inheritdoc IMainRewarder
     function extraRewardsLength() external view returns (uint256) {
         return _extraRewards.length();
     }
 
+    /// @inheritdoc IMainRewarder
     function addExtraReward(address reward) external hasRole(rewardRole) {
         if (!allowExtraRewards) {
             revert ExtraRewardsNotAllowed();
@@ -62,10 +64,12 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         emit ExtraRewardAdded(reward);
     }
 
+    /// @inheritdoc IMainRewarder
     function getExtraRewarder(uint256 index) external view returns (IExtraRewarder rewarder) {
         return IExtraRewarder(_extraRewards.at(index));
     }
 
+    /// @inheritdoc IMainRewarder
     function removeExtraRewards(address[] calldata _rewards) external hasRole(rewardRole) {
         uint256 length = _rewards.length;
         for (uint256 i = 0; i < length; ++i) {
@@ -76,6 +80,7 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         }
     }
 
+    /// @inheritdoc IMainRewarder
     function clearExtraRewards() external hasRole(rewardRole) {
         while (_extraRewards.length() > 0) {
             if (!_extraRewards.remove(_extraRewards.at(_extraRewards.length() - 1))) {
@@ -86,6 +91,7 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         emit ExtraRewardsCleared();
     }
 
+    /// @inheritdoc IMainRewarder
     function extraRewards() external view returns (address[] memory) {
         return _extraRewards.values();
     }
@@ -126,6 +132,7 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         _balances[account] += amount;
     }
 
+    /// @inheritdoc IBaseRewarder
     function getReward() external nonReentrant {
         _updateReward(msg.sender);
         _processRewards(msg.sender, true);
@@ -136,10 +143,12 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         _processRewards(account, claimExtras);
     }
 
+    /// @inheritdoc IBaseRewarder
     function totalSupply() public view override(AbstractRewarder, IBaseRewarder) returns (uint256) {
         return _totalSupply;
     }
 
+    /// @inheritdoc IBaseRewarder
     function balanceOf(address account) public view override(AbstractRewarder, IBaseRewarder) returns (uint256) {
         return _balances[account];
     }

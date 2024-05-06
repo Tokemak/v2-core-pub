@@ -104,16 +104,19 @@ contract MaverickDexCalculator is IDexLSTStats, BaseStatsCalculator {
         }
     }
 
+    /// @inheritdoc IStatsCalculator
     function shouldSnapshot() public view virtual override returns (bool takeSnapshot) {
         // snapshot both dex reserves and fee apr at the same time.
         // slither-disable-next-line timestamp
         takeSnapshot = (block.timestamp - lastSnapshotTimestamp) > Stats.DEX_FEE_APR_SNAPSHOT_INTERVAL;
     }
 
+    /// @inheritdoc IStatsCalculator
     function getAprId() external view returns (bytes32) {
         return _aprId;
     }
 
+    /// @inheritdoc IStatsCalculator
     function getAddressId() external view returns (address) {
         return address(boostedPosition);
     }
@@ -178,6 +181,7 @@ contract MaverickDexCalculator is IDexLSTStats, BaseStatsCalculator {
         return pricer.getPriceInEth(token) * balances[index] / 1e18;
     }
 
+    /// @inheritdoc IDexLSTStats
     function current() external returns (DexLSTStatsData memory) {
         ILSTStats.LSTStatsData[] memory lstStatsData = new ILSTStats.LSTStatsData[](2);
         // address(0) is for WETH

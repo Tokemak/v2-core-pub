@@ -14,6 +14,7 @@ contract SystemComponent is ISystemComponent {
         systemRegistry = _systemRegistry;
     }
 
+    /// @inheritdoc ISystemComponent
     function getSystemRegistry() external view returns (address) {
         return address(systemRegistry);
     }

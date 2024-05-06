@@ -23,6 +23,7 @@ contract BaseAsyncSwapper is IAsyncSwapper {
         AGGREGATOR = aggregator;
     }
 
+    /// @inheritdoc IAsyncSwapper
     function swap(SwapParams memory swapParams) public virtual returns (uint256 buyTokenAmountReceived) {
         //slither-disable-start reentrancy-events
         if (swapParams.buyTokenAddress == address(0)) revert TokenAddressZero();

@@ -21,6 +21,7 @@ contract AsyncSwapperRegistry is SystemComponent, IAsyncSwapperRegistry, Securit
         SecurityBase(address(_systemRegistry.accessController()))
     { }
 
+    /// @inheritdoc IAsyncSwapperRegistry
     function register(address swapperAddress) external override hasRole(Roles.AUTO_POOL_REGISTRY_UPDATER) {
         Errors.verifyNotZero(swapperAddress, "swapperAddress");
 
@@ -29,6 +30,7 @@ contract AsyncSwapperRegistry is SystemComponent, IAsyncSwapperRegistry, Securit
         emit SwapperAdded(swapperAddress);
     }
 
+    /// @inheritdoc IAsyncSwapperRegistry
     function unregister(address swapperAddress) external override hasRole(Roles.AUTO_POOL_REGISTRY_UPDATER) {
         Errors.verifyNotZero(swapperAddress, "swapperAddress");
 
@@ -37,14 +39,17 @@ contract AsyncSwapperRegistry is SystemComponent, IAsyncSwapperRegistry, Securit
         emit SwapperRemoved(swapperAddress);
     }
 
+    /// @inheritdoc IAsyncSwapperRegistry
     function isRegistered(address swapperAddress) external view override returns (bool) {
         return _swappers.contains(swapperAddress);
     }
 
+    /// @inheritdoc IAsyncSwapperRegistry
     function verifyIsRegistered(address swapperAddress) external view override {
         if (!_swappers.contains(swapperAddress)) revert Errors.NotRegistered();
     }
 
+    /// @inheritdoc IAsyncSwapperRegistry
     function list() external view override returns (address[] memory) {
         return _swappers.values();
     }

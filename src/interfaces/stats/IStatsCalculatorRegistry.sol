@@ -15,4 +15,8 @@ interface IStatsCalculatorRegistry {
     /// @notice Register a new stats calculator
     /// @param calculator address of the calculator
     function register(address calculator) external;
+
+    /// @notice Set the factory that can register calculators
+    /// @param factory address of the factory
+    function setCalculatorFactory(address factory) external;
 }

@@ -41,6 +41,7 @@ contract AutoPoolRegistry is SystemComponent, IAutoPoolRegistry, SecurityBase {
     //
     ///////////////////////////////////////////////////////////////////
 
+    /// @inheritdoc IAutoPoolRegistry
     function addVault(address vaultAddress) external onlyUpdater {
         Errors.verifyNotZero(vaultAddress, "vaultAddress");
 
@@ -59,6 +60,7 @@ contract AutoPoolRegistry is SystemComponent, IAutoPoolRegistry, SecurityBase {
         emit VaultAdded(asset, vaultAddress);
     }
 
+    /// @inheritdoc IAutoPoolRegistry
     function removeVault(address vaultAddress) external onlyUpdater {
         Errors.verifyNotZero(vaultAddress, "vaultAddress");
 
@@ -90,18 +92,22 @@ contract AutoPoolRegistry is SystemComponent, IAutoPoolRegistry, SecurityBase {
     //
     ///////////////////////////////////////////////////////////////////
 
+    /// @inheritdoc IAutoPoolRegistry
     function isVault(address vaultAddress) external view override returns (bool) {
         return _vaults.contains(vaultAddress);
     }
 
+    /// @inheritdoc IAutoPoolRegistry
     function listVaults() external view returns (address[] memory) {
         return _vaults.values();
     }
 
+    /// @inheritdoc IAutoPoolRegistry
     function listVaultsForAsset(address asset) external view returns (address[] memory) {
         return _vaultsByAsset[asset].values();
     }
 
+    /// @inheritdoc IAutoPoolRegistry
     function listVaultsForType(bytes32 _vaultType) external view returns (address[] memory) {
         return _vaultsByType[_vaultType].values();
     }

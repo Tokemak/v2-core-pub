@@ -39,6 +39,7 @@ contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, S
         SecurityBase(address(_systemRegistry.accessController()))
     { }
 
+    /// @inheritdoc IStatsCalculatorRegistry
     function getCalculator(bytes32 aprId) external view returns (IStatsCalculator calculator) {
         address calcAddress = calculators[aprId];
         Errors.verifyNotZero(calcAddress, "calcAddress");
@@ -46,6 +47,7 @@ contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, S
         calculator = IStatsCalculator(calcAddress);
     }
 
+    /// @inheritdoc IStatsCalculatorRegistry
     function register(address calculator) external onlyFactory {
         Errors.verifyNotZero(calculator, "calculator");
 
@@ -63,6 +65,7 @@ contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, S
         emit StatCalculatorRegistered(aprId, calculator, msg.sender);
     }
 
+    /// @inheritdoc IStatsCalculatorRegistry
     function setCalculatorFactory(address calculatorFactory) external hasRole(Roles.STATS_CALC_REGISTRY_MANAGER) {
         Errors.verifyNotZero(address(calculatorFactory), "factory");
 

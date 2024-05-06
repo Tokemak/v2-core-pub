@@ -415,10 +415,24 @@ contract RootPriceOracle is SystemComponent, SecurityBase, IRootPriceOracle {
         }
     }
 
+    /**
+     * @notice Get the floor price of a token in quote token denomination.
+     * @param lpToken Address of the token.
+     * @param pool Address of the pool.
+     * @param quote Address of the quote token.
+     * @return price Price of token in quote token.
+     */
     function getFloorPrice(address lpToken, address pool, address quote) external returns (uint256 price) {
         price = getFloorCeilingPrice(pool, lpToken, quote, false);
     }
 
+    /**
+     * @notice Get the ceiling price of a token in quote token denomination.
+     * @param lpToken Address of the token.
+     * @param pool Address of the pool.
+     * @param quote Address of the quote token.
+     * @return price Price of token in quote token.
+     */
     function getCeilingPrice(address lpToken, address pool, address quote) external returns (uint256 price) {
         price = getFloorCeilingPrice(pool, lpToken, quote, true);
     }

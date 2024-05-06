@@ -167,6 +167,7 @@ contract MaverickCalculator is BaseStatsCalculator, IDexLSTStats {
         return data;
     }
 
+    /// @inheritdoc IStatsCalculator
     function shouldSnapshot() public view override returns (bool) {
         IReward.RewardInfo[] memory rewardInfo = boostedRewarder.rewardInfo();
         IReward.RewardInfo memory info;

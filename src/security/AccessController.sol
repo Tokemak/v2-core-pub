@@ -24,6 +24,7 @@ contract AccessController is SystemComponent, AccessControlEnumerable, IAccessCo
     // ------------------------------------------------------------
     //               Role management methods
     // ------------------------------------------------------------
+    /// @inheritdoc IAccessController
     function setupRole(bytes32 role, address account) external {
         if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
             revert AccessDenied();
@@ -35,6 +36,7 @@ contract AccessController is SystemComponent, AccessControlEnumerable, IAccessCo
         }
     }
 
+    /// @inheritdoc IAccessController
     function verifyOwner(address account) public view {
         if (!hasRole(DEFAULT_ADMIN_ROLE, account)) {
             revert AccessDenied();

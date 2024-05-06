@@ -63,10 +63,7 @@ contract StatsCalculatorFactory is SystemComponent, IStatsCalculatorFactory, Sec
         systemRegistry.statsCalculatorRegistry().register(calculatorAddress);
     }
 
-    /// @notice Register a new template
-    /// @dev Does not allow overwriting an aprTemplateId, must replace or remove first
-    /// @param aprTemplateId id of the template
-    /// @param newTemplate address of the template
+    /// @inheritdoc IStatsCalculatorFactory
     function registerTemplate(bytes32 aprTemplateId, address newTemplate) external onlyTemplateManager {
         Errors.verifyNotZero(aprTemplateId, "aprTemplateId");
         Errors.verifyNotZero(newTemplate, "template");
@@ -81,11 +78,7 @@ contract StatsCalculatorFactory is SystemComponent, IStatsCalculatorFactory, Sec
         templates[aprTemplateId] = newTemplate;
     }
 
-    /// @notice Replace an template registered with an id
-    /// @dev Requires an existing registration. Specified old template must match. New can't match old
-    /// @param aprTemplateId id of the template
-    /// @param oldTemplate address of currently registered template
-    /// @param newTemplate address of new template to register with id
+    /// @inheritdoc IStatsCalculatorFactory
     function replaceTemplate(
         bytes32 aprTemplateId,
         address oldTemplate,
@@ -111,9 +104,7 @@ contract StatsCalculatorFactory is SystemComponent, IStatsCalculatorFactory, Sec
         templates[aprTemplateId] = newTemplate;
     }
 
-    /// @notice Remove a registered template
-    /// @dev Must have a template set with id or will revert
-    /// @param aprTemplateId id of the template
+    /// @inheritdoc IStatsCalculatorFactory
     function removeTemplate(bytes32 aprTemplateId) external onlyTemplateManager {
         Errors.verifyNotZero(aprTemplateId, "aprTemplateId");
 

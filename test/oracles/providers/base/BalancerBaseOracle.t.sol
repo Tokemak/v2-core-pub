@@ -9,6 +9,8 @@ import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
+import { BalancerLPComposableStableEthOracle } from "src/oracles/providers/BalancerLPComposableStableEthOracle.sol";
+import { BalancerLPMetaStableEthOracle } from "src/oracles/providers/BalancerLPMetaStableEthOracle.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
@@ -34,10 +36,16 @@ import {
 
 /// @dev Universal wrapper for testing both Composable and Meta Stable Balancer pools
 contract BalancerBaseOracleWrapper is BalancerBaseOracle {
+    BalancerLPMetaStableEthOracle internal metaOracle;
+    BalancerLPComposableStableEthOracle internal composableOracle;
+
     constructor(
         ISystemRegistry _systemRegistry,
         IVault _balancerVault
-    ) BalancerBaseOracle(_systemRegistry, _balancerVault) { }
+    ) BalancerBaseOracle(_systemRegistry, _balancerVault) {
+        metaOracle = new BalancerLPMetaStableEthOracle(_systemRegistry, _balancerVault);
+        composableOracle = new BalancerLPComposableStableEthOracle(_systemRegistry, _balancerVault);
+    }
 
     function getDescription() external pure override returns (string memory) {
         return "balancerBase";
@@ -45,8 +53,8 @@ contract BalancerBaseOracleWrapper is BalancerBaseOracle {
 
     function getTotalSupply(address lpToken) public virtual override returns (uint256 totalSupply) {
         totalSupply = BalancerUtilities.isComposablePool(lpToken)
-            ? IBalancerComposableStablePool(lpToken).getActualSupply()
-            : IERC20(lpToken).totalSupply();
+            ? composableOracle.getTotalSupply(lpToken)
+            : metaOracle.getTotalSupply(lpToken);
     }
 
     function getPoolTokens(address pool)
@@ -56,8 +64,8 @@ contract BalancerBaseOracleWrapper is BalancerBaseOracle {
         returns (IERC20[] memory tokens, uint256[] memory balances)
     {
         (tokens, balances) = BalancerUtilities.isComposablePool(pool)
-            ? BalancerUtilities._getComposablePoolTokensSkipBpt(balancerVault, pool)
-            : BalancerUtilities._getPoolTokens(balancerVault, pool);
+            ? composableOracle.getPoolTokens(pool)
+            : metaOracle.getPoolTokens(pool);
     }
 }
 

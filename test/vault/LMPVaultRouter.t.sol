@@ -25,6 +25,7 @@ import { IRewards } from "src/interfaces/rewarders/IRewards.sol";
 import { Rewards } from "src/rewarders/Rewards.sol";
 
 import { Roles } from "src/libs/Roles.sol";
+import { PeripheryPayments } from "src/utils/PeripheryPayments.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { IAsyncSwapper, SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
@@ -971,6 +972,68 @@ contract AutoPilotRouterTest is BaseTest {
         assertEq(userRewardTokenBalanceBefore + userClaimedRewards, localStakeAmount);
     }
 
+    function test_wrapETH9_Parameterized() public {
+        vm.deal(address(autoPoolRouter), 2 ether);
+
+        assertEq(address(autoPoolRouter).balance, 2 ether);
+
+        vm.expectRevert(PeripheryPayments.InsufficientETH.selector);
+        autoPoolRouter.wrapWETH9(3 ether);
+
+        autoPoolRouter.wrapWETH9(1 ether);
+
+        assertEq(weth.balanceOf(address(autoPoolRouter)), 1 ether);
+        assertEq(address(autoPoolRouter).balance, 1 ether);
+    }
+
+    function test_wrapETH9_All() public {
+        vm.deal(address(autoPoolRouter), 1 ether);
+
+        assertEq(address(autoPoolRouter).balance, 1 ether);
+        assertEq(weth.balanceOf(address(autoPoolRouter)), 0);
+
+        autoPoolRouter.wrapWETH9();
+
+        assertEq(address(autoPoolRouter).balance, 0);
+        assertEq(weth.balanceOf(address(autoPoolRouter)), 1 ether);
+
+        autoPoolRouter.wrapWETH9{ value: 1 ether }();
+
+        assertEq(address(autoPoolRouter).balance, 0);
+        assertEq(weth.balanceOf(address(autoPoolRouter)), 2 ether);
+    }
+
+    function test_unwrapWETH9() public {
+        vm.deal(address(autoPoolRouter), 1 ether);
+        autoPoolRouter.wrapWETH9();
+
+        assertEq(weth.balanceOf(address(autoPoolRouter)), 1 ether);
+
+        vm.expectRevert(PeripheryPayments.InsufficientWETH9.selector);
+        autoPoolRouter.unwrapWETH9(100 ether, address(autoPoolRouter));
+
+        autoPoolRouter.unwrapWETH9(1 ether, address(autoPoolRouter));
+
+        assertEq(address(autoPoolRouter).balance, 1 ether);
+
+        vm.deal(address(autoPoolRouter), 1 ether);
+        autoPoolRouter.wrapWETH9();
+
+        autoPoolRouter.unwrapWETH9(1 ether, address(99));
+
+        assertEq(address(99).balance, 1 ether);
+    }
+
+    function test_refundETH() public {
+        vm.deal(address(autoPoolRouter), 1 ether);
+
+        assertEq(address(99).balance, 0);
+        vm.startPrank(address(99));
+        autoPoolRouter.refundETH();
+        assertEq(address(99).balance, 1 ether);
+        vm.stopPrank();
+    }
+
     function test_claimRewards_Router() public {
         uint256 localStakeAmount = 1000;
 
@@ -1003,7 +1066,7 @@ contract AutoPilotRouterTest is BaseTest {
 
         assertEq(toke.balanceOf(address(this)), 0); // Make sure no Toke for user before claim.
         assertEq(toke.balanceOf(address(autoPoolRewarder)), localStakeAmount); // Rewarder has proper amount before
-            // claim.
+        // claim.
 
         // Roll for entire reward duration, gives all rewards to user.  100 is reward duration.
         vm.roll(block.number + 100);

@@ -115,7 +115,7 @@ contract DeploySystem is BaseScript {
         console.log("AutoPool Vault Registry address: ", address(autoPoolRegistry));
 
         // Deploy AutoPool Template.
-        autoPoolTemplate = new AutoPoolETH(systemRegistry, wethAddress, false);
+        autoPoolTemplate = new AutoPoolETH(systemRegistry, wethAddress);
         console.log("AutoPool Template address: ", address(autoPoolTemplate));
 
         // AutoPool Factory setup.

@@ -74,8 +74,6 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
     /// @dev Exposed via `decimals()`
     uint8 internal immutable _baseAssetDecimals;
 
-    bool public immutable _checkUsers;
-
     /// =====================================================
     /// Internal Vars
     /// =====================================================
@@ -147,9 +145,6 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
     /// @notice The strategy logic for the AutoPool
     IAutoPoolStrategy public autoPoolStrategy;
 
-    /// @notice Temporary restriction of depositors
-    mapping(address => bool) public allowedUsers;
-
     /// =====================================================
     /// Events
     /// =====================================================
@@ -173,11 +168,6 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
     /// =====================================================
     /// Modifiers
     /// =====================================================
-
-    modifier onlyAllowedUsers(address receiver) {
-        _ensureAllowedUsers(receiver);
-        _;
-    }
 
     /// @notice Reverts if nav/share decreases during a deposit/mint/withdraw/redeem
     /// @dev Increases are allowed. Ignored when supply is 0
@@ -209,8 +199,7 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
 
     constructor(
         ISystemRegistry systemRegistry,
-        address _vaultAsset,
-        bool checkUsers
+        address _vaultAsset
     ) SecurityBase(address(systemRegistry.accessController())) Pausable(systemRegistry) {
         Errors.verifyNotZero(address(systemRegistry), "systemRegistry");
         _systemRegistry = systemRegistry;
@@ -223,8 +212,6 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
         _baseAsset = IERC20Metadata(_vaultAsset);
         _symbol = string(abi.encodePacked("autoPool", IERC20Metadata(_vaultAsset).symbol(), "Template"));
         _name = string(abi.encodePacked(_symbol, " Token"));
-
-        _checkUsers = checkUsers;
 
         _disableInitializers();
     }
@@ -253,11 +240,6 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
         autoPoolStrategy = IAutoPoolStrategy(strategy);
 
         // slither-disable-start reentrancy-no-eth
-        // Both factory and dead address need permission to use deposit functionality.
-        if (_checkUsers) {
-            toggleAllowedUser(DEAD_ADDRESS);
-            toggleAllowedUser(factory);
-        }
 
         // Send 100_000 shares to dead address to prevent nav / share inflation attack that can happen
         // with very small shares and totalAssets amount.
@@ -266,11 +248,6 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
         // First mint, must be 1:1
         if (sharesMinted != WETH_INIT_DEPOSIT) revert ValueSharesMismatch(WETH_INIT_DEPOSIT, sharesMinted);
 
-        // No reason to continue to have either be allowed user.
-        if (_checkUsers) {
-            toggleAllowedUser(DEAD_ADDRESS);
-            toggleAllowedUser(factory);
-        }
         // slither-disable-end reentrancy-no-eth
 
         AutoPoolFees.setProfitUnlockPeriod(_profitUnlockSettings, _tokenData, 86_400);
@@ -289,7 +266,6 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
         nonReentrant
         noNavPerShareDecrease(TotalAssetPurpose.Deposit)
         ensureNoNavOps
-        onlyAllowedUsers(receiver)
         returns (uint256 shares)
     {
         Errors.verifyNotZero(assets, "assets");
@@ -318,7 +294,6 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
         nonReentrant
         noNavPerShareDecrease(TotalAssetPurpose.Deposit)
         ensureNoNavOps
-        onlyAllowedUsers(receiver)
         returns (uint256 assets)
     {
         // Handles the vault being paused, returns 0
@@ -345,7 +320,6 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
         whenNotPaused
         noNavPerShareDecrease(TotalAssetPurpose.Withdraw)
         ensureNoNavOps
-        onlyAllowedUsers(receiver)
         returns (uint256 shares)
     {
         Errors.verifyNotZero(assets, "assets");
@@ -377,7 +351,6 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
         whenNotPaused
         noNavPerShareDecrease(TotalAssetPurpose.Withdraw)
         ensureNoNavOps
-        onlyAllowedUsers(receiver)
         returns (uint256 assets)
     {
         uint256 maxShares = maxRedeem(owner);
@@ -435,10 +408,6 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
 
     function setProfitUnlockPeriod(uint48 newUnlockPeriodSeconds) external hasRole(Roles.AUTO_POOL_MANAGER) {
         AutoPoolFees.setProfitUnlockPeriod(_profitUnlockSettings, _tokenData, newUnlockPeriodSeconds);
-    }
-
-    function toggleAllowedUser(address user) public hasRole(Roles.AUTO_POOL_MANAGER) {
-        allowedUsers[user] = !allowedUsers[user];
     }
 
     /// @notice Set the rewarder contract used by the vault.
@@ -995,12 +964,6 @@ contract AutoPoolETH is ISystemComponent, Initializable, IAutoPool, IStrategy, S
     function oldestDebtReporting() public view returns (uint256) {
         address destVault = _debtReportQueue.peekHead();
         return _destinationInfo[destVault].lastReport;
-    }
-
-    function _ensureAllowedUsers(address receiver) internal view {
-        if (_checkUsers && (!allowedUsers[msg.sender] || !allowedUsers[receiver])) {
-            revert InvalidUser();
-        }
     }
 
     function _checkNoNavOps() internal view {

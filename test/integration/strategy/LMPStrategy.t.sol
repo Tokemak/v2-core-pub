@@ -159,8 +159,7 @@ contract AutoPoolETHStrategyInt is Test {
 
         //_systemRegistry.setAutoPoolRegistry(address(_autoPoolRegistry));
 
-        address autoPoolTemplate =
-            address(new AutoPoolETH(_systemRegistry, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, false));
+        address autoPoolTemplate = address(new AutoPoolETH(_systemRegistry, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));
         _autoPoolFactory = new AutoPoolFactory(_systemRegistry, autoPoolTemplate, 800, 100);
 
         _accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(_autoPoolFactory));
@@ -194,8 +193,6 @@ contract AutoPoolETHStrategyInt is Test {
         _vault.addDestinations(destinations);
 
         _accessController.grantRole(Roles.AUTO_POOL_MANAGER, V2_DEPLOYER);
-        _vault.toggleAllowedUser(V2_DEPLOYER);
-        _vault.toggleAllowedUser(address(this));
 
         weth.deposit{ value: 100e18 }();
         weth.approve(address(_vault), 100e18);

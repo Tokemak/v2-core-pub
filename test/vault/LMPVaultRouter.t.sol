@@ -380,8 +380,6 @@ contract AutoPilotRouterTest is BaseTest {
     function test_deposit_ETH() public {
         _changeVaultToWETH();
 
-        autoPool.toggleAllowedUser(address(autoPoolRouter));
-
         uint256 amount = depositAmount;
 
         vm.deal(address(this), amount);
@@ -442,8 +440,6 @@ contract AutoPilotRouterTest is BaseTest {
 
     function test_mint_ETH() public {
         _changeVaultToWETH();
-
-        autoPool.toggleAllowedUser(address(autoPoolRouter));
 
         uint256 amount = depositAmount;
 
@@ -623,8 +619,6 @@ contract AutoPilotRouterTest is BaseTest {
         uint256 amount = depositAmount;
         autoPool2 = _setupVault("vault2");
 
-        autoPool2.toggleAllowedUser(address(autoPoolRouter));
-
         // do deposit to vault #1 first
         uint256 sharesReceived = _deposit(autoPool, amount);
 
@@ -697,8 +691,6 @@ contract AutoPilotRouterTest is BaseTest {
     function test_withdrawToDeposit() public {
         uint256 amount = depositAmount;
         autoPool2 = _setupVault("vault2");
-
-        autoPool2.toggleAllowedUser(address(autoPoolRouter));
 
         // do deposit to vault #1 first
         uint256 sharesReceived = _deposit(autoPool, amount);
@@ -1271,7 +1263,7 @@ contract AutoPilotRouterTest is BaseTest {
         //
         // Update factory to support WETH instead of regular mock (one time just for this test)
         //
-        autoPoolTemplate = address(new AutoPoolETH(systemRegistry, address(weth), false));
+        autoPoolTemplate = address(new AutoPoolETH(systemRegistry, address(weth)));
         autoPoolFactory = new AutoPoolFactory(systemRegistry, autoPoolTemplate, 800, 100);
         // NOTE: deployer grants factory permission to update the registry
         accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));

@@ -43,7 +43,7 @@ contract AutoPoolSystem is BaseScript {
         }
 
         // AutoPool Factory setup.
-        AutoPoolETH autoPoolTemplate = new AutoPoolETH(systemRegistry, wethAddress, true);
+        AutoPoolETH autoPoolTemplate = new AutoPoolETH(systemRegistry, wethAddress);
         console.log("AutoPool Vault WETH Template: %s", address(autoPoolTemplate));
 
         AutoPoolFactory autoPoolFactory = new AutoPoolFactory(

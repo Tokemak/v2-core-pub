@@ -12,8 +12,6 @@ import { Multicall } from "src/utils/Multicall.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
-
 /// @title AutoPoolETH Router Base Contract
 abstract contract AutoPilotRouterBase is
     IAutoPilotRouterBase,
@@ -22,15 +20,6 @@ abstract contract AutoPilotRouterBase is
     PeripheryPayments,
     SystemComponent
 {
-    error UserNotAllowed();
-
-    modifier onlyAllowedUsers(IAutoPool vault, address user) {
-        if (AutoPoolETH(address(vault))._checkUsers() && !AutoPoolETH(address(vault)).allowedUsers(user)) {
-            revert UserNotAllowed();
-        }
-        _;
-    }
-
     //read weth from system registry and give it to periphery payments
     constructor(ISystemRegistry _systemRegistry)
         PeripheryPayments(_systemRegistry.weth())
@@ -44,15 +33,7 @@ abstract contract AutoPilotRouterBase is
         address to,
         uint256 shares,
         uint256 maxAmountIn
-    )
-        public
-        payable
-        virtual
-        override
-        onlyAllowedUsers(vault, msg.sender)
-        onlyAllowedUsers(vault, to)
-        returns (uint256 amountIn)
-    {
+    ) public payable virtual override returns (uint256 amountIn) {
         amountIn = vault.mint(shares, to);
         if (amountIn > maxAmountIn) {
             revert MaxAmountError();
@@ -77,15 +58,7 @@ abstract contract AutoPilotRouterBase is
         address to,
         uint256 amount,
         uint256 maxSharesOut
-    )
-        public
-        payable
-        virtual
-        override
-        onlyAllowedUsers(vault, msg.sender)
-        onlyAllowedUsers(vault, to)
-        returns (uint256 sharesOut)
-    {
+    ) public payable virtual override returns (uint256 sharesOut) {
         sharesOut = vault.withdraw(amount, to, msg.sender);
         if (sharesOut > maxSharesOut) {
             revert MaxSharesError();
@@ -98,15 +71,7 @@ abstract contract AutoPilotRouterBase is
         address to,
         uint256 shares,
         uint256 minAmountOut
-    )
-        public
-        payable
-        virtual
-        override
-        onlyAllowedUsers(vault, msg.sender)
-        onlyAllowedUsers(vault, to)
-        returns (uint256 amountOut)
-    {
+    ) public payable virtual override returns (uint256 amountOut) {
         if ((amountOut = vault.redeem(shares, to, msg.sender)) < minAmountOut) {
             revert MinAmountError();
         }

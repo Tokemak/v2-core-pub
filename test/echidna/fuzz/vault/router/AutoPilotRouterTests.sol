@@ -87,12 +87,6 @@ abstract contract AutoPilotRouterUsage is BasePoolSetup, PropertiesAsserts {
 
         autoPoolRouter = new TestRouter(_systemRegistry);
 
-        _pool.toggleAllowedUser(address(this));
-        _pool.toggleAllowedUser(_user1);
-        _pool.toggleAllowedUser(_user2);
-        _pool.toggleAllowedUser(_user3);
-        _pool.toggleAllowedUser(address(autoPoolRouter));
-
         AsyncSwapperRegistry asyncSwapperRegistry = new AsyncSwapperRegistry(_systemRegistry);
         _systemRegistry.setAsyncSwapperRegistry(address(asyncSwapperRegistry));
 

@@ -36,4 +36,4 @@ interface IRouter {
     function isOffRamp(uint64 sourceChainSelector, address offRamp) external view returns (bool isOffRamp);
 }
 
-// slither-disable-stop shadowing-local
+// slither-disable-end shadowing-local

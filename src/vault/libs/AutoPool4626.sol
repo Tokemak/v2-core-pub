@@ -148,17 +148,19 @@ library AutoPool4626 {
 
         emit TokensRecovered(tokens, amounts, destinations);
 
+        IAutoPool autoPool = IAutoPool(address(this));
+
         for (uint256 i = 0; i < len; ++i) {
             (address tokenAddress, uint256 amount, address destination) = (tokens[i], amounts[i], destinations[i]);
 
-            // temporarily removing for guarded launch
-            // // Ensure this isn't an asset we care about
-            // if (
-            //     tokenAddress == address(this) || tokenAddress == address(_baseAsset)
-            //         || _destinations.contains(tokenAddress)
-            // ) {
-            //     revert Errors.AssetNotAllowed(tokenAddress);
-            // }
+            // Ensure this isn't an asset we care about
+            if (
+                tokenAddress == address(this) || tokenAddress == autoPool.asset()
+                    || autoPool.isDestinationRegistered(tokenAddress)
+                    || autoPool.isDestinationQueuedForRemoval(tokenAddress)
+            ) {
+                revert Errors.AssetNotAllowed(tokenAddress);
+            }
 
             if (tokenAddress != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
                 IERC20Metadata(tokenAddress).safeTransfer(destination, amount);

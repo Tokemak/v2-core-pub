@@ -68,7 +68,7 @@ contract AutoPoolFactoryTest is Test {
         _systemRegistry.addRewardToken(address(_asset));
         vm.label(address(_asset), "asset");
 
-        _template = address(new AutoPoolETH(_systemRegistry, address(_asset), false));
+        _template = address(new AutoPoolETH(_systemRegistry, address(_asset)));
 
         _autoPoolFactory = new AutoPoolFactory(_systemRegistry, _template, 800, 100);
         _accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(_autoPoolFactory));

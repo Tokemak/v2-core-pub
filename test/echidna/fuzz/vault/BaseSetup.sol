@@ -183,14 +183,6 @@ contract BasePoolSetup {
         _rootPriceOracle.setPrice(address(_destVault3Underlyer), 1e18);
 
         _solver = new TestSolver();
-
-        _pool.toggleAllowedUser(address(this));
-        _pool.toggleAllowedUser(_user1);
-        _pool.toggleAllowedUser(_user2);
-        _pool.toggleAllowedUser(_user3);
-        _pool.toggleAllowedUser(address(8));
-        _pool.toggleAllowedUser(address(9));
-        _pool.toggleAllowedUser(address(10));
     }
 }
 
@@ -317,7 +309,7 @@ contract TestingPool is AutoPoolETH, CryticIERC4626Internal {
         }
     }
 
-    constructor(ISystemRegistry sr, address va) AutoPoolETH(sr, va, false) { }
+    constructor(ISystemRegistry sr, address va) AutoPoolETH(sr, va) { }
 
     function setCryticFnsEnabled(bool val) public {
         _enableCryticFns = val;

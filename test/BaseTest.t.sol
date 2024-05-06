@@ -65,8 +65,6 @@ contract BaseTest is Test {
 
     uint256 public constant WETH_INIT_DEPOSIT = 100_000;
 
-    bool public restrictPoolUsers = false;
-
     function setUp() public virtual {
         _setUp(true);
     }
@@ -119,7 +117,7 @@ contract BaseTest is Test {
         systemRegistry.addRewardToken(address(baseAsset));
         systemRegistry.addRewardToken(address(TOKE_MAINNET));
 
-        autoPoolTemplate = address(new AutoPoolETH(systemRegistry, address(baseAsset), restrictPoolUsers));
+        autoPoolTemplate = address(new AutoPoolETH(systemRegistry, address(baseAsset)));
 
         autoPoolFactory = new AutoPoolFactory(systemRegistry, autoPoolTemplate, 800, 100);
         // NOTE: deployer grants factory permission to update the registry

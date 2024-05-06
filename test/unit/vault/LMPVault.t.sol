@@ -138,10 +138,6 @@ contract AutoPoolETHTests is
         vault.setTotalSupply(0);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.toggleAllowedUser(address(this));
-        vault.toggleAllowedUser(makeAddr("user"));
-        vault.toggleAllowedUser(makeAddr("user1"));
-        vault.toggleAllowedUser(makeAddr("user2"));
     }
 
     function test_SetUpState() public {
@@ -160,10 +156,6 @@ contract AutoPoolETHTests is
     function _depositFor(address user, uint256 amount) internal returns (uint256 sharesReceived) {
         vaultAsset.mint(address(this), amount);
         vaultAsset.approve(address(vault), amount);
-
-        if (!vault.allowedUsers(address(this))) {
-            vault.toggleAllowedUser(address(this));
-        }
 
         sharesReceived = vault.deposit(amount, user);
     }
@@ -380,7 +372,7 @@ contract InitializationTests is AutoPoolETHTests {
         super.setUp();
 
         TestAutoPoolETH initTestVaultTemplate = new TestAutoPoolETH(systemRegistry, address(vaultAsset));
-        AutoPoolETH initTestVaultRestrictedTemplate = new AutoPoolETH(systemRegistry, address(vaultAsset), true);
+        AutoPoolETH initTestVaultRestrictedTemplate = new AutoPoolETH(systemRegistry, address(vaultAsset));
 
         initTestVault = TestAutoPoolETH(Clones.cloneDeterministic(address(initTestVaultTemplate), "salt1"));
         // solhint-disable-next-line max-line-length
@@ -877,10 +869,6 @@ contract Deposit is AutoPoolETHTests {
 
         vaultAsset.mint(address(this), 2e18);
         vaultAsset.approve(address(vault), 2e18);
-
-        if (!vault.allowedUsers(address(this))) {
-            vault.toggleAllowedUser(address(this));
-        }
 
         vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626DepositExceedsMax.selector, 2e18, 0));
         vault.deposit(2e18, user);
@@ -1383,10 +1371,6 @@ contract MintTests is AutoPoolETHTests {
 
         vaultAsset.mint(address(this), 4e18);
         vaultAsset.approve(address(vault), 4e18);
-
-        if (!vault.allowedUsers(address(this))) {
-            vault.toggleAllowedUser(address(this));
-        }
 
         vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626MintExceedsMax.selector, 2e18, 0));
         vault.mint(2e18, user);
@@ -2491,10 +2475,6 @@ contract Withdraw is AutoPoolETHTests {
         vaultAsset.mint(address(this), 4e18);
         vaultAsset.approve(address(vault), 4e18);
 
-        if (!vault.allowedUsers(address(this))) {
-            vault.toggleAllowedUser(address(this));
-        }
-
         vm.startPrank(user);
         vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.TooFewAssets.selector, 1e18, 0));
         vault.withdraw(1e18, user, user);
@@ -3400,10 +3380,6 @@ contract Redeem is AutoPoolETHTests {
 
         vaultAsset.mint(address(this), 4e18);
         vaultAsset.approve(address(vault), 4e18);
-
-        if (!vault.allowedUsers(address(this))) {
-            vault.toggleAllowedUser(address(this));
-        }
 
         vm.startPrank(user);
         vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626ExceededMaxRedeem.selector, user, 1e18, 0));
@@ -7380,10 +7356,7 @@ contract TestAutoPoolETH is AutoPoolETH {
     bool private _nextDepositGetsDoubleShares;
     bool private _nextWithdrawHalvesIdle;
 
-    constructor(
-        ISystemRegistry _systemRegistry,
-        address _vaultAsset
-    ) AutoPoolETH(_systemRegistry, _vaultAsset, false) { }
+    constructor(ISystemRegistry _systemRegistry, address _vaultAsset) AutoPoolETH(_systemRegistry, _vaultAsset) { }
 
     function directTransfer(address to, uint256 value) external {
         AutoPoolToken.transfer(_tokenData, to, value);

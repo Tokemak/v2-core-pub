@@ -23,6 +23,7 @@ import {
     WSTETH_MAINNET,
     RETH_MAINNET,
     SFRXETH_MAINNET,
+    USDC_DAI_USDT_BAL_POOL,
     WSETH_RETH_SFRXETH_BAL_POOL
 } from "test/utils/Addresses.sol";
 
@@ -117,10 +118,8 @@ contract GetSafeSpotPriceInfo is BalancerLPComposableStableEthOracleTests {
     }
 
     function test_getSafeSpotPriceInfo_UsdBasedPool() public {
-        address USDC_DAI_USDT_COMPOSABLE = 0x79c58f70905F734641735BC61e45c19dD9Ad60bC;
-
         (uint256 totalLPSupply, ISpotPriceOracle.ReserveItemInfo[] memory reserves) =
-            oracle.getSafeSpotPriceInfo(USDC_DAI_USDT_COMPOSABLE, USDC_DAI_USDT_COMPOSABLE, WETH_MAINNET);
+            oracle.getSafeSpotPriceInfo(USDC_DAI_USDT_BAL_POOL, USDC_DAI_USDT_BAL_POOL, WETH_MAINNET);
 
         assertEq(reserves.length, 3, "rl");
         assertEq(totalLPSupply, 4_351_658_079_624_087_001_833_240, "lpSupply");

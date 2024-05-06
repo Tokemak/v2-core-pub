@@ -122,8 +122,8 @@ contract GetSafeSpotPriceInfo is BalancerLPMetaStableEthOracleTests {
 
     function test_InvalidPoolReverts() public {
         address mockPool = vm.addr(3434);
-        bytes32 badPoolId = keccak256("x2349382440328");
-        vm.mockCall(mockPool, abi.encodeWithSelector(IBalancerMetaStablePool.getPoolId.selector), abi.encode(badPoolId));
+        bytes32 badId = keccak256("x2349382440328");
+        vm.mockCall(mockPool, abi.encodeWithSelector(IBalancerMetaStablePool.getPoolId.selector), abi.encode(badId));
         vm.mockCall(mockPool, abi.encodeWithSelector(IERC20.totalSupply.selector), abi.encode(1));
         vm.expectRevert("BAL#500");
         oracle.getSafeSpotPriceInfo(mockPool, mockPool, WETH_MAINNET);

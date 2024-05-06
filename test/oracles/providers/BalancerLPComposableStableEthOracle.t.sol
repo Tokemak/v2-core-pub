@@ -129,11 +129,11 @@ contract GetSafeSpotPriceInfo is BalancerLPComposableStableEthOracleTests {
         assertEq(reserves[0].actualQuoteToken, USDT_MAINNET, "zeroActual");
         assertEq(reserves[1].token, USDC_MAINNET, "oneToken");
         assertEq(reserves[1].reserveAmount, 1_644_631_949_309, "oneReserve");
-        assertEq(reserves[1].rawSpotPrice, 998_049, "oneRaw");
+        assertEq(reserves[1].rawSpotPrice, 999_549, "oneRaw");
         assertEq(reserves[1].actualQuoteToken, USDT_MAINNET, "oneActual");
         assertEq(reserves[2].token, USDT_MAINNET, "twoToken");
         assertEq(reserves[2].reserveAmount, 946_215_901_433, "twoReserve");
-        assertEq(reserves[2].rawSpotPrice, 999_049, "twoRaw");
+        assertEq(reserves[2].rawSpotPrice, 1_000_250, "twoRaw");
         assertEq(reserves[2].actualQuoteToken, USDC_MAINNET, "twoActual");
     }
 

@@ -14,6 +14,7 @@ import { Roles } from "src/libs/Roles.sol";
 
 contract DestinationRegistryTest is Test {
     DestinationRegistry public registry;
+    SystemRegistry public systemRegistry;
 
     event Register(bytes32[] indexed destinationTypes, address[] indexed targets);
     event Replace(bytes32[] indexed destinationTypes, address[] indexed targets);
@@ -25,7 +26,7 @@ contract DestinationRegistryTest is Test {
     bytes32 private constant CURVE_V2_FACTORY_CRYPTO_ADAPTER = keccak256("CurveV2FactoryCryptoAdapter");
 
     function setUp() public {
-        SystemRegistry systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
+        systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
         AccessController accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
         registry = new DestinationRegistry(systemRegistry);
@@ -98,6 +99,23 @@ contract DestinationRegistryTest is Test {
         targets[0] = PRANK_ADDRESS;
 
         vm.expectRevert(abi.encodeWithSelector(IDestinationRegistry.NotAllowedDestination.selector));
+        registry.register(destinationTypes, targets);
+    }
+
+    function testRevertOnRegisteringDestinationWithSystemMismatch() public {
+        address fakeRegistry = makeAddr("FAKE_SYSTEM_REGISTRY");
+
+        bytes32[] memory destinationTypes = new bytes32[](1);
+        destinationTypes[0] = BALANCER_BEETHOVEN_ADAPTER;
+
+        address[] memory targets = new address[](1);
+        targets[0] = PRANK_ADDRESS;
+
+        registry.addToWhitelist(destinationTypes);
+
+        vm.mockCall(PRANK_ADDRESS, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(fakeRegistry));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(systemRegistry), fakeRegistry));
         registry.register(destinationTypes, targets);
     }
 
@@ -212,6 +230,27 @@ contract DestinationRegistryTest is Test {
         registry.register(destinationTypes, targets);
 
         vm.expectRevert(abi.encodeWithSelector(IDestinationRegistry.DestinationAlreadySet.selector));
+        registry.replace(destinationTypes, targets);
+    }
+
+    function testRevertOnReplacingDestinationWithSystemMismatch() public {
+        address fakeRegistry = makeAddr("FAKE_SYSTEM_REGISTRY");
+
+        bytes32[] memory destinationTypes = new bytes32[](1);
+        destinationTypes[0] = BALANCER_BEETHOVEN_ADAPTER;
+
+        address[] memory targets = new address[](1);
+        targets[0] = PRANK_ADDRESS;
+
+        vm.mockCall(PRANK_ADDRESS, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(address(systemRegistry)));
+        registry.addToWhitelist(destinationTypes);
+        registry.register(destinationTypes, targets);
+
+        targets[0] = RANDOM;
+
+        vm.mockCall(RANDOM, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(fakeRegistry));
+        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(systemRegistry), fakeRegistry));
+
         registry.replace(destinationTypes, targets);
     }
 

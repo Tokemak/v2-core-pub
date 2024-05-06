@@ -93,6 +93,14 @@ contract Constructor is AutopoolFactoryTest {
         new AutopoolFactory(_systemRegistry, address(0), 800, 100);
     }
 
+    function test_RevertIf_SystemMismatch() public {
+        address fakeRegistry = makeAddr("FAKE_SYSTEM_REGISTRY");
+        vm.mockCall(_template, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(fakeRegistry));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(_systemRegistry), fakeRegistry));
+        new AutoPoolFactory(_systemRegistry, _template, 800, 100);
+    }
+
     function test_SetDefaultRewardRatio() public {
         assertEq(_autoPoolFactory.defaultRewardRatio(), 800);
     }
@@ -115,6 +123,14 @@ contract AddStrategyTemplate is AutopoolFactoryTest {
 
     function test_RevertIf_ItemAlreadyExists() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ItemExists.selector));
+        _autoPoolFactory.addStrategyTemplate(_stratTemplate);
+    }
+
+    function test_RevertIf_SystemMismatch_StratTemplate() public {
+        address fakeRegistry = makeAddr("FAKE_SYSTEM_REGISTRY");
+        vm.mockCall(_stratTemplate, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(fakeRegistry));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(_systemRegistry), fakeRegistry));
         _autoPoolFactory.addStrategyTemplate(_stratTemplate);
     }
 

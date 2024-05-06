@@ -4,6 +4,7 @@ pragma solidity >=0.8.7;
 
 import { Test } from "forge-std/Test.sol";
 import { Roles } from "src/libs/Roles.sol";
+import { Errors } from "src/utils/Errors.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { StatsCalculatorFactory } from "src/stats/StatsCalculatorFactory.sol";
@@ -38,6 +39,18 @@ contract StatsCalculatorFactoryTests is Test {
         address sr = factory.getSystemRegistry();
 
         assertEq(sr, address(systemRegistry));
+    }
+
+    function testRegisterTemplateRevertsIfSystemMismatch() public {
+        address fakeRegistry = makeAddr("FAKE_SYSTEM_REGISTRY");
+        address template = vm.addr(1001);
+        bytes32 aprTemplateId = keccak256("CurveConvex1");
+
+        ensureTemplateManagerRole();
+        vm.mockCall(template, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(fakeRegistry));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(systemRegistry), fakeRegistry));
+        factory.registerTemplate(aprTemplateId, template);
     }
 
     function testRegisteringTemplate() public {
@@ -82,6 +95,22 @@ contract StatsCalculatorFactoryTests is Test {
     function testRemoveTemplateMustBeRegistered() public { }
 
     function testRemoveTemplateChecksRole() public { }
+
+    function testReplaceTemplateRevertsIfSystemMismatch() public {
+        address fakeRegistry = makeAddr("FAKE_SYSTEM_REGISTRY");
+        address template = vm.addr(1001);
+        address templateNew = vm.addr(1002);
+        bytes32 aprTemplateId = keccak256("CurveConvex1");
+        ensureTemplateManagerRole();
+
+        vm.mockCall(template, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(address(systemRegistry)));
+        factory.registerTemplate(aprTemplateId, template);
+
+        vm.mockCall(templateNew, abi.encodeWithSignature("getSystemRegistry()"), abi.encode(fakeRegistry));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(systemRegistry), fakeRegistry));
+        factory.replaceTemplate(aprTemplateId, template, templateNew);
+    }
 
     function testReplacingTemplate() public {
         address template = vm.addr(1001);

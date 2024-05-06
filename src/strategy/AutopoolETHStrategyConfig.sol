@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 import { NavTracking } from "src/strategy/NavTracking.sol";
 
-library AutoPoolETHStrategyConfig {
+library AutopoolETHStrategyConfig {
     uint256 private constant WEIGHT_MAX = 1e6;
     int256 private constant WEIGHT_MAX_I = 1e6;
 
@@ -70,7 +70,7 @@ library AutoPoolETHStrategyConfig {
         // shutdown for a vault is abnormal and means there is an issue at that destination
         // recommend setting this higher than maxNormalOperationSlippage
         uint256 maxEmergencyOperationSlippage; // 100% = 1e18
-        // the maximum amount of slippage to allow when the AutoPool has been shutdown
+        // the maximum amount of slippage to allow when the Autopool has been shutdown
         uint256 maxShutdownOperationSlippage; // 100% = 1e18
     }
 

@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 
-interface IAutoPoolStrategy {
+interface IAutopoolStrategy {
     enum RebalanceDirection {
         In,
         Out
@@ -17,17 +17,17 @@ interface IAutoPoolStrategy {
         IStrategy.SummaryStats memory
     ) external returns (bool, string memory message);
 
-    /// @notice called by the AutoPool when NAV is updated
-    /// @dev can only be called by the strategy's registered AutoPool
+    /// @notice called by the Autopool when NAV is updated
+    /// @dev can only be called by the strategy's registered Autopool
     /// @param navPerShare The navPerShare to record
     function navUpdate(uint256 navPerShare) external;
 
-    /// @notice called by the AutoPool when a rebalance is completed
-    /// @dev can only be called by the strategy's registered AutoPool
+    /// @notice called by the Autopool when a rebalance is completed
+    /// @dev can only be called by the strategy's registered Autopool
     /// @param rebalanceParams The parameters for the rebalance that was executed
     function rebalanceSuccessfullyExecuted(IStrategy.RebalanceParams memory rebalanceParams) external;
 
-    /// @notice called by the AutoPool during rebalance process
+    /// @notice called by the Autopool during rebalance process
     /// @param rebalanceParams The parameters for the rebalance that was executed
     function getRebalanceOutSummaryStats(IStrategy.RebalanceParams memory rebalanceParams)
         external
@@ -92,7 +92,7 @@ interface IAutoPoolStrategy {
     /// recommend setting this higher than maxNormalOperationSlippage
     function maxEmergencyOperationSlippage() external view returns (uint256); // 100% = 1e18
 
-    /// @notice the maximum amount of slippage to allow when the AutoPool has been shutdown
+    /// @notice the maximum amount of slippage to allow when the Autopool has been shutdown
     function maxShutdownOperationSlippage() external view returns (uint256); // 100% = 1e18
 
     /// @notice the maximum discount used for price return

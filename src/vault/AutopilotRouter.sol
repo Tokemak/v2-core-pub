@@ -6,24 +6,24 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard.sol";
 
 import { Address } from "openzeppelin-contracts/utils/Address.sol";
-import { IAutoPool, IAutoPilotRouter } from "src/interfaces/vault/IAutoPilotRouter.sol";
+import { IAutopool, IAutopilotRouter } from "src/interfaces/vault/IAutopilotRouter.sol";
 import { IRewards } from "src/interfaces/rewarders/IRewards.sol";
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
-import { AutoPilotRouterBase, ISystemRegistry } from "src/vault/AutoPilotRouterBase.sol";
+import { AutopilotRouterBase, ISystemRegistry } from "src/vault/AutopilotRouterBase.sol";
 import { Errors } from "src/utils/Errors.sol";
 
 /// @title ERC4626Router contract
-contract AutoPilotRouter is IAutoPilotRouter, AutoPilotRouterBase, ReentrancyGuard {
+contract AutopilotRouter is IAutopilotRouter, AutopilotRouterBase, ReentrancyGuard {
     using Address for address;
 
-    constructor(ISystemRegistry _systemRegistry) AutoPilotRouterBase(_systemRegistry) { }
+    constructor(ISystemRegistry _systemRegistry) AutopilotRouterBase(_systemRegistry) { }
 
     // For the below, no approval needed, assumes vault is already max approved
 
-    /// @inheritdoc IAutoPilotRouter
+    /// @inheritdoc IAutopilotRouter
     function withdrawToDeposit(
-        IAutoPool fromVault,
-        IAutoPool toVault,
+        IAutopool fromVault,
+        IAutopool toVault,
         address to,
         uint256 amount,
         uint256 maxSharesIn,
@@ -34,10 +34,10 @@ contract AutoPilotRouter is IAutoPilotRouter, AutoPilotRouterBase, ReentrancyGua
         return deposit(toVault, to, amount, minSharesOut);
     }
 
-    /// @inheritdoc IAutoPilotRouter
+    /// @inheritdoc IAutopilotRouter
     function redeemToDeposit(
-        IAutoPool fromVault,
-        IAutoPool toVault,
+        IAutopool fromVault,
+        IAutopool toVault,
         address to,
         uint256 shares,
         uint256 minSharesOut
@@ -49,7 +49,7 @@ contract AutoPilotRouter is IAutoPilotRouter, AutoPilotRouterBase, ReentrancyGua
         return deposit(toVault, to, amount, minSharesOut);
     }
 
-    /// @inheritdoc IAutoPilotRouter
+    /// @inheritdoc IAutopilotRouter
     function swapToken(
         address swapper,
         SwapParams memory swapParams
@@ -63,9 +63,9 @@ contract AutoPilotRouter is IAutoPilotRouter, AutoPilotRouterBase, ReentrancyGua
         amountReceived = abi.decode(data, (uint256));
     }
 
-    /// @inheritdoc IAutoPilotRouter
+    /// @inheritdoc IAutopilotRouter
     function depositBalance(
-        IAutoPool vault,
+        IAutopool vault,
         address to,
         uint256 minSharesOut
     ) public override returns (uint256 sharesOut) {
@@ -74,9 +74,9 @@ contract AutoPilotRouter is IAutoPilotRouter, AutoPilotRouterBase, ReentrancyGua
         return deposit(vault, to, vaultAssetBalance, minSharesOut);
     }
 
-    /// @inheritdoc IAutoPilotRouter
+    /// @inheritdoc IAutopilotRouter
     function depositMax(
-        IAutoPool vault,
+        IAutopool vault,
         address to,
         uint256 minSharesOut
     ) public override returns (uint256 sharesOut) {
@@ -90,15 +90,15 @@ contract AutoPilotRouter is IAutoPilotRouter, AutoPilotRouterBase, ReentrancyGua
         return deposit(vault, to, amount, minSharesOut);
     }
 
-    /// @inheritdoc IAutoPilotRouter
-    function redeemMax(IAutoPool vault, address to, uint256 minAmountOut) public override returns (uint256 amountOut) {
+    /// @inheritdoc IAutopilotRouter
+    function redeemMax(IAutopool vault, address to, uint256 minAmountOut) public override returns (uint256 amountOut) {
         uint256 shareBalance = vault.balanceOf(msg.sender);
         uint256 maxRedeem = vault.maxRedeem(msg.sender);
         uint256 amountShares = maxRedeem < shareBalance ? maxRedeem : shareBalance;
         return redeem(vault, to, amountShares, minAmountOut);
     }
 
-    /// @inheritdoc IAutoPilotRouter
+    /// @inheritdoc IAutopilotRouter
     function claimRewards(
         IRewards rewarder,
         IRewards.Recipient calldata recipient,

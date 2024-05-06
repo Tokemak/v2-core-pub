@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { AutoPoolMainRewarder } from "src/rewarders/AutoPoolMainRewarder.sol";
+import { AutopoolMainRewarder } from "src/rewarders/AutopoolMainRewarder.sol";
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { Errors } from "src/utils/Errors.sol";
 
@@ -12,7 +12,7 @@ import { Test } from "forge-std/Test.sol";
 
 // solhint-disable func-name-mixedcase,max-line-length
 
-contract AutoPoolMainRewarderTest is Test {
+contract AutopoolMainRewarderTest is Test {
     address public systemRegistry;
     address public accessController;
     MockERC20 public rewardToken;
@@ -24,7 +24,7 @@ contract AutoPoolMainRewarderTest is Test {
     uint256 public durationInBlock = 100;
     uint256 public stakeAmount = 1000;
 
-    AutoPoolMainRewarder public rewarder;
+    AutopoolMainRewarder public rewarder;
 
     function setUp() public virtual {
         systemRegistry = makeAddr("SYSTEM_REGISTRY");
@@ -39,7 +39,7 @@ contract AutoPoolMainRewarderTest is Test {
         vm.mockCall(systemRegistry, abi.encodeWithSignature("isRewardToken(address)"), abi.encode(true));
         vm.mockCall(systemRegistry, abi.encodeWithSignature("autoPoolRouter()"), abi.encode(router));
 
-        rewarder = new AutoPoolMainRewarder(
+        rewarder = new AutopoolMainRewarder(
             ISystemRegistry(systemRegistry),
             address(rewardToken),
             newRewardRatio,
@@ -50,7 +50,7 @@ contract AutoPoolMainRewarderTest is Test {
     }
 }
 
-contract WithdrawAutoPoolRewarder is AutoPoolMainRewarderTest {
+contract WithdrawAutopoolRewarder is AutopoolMainRewarderTest {
     uint256 public withdrawAmount = 450;
 
     function setUp() public override {
@@ -126,7 +126,7 @@ contract WithdrawAutoPoolRewarder is AutoPoolMainRewarderTest {
     }
 }
 
-contract StakeAutoPoolRewarder is AutoPoolMainRewarderTest {
+contract StakeAutopoolRewarder is AutopoolMainRewarderTest {
     function test_RevertsWhenStakingMoreThanAvailable() external {
         vm.expectRevert();
         rewarder.stake(staker, stakeAmount + 1);
@@ -165,7 +165,7 @@ contract StakeAutoPoolRewarder is AutoPoolMainRewarderTest {
     }
 }
 
-contract GetRewardAutoPoolRewarder is AutoPoolMainRewarderTest {
+contract GetRewardAutopoolRewarder is AutopoolMainRewarderTest {
     function setUp() public override {
         super.setUp();
 

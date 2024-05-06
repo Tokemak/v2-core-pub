@@ -4,20 +4,20 @@ pragma solidity 0.8.17;
 
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import { ISystemRegistry, IWETH9 } from "src/interfaces/ISystemRegistry.sol";
-import { IAutoPoolFactory } from "src/interfaces/vault/IAutoPoolFactory.sol";
-import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
+import { IAutopoolFactory } from "src/interfaces/vault/IAutopoolFactory.sol";
+import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
-import { AutoPoolMainRewarder } from "src/rewarders/AutoPoolMainRewarder.sol";
+import { AutopoolMainRewarder } from "src/rewarders/AutopoolMainRewarder.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
-import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
+import { AutopoolETHStrategy } from "src/strategy/AutopoolETHStrategy.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { Roles } from "src/libs/Roles.sol";
 
-contract AutoPoolFactory is SystemComponent, IAutoPoolFactory, SecurityBase {
+contract AutopoolFactory is SystemComponent, IAutopoolFactory, SecurityBase {
     using Clones for address;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -29,7 +29,7 @@ contract AutoPoolFactory is SystemComponent, IAutoPoolFactory, SecurityBase {
     /// @dev Exposed via `getStrategyTemplates() and isStrategyTemplate()`
     EnumerableSet.AddressSet internal _strategyTemplates;
 
-    IAutoPoolRegistry public immutable vaultRegistry;
+    IAutopoolRegistry public immutable vaultRegistry;
 
     address public immutable template;
 
@@ -136,7 +136,7 @@ contract AutoPoolFactory is SystemComponent, IAutoPoolFactory, SecurityBase {
         address newToken = template.predictDeterministicAddress(salt);
         address newStrategy = strategyTemplate.predictDeterministicAddress(salt);
 
-        AutoPoolMainRewarder mainRewarder = new AutoPoolMainRewarder{ salt: salt }(
+        AutopoolMainRewarder mainRewarder = new AutopoolMainRewarder{ salt: salt }(
             systemRegistry,
             address(systemRegistry.toke()),
             defaultRewardRatio,
@@ -148,15 +148,15 @@ contract AutoPoolFactory is SystemComponent, IAutoPoolFactory, SecurityBase {
         newVaultAddress = template.cloneDeterministic(salt);
 
         // For Autopool deposit on initialization.
-        uint256 wethInitAmount = AutoPoolETH(newVaultAddress).WETH_INIT_DEPOSIT();
+        uint256 wethInitAmount = AutopoolETH(newVaultAddress).WETH_INIT_DEPOSIT();
         IWETH9 weth = systemRegistry.weth();
         if (msg.value != wethInitAmount) revert InvalidEthAmount(msg.value);
         weth.deposit{ value: wethInitAmount }();
         LibAdapter._approve(weth, newVaultAddress, wethInitAmount);
 
-        AutoPoolETH(newVaultAddress).initialize(newStrategy, symbolSuffix, descPrefix, extraParams);
-        AutoPoolETH(newVaultAddress).setRewarder(address(mainRewarder));
-        AutoPoolETHStrategy(strategyTemplate.cloneDeterministic(salt)).initialize(newVaultAddress);
+        AutopoolETH(newVaultAddress).initialize(newStrategy, symbolSuffix, descPrefix, extraParams);
+        AutopoolETH(newVaultAddress).setRewarder(address(mainRewarder));
+        AutopoolETHStrategy(strategyTemplate.cloneDeterministic(salt)).initialize(newVaultAddress);
 
         // add to VaultRegistry
         vaultRegistry.addVault(newVaultAddress);

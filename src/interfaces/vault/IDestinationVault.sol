@@ -29,7 +29,7 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @notice The asset that is deposited into the vault
     function underlying() external view returns (address);
 
-    /// @notice The asset that rewards and withdrawals to the AutoPool are denominated in
+    /// @notice The asset that rewards and withdrawals to the Autopool are denominated in
     /// @inheritdoc IBaseAssetVault
     function baseAsset() external view override returns (address);
 

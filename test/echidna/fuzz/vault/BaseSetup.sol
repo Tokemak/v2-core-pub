@@ -4,9 +4,9 @@ pragma solidity 0.8.17;
 
 /* solhint-disable func-name-mixedcase,max-states-count,max-line-length,no-console,gas-custom-errors */
 
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
-import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
+import { IAutopoolStrategy } from "src/interfaces/strategy/IAutopoolStrategy.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
@@ -15,7 +15,7 @@ import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { MockRootOracle } from "test/echidna/fuzz/mocks/MockRootOracle.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 import { DestinationVault } from "src/vault/DestinationVault.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { Numbers } from "test/echidna/fuzz/utils/Numbers.sol";
@@ -23,7 +23,7 @@ import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
-import { AutoPoolDebt } from "src/vault/libs/AutoPoolDebt.sol";
+import { AutopoolDebt } from "src/vault/libs/AutopoolDebt.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { CryticIERC4626Internal } from "crytic/properties/contracts/ERC4626/util/IERC4626Internal.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
@@ -88,8 +88,8 @@ contract BasePoolSetup {
         _systemSecurity = new SystemSecurity(_systemRegistry);
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
 
-        TestAutoPoolRegistry autoPoolRegistry = new TestAutoPoolRegistry(_systemRegistry);
-        _systemRegistry.setAutoPoolRegistry(address(autoPoolRegistry));
+        TestAutopoolRegistry autoPoolRegistry = new TestAutopoolRegistry(_systemRegistry);
+        _systemRegistry.setAutopoolRegistry(address(autoPoolRegistry));
 
         // Setup Strategy
         _strategy = new TestingStrategy();
@@ -297,11 +297,11 @@ contract TestingAccessController {
     function verifyOwner(address) external view { }
 }
 
-contract TestingPool is AutoPoolETH, CryticIERC4626Internal {
+contract TestingPool is AutopoolETH, CryticIERC4626Internal {
     bool private _disableNavDecreaseCheck;
     bool private _nextDepositGetsDoubleShares;
     bool private _enableCryticFns;
-    AutoPoolDebt.IdleDebtUpdates private _nextRebalanceResults;
+    AutopoolDebt.IdleDebtUpdates private _nextRebalanceResults;
 
     modifier cryticFns() {
         if (_enableCryticFns) {
@@ -309,7 +309,7 @@ contract TestingPool is AutoPoolETH, CryticIERC4626Internal {
         }
     }
 
-    constructor(ISystemRegistry sr, address va) AutoPoolETH(sr, va) { }
+    constructor(ISystemRegistry sr, address va) AutopoolETH(sr, va) { }
 
     function setCryticFnsEnabled(bool val) public {
         _enableCryticFns = val;
@@ -323,7 +323,7 @@ contract TestingPool is AutoPoolETH, CryticIERC4626Internal {
         _nextDepositGetsDoubleShares = val;
     }
 
-    function setNextRebalanceResult(AutoPoolDebt.IdleDebtUpdates memory nextRebalanceResults) public {
+    function setNextRebalanceResult(AutopoolDebt.IdleDebtUpdates memory nextRebalanceResults) public {
         _nextRebalanceResults = nextRebalanceResults;
     }
 
@@ -374,7 +374,7 @@ contract TestingPool is AutoPoolETH, CryticIERC4626Internal {
             address[] memory destinations = getDestinations();
             for (uint256 i = 0; i < destinations.length; i++) {
                 address destVault = destinations[i];
-                AutoPoolDebt.DestinationInfo memory destInfo = _destinationInfo[destVault];
+                AutopoolDebt.DestinationInfo memory destInfo = _destinationInfo[destVault];
 
                 uint256 destSharesRemaining = IDestinationVault(destVault).balanceOf(address(this));
                 if (destInfo.ownedShares > 0) {
@@ -422,14 +422,14 @@ contract TestingPool is AutoPoolETH, CryticIERC4626Internal {
     //     IERC3156FlashBorrower receiver,
     //     RebalanceParams memory rebalanceParams,
     //     bytes calldata data
-    // ) internal virtual override returns (AutoPoolDebt.IdleDebtUpdates memory result) {
+    // ) internal virtual override returns (AutopoolDebt.IdleDebtUpdates memory result) {
     //     result = _nextRebalanceResults;
     // }
 
     function _ensureNoNavPerShareDecrease(
         uint256 oldNav,
         uint256 startingTotalSupply,
-        IAutoPool.TotalAssetPurpose purpose
+        IAutopool.TotalAssetPurpose purpose
     ) internal view override {
         if (!_disableNavDecreaseCheck) {
             super._ensureNoNavPerShareDecrease(oldNav, startingTotalSupply, purpose);
@@ -465,7 +465,7 @@ contract TestSolver is Numbers, IERC3156FlashBorrower {
     }
 }
 
-contract TestAutoPoolRegistry {
+contract TestAutopoolRegistry {
     address public getSystemRegistry;
 
     constructor(ISystemRegistry systemRegistry) {
@@ -477,7 +477,7 @@ contract TestAutoPoolRegistry {
     }
 }
 
-contract TestingStrategy is IAutoPoolStrategy {
+contract TestingStrategy is IAutopoolStrategy {
     bool private _nextRebalanceSuccess;
 
     error BadRebalance();
@@ -541,7 +541,7 @@ contract TestingStrategy is IAutoPoolStrategy {
     /// recommend setting this higher than maxNormalOperationSlippage
     uint256 public immutable maxEmergencyOperationSlippage = 0; // 100% = 1e18
 
-    /// @notice the maximum amount of slippage to allow when the AutoPoolVault has been shutdown
+    /// @notice the maximum amount of slippage to allow when the AutopoolVault has been shutdown
     uint256 public immutable maxShutdownOperationSlippage = 0; // 100% = 1e18
 
     /// @notice the maximum discount used for price return

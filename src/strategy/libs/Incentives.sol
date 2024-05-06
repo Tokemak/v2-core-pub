@@ -4,7 +4,7 @@
 pragma solidity 0.8.17;
 
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
-import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
+import { IAutopoolStrategy } from "src/interfaces/strategy/IAutopoolStrategy.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -19,12 +19,12 @@ library Incentives {
     function calculateIncentiveApr(
         IIncentivesPricingStats pricing,
         IDexLSTStats.StakingIncentiveStats memory stats,
-        IAutoPoolStrategy.RebalanceDirection direction,
+        IAutopoolStrategy.RebalanceDirection direction,
         address destAddress,
         uint256 lpAmountToAddOrRemove,
         uint256 lpPrice
     ) external view returns (uint256) {
-        uint40 staleDataToleranceInSeconds = IAutoPoolStrategy(address(this)).staleDataToleranceInSeconds();
+        uint40 staleDataToleranceInSeconds = IAutopoolStrategy(address(this)).staleDataToleranceInSeconds();
 
         bool hasCredits = stats.incentiveCredits > 0;
         uint256 totalRewards = 0;
@@ -43,7 +43,7 @@ library Incentives {
                 uint256 rewardRate = stats.annualizedRewardAmounts[i];
                 uint256 rewardDivisor = 10 ** IERC20Metadata(rewardToken).decimals();
 
-                if (direction == IAutoPoolStrategy.RebalanceDirection.Out) {
+                if (direction == IAutopoolStrategy.RebalanceDirection.Out) {
                     // if the destination has credits then extend the periodFinish by the expiredTolerance
                     // this allows destinations that consistently had rewards some leniency
                     if (hasCredits) {
@@ -80,7 +80,7 @@ library Incentives {
         uint256 totalSupplyInEth = 0;
         // When comparing in & out destinations, we want to consider the supply with our allocation
         // included to estimate the resulting incentive rate
-        if (direction == IAutoPoolStrategy.RebalanceDirection.Out) {
+        if (direction == IAutopoolStrategy.RebalanceDirection.Out) {
             totalSupplyInEth = stats.safeTotalSupply * lpPrice / lpTokenDivisor;
         } else {
             totalSupplyInEth = (stats.safeTotalSupply + lpAmountToAddOrRemove) * lpPrice / lpTokenDivisor;

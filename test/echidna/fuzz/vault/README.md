@@ -3,12 +3,12 @@
 Based on: https://github.com/crytic/properties?tab=readme-ov-file#erc4626-tests
 
 ```
-echidna test/echidna/fuzz/vault/CryticProperties.sol --contract CryticERC4626Harness --config echidna.yaml --test-mode assertion --sender "0x10000" --deployer "0x10000"
+echidna test/echidna/fuzz/vault/CryticProperties.sol --contract CryticERC4626Harness --config test/echidna/fuzz/vault/echidna.yaml --test-mode assertion --sender "0x10000" --deployer "0x10000"
 ```
 
-## AutoPool Interactions and Externals
+## Autopool Interactions and Externals
 
-Mimics interactions and environmental changes that would influence the AutoPool. Safety checks around nav/share changes are disabled as we are checking to see if its possible. Possible interactions:
+Mimics interactions and environmental changes that would influence the Autopool. Safety checks around nav/share changes are disabled as we are checking to see if its possible. Possible interactions:
 
 ### Operations
 
@@ -48,15 +48,15 @@ Mimics interactions and environmental changes that would influence the AutoPool.
 ### Running
 
 ```
-echidna test/echidna/fuzz/vault/LMPVaultTests.sol --contract LMPVaultTest --config test/echidna/fuzz/vault/echidna.yaml
+echidna test/echidna/fuzz/vault/AutopoolETHTests.sol --contract AutopoolETHTest --config test/echidna/fuzz/vault/echidna.yaml
 ```
 
-## AutoPoolRouter Interactions and Externals
+## AutopilotRouter Interactions and Externals
 
 This set of tests verifies scenarios when user mints & owns some shares obtained via interaction with the Router and ensures that no other user is possible to obtain their shares. This is verifiable by user balance change checks.
 
 ### Running
 
 ```
-echidna test/echidna/fuzz/vault/router/LMPVaultRouterTests.sol --contract LMPVaultRouterTest --config test/echidna/fuzz/vault/router/echidna.yaml
+echidna test/echidna/fuzz/vault/router/AutopilotRouterTests.sol --contract AutopilotRouterTest --config test/echidna/fuzz/vault/router/echidna.yaml
 ```

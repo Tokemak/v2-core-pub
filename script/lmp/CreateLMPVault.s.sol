@@ -7,14 +7,14 @@ pragma solidity 0.8.17;
 import { BaseScript, console } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
 import { Roles } from "src/libs/Roles.sol";
-import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
+import { AutopoolFactory } from "src/vault/AutopoolFactory.sol";
 
 /**
  * @dev This contract:
- *      1. Creates a new AutoPool Vault using the `lst-guarded-r1` AutoPool Vault Factory and the specified strategy
+ *      1. Creates a new Autopool Vault using the `lst-guarded-r1` Autopool Vault Factory and the specified strategy
  * template.
  */
-contract CreateAutoPoolETH is BaseScript {
+contract CreateAutopoolETH is BaseScript {
     // 🚨 Manually set variables below. 🚨
     string public autoPool1SymbolSuffix = "autoETH_guarded";
     string public autoPool1DescPrefix = "Tokemak Guarded autoETH ";
@@ -27,8 +27,8 @@ contract CreateAutoPoolETH is BaseScript {
 
         vm.startBroadcast(privateKey);
 
-        AutoPoolFactory autoPoolFactory =
-            AutoPoolFactory(address(systemRegistry.getAutoPoolFactoryByType(autoPoolType)));
+        AutopoolFactory autoPoolFactory =
+            AutopoolFactory(address(systemRegistry.getAutopoolFactoryByType(autoPoolType)));
 
         accessController.setupRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
 
@@ -38,7 +38,7 @@ contract CreateAutoPoolETH is BaseScript {
             revert("Strategy template not found");
         }
 
-        // Initial AutoPool Vault creation.
+        // Initial Autopool Vault creation.
         address autoPool = autoPoolFactory.createVault(
             strategyTemplateAddress,
             autoPool1SymbolSuffix,
@@ -46,7 +46,7 @@ contract CreateAutoPoolETH is BaseScript {
             keccak256(abi.encodePacked(block.number)),
             ""
         );
-        console.log("AutoPool Vault address: ", autoPool);
+        console.log("Autopool Vault address: ", autoPool);
 
         vm.stopBroadcast();
     }

@@ -8,7 +8,7 @@ import { IERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draf
 
 /// @notice ERC20 token functionality converted into a library. Based on OZ's v5
 /// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.0.1/contracts/token/ERC20/ERC20.sol
-library AutoPoolToken {
+library AutopoolToken {
     struct TokenData {
         /// @notice Token balances
         /// @dev account => balance

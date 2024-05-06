@@ -9,16 +9,16 @@ import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { ISystemRegistry, SystemRegistry } from "src/SystemRegistry.sol";
-import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
-import { AutoPilotRouter } from "src/vault/AutoPilotRouter.sol";
-import { IAutoPoolFactory, AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
+import { AutopoolRegistry } from "src/vault/AutopoolRegistry.sol";
+import { AutopilotRouter } from "src/vault/AutopilotRouter.sol";
+import { IAutopoolFactory, AutopoolFactory } from "src/vault/AutopoolFactory.sol";
 import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
-import { AutoPoolMainRewarder, MainRewarder } from "src/rewarders/AutoPoolMainRewarder.sol";
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
+import { AutopoolMainRewarder, MainRewarder } from "src/rewarders/AutopoolMainRewarder.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { AccToke } from "src/staking/AccToke.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
 import { Roles } from "src/libs/Roles.sol";
@@ -35,9 +35,9 @@ contract BaseTest is Test {
 
     SystemRegistry public systemRegistry;
 
-    AutoPoolRegistry public autoPoolRegistry;
-    AutoPilotRouter public autoPoolRouter;
-    IAutoPoolFactory public autoPoolFactory;
+    AutopoolRegistry public autoPoolRegistry;
+    AutopilotRouter public autoPoolRouter;
+    IAutopoolFactory public autoPoolFactory;
 
     DestinationVaultRegistry public destinationVaultRegistry;
     DestinationVaultFactory public destinationVaultFactory;
@@ -103,11 +103,11 @@ contract BaseTest is Test {
 
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
-        autoPoolRegistry = new AutoPoolRegistry(systemRegistry);
-        systemRegistry.setAutoPoolRegistry(address(autoPoolRegistry));
-        // TODO: replace below 2 lines with `deployAutoPilotRouter`
-        autoPoolRouter = new AutoPilotRouter(systemRegistry);
-        systemRegistry.setAutoPilotRouter(address(autoPoolRouter));
+        autoPoolRegistry = new AutopoolRegistry(systemRegistry);
+        systemRegistry.setAutopoolRegistry(address(autoPoolRegistry));
+        // TODO: replace below 2 lines with `deployAutopilotRouter`
+        autoPoolRouter = new AutopilotRouter(systemRegistry);
+        systemRegistry.setAutopilotRouter(address(autoPoolRouter));
 
         systemSecurity = new SystemSecurity(systemRegistry);
         systemRegistry.setSystemSecurity(address(systemSecurity));
@@ -117,23 +117,23 @@ contract BaseTest is Test {
         systemRegistry.addRewardToken(address(baseAsset));
         systemRegistry.addRewardToken(address(TOKE_MAINNET));
 
-        autoPoolTemplate = address(new AutoPoolETH(systemRegistry, address(baseAsset)));
+        autoPoolTemplate = address(new AutopoolETH(systemRegistry, address(baseAsset)));
 
-        autoPoolFactory = new AutoPoolFactory(systemRegistry, autoPoolTemplate, 800, 100);
+        autoPoolFactory = new AutopoolFactory(systemRegistry, autoPoolTemplate, 800, 100);
         // NOTE: deployer grants factory permission to update the registry
         accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
-        systemRegistry.setAutoPoolFactory(VaultTypes.LST, address(autoPoolFactory));
+        systemRegistry.setAutopoolFactory(VaultTypes.LST, address(autoPoolFactory));
 
         // NOTE: these pieces were taken out so that each set of tests can init only the components it needs!
         //       Saves a ton of unnecessary setup time and makes fuzzing tests run much much faster
         //       (since these unnecessary (in those cases) setup times add up)
         //       (Left the code for future reference)
-        // autoPoolRegistry = new AutoPoolRegistry(systemRegistry);
-        // systemRegistry.setAutoPoolRegistry(address(autoPoolRegistry));
-        // autoPoolRouter = new AutoPilotRouter(WETH_MAINNET);
-        // systemRegistry.setAutoPilotRouter(address(autoPoolRouter));
-        // autoPoolFactory = new AutoPoolFactory(systemRegistry);
-        // systemRegistry.setAutoPoolFactory(VaultTypes.LST, address(autoPoolFactory));
+        // autoPoolRegistry = new AutopoolRegistry(systemRegistry);
+        // systemRegistry.setAutopoolRegistry(address(autoPoolRegistry));
+        // autoPoolRouter = new AutopilotRouter(WETH_MAINNET);
+        // systemRegistry.setAutopilotRouter(address(autoPoolRouter));
+        // autoPoolFactory = new AutopoolFactory(systemRegistry);
+        // systemRegistry.setAutopoolFactory(VaultTypes.LST, address(autoPoolFactory));
         // // NOTE: deployer grants factory permission to update the registry
         // accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
     }
@@ -172,7 +172,7 @@ contract BaseTest is Test {
             address(systemRegistry), abi.encodeWithSelector(ISystemRegistry.isRewardToken.selector), abi.encode(true)
         );
         MainRewarder mainRewarder = MainRewarder(
-            new AutoPoolMainRewarder(
+            new AutopoolMainRewarder(
                 systemRegistry, // registry
                 asset,
                 800, // newRewardRatio
@@ -201,29 +201,29 @@ contract BaseTest is Test {
         systemRegistry.setAccToke(address(accToke));
     }
 
-    function deployAutoPoolRegistry() public {
+    function deployAutopoolRegistry() public {
         if (address(autoPoolRegistry) != address(0)) return;
 
-        autoPoolRegistry = new AutoPoolRegistry(systemRegistry);
-        systemRegistry.setAutoPoolRegistry(address(autoPoolRegistry));
+        autoPoolRegistry = new AutopoolRegistry(systemRegistry);
+        systemRegistry.setAutopoolRegistry(address(autoPoolRegistry));
     }
 
-    function deployAutoPilotRouter() public {
+    function deployAutopilotRouter() public {
         if (address(autoPoolRouter) != address(0)) return;
 
-        autoPoolRouter = new AutoPilotRouter(systemRegistry);
-        systemRegistry.setAutoPilotRouter(address(autoPoolRouter));
+        autoPoolRouter = new AutopilotRouter(systemRegistry);
+        systemRegistry.setAutopilotRouter(address(autoPoolRouter));
     }
 
-    function deployAutoPoolFactory() public {
+    function deployAutopoolFactory() public {
         if (address(autoPoolFactory) != address(0)) return;
 
-        autoPoolFactory = new AutoPoolFactory(systemRegistry, autoPoolTemplate, 800, 100);
-        systemRegistry.setAutoPoolFactory(VaultTypes.LST, address(autoPoolFactory));
+        autoPoolFactory = new AutopoolFactory(systemRegistry, autoPoolTemplate, 800, 100);
+        systemRegistry.setAutopoolFactory(VaultTypes.LST, address(autoPoolFactory));
         // NOTE: deployer grants factory permission to update the registry
         accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
 
-        vm.label(address(autoPoolFactory), "AutoPool Vault Factory");
+        vm.label(address(autoPoolFactory), "Autopool Vault Factory");
     }
 
     function createAndPrankUser(string memory label) public returns (address) {

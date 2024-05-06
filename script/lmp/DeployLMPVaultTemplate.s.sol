@@ -4,15 +4,15 @@ pragma solidity 0.8.17;
 
 // solhint-disable no-console
 
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { Systems } from "script/utils/Constants.sol";
 import { BaseScript, console } from "script/BaseScript.sol";
-import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
+import { AutopoolFactory } from "src/vault/AutopoolFactory.sol";
 
-contract AutoPoolSystem is BaseScript {
+contract AutopoolSystem is BaseScript {
     // 🚨 Manually set variables below. 🚨
-    uint256 public defaultRewardRatioAutoPool = 800;
-    uint256 public defaultRewardBlockDurationAutoPool = 100;
+    uint256 public defaultRewardRatioAutopool = 800;
+    uint256 public defaultRewardBlockDurationAutopool = 100;
     bytes32 public autoPoolType = keccak256("lst-guarded-r1");
 
     function run() external {
@@ -20,15 +20,15 @@ contract AutoPoolSystem is BaseScript {
 
         vm.startBroadcast(privateKey);
 
-        // AutoPool Factory setup.
-        AutoPoolETH autoPoolTemplate = new AutoPoolETH(systemRegistry, wethAddress);
-        console.log("AutoPool Vault WETH Template: %s", address(autoPoolTemplate));
+        // Autopool Factory setup.
+        AutopoolETH autoPoolTemplate = new AutopoolETH(systemRegistry, wethAddress);
+        console.log("Autopool Vault WETH Template: %s", address(autoPoolTemplate));
 
-        AutoPoolFactory autoPoolFactory = new AutoPoolFactory(
-            systemRegistry, address(autoPoolTemplate), defaultRewardRatioAutoPool, defaultRewardBlockDurationAutoPool
+        AutopoolFactory autoPoolFactory = new AutopoolFactory(
+            systemRegistry, address(autoPoolTemplate), defaultRewardRatioAutopool, defaultRewardBlockDurationAutopool
         );
-        systemRegistry.setAutoPoolFactory(autoPoolType, address(autoPoolFactory));
-        console.log("AutoPool Vault Factory: %s", address(autoPoolFactory));
+        systemRegistry.setAutopoolFactory(autoPoolType, address(autoPoolFactory));
+        console.log("Autopool Vault Factory: %s", address(autoPoolFactory));
 
         vm.stopBroadcast();
     }

@@ -12,13 +12,13 @@ import { ISelfPermit } from "src/interfaces/utils/ISelfPermit.sol";
 
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AsyncSwapperRegistry } from "src/liquidation/AsyncSwapperRegistry.sol";
-import { AutoPilotRouter } from "src/vault/AutoPilotRouter.sol";
-import { AutoPoolMainRewarder } from "src/rewarders/AutoPoolMainRewarder.sol";
+import { AutopilotRouter } from "src/vault/AutopilotRouter.sol";
+import { AutopoolMainRewarder } from "src/rewarders/AutopoolMainRewarder.sol";
 
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
-import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
-import { IAutoPilotRouterBase, IAutoPilotRouter } from "src/interfaces/vault/IAutoPilotRouter.sol";
+import { AutopoolFactory } from "src/vault/AutopoolFactory.sol";
+import { IAutopilotRouterBase, IAutopilotRouter } from "src/interfaces/vault/IAutopilotRouter.sol";
 
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IRewards } from "src/interfaces/rewarders/IRewards.sol";
@@ -35,17 +35,17 @@ import { WETH_MAINNET, ZERO_EX_MAINNET, CVX_MAINNET, TREASURY, WETH9_ADDRESS } f
 import { MockERC20 } from "test/mocks/MockERC20.sol";
 
 import { ERC2612 } from "test/utils/ERC2612.sol";
-import { AutoPoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutoPoolETHStrategyTestHelpers.sol";
-import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
+import { AutopoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutopoolETHStrategyTestHelpers.sol";
+import { AutopoolETHStrategy } from "src/strategy/AutopoolETHStrategy.sol";
 
 import { Vm } from "forge-std/Vm.sol";
 
-contract AutoPilotRouterWrapper is AutoPilotRouter {
+contract AutopilotRouterWrapper is AutopilotRouter {
     error SomethingWentWrong();
 
     event SomethingHappened();
 
-    constructor(ISystemRegistry _systemRegistry) AutoPilotRouter(_systemRegistry) { }
+    constructor(ISystemRegistry _systemRegistry) AutopilotRouter(_systemRegistry) { }
 
     function doSomethingWrong() public pure {
         revert SomethingWentWrong();
@@ -74,10 +74,10 @@ contract SwapperMock is BaseAsyncSwapper, BaseTest {
 }
 
 // solhint-disable func-name-mixedcase
-contract AutoPilotRouterTest is BaseTest {
+contract AutopilotRouterTest is BaseTest {
     // IDestinationVault public destinationVault;
-    AutoPoolETH public autoPool;
-    AutoPoolETH public autoPool2;
+    AutopoolETH public autoPool;
+    AutopoolETH public autoPool2;
 
     IMainRewarder public autoPoolRewarder;
     Rewards public rewards;
@@ -110,18 +110,18 @@ contract AutoPilotRouterTest is BaseTest {
 
         autoPool = _setupVault("v1");
 
-        // Set rewarder as rewarder set on AutoPool by factory.
+        // Set rewarder as rewarder set on Autopool by factory.
         autoPoolRewarder = autoPool.rewarder();
 
         rewardsSigner = vm.createWallet(string("signer"));
         rewards = new Rewards(systemRegistry, IERC20(address(autoPool)), rewardsSigner.addr);
     }
 
-    function _setupVault(bytes memory salt) internal returns (AutoPoolETH _autoPool) {
-        AutoPoolETHStrategy stratTemplate = new AutoPoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+    function _setupVault(bytes memory salt) internal returns (AutopoolETH _autoPool) {
+        AutopoolETHStrategy stratTemplate = new AutopoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
-        _autoPool = AutoPoolETH(
+        _autoPool = AutopoolETH(
             autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT }(
                 address(stratTemplate), "x", "y", keccak256(salt), autoPoolInitData
             )
@@ -346,7 +346,7 @@ contract AutoPilotRouterTest is BaseTest {
         calls[1] = abi.encodeCall(autoPoolRouter.approve, (baseAsset, address(autoPool), amount));
         calls[2] = abi.encodeCall(autoPoolRouter.deposit, (autoPool, address(this), amount, minSharesExpected));
 
-        vm.expectRevert(abi.encodeWithSelector(IAutoPilotRouterBase.MinSharesError.selector));
+        vm.expectRevert(abi.encodeWithSelector(IAutopilotRouterBase.MinSharesError.selector));
         autoPoolRouter.multicall(calls);
 
         // -- now do a successful scenario -- //
@@ -368,7 +368,7 @@ contract AutoPilotRouterTest is BaseTest {
         calls[1] = abi.encodeCall(autoPoolRouter.approve, (baseAsset, address(autoPool), amount));
         calls[2] = abi.encodeCall(autoPoolRouter.deposit, (autoPool, address(this), amount, minSharesExpected));
 
-        vm.expectRevert(abi.encodeWithSelector(IAutoPilotRouterBase.MinSharesError.selector));
+        vm.expectRevert(abi.encodeWithSelector(IAutopilotRouterBase.MinSharesError.selector));
         autoPoolRouter.multicall(calls);
 
         // -- pre-approve -- //
@@ -431,7 +431,7 @@ contract AutoPilotRouterTest is BaseTest {
         calls[1] = abi.encodeCall(autoPoolRouter.approve, (baseAsset, address(autoPool), amount));
         calls[2] = abi.encodeCall(autoPoolRouter.mint, (autoPool, address(this), amount, maxAssets));
 
-        vm.expectRevert(abi.encodeWithSelector(IAutoPilotRouterBase.MaxAmountError.selector));
+        vm.expectRevert(abi.encodeWithSelector(IAutopilotRouterBase.MaxAmountError.selector));
         autoPoolRouter.multicall(calls);
 
         // -- now do a successful mint scenario -- //
@@ -513,7 +513,7 @@ contract AutoPilotRouterTest is BaseTest {
         uint256 prevBaseAssetBalance = baseAsset.balanceOf(address(this));
 
         bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeCall(IAutoPilotRouter.claimRewards, (IRewards(rewards), recipient, v, r, s));
+        calls[0] = abi.encodeCall(IAutopilotRouter.claimRewards, (IRewards(rewards), recipient, v, r, s));
         calls[1] = abi.encodeCall(autoPoolRouter.redeem, (autoPool, address(this), amount, 1));
 
         autoPoolRouter.multicall(calls);
@@ -535,7 +535,7 @@ contract AutoPilotRouterTest is BaseTest {
 
         // -- try to fail slippage first by allowing a little less shares than it would need-- //
         autoPool.approve(address(autoPoolRouter), amount);
-        vm.expectRevert(abi.encodeWithSelector(IAutoPilotRouterBase.MaxSharesError.selector));
+        vm.expectRevert(abi.encodeWithSelector(IAutopilotRouterBase.MaxSharesError.selector));
         autoPoolRouter.withdraw(autoPool, address(this), amount, amount - 1);
 
         // -- now test a successful withdraw -- //
@@ -599,7 +599,7 @@ contract AutoPilotRouterTest is BaseTest {
 
         // -- try to fail slippage first by requesting a little more assets than we can get-- //
         autoPool.approve(address(autoPoolRouter), amount);
-        vm.expectRevert(abi.encodeWithSelector(IAutoPilotRouterBase.MinAmountError.selector));
+        vm.expectRevert(abi.encodeWithSelector(IAutopilotRouterBase.MinAmountError.selector));
         autoPoolRouter.redeem(autoPool, address(this), amount, amount + 1);
 
         // -- now test a successful redeem -- //
@@ -626,7 +626,7 @@ contract AutoPilotRouterTest is BaseTest {
 
         // -- try to fail slippage first -- //
         autoPool.approve(address(autoPoolRouter), amount);
-        vm.expectRevert(abi.encodeWithSelector(IAutoPilotRouterBase.MinSharesError.selector));
+        vm.expectRevert(abi.encodeWithSelector(IAutopilotRouterBase.MinSharesError.selector));
         autoPoolRouter.redeemToDeposit(autoPool, autoPool2, address(this), amount, amount + 1);
 
         // -- now try a successful redeemToDeposit scenario -- //
@@ -654,7 +654,7 @@ contract AutoPilotRouterTest is BaseTest {
         autoPool.approve(address(autoPoolRouter), sharesBefore);
 
         //Try to fail with an invalid minAmountOut
-        vm.expectRevert(abi.encodeWithSelector(IAutoPilotRouterBase.MinAmountError.selector));
+        vm.expectRevert(abi.encodeWithSelector(IAutopilotRouterBase.MinAmountError.selector));
         uint256 amountOut = autoPoolRouter.redeemMax(autoPool, address(this), amount + 1);
 
         //Do the actual redeem
@@ -677,7 +677,7 @@ contract AutoPilotRouterTest is BaseTest {
         autoPool.approve(address(autoPoolRouter), sharesBefore);
 
         //Try to fail with an invalid minAmountOut
-        vm.expectRevert(abi.encodeWithSelector(IAutoPilotRouterBase.MinAmountError.selector));
+        vm.expectRevert(abi.encodeWithSelector(IAutopilotRouterBase.MinAmountError.selector));
         uint256 amountOut = autoPoolRouter.redeemMax(autoPool, address(this), amount + 1);
 
         //Do the actual redeem
@@ -701,7 +701,7 @@ contract AutoPilotRouterTest is BaseTest {
 
         // -- try to fail slippage first -- //
         autoPool.approve(address(autoPoolRouter), sharesReceived);
-        vm.expectRevert(abi.encodeWithSelector(IAutoPilotRouterBase.MinSharesError.selector));
+        vm.expectRevert(abi.encodeWithSelector(IAutopilotRouterBase.MinSharesError.selector));
         autoPoolRouter.withdrawToDeposit(
             autoPool, autoPool2, address(this), amount, sharesReceived, minSharesExpected + 1
         );
@@ -724,7 +724,7 @@ contract AutoPilotRouterTest is BaseTest {
     function test_RevertsOnInvalidVault() public {
         // No need to approve, deposit to vault, etc, revert will happen before transfer.
         vm.expectRevert(Errors.ItemNotFound.selector);
-        autoPoolRouter.stakeVaultToken(IERC20(makeAddr("NOT_AutoPool_VAULT")), depositAmount);
+        autoPoolRouter.stakeVaultToken(IERC20(makeAddr("NOT_Autopool_VAULT")), depositAmount);
     }
 
     function test_stakeVaultToken_Router() public {
@@ -781,7 +781,7 @@ contract AutoPilotRouterTest is BaseTest {
 
         // Replace rewarder.
         address newRewarder = address(
-            new AutoPoolMainRewarder(
+            new AutopoolMainRewarder(
                 systemRegistry, address(new MockERC20("X", "X", 18)), 1000, 1000, true, address(autoPool)
             )
         );
@@ -797,10 +797,10 @@ contract AutoPilotRouterTest is BaseTest {
         assertTrue(autoPool.isPastRewarder(address(autoPoolRewarder)));
 
         uint256 userBalanceInPastRewarderBefore = autoPoolRewarder.balanceOf(address(this));
-        uint256 userBalanceAutoPoolTokenBefore = autoPool.balanceOf(address(this));
+        uint256 userBalanceAutopoolTokenBefore = autoPool.balanceOf(address(this));
 
         assertEq(userBalanceInPastRewarderBefore, shareBalanceBefore);
-        assertEq(userBalanceAutoPoolTokenBefore, 0);
+        assertEq(userBalanceAutopoolTokenBefore, 0);
 
         // Fake rewarder - 0x002C41f924b4f3c0EE3B65749c4481f7cc9Dea03
         // Real rewarder - 0xc1A7C52ED8c7671a56e8626e7ae362334480f599
@@ -808,10 +808,10 @@ contract AutoPilotRouterTest is BaseTest {
         autoPoolRouter.withdrawVaultToken(autoPool, autoPoolRewarder, shareBalanceBefore, false);
 
         uint256 userBalanceInPastRewarderAfter = autoPoolRewarder.balanceOf(address(this));
-        uint256 userBalanceAutoPoolTokenAfter = autoPool.balanceOf(address(this));
+        uint256 userBalanceAutopoolTokenAfter = autoPool.balanceOf(address(this));
 
         assertEq(userBalanceInPastRewarderAfter, 0);
-        assertEq(userBalanceAutoPoolTokenAfter, shareBalanceBefore);
+        assertEq(userBalanceAutopoolTokenAfter, shareBalanceBefore);
     }
 
     function test_withdrawVaultToken_NoClaim_Router() public {
@@ -857,10 +857,10 @@ contract AutoPilotRouterTest is BaseTest {
         autoPoolRewarder.queueNewRewards(localStakeAmount);
         vm.stopPrank();
 
-        // Deposit to AutoPool.
+        // Deposit to Autopool.
         uint256 sharesReceived = _deposit(autoPool, depositAmount);
 
-        // Stake AutoPool
+        // Stake Autopool
         autoPool.approve(address(autoPoolRouter), sharesReceived);
 
         bytes[] memory calls = new bytes[](3);
@@ -902,7 +902,7 @@ contract AutoPilotRouterTest is BaseTest {
 
     function test_RevertRewarderDoesNotExist_claim() public {
         vm.expectRevert(Errors.ItemNotFound.selector);
-        autoPoolRouter.claimAutoPoolRewards(autoPool, IMainRewarder(makeAddr("FAKE_REWARDER")));
+        autoPoolRouter.claimAutopoolRewards(autoPool, IMainRewarder(makeAddr("FAKE_REWARDER")));
     }
 
     function test_ClaimFromPastRewarder() public {
@@ -937,8 +937,8 @@ contract AutoPilotRouterTest is BaseTest {
         // Roll block for reward claiming.
         vm.roll(block.number + 100);
 
-        // Create new rewarder, set as rewarder on AutoPool vault.
-        AutoPoolMainRewarder newRewarder = new AutoPoolMainRewarder(
+        // Create new rewarder, set as rewarder on Autopool vault.
+        AutopoolMainRewarder newRewarder = new AutopoolMainRewarder(
             systemRegistry, address(new MockERC20("X", "X", 18)), 100, 100, false, address(autoPool)
         );
         vm.mockCall(
@@ -957,7 +957,7 @@ contract AutoPilotRouterTest is BaseTest {
         assertEq(userRewardsPastRewarderBefore, localStakeAmount);
 
         // Claim rewards.
-        autoPoolRouter.claimAutoPoolRewards(autoPool, autoPoolRewarder);
+        autoPoolRouter.claimAutopoolRewards(autoPool, autoPoolRewarder);
 
         // Snapshot and checks.
         uint256 userClaimedRewards = toke.balanceOf(address(this));
@@ -1042,10 +1042,10 @@ contract AutoPilotRouterTest is BaseTest {
         autoPoolRewarder.queueNewRewards(localStakeAmount);
         vm.stopPrank();
 
-        // Deposit to AutoPool.
+        // Deposit to Autopool.
         uint256 sharesReceived = _deposit(autoPool, depositAmount);
 
-        // Stake AutoPool
+        // Stake Autopool
         autoPool.approve(address(autoPoolRouter), sharesReceived);
 
         bytes[] memory calls = new bytes[](3);
@@ -1063,7 +1063,7 @@ contract AutoPilotRouterTest is BaseTest {
         // Roll for entire reward duration, gives all rewards to user.  100 is reward duration.
         vm.roll(block.number + 100);
 
-        autoPoolRouter.claimAutoPoolRewards(autoPool, autoPoolRewarder);
+        autoPoolRouter.claimAutopoolRewards(autoPool, autoPoolRewarder);
 
         assertEq(toke.balanceOf(address(this)), localStakeAmount); // Make sure all toke transferred to user.
         assertEq(toke.balanceOf(address(autoPoolRewarder)), 0); // Rewarder should have no toke left.
@@ -1122,7 +1122,7 @@ contract AutoPilotRouterTest is BaseTest {
 
         autoPoolRouter.multicall(calls);
 
-        // Need array of bytes with two members, one for unstaking from rewarder, other for withdrawing from AutoPool.
+        // Need array of bytes with two members, one for unstaking from rewarder, other for withdrawing from Autopool.
         bytes[] memory data = new bytes[](2);
 
         // Approve router to burn share tokens.
@@ -1160,13 +1160,13 @@ contract AutoPilotRouterTest is BaseTest {
     }
 
     function test_catchCustomErrors() public {
-        AutoPilotRouterWrapper router = new AutoPilotRouterWrapper(systemRegistry);
+        AutopilotRouterWrapper router = new AutopilotRouterWrapper(systemRegistry);
 
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSelector(AutoPilotRouterWrapper.doSomethingRight.selector);
-        data[1] = abi.encodeWithSelector(AutoPilotRouterWrapper.doSomethingWrong.selector);
+        data[0] = abi.encodeWithSelector(AutopilotRouterWrapper.doSomethingRight.selector);
+        data[1] = abi.encodeWithSelector(AutopilotRouterWrapper.doSomethingWrong.selector);
 
-        vm.expectRevert(AutoPilotRouterWrapper.SomethingWentWrong.selector);
+        vm.expectRevert(AutopilotRouterWrapper.SomethingWentWrong.selector);
         router.multicall(data);
     }
 
@@ -1216,7 +1216,7 @@ contract AutoPilotRouterTest is BaseTest {
     /* **************************************************************************** */
     /* 				    	    	Helper methods									*/
 
-    function _deposit(AutoPoolETH _autoPool, uint256 amount) private returns (uint256 sharesReceived) {
+    function _deposit(AutopoolETH _autoPool, uint256 amount) private returns (uint256 sharesReceived) {
         uint256 baseAssetBefore = baseAsset.balanceOf(address(this));
         uint256 sharesBefore = _autoPool.balanceOf(address(this));
 
@@ -1237,7 +1237,7 @@ contract AutoPilotRouterTest is BaseTest {
         assertEq(_autoPool.balanceOf(address(this)), sharesBefore + sharesReceived);
     }
 
-    function _mint(AutoPoolETH _autoPool, uint256 shares) private returns (uint256 assets) {
+    function _mint(AutopoolETH _autoPool, uint256 shares) private returns (uint256 assets) {
         uint256 baseAssetBefore = baseAsset.balanceOf(address(this));
         uint256 sharesBefore = _autoPool.balanceOf(address(this));
 
@@ -1263,15 +1263,15 @@ contract AutoPilotRouterTest is BaseTest {
         //
         // Update factory to support WETH instead of regular mock (one time just for this test)
         //
-        autoPoolTemplate = address(new AutoPoolETH(systemRegistry, address(weth)));
-        autoPoolFactory = new AutoPoolFactory(systemRegistry, autoPoolTemplate, 800, 100);
+        autoPoolTemplate = address(new AutopoolETH(systemRegistry, address(weth)));
+        autoPoolFactory = new AutopoolFactory(systemRegistry, autoPoolTemplate, 800, 100);
         // NOTE: deployer grants factory permission to update the registry
         accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
-        systemRegistry.setAutoPoolFactory(VaultTypes.LST, address(autoPoolFactory));
-        AutoPoolETHStrategy stratTemplate = new AutoPoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        systemRegistry.setAutopoolFactory(VaultTypes.LST, address(autoPoolFactory));
+        AutopoolETHStrategy stratTemplate = new AutopoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
-        autoPool = AutoPoolETH(
+        autoPool = AutopoolETH(
             autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT }(
                 address(stratTemplate), "x", "y", keccak256("weth"), autoPoolInitData
             )

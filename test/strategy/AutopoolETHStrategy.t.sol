@@ -5,15 +5,15 @@ pragma solidity 0.8.17;
 // solhint-disable func-name-mixedcase,max-states-count,state-visibility,max-line-length
 
 import { Test } from "forge-std/Test.sol";
-import { AutoPoolETHStrategy, ISystemRegistry } from "src/strategy/AutoPoolETHStrategy.sol";
-import { AutoPoolETHStrategyConfig } from "src/strategy/AutoPoolETHStrategyConfig.sol";
+import { AutopoolETHStrategy, ISystemRegistry } from "src/strategy/AutopoolETHStrategy.sol";
+import { AutopoolETHStrategyConfig } from "src/strategy/AutopoolETHStrategyConfig.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { TOKE_MAINNET, WETH_MAINNET, LDO_MAINNET } from "test/utils/Addresses.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
-import { AutoPoolETHStrategyTestHelpers as helpers } from "test/strategy/AutoPoolETHStrategyTestHelpers.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
+import { AutopoolETHStrategyTestHelpers as helpers } from "test/strategy/AutopoolETHStrategyTestHelpers.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { IERC4626 } from "openzeppelin-contracts/interfaces/IERC4626.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
@@ -23,7 +23,7 @@ import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IE
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
-import { AutoPoolDebt } from "src/vault/libs/AutoPoolDebt.sol";
+import { AutopoolDebt } from "src/vault/libs/AutopoolDebt.sol";
 import { NavTracking } from "src/strategy/NavTracking.sol";
 import { ViolationTracking } from "src/strategy/ViolationTracking.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
@@ -32,12 +32,12 @@ import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { Incentives } from "src/strategy/libs/Incentives.sol";
 import { PriceReturn } from "src/strategy/libs/PriceReturn.sol";
 import { SummaryStats } from "src/strategy/libs/SummaryStats.sol";
-import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
+import { IAutopoolStrategy } from "src/interfaces/strategy/IAutopoolStrategy.sol";
 
-contract AutoPoolETHStrategyTest is Test {
+contract AutopoolETHStrategyTest is Test {
     using NavTracking for NavTracking.State;
 
-    address private mockAutoPoolETH = vm.addr(900);
+    address private mockAutopoolETH = vm.addr(900);
     address private mockBaseAsset = vm.addr(600);
     address private mockInToken = vm.addr(701);
     address private mockOutToken = vm.addr(702);
@@ -54,7 +54,7 @@ contract AutoPoolETHStrategyTest is Test {
     AccessController private accessController;
     RootPriceOracle private rootPriceOracle;
 
-    AutoPoolETHStrategyHarness private defaultStrat;
+    AutopoolETHStrategyHarness private defaultStrat;
     IStrategy.RebalanceParams private defaultParams;
     IStrategy.SummaryStats private destOut;
 
@@ -67,7 +67,7 @@ contract AutoPoolETHStrategyTest is Test {
     function setUp() public {
         vm.warp(startBlockTime);
 
-        vm.label(mockAutoPoolETH, "autoPool");
+        vm.label(mockAutopoolETH, "autoPool");
         vm.label(mockBaseAsset, "baseAsset");
         vm.label(mockInDest, "inDest");
         vm.label(mockInToken, "inToken");
@@ -81,7 +81,7 @@ contract AutoPoolETHStrategyTest is Test {
         rootPriceOracle = new RootPriceOracle(systemRegistry);
         systemRegistry.setRootPriceOracle(address(rootPriceOracle));
 
-        setAutoPoolDefaultMocks();
+        setAutopoolDefaultMocks();
 
         defaultStrat = deployStrategy(helpers.getDefaultConfig());
         // Set Idle thresholds
@@ -104,14 +104,14 @@ contract AutoPoolETHStrategyTest is Test {
 
     function test_constructor_RevertIf_invalidConfig() public {
         // this test only tests a single failure to ensure that config validation is occurring
-        // in the constructor. All other config validation tests are in AutoPoolETHStrategyConfig tests
-        AutoPoolETHStrategyConfig.StrategyConfig memory cfg = helpers.getDefaultConfig();
+        // in the constructor. All other config validation tests are in AutopoolETHStrategyConfig tests
+        AutopoolETHStrategyConfig.StrategyConfig memory cfg = helpers.getDefaultConfig();
 
         // set init < min to trigger a failure
         cfg.swapCostOffset.initInDays = 10;
         cfg.swapCostOffset.minInDays = 11;
         vm.expectRevert(
-            abi.encodeWithSelector(AutoPoolETHStrategyConfig.InvalidConfig.selector, "swapCostOffset_initInDays")
+            abi.encodeWithSelector(AutopoolETHStrategyConfig.InvalidConfig.selector, "swapCostOffset_initInDays")
         );
         defaultStrat = deployStrategy(cfg);
     }
@@ -121,18 +121,18 @@ contract AutoPoolETHStrategyTest is Test {
     /* **************************************** */
 
     function test_initialize_RevertIf_systemRegistryMismatch() public {
-        setAutoPoolSystemRegistry(address(1));
-        AutoPoolETHStrategyHarness stratHarness =
-            new AutoPoolETHStrategyHarness(ISystemRegistry(address(systemRegistry)), helpers.getDefaultConfig());
-        AutoPoolETHStrategyHarness s = AutoPoolETHStrategyHarness(Clones.clone(address(stratHarness)));
+        setAutopoolSystemRegistry(address(1));
+        AutopoolETHStrategyHarness stratHarness =
+            new AutopoolETHStrategyHarness(ISystemRegistry(address(systemRegistry)), helpers.getDefaultConfig());
+        AutopoolETHStrategyHarness s = AutopoolETHStrategyHarness(Clones.clone(address(stratHarness)));
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.SystemRegistryMismatch.selector));
-        s.initialize(mockAutoPoolETH);
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.SystemRegistryMismatch.selector));
+        s.initialize(mockAutopoolETH);
     }
 
     function test_initialize_RevertIf_autoPoolZero() public {
-        AutoPoolETHStrategyHarness harness =
-            new AutoPoolETHStrategyHarness(ISystemRegistry(address(systemRegistry)), helpers.getDefaultConfig());
+        AutopoolETHStrategyHarness harness =
+            new AutopoolETHStrategyHarness(ISystemRegistry(address(systemRegistry)), helpers.getDefaultConfig());
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_autoPool"));
         harness.init(address(0));
@@ -146,7 +146,7 @@ contract AutoPoolETHStrategyTest is Test {
         defaultStrat._setLastRebalanceTimestamp(180 days);
 
         // ensure the vault has enough assets
-        setAutoPoolDestinationBalanceOf(mockOutDest, 200e18);
+        setAutopoolDestinationBalanceOf(mockOutDest, 200e18);
 
         // 0.50% slippage
         defaultParams.amountIn = 199e18; // 199 eth
@@ -180,9 +180,9 @@ contract AutoPoolETHStrategyTest is Test {
         defaultStrat._setLastRebalanceTimestamp(180 days);
 
         // ensure the vault has enough assets
-        setAutoPoolTotalAssets(1000e18);
-        setAutoPoolIdle(400e18);
-        defaultParams.destinationOut = mockAutoPoolETH;
+        setAutopoolTotalAssets(1000e18);
+        setAutopoolIdle(400e18);
+        defaultParams.destinationOut = mockAutopoolETH;
         defaultParams.tokenOut = mockBaseAsset;
 
         // 0.50% slippage
@@ -213,14 +213,14 @@ contract AutoPoolETHStrategyTest is Test {
         defaultParams.amountIn = 399e18;
         defaultParams.amountOut = 400e18;
         // Expect error in rebalance check since we are trying to draw down Idle below High threshold (7%)
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.IdleHighThresholdViolated.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.IdleHighThresholdViolated.selector));
         (success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
 
         // 0.29% slippage
         defaultParams.amountIn = 339e18;
         defaultParams.amountOut = 340e18;
         // Expect error in rebalance check since we are trying to draw down Idle below High threshold (7%)
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.IdleHighThresholdViolated.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.IdleHighThresholdViolated.selector));
         (success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
@@ -231,12 +231,12 @@ contract AutoPoolETHStrategyTest is Test {
         defaultStrat._setLastRebalanceTimestamp(1 hours);
         setTokenSpotPrice(mockOutLSTToken, 99e16); // set spot OutToken price slightly lower than safe
         setTokenSpotPrice(mockInLSTToken, 101e16); // set spot OutToken price slightly higher than safe
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.LSTPriceGapToleranceExceeded.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.LSTPriceGapToleranceExceeded.selector));
         defaultStrat.getRebalanceOutSummaryStats(defaultParams);
 
         setTokenSpotPrice(mockOutLSTToken, 99.89e16); // set spot price slightly lower than safe near tolerance
         setTokenSpotPrice(mockInLSTToken, 100e16); // set spot = safe
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.LSTPriceGapToleranceExceeded.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.LSTPriceGapToleranceExceeded.selector));
         defaultStrat.getRebalanceOutSummaryStats(defaultParams);
     }
 
@@ -245,7 +245,7 @@ contract AutoPoolETHStrategyTest is Test {
         defaultStrat._setLastRebalanceTimestamp(180 days);
 
         // ensure the vault has enough assets
-        setAutoPoolDestinationBalanceOf(mockOutDest, 200e18);
+        setAutopoolDestinationBalanceOf(mockOutDest, 200e18);
 
         defaultParams.amountIn = 199e18; // 199 eth
         defaultParams.amountOut = 200e18; // 200 eth
@@ -274,8 +274,8 @@ contract AutoPoolETHStrategyTest is Test {
 
     function test_verifyRebalance_RevertIf_invalidRebalanceToIdle() public {
         setDestinationIsShutdown(mockOutDest, false); // ensure destination is not shutdown
-        setAutoPoolVaultIsShutdown(false); // ensure autoPool is not shutdown
-        setAutoPoolDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from AutoPool
+        setAutopoolVaultIsShutdown(false); // ensure autoPool is not shutdown
+        setAutopoolDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from Autopool
 
         // ensure that the out destination should not be trimmed
         IDexLSTStats.DexLSTStatsData memory result;
@@ -283,7 +283,7 @@ contract AutoPoolETHStrategyTest is Test {
 
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 250e18;
-        AutoPoolDebt.DestinationInfo memory info = AutoPoolDebt.DestinationInfo({
+        AutopoolDebt.DestinationInfo memory info = AutopoolDebt.DestinationInfo({
             cachedDebtValue: 330e18, // implied price of 1.1
             cachedMinDebtValue: 330e18, // implied price of 1.1
             cachedMaxDebtValue: 330e18, // implied price of 1.1
@@ -293,30 +293,30 @@ contract AutoPoolETHStrategyTest is Test {
 
         defaultParams.amountOut = 50e18;
         defaultParams.amountIn = 50e18;
-        setAutoPoolTotalAssets(1000e18);
-        setAutoPoolDestInfo(mockOutDest, info);
-        setAutoPoolDestinationBalanceOf(mockOutDest, startingBalance);
+        setAutopoolTotalAssets(1000e18);
+        setAutopoolDestInfo(mockOutDest, info);
+        setAutopoolDestinationBalanceOf(mockOutDest, startingBalance);
         setDestinationDebtValue(mockOutDest, 200e18, 220e18);
 
         // set the in token to idle
-        defaultParams.destinationIn = mockAutoPoolETH;
+        defaultParams.destinationIn = mockAutopoolETH;
         defaultParams.tokenIn = mockBaseAsset;
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.InvalidRebalanceToIdle.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.InvalidRebalanceToIdle.selector));
         defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
     function test_verifyRebalance_returnTrueOnValidRebalanceToIdleCleanUpDust() public {
         // make the strategy paused to ensure that rebalances to idle can still occur
         setDestinationIsShutdown(mockOutDest, false); // force trim
-        setAutoPoolVaultIsShutdown(false); // ensure autoPool is not shutdown
-        setAutoPoolDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from AutoPool
+        setAutopoolVaultIsShutdown(false); // ensure autoPool is not shutdown
+        setAutopoolDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from Autopool
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
 
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 90e17;
-        AutoPoolDebt.DestinationInfo memory info = AutoPoolDebt.DestinationInfo({
+        AutopoolDebt.DestinationInfo memory info = AutopoolDebt.DestinationInfo({
             cachedDebtValue: 99e17, // implied price of 1.1
             cachedMinDebtValue: 99e17, // implied price of 1.1
             cachedMaxDebtValue: 99e17, // implied price of 1.1
@@ -326,13 +326,13 @@ contract AutoPoolETHStrategyTest is Test {
 
         defaultParams.amountOut = 90e17;
         defaultParams.amountIn = 90e17;
-        setAutoPoolTotalAssets(1000e18);
-        setAutoPoolDestInfo(mockOutDest, info);
-        setAutoPoolDestinationBalanceOf(mockOutDest, startingBalance);
+        setAutopoolTotalAssets(1000e18);
+        setAutopoolDestInfo(mockOutDest, info);
+        setAutopoolDestinationBalanceOf(mockOutDest, startingBalance);
         setDestinationDebtValue(mockOutDest, 90e17, 99e17);
 
         // set the in token to idle
-        defaultParams.destinationIn = mockAutoPoolETH;
+        defaultParams.destinationIn = mockAutopoolETH;
         defaultParams.tokenIn = mockBaseAsset;
 
         (bool success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
@@ -342,14 +342,14 @@ contract AutoPoolETHStrategyTest is Test {
     function test_verifyRebalance_returnTrueOnValidRebalanceToIdleIdleUp() public {
         // make the strategy paused to ensure that rebalances to idle can still occur
         setDestinationIsShutdown(mockOutDest, false); // force trim
-        setAutoPoolVaultIsShutdown(false); // ensure autoPool is not shutdown
-        setAutoPoolDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from AutoPool
+        setAutopoolVaultIsShutdown(false); // ensure autoPool is not shutdown
+        setAutopoolDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from Autopool
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
 
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 90e18;
-        AutoPoolDebt.DestinationInfo memory info = AutoPoolDebt.DestinationInfo({
+        AutopoolDebt.DestinationInfo memory info = AutopoolDebt.DestinationInfo({
             cachedDebtValue: 99e18, // implied price of 1.1
             cachedMinDebtValue: 99e18, // implied price of 1.1
             cachedMaxDebtValue: 99e18, // implied price of 1.1
@@ -359,14 +359,14 @@ contract AutoPoolETHStrategyTest is Test {
 
         defaultParams.amountOut = 40e18;
         defaultParams.amountIn = 40e18;
-        setAutoPoolTotalAssets(1000e18);
-        setAutoPoolIdle(15e18);
-        setAutoPoolDestInfo(mockOutDest, info);
-        setAutoPoolDestinationBalanceOf(mockOutDest, startingBalance);
+        setAutopoolTotalAssets(1000e18);
+        setAutopoolIdle(15e18);
+        setAutopoolDestInfo(mockOutDest, info);
+        setAutopoolDestinationBalanceOf(mockOutDest, startingBalance);
         setDestinationDebtValue(mockOutDest, 90e18, 99e18);
 
         // set the in token to idle
-        defaultParams.destinationIn = mockAutoPoolETH;
+        defaultParams.destinationIn = mockAutopoolETH;
         defaultParams.tokenIn = mockBaseAsset;
 
         // Successful rebalance to Idle
@@ -379,7 +379,7 @@ contract AutoPoolETHStrategyTest is Test {
         defaultParams.amountOut = 85e18;
         defaultParams.amountIn = 85e18;
         // Expect error in rebalance check since we are trying to 8.5% when high threshold is 7%
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.InvalidRebalanceToIdle.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.InvalidRebalanceToIdle.selector));
         (success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
@@ -389,14 +389,14 @@ contract AutoPoolETHStrategyTest is Test {
         defaultStrat._setPausedTimestamp(10 days);
 
         setDestinationIsShutdown(mockOutDest, true); // force trim
-        setAutoPoolVaultIsShutdown(false); // ensure autoPool is not shutdown
-        setAutoPoolDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from AutoPool
+        setAutopoolVaultIsShutdown(false); // ensure autoPool is not shutdown
+        setAutopoolDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from Autopool
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
 
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 250e18;
-        AutoPoolDebt.DestinationInfo memory info = AutoPoolDebt.DestinationInfo({
+        AutopoolDebt.DestinationInfo memory info = AutopoolDebt.DestinationInfo({
             cachedDebtValue: 330e18, // implied price of 1.1
             cachedMinDebtValue: 330e18, // implied price of 1.1
             cachedMaxDebtValue: 330e18, // implied price of 1.1
@@ -406,13 +406,13 @@ contract AutoPoolETHStrategyTest is Test {
 
         defaultParams.amountOut = 50e18;
         defaultParams.amountIn = 50e18;
-        setAutoPoolTotalAssets(1000e18);
-        setAutoPoolDestInfo(mockOutDest, info);
-        setAutoPoolDestinationBalanceOf(mockOutDest, startingBalance);
+        setAutopoolTotalAssets(1000e18);
+        setAutopoolDestInfo(mockOutDest, info);
+        setAutopoolDestinationBalanceOf(mockOutDest, startingBalance);
         setDestinationDebtValue(mockOutDest, 200e18, 220e18);
 
         // set the in token to idle
-        defaultParams.destinationIn = mockAutoPoolETH;
+        defaultParams.destinationIn = mockAutopoolETH;
         defaultParams.tokenIn = mockBaseAsset;
 
         (bool success,) = defaultStrat.verifyRebalance(defaultParams, destOut);
@@ -424,7 +424,7 @@ contract AutoPoolETHStrategyTest is Test {
         vm.warp(91 days);
         defaultStrat._setPausedTimestamp(1 days);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.StrategyPaused.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.StrategyPaused.selector));
         defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
@@ -433,7 +433,7 @@ contract AutoPoolETHStrategyTest is Test {
         vm.warp(8 hours);
         defaultStrat._setLastRebalanceTimestamp(1 hours);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.RebalanceTimeGapNotMet.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.RebalanceTimeGapNotMet.selector));
         defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
@@ -446,7 +446,7 @@ contract AutoPoolETHStrategyTest is Test {
         vm.warp(9 hours);
         defaultStrat._setLastRebalanceTimestamp(1 hours);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.MaxSlippageExceeded.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.MaxSlippageExceeded.selector));
         defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
@@ -469,14 +469,14 @@ contract AutoPoolETHStrategyTest is Test {
         outStats.lastSnapshotTimestamp = startBlockTime + 180 days;
         setStatsCurrent(mockOutStats, outStats);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.MaxDiscountExceeded.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.MaxDiscountExceeded.selector));
         defaultStrat.verifyRebalance(defaultParams, destOut);
 
         // setup for maxPremium check
         lstStat.discount = -0.011e18; // above 1% max premium
         setStatsCurrent(mockInStats, inStats);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.MaxPremiumExceeded.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.MaxPremiumExceeded.selector));
         defaultStrat.verifyRebalance(defaultParams, destOut);
     }
 
@@ -485,7 +485,7 @@ contract AutoPoolETHStrategyTest is Test {
         defaultStrat._setLastRebalanceTimestamp(180 days);
 
         // ensure the vault has enough assets
-        setAutoPoolDestinationBalanceOf(mockOutDest, 200e18);
+        setAutopoolDestinationBalanceOf(mockOutDest, 200e18);
 
         // 0.50% slippage
         defaultParams.amountIn = 199e18; // 199 eth
@@ -505,7 +505,7 @@ contract AutoPoolETHStrategyTest is Test {
 
         assertEq(defaultStrat.swapCostOffsetPeriodInDays(), 28);
         destOut = defaultStrat.getRebalanceOutSummaryStats(defaultParams);
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.SwapCostExceeded.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.SwapCostExceeded.selector));
         defaultStrat.verifyRebalance(defaultParams, destOut);
 
         // verify that it gets let through just above the required swapCost
@@ -521,7 +521,7 @@ contract AutoPoolETHStrategyTest is Test {
         defaultStrat._setLastRebalanceTimestamp(180 days);
 
         // ensure the vault has enough assets
-        setAutoPoolDestinationBalanceOf(mockOutDest, 200e18);
+        setAutopoolDestinationBalanceOf(mockOutDest, 200e18);
 
         // 0.50% slippage
         defaultParams.amountIn = 199e18; // 199 eth
@@ -546,7 +546,7 @@ contract AutoPoolETHStrategyTest is Test {
         assertEq(defaultStrat.swapCostOffsetPeriodInDays(), 28);
 
         destOut = defaultStrat.getRebalanceOutSummaryStats(defaultParams);
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.SwapCostExceeded.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.SwapCostExceeded.selector));
         defaultStrat.verifyRebalance(defaultParams, destOut);
 
         // verify that it gets let through just above the required swapCost
@@ -564,14 +564,14 @@ contract AutoPoolETHStrategyTest is Test {
     // TODO: Move these to Vault
 
     // function test_updateWithdrawalQueueAfterRebalance_betweenDestinations() public {
-    //     vm.prank(mockAutoPoolETH);
+    //     vm.prank(mockAutopoolETH);
     //     vm.expectCall(
-    //         address(mockAutoPoolETH), abi.encodeCall(IAutoPool.addToWithdrawalQueueHead,
+    //         address(mockAutopoolETH), abi.encodeCall(IAutopool.addToWithdrawalQueueHead,
     // defaultParams.destinationOut),
     // 1
     //     );
     //     vm.expectCall(
-    //         address(mockAutoPoolETH), abi.encodeCall(IAutoPool.addToWithdrawalQueueTail,
+    //         address(mockAutopoolETH), abi.encodeCall(IAutopool.addToWithdrawalQueueTail,
     // defaultParams.destinationIn), 1
     //     );
 
@@ -579,17 +579,17 @@ contract AutoPoolETHStrategyTest is Test {
     // }
 
     // function test_updateWithdrawalQueueAfterRebalance_fromIdle() public {
-    //     defaultParams.destinationOut = address(mockAutoPoolETH);
+    //     defaultParams.destinationOut = address(mockAutopoolETH);
 
-    //     vm.prank(mockAutoPoolETH);
+    //     vm.prank(mockAutopoolETH);
 
     //     vm.expectCall(
-    //         address(mockAutoPoolETH), abi.encodeCall(IAutoPool.addToWithdrawalQueueHead,
+    //         address(mockAutopoolETH), abi.encodeCall(IAutopool.addToWithdrawalQueueHead,
     // defaultParams.destinationOut),
     // 0
     //     );
     //     vm.expectCall(
-    //         address(mockAutoPoolETH), abi.encodeCall(IAutoPool.addToWithdrawalQueueTail,
+    //         address(mockAutopoolETH), abi.encodeCall(IAutopool.addToWithdrawalQueueTail,
     // defaultParams.destinationIn), 1
     //     );
 
@@ -597,17 +597,17 @@ contract AutoPoolETHStrategyTest is Test {
     // }
 
     // function test_updateWithdrawalQueueAfterRebalance_toIdle() public {
-    //     defaultParams.destinationIn = address(mockAutoPoolETH);
+    //     defaultParams.destinationIn = address(mockAutopoolETH);
 
-    //     vm.prank(mockAutoPoolETH);
+    //     vm.prank(mockAutopoolETH);
 
     //     vm.expectCall(
-    //         address(mockAutoPoolETH), abi.encodeCall(IAutoPool.addToWithdrawalQueueHead,
+    //         address(mockAutopoolETH), abi.encodeCall(IAutopool.addToWithdrawalQueueHead,
     // defaultParams.destinationOut),
     // 1
     //     );
     //     vm.expectCall(
-    //         address(mockAutoPoolETH), abi.encodeCall(IAutoPool.addToWithdrawalQueueTail,
+    //         address(mockAutopoolETH), abi.encodeCall(IAutopool.addToWithdrawalQueueTail,
     // defaultParams.destinationIn), 0
     //     );
 
@@ -650,27 +650,27 @@ contract AutoPoolETHStrategyTest is Test {
     }
 
     function test_validateRebalanceParams_RevertIf_destinationInNotRegistered() public {
-        setAutoPoolDestinationRegistered(defaultParams.destinationIn, false);
+        setAutopoolDestinationRegistered(defaultParams.destinationIn, false);
         vm.expectRevert(
-            abi.encodeWithSelector(AutoPoolETHStrategy.UnregisteredDestination.selector, defaultParams.destinationIn)
+            abi.encodeWithSelector(AutopoolETHStrategy.UnregisteredDestination.selector, defaultParams.destinationIn)
         );
         defaultStrat._validateRebalanceParams(defaultParams);
     }
 
     function test_validateRebalanceParams_RevertIf_destinationOutNotRegistered() public {
-        setAutoPoolDestinationRegistered(defaultParams.destinationOut, false);
+        setAutopoolDestinationRegistered(defaultParams.destinationOut, false);
         vm.expectRevert(
-            abi.encodeWithSelector(AutoPoolETHStrategy.UnregisteredDestination.selector, defaultParams.destinationOut)
+            abi.encodeWithSelector(AutopoolETHStrategy.UnregisteredDestination.selector, defaultParams.destinationOut)
         );
         defaultStrat._validateRebalanceParams(defaultParams);
     }
 
     function test_validateRebalanceParams_handlesQueuedForRemoval() public {
         // set both destinations as only queued for removal
-        setAutoPoolDestinationRegistered(defaultParams.destinationOut, false);
-        setAutoPoolDestQueuedForRemoval(defaultParams.destinationOut, true);
-        setAutoPoolDestinationRegistered(defaultParams.destinationIn, false);
-        setAutoPoolDestQueuedForRemoval(defaultParams.destinationIn, true);
+        setAutopoolDestinationRegistered(defaultParams.destinationOut, false);
+        setAutopoolDestQueuedForRemoval(defaultParams.destinationOut, true);
+        setAutopoolDestinationRegistered(defaultParams.destinationIn, false);
+        setAutopoolDestQueuedForRemoval(defaultParams.destinationIn, true);
 
         // expect not to revert
         defaultStrat._validateRebalanceParams(defaultParams);
@@ -678,40 +678,40 @@ contract AutoPoolETHStrategyTest is Test {
 
     function test_validateRebalanceParams_handlesIdle() public {
         // set in == idle
-        defaultParams.destinationIn = mockAutoPoolETH;
+        defaultParams.destinationIn = mockAutopoolETH;
         defaultParams.tokenIn = mockBaseAsset;
 
         // ensure that the autoPool is not registered
-        setAutoPoolDestinationRegistered(defaultParams.destinationIn, false);
+        setAutopoolDestinationRegistered(defaultParams.destinationIn, false);
 
         // expect this not to revert
         defaultStrat._validateRebalanceParams(defaultParams);
     }
 
     function test_validateRebalanceParams_RevertIf_autoPoolShutdownAndNotIdle() public {
-        setAutoPoolVaultIsShutdown(true);
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.OnlyRebalanceToIdleAvailable.selector));
+        setAutopoolVaultIsShutdown(true);
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.OnlyRebalanceToIdleAvailable.selector));
 
         defaultStrat._validateRebalanceParams(defaultParams);
     }
 
     function test_validateRebalanceParams_RevertIf_destinationsMatch() public {
-        setAutoPoolDestinationRegistered(vm.addr(1), true);
+        setAutopoolDestinationRegistered(vm.addr(1), true);
         defaultParams.destinationIn = vm.addr(1);
         defaultParams.destinationOut = vm.addr(1);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.RebalanceDestinationsMatch.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.RebalanceDestinationsMatch.selector));
         defaultStrat._validateRebalanceParams(defaultParams);
     }
 
     function test_validateRebalanceParams_RevertIf_destInIsVaultButTokenNotBase() public {
         // this means we're expecting the baseAsset as the return token
-        defaultParams.destinationIn = mockAutoPoolETH;
+        defaultParams.destinationIn = mockAutopoolETH;
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                AutoPoolETHStrategy.RebalanceDestinationUnderlyerMismatch.selector,
-                mockAutoPoolETH,
+                AutopoolETHStrategy.RebalanceDestinationUnderlyerMismatch.selector,
+                mockAutopoolETH,
                 defaultParams.tokenIn,
                 mockBaseAsset
             )
@@ -724,7 +724,7 @@ contract AutoPoolETHStrategyTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                AutoPoolETHStrategy.RebalanceDestinationUnderlyerMismatch.selector,
+                AutopoolETHStrategy.RebalanceDestinationUnderlyerMismatch.selector,
                 defaultParams.destinationIn,
                 mockInToken,
                 defaultParams.tokenIn
@@ -735,12 +735,12 @@ contract AutoPoolETHStrategyTest is Test {
 
     function test_validateRebalanceParams_RevertIf_destInOutVaultButTokenNotBase() public {
         // this means we're expecting the baseAsset as the return token
-        defaultParams.destinationOut = mockAutoPoolETH;
+        defaultParams.destinationOut = mockAutopoolETH;
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                AutoPoolETHStrategy.RebalanceDestinationUnderlyerMismatch.selector,
-                mockAutoPoolETH,
+                AutopoolETHStrategy.RebalanceDestinationUnderlyerMismatch.selector,
+                mockAutopoolETH,
                 defaultParams.tokenOut,
                 mockBaseAsset
             )
@@ -749,12 +749,12 @@ contract AutoPoolETHStrategyTest is Test {
     }
 
     function test_validateRebalanceParams_RevertIf_destOutInsufficientIdle() public {
-        defaultParams.destinationOut = mockAutoPoolETH;
+        defaultParams.destinationOut = mockAutopoolETH;
         defaultParams.tokenOut = mockBaseAsset;
 
-        setAutoPoolIdle(defaultParams.amountOut - 1);
+        setAutopoolIdle(defaultParams.amountOut - 1);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.InsufficientAssets.selector, mockBaseAsset));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.InsufficientAssets.selector, mockBaseAsset));
         defaultStrat._validateRebalanceParams(defaultParams);
     }
 
@@ -763,7 +763,7 @@ contract AutoPoolETHStrategyTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                AutoPoolETHStrategy.RebalanceDestinationUnderlyerMismatch.selector,
+                AutopoolETHStrategy.RebalanceDestinationUnderlyerMismatch.selector,
                 defaultParams.destinationOut,
                 mockOutToken,
                 defaultParams.tokenOut
@@ -773,8 +773,8 @@ contract AutoPoolETHStrategyTest is Test {
     }
 
     function test_validateRebalanceParams_RevertIf_destOutInsufficient() public {
-        setAutoPoolDestinationBalanceOf(mockOutDest, defaultParams.amountOut - 1);
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.InsufficientAssets.selector, mockOutToken));
+        setAutopoolDestinationBalanceOf(mockOutDest, defaultParams.amountOut - 1);
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.InsufficientAssets.selector, mockOutToken));
         defaultStrat._validateRebalanceParams(defaultParams);
     }
 
@@ -788,7 +788,7 @@ contract AutoPoolETHStrategyTest is Test {
         defaultParams.amountOut = 78e18;
         defaultParams.amountIn = 77e18; // also set slightly lower than out token
 
-        AutoPoolETHStrategy.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
+        AutopoolETHStrategy.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
 
         assertEq(stats.outPrice, 100e16);
         assertEq(stats.inPrice, 99e16);
@@ -809,7 +809,7 @@ contract AutoPoolETHStrategyTest is Test {
         defaultParams.amountIn = 100e12; // 12 decimals
         setTokenDecimals(mockInToken, 12);
 
-        AutoPoolETHStrategy.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
+        AutopoolETHStrategy.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
         assertEq(stats.inEthValue, 100e18);
         assertEq(stats.outEthValue, 100e18);
     }
@@ -819,7 +819,7 @@ contract AutoPoolETHStrategyTest is Test {
         defaultParams.amountOut = 100e18;
         defaultParams.amountIn = 101e18;
 
-        AutoPoolETHStrategy.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
+        AutopoolETHStrategy.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
         assertEq(stats.slippage, 0);
         assertEq(stats.swapCost, 0);
     }
@@ -828,15 +828,15 @@ contract AutoPoolETHStrategyTest is Test {
         // Setting all other possibilities to something that wouldn't be 1:1
         setDestinationSpotPrice(mockOutDest, 99e16);
         setDestinationSpotPrice(mockInDest, 99e16);
-        setDestinationSpotPrice(mockAutoPoolETH, 99e16);
+        setDestinationSpotPrice(mockAutopoolETH, 99e16);
 
         uint256 outAmount = 77.7e18;
 
         defaultParams.tokenOut = mockBaseAsset;
-        defaultParams.destinationOut = mockAutoPoolETH;
+        defaultParams.destinationOut = mockAutopoolETH;
         defaultParams.amountOut = outAmount;
 
-        AutoPoolETHStrategy.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
+        AutopoolETHStrategy.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
         assertEq(stats.outPrice, 1e18, "outPrice");
         assertEq(stats.outEthValue, outAmount, "outEthValue");
     }
@@ -846,12 +846,12 @@ contract AutoPoolETHStrategyTest is Test {
     /* **************************************** */
     function test_verifyRebalanceToIdle_RevertIf_noActiveScenarioFound() public {
         setDestinationIsShutdown(mockOutDest, false); // ensure destination is not shutdown
-        setAutoPoolVaultIsShutdown(false); // ensure autoPool is not shutdown
-        setAutoPoolDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from AutoPool
+        setAutopoolVaultIsShutdown(false); // ensure autoPool is not shutdown
+        setAutopoolDestQueuedForRemoval(mockOutDest, false); // ensure destination is not removed from Autopool
 
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 250e18;
-        AutoPoolDebt.DestinationInfo memory info = AutoPoolDebt.DestinationInfo({
+        AutopoolDebt.DestinationInfo memory info = AutopoolDebt.DestinationInfo({
             cachedDebtValue: 330e18, // implied price of 1.1
             cachedMinDebtValue: 330e18, // implied price of 1.1
             cachedMaxDebtValue: 330e18, // implied price of 1.1
@@ -861,23 +861,23 @@ contract AutoPoolETHStrategyTest is Test {
 
         defaultParams.amountOut = 50e18;
         defaultParams.amountIn = 50e18;
-        setAutoPoolTotalAssets(1000e18);
-        setAutoPoolDestInfo(mockOutDest, info);
-        setAutoPoolDestinationBalanceOf(mockOutDest, startingBalance);
+        setAutopoolTotalAssets(1000e18);
+        setAutopoolDestInfo(mockOutDest, info);
+        setAutopoolDestinationBalanceOf(mockOutDest, startingBalance);
         setDestinationDebtValue(mockOutDest, 200e18, 220e18);
 
         // ensure that the out destination should not be trimmed
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.InvalidRebalanceToIdle.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.InvalidRebalanceToIdle.selector));
         defaultStrat._verifyRebalanceToIdle(defaultParams, 0);
     }
 
     function test_verifyRebalanceToIdle_trimOperation() public {
         setDestinationIsShutdown(mockOutDest, false); // ensure destination not shutdown
-        setAutoPoolVaultIsShutdown(false); // ensure autoPool is not shutdown
-        setAutoPoolDestQueuedForRemoval(mockOutDest, false); // ensure not queued for removal
+        setAutopoolVaultIsShutdown(false); // ensure autoPool is not shutdown
+        setAutopoolDestQueuedForRemoval(mockOutDest, false); // ensure not queued for removal
 
         // set trim to 10% of vault
         IDexLSTStats.DexLSTStatsData memory dexStats;
@@ -888,7 +888,7 @@ contract AutoPoolETHStrategyTest is Test {
         // set the destination to be 29% of the portfolio
         // rebalance will reduce to 24% of the portfolio
         uint256 startingBalance = 250e18;
-        AutoPoolDebt.DestinationInfo memory info = AutoPoolDebt.DestinationInfo({
+        AutopoolDebt.DestinationInfo memory info = AutopoolDebt.DestinationInfo({
             cachedDebtValue: 330e18, // implied price of 1.1
             cachedMinDebtValue: 330e18, // implied price of 1.1
             cachedMaxDebtValue: 330e18, // implied price of 1.1
@@ -898,12 +898,12 @@ contract AutoPoolETHStrategyTest is Test {
 
         defaultParams.amountOut = 50e18;
         defaultParams.amountIn = 50e18;
-        setAutoPoolTotalAssets(1000e18);
-        setAutoPoolDestInfo(mockOutDest, info);
-        setAutoPoolDestinationBalanceOf(mockOutDest, startingBalance);
+        setAutopoolTotalAssets(1000e18);
+        setAutopoolDestInfo(mockOutDest, info);
+        setAutopoolDestinationBalanceOf(mockOutDest, startingBalance);
         setDestinationDebtValue(mockOutDest, 200e18, 220e18);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.MaxSlippageExceeded.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.MaxSlippageExceeded.selector));
         defaultStrat._verifyRebalanceToIdle(defaultParams, 2e16 + 1);
 
         // not expected to revert at max slippage
@@ -913,18 +913,18 @@ contract AutoPoolETHStrategyTest is Test {
         defaultParams.amountIn = 50e18; // terrible exchange rate, but slippage isn't checked here
         setDestinationDebtValue(mockOutDest, 60e18, 66e18); // trim to 8.3%
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.InvalidRebalanceToIdle.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.InvalidRebalanceToIdle.selector));
         defaultStrat._verifyRebalanceToIdle(defaultParams, 0);
     }
 
     function test_verifyRebalanceToIdle_destinationShutdownSlippage() public {
         setDestinationIsShutdown(mockOutDest, true); // set destination to shutdown, 2.5% slippage
-        setAutoPoolVaultIsShutdown(false); // ensure autoPool is not shutdown
-        setAutoPoolDestQueuedForRemoval(mockOutDest, false); // ensure not queued for removal
+        setAutopoolVaultIsShutdown(false); // ensure autoPool is not shutdown
+        setAutopoolDestQueuedForRemoval(mockOutDest, false); // ensure not queued for removal
 
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 250e18;
-        AutoPoolDebt.DestinationInfo memory info = AutoPoolDebt.DestinationInfo({
+        AutopoolDebt.DestinationInfo memory info = AutopoolDebt.DestinationInfo({
             cachedDebtValue: 330e18, // implied price of 1.1
             cachedMinDebtValue: 330e18, // implied price of 1.1
             cachedMaxDebtValue: 330e18, // implied price of 1.1
@@ -934,16 +934,16 @@ contract AutoPoolETHStrategyTest is Test {
 
         defaultParams.amountOut = 50e18;
         defaultParams.amountIn = 50e18;
-        setAutoPoolTotalAssets(1000e18);
-        setAutoPoolDestInfo(mockOutDest, info);
-        setAutoPoolDestinationBalanceOf(mockOutDest, startingBalance);
+        setAutopoolTotalAssets(1000e18);
+        setAutopoolDestInfo(mockOutDest, info);
+        setAutopoolDestinationBalanceOf(mockOutDest, startingBalance);
         setDestinationDebtValue(mockOutDest, 200e18, 220e18);
 
         // ensure that the out destination should not be trimmed
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.MaxSlippageExceeded.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.MaxSlippageExceeded.selector));
         defaultStrat._verifyRebalanceToIdle(defaultParams, 25e15 + 1);
 
         // not expected to revert at max slippage
@@ -952,12 +952,12 @@ contract AutoPoolETHStrategyTest is Test {
 
     function test_verifyRebalanceToIdle_autoPoolShutdownSlippage() public {
         setDestinationIsShutdown(mockOutDest, false); // ensure destination not shutdown
-        setAutoPoolVaultIsShutdown(true); // autoPool is shutdown, 1.5% slippage
-        setAutoPoolDestQueuedForRemoval(mockOutDest, false); // ensure not queued for removal
+        setAutopoolVaultIsShutdown(true); // autoPool is shutdown, 1.5% slippage
+        setAutopoolDestQueuedForRemoval(mockOutDest, false); // ensure not queued for removal
 
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 250e18;
-        AutoPoolDebt.DestinationInfo memory info = AutoPoolDebt.DestinationInfo({
+        AutopoolDebt.DestinationInfo memory info = AutopoolDebt.DestinationInfo({
             cachedDebtValue: 330e18, // implied price of 1.1
             cachedMinDebtValue: 330e18, // implied price of 1.1
             cachedMaxDebtValue: 330e18, // implied price of 1.1
@@ -967,16 +967,16 @@ contract AutoPoolETHStrategyTest is Test {
 
         defaultParams.amountOut = 50e18;
         defaultParams.amountIn = 50e18;
-        setAutoPoolTotalAssets(1000e18);
-        setAutoPoolDestInfo(mockOutDest, info);
-        setAutoPoolDestinationBalanceOf(mockOutDest, startingBalance);
+        setAutopoolTotalAssets(1000e18);
+        setAutopoolDestInfo(mockOutDest, info);
+        setAutopoolDestinationBalanceOf(mockOutDest, startingBalance);
         setDestinationDebtValue(mockOutDest, 200e18, 220e18);
 
         // ensure that the out destination should not be trimmed
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.MaxSlippageExceeded.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.MaxSlippageExceeded.selector));
         defaultStrat._verifyRebalanceToIdle(defaultParams, 15e15 + 1);
 
         // not expected to revert at max slippage
@@ -985,12 +985,12 @@ contract AutoPoolETHStrategyTest is Test {
 
     function test_verifyRebalanceToIdle_queuedForRemovalSlippage() public {
         setDestinationIsShutdown(mockOutDest, false); // ensure destination is not shutdown
-        setAutoPoolVaultIsShutdown(false); // ensure autoPool is not shutdown
-        setAutoPoolDestQueuedForRemoval(mockOutDest, true); // will return maxNormalOperationSlippage as max (1%)
+        setAutopoolVaultIsShutdown(false); // ensure autoPool is not shutdown
+        setAutopoolDestQueuedForRemoval(mockOutDest, true); // will return maxNormalOperationSlippage as max (1%)
 
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 250e18;
-        AutoPoolDebt.DestinationInfo memory info = AutoPoolDebt.DestinationInfo({
+        AutopoolDebt.DestinationInfo memory info = AutopoolDebt.DestinationInfo({
             cachedDebtValue: 330e18, // implied price of 1.1
             cachedMinDebtValue: 330e18, // implied price of 1.1
             cachedMaxDebtValue: 330e18, // implied price of 1.1
@@ -1000,16 +1000,16 @@ contract AutoPoolETHStrategyTest is Test {
 
         defaultParams.amountOut = 50e18;
         defaultParams.amountIn = 50e18;
-        setAutoPoolTotalAssets(1000e18);
-        setAutoPoolDestInfo(mockOutDest, info);
-        setAutoPoolDestinationBalanceOf(mockOutDest, startingBalance);
+        setAutopoolTotalAssets(1000e18);
+        setAutopoolDestInfo(mockOutDest, info);
+        setAutopoolDestinationBalanceOf(mockOutDest, startingBalance);
         setDestinationDebtValue(mockOutDest, 200e18, 220e18);
 
         // ensure that the out destination should not be trimmed
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.MaxSlippageExceeded.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.MaxSlippageExceeded.selector));
         defaultStrat._verifyRebalanceToIdle(defaultParams, 1e16 + 1);
 
         // not expected to revert at max slippage
@@ -1020,12 +1020,12 @@ contract AutoPoolETHStrategyTest is Test {
         // set all conditions to true, ex trim for simplicity
         // destinationShutdown has the highest slippage at 2.5%
         setDestinationIsShutdown(mockOutDest, true);
-        setAutoPoolVaultIsShutdown(true);
-        setAutoPoolDestQueuedForRemoval(mockOutDest, true);
+        setAutopoolVaultIsShutdown(true);
+        setAutopoolDestQueuedForRemoval(mockOutDest, true);
 
         // set the destination to be 29% of the portfolio
         uint256 startingBalance = 250e18;
-        AutoPoolDebt.DestinationInfo memory info = AutoPoolDebt.DestinationInfo({
+        AutopoolDebt.DestinationInfo memory info = AutopoolDebt.DestinationInfo({
             cachedDebtValue: 330e18, // implied price of 1.1
             cachedMinDebtValue: 330e18, // implied price of 1.1
             cachedMaxDebtValue: 330e18, // implied price of 1.1
@@ -1035,16 +1035,16 @@ contract AutoPoolETHStrategyTest is Test {
 
         defaultParams.amountOut = 50e18;
         defaultParams.amountIn = 50e18;
-        setAutoPoolTotalAssets(1000e18);
-        setAutoPoolDestInfo(mockOutDest, info);
-        setAutoPoolDestinationBalanceOf(mockOutDest, startingBalance);
+        setAutopoolTotalAssets(1000e18);
+        setAutopoolDestInfo(mockOutDest, info);
+        setAutopoolDestinationBalanceOf(mockOutDest, startingBalance);
         setDestinationDebtValue(mockOutDest, 200e18, 220e18);
 
         // excluding trim for simplicity
         IDexLSTStats.DexLSTStatsData memory result;
         setStatsCurrent(mockOutStats, result);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.MaxSlippageExceeded.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.MaxSlippageExceeded.selector));
         defaultStrat._verifyRebalanceToIdle(defaultParams, 25e15 + 1);
 
         // not expected to revert at max slippage
@@ -1142,7 +1142,7 @@ contract AutoPoolETHStrategyTest is Test {
 
     function test_verifyTrimOperation_validRebalance() public {
         uint256 startingBalance = 250e18;
-        AutoPoolDebt.DestinationInfo memory info = AutoPoolDebt.DestinationInfo({
+        AutopoolDebt.DestinationInfo memory info = AutopoolDebt.DestinationInfo({
             cachedDebtValue: 330e18, // implied price of 1.1
             cachedMinDebtValue: 330e18, // implied price of 1.1
             cachedMaxDebtValue: 330e18, // implied price of 1.1
@@ -1153,9 +1153,9 @@ contract AutoPoolETHStrategyTest is Test {
         defaultParams.amountOut = 50e18;
         defaultParams.amountIn = 50e18;
 
-        setAutoPoolTotalAssets(1000e18);
-        setAutoPoolDestInfo(mockOutDest, info);
-        setAutoPoolDestinationBalanceOf(mockOutDest, startingBalance);
+        setAutopoolTotalAssets(1000e18);
+        setAutopoolDestInfo(mockOutDest, info);
+        setAutopoolDestinationBalanceOf(mockOutDest, startingBalance);
         setDestinationDebtValue(mockOutDest, 200e18, 220e18);
 
         // autoPoolAssetsBeforeRebalance = 1000 (assets)
@@ -1209,13 +1209,13 @@ contract AutoPoolETHStrategyTest is Test {
     function test_getDestinationSummaryStats_shouldHandleIdle() public {
         uint256 idle = 456e17;
         uint256 price = 3e17;
-        setAutoPoolIdle(idle);
+        setAutopoolIdle(idle);
 
         IStrategy.SummaryStats memory stats =
-            defaultStrat._getDestinationSummaryStats(mockAutoPoolETH, price, IAutoPoolStrategy.RebalanceDirection.In, 1);
+            defaultStrat._getDestinationSummaryStats(mockAutopoolETH, price, IAutopoolStrategy.RebalanceDirection.In, 1);
 
         // only these are populated when destination is idle asset
-        assertEq(stats.destination, mockAutoPoolETH);
+        assertEq(stats.destination, mockAutopoolETH);
         assertEq(stats.ownedShares, idle);
         assertEq(stats.pricePerShare, price);
 
@@ -1232,12 +1232,12 @@ contract AutoPoolETHStrategyTest is Test {
 
     function test_getRebalanceInSummaryStats_PricesIdleWithSafePrice() public {
         uint256 idle = 456e17;
-        setAutoPoolIdle(idle);
+        setAutopoolIdle(idle);
 
         setTokenPrice(mockBaseAsset, 1.9e18);
 
         IStrategy.RebalanceParams memory rebalParams = IStrategy.RebalanceParams({
-            destinationIn: mockAutoPoolETH,
+            destinationIn: mockAutopoolETH,
             amountIn: 1,
             tokenIn: mockBaseAsset,
             destinationOut: address(1),
@@ -1256,8 +1256,8 @@ contract AutoPoolETHStrategyTest is Test {
         stats.lastSnapshotTimestamp = 180 days - 2 days - 1; // tolerance is 2 days
         setStatsCurrent(mockOutStats, stats);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.StaleData.selector, "DexStats"));
-        defaultStrat._getDestinationSummaryStats(mockOutDest, 0, IAutoPoolStrategy.RebalanceDirection.Out, 0);
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.StaleData.selector, "DexStats"));
+        defaultStrat._getDestinationSummaryStats(mockOutDest, 0, IAutopoolStrategy.RebalanceDirection.Out, 0);
     }
 
     function test_getDestinationSummaryStats_RevertIf_reserveStatsMismatch() public {
@@ -1269,7 +1269,7 @@ contract AutoPoolETHStrategyTest is Test {
         setStatsCurrent(mockOutStats, stats);
 
         vm.expectRevert(abi.encodeWithSelector(SummaryStats.LstStatsReservesMismatch.selector));
-        defaultStrat._getDestinationSummaryStats(mockOutDest, 0, IAutoPoolStrategy.RebalanceDirection.Out, 0);
+        defaultStrat._getDestinationSummaryStats(mockOutDest, 0, IAutopoolStrategy.RebalanceDirection.Out, 0);
     }
 
     function test_getDestinationSummaryStats_RevertIf_staleLstData() public {
@@ -1282,8 +1282,8 @@ contract AutoPoolETHStrategyTest is Test {
 
         setStatsCurrent(mockOutStats, stats);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.StaleData.selector, "lstData"));
-        defaultStrat._getDestinationSummaryStats(mockOutDest, 0, IAutoPoolStrategy.RebalanceDirection.Out, 0);
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.StaleData.selector, "lstData"));
+        defaultStrat._getDestinationSummaryStats(mockOutDest, 0, IAutopoolStrategy.RebalanceDirection.Out, 0);
     }
 
     function test_getDestinationSummaryStats_calculatesWeightedResult() public {
@@ -1329,11 +1329,11 @@ contract AutoPoolETHStrategyTest is Test {
         stats.lstStatsData[1].baseApr = 0.05e18; // 5% staking yield
 
         setStatsCurrent(mockOutStats, stats);
-        setAutoPoolDestinationBalanceOf(mockOutDest, 78e18);
+        setAutopoolDestinationBalanceOf(mockOutDest, 78e18);
 
         // test rebalance out
         IStrategy.SummaryStats memory summary = defaultStrat._getDestinationSummaryStats(
-            mockOutDest, lpPrice, IAutoPoolStrategy.RebalanceDirection.Out, rebalanceAmount
+            mockOutDest, lpPrice, IAutopoolStrategy.RebalanceDirection.Out, rebalanceAmount
         );
 
         assertEq(summary.destination, mockOutDest);
@@ -1358,7 +1358,7 @@ contract AutoPoolETHStrategyTest is Test {
 
         // test rebalance in
         summary = defaultStrat._getDestinationSummaryStats(
-            mockOutDest, lpPrice, IAutoPoolStrategy.RebalanceDirection.In, rebalanceAmount
+            mockOutDest, lpPrice, IAutopoolStrategy.RebalanceDirection.In, rebalanceAmount
         );
 
         assertEq(summary.destination, mockOutDest);
@@ -1385,7 +1385,7 @@ contract AutoPoolETHStrategyTest is Test {
     function test_calculateWeightedPriceReturn_outDiscount() public {
         int256 priceReturn = 1e17; // 10%
         uint256 reserveValue = 34e18;
-        IAutoPoolStrategy.RebalanceDirection direction = IAutoPoolStrategy.RebalanceDirection.Out;
+        IAutopoolStrategy.RebalanceDirection direction = IAutopoolStrategy.RebalanceDirection.Out;
 
         int256 actual = defaultStrat._calculateWeightedPriceReturn(priceReturn, reserveValue, direction);
         // 10% * 34 * 0.75 = 2.55 (1e36)
@@ -1396,7 +1396,7 @@ contract AutoPoolETHStrategyTest is Test {
     function test_calculateWeightedPriceReturn_inDiscount() public {
         int256 priceReturn = 1e17; // 10%
         uint256 reserveValue = 34e18;
-        IAutoPoolStrategy.RebalanceDirection direction = IAutoPoolStrategy.RebalanceDirection.In;
+        IAutopoolStrategy.RebalanceDirection direction = IAutopoolStrategy.RebalanceDirection.In;
 
         int256 actual = defaultStrat._calculateWeightedPriceReturn(priceReturn, reserveValue, direction);
         assertEq(actual, 0);
@@ -1409,13 +1409,13 @@ contract AutoPoolETHStrategyTest is Test {
         // same regardless of direction
         assertEq(
             defaultStrat._calculateWeightedPriceReturn(
-                priceReturn, reserveValue, IAutoPoolStrategy.RebalanceDirection.In
+                priceReturn, reserveValue, IAutopoolStrategy.RebalanceDirection.In
             ),
             -34e35
         );
         assertEq(
             defaultStrat._calculateWeightedPriceReturn(
-                priceReturn, reserveValue, IAutoPoolStrategy.RebalanceDirection.Out
+                priceReturn, reserveValue, IAutopoolStrategy.RebalanceDirection.Out
             ),
             -34e35
         );
@@ -1541,7 +1541,7 @@ contract AutoPoolETHStrategyTest is Test {
         stat.annualizedRewardAmounts = annualizedRewards;
 
         uint256 incentive =
-            defaultStrat._calculateIncentiveApr(stat, IAutoPoolStrategy.RebalanceDirection.In, vm.addr(1), 1, 1);
+            defaultStrat._calculateIncentiveApr(stat, IAutopoolStrategy.RebalanceDirection.In, vm.addr(1), 1, 1);
         assertEq(incentive, 0);
     }
 
@@ -1573,14 +1573,14 @@ contract AutoPoolETHStrategyTest is Test {
         // expected apr = 5 (eth per year) / 132 = 3.78%
         uint256 expected = 37_878_787_878_787_878;
         uint256 actual = defaultStrat._calculateIncentiveApr(
-            stat, IAutoPoolStrategy.RebalanceDirection.Out, lpToken, amount, lpPrice
+            stat, IAutopoolStrategy.RebalanceDirection.Out, lpToken, amount, lpPrice
         );
         assertEq(actual, expected);
 
         periodFinishes[0] = 180 days - 2 days; // make it so that even with the 2 day bump, still expired
         assertEq(
             defaultStrat._calculateIncentiveApr(
-                stat, IAutoPoolStrategy.RebalanceDirection.Out, lpToken, amount, lpPrice
+                stat, IAutopoolStrategy.RebalanceDirection.Out, lpToken, amount, lpPrice
             ),
             0
         );
@@ -1608,7 +1608,7 @@ contract AutoPoolETHStrategyTest is Test {
         stat.incentiveCredits = 0; // set to zero so expired rewards are ignored
 
         uint256 incentive =
-            defaultStrat._calculateIncentiveApr(stat, IAutoPoolStrategy.RebalanceDirection.In, vm.addr(1), 1, 1);
+            defaultStrat._calculateIncentiveApr(stat, IAutopoolStrategy.RebalanceDirection.In, vm.addr(1), 1, 1);
         assertEq(incentive, 0);
     }
 
@@ -1640,13 +1640,13 @@ contract AutoPoolETHStrategyTest is Test {
         // expected apr = 10 (eth per year) / 206.4 = 4.84%
         uint256 expected = 48_449_612_403_100_775;
         uint256 actual =
-            defaultStrat._calculateIncentiveApr(stat, IAutoPoolStrategy.RebalanceDirection.In, lpToken, amount, lpPrice);
+            defaultStrat._calculateIncentiveApr(stat, IAutopoolStrategy.RebalanceDirection.In, lpToken, amount, lpPrice);
         assertEq(actual, expected);
 
         // test that it gets ignored if less than 7 days
         periodFinishes[0] = 180 days + 7 days - 1;
         assertEq(
-            defaultStrat._calculateIncentiveApr(stat, IAutoPoolStrategy.RebalanceDirection.In, lpToken, amount, lpPrice),
+            defaultStrat._calculateIncentiveApr(stat, IAutopoolStrategy.RebalanceDirection.In, lpToken, amount, lpPrice),
             0
         );
     }
@@ -1734,13 +1734,13 @@ contract AutoPoolETHStrategyTest is Test {
     /* **************************************** */
     /* navUpdate Tests                          */
     /* **************************************** */
-    function test_navUpdate_RevertIf_notAutoPoolETH() public {
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.NotAutoPoolETH.selector));
+    function test_navUpdate_RevertIf_notAutopoolETH() public {
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.NotAutopoolETH.selector));
         defaultStrat.navUpdate(100e18);
     }
 
     function test_navUpdate_shouldUpdateNavTracking() public {
-        vm.startPrank(mockAutoPoolETH);
+        vm.startPrank(mockAutopoolETH);
         vm.warp(1 days);
         defaultStrat.navUpdate(1e18);
         vm.warp(2 days);
@@ -1758,7 +1758,7 @@ contract AutoPoolETHStrategyTest is Test {
         defaultStrat._setPausedTimestamp(1 days - 1); // must be > 0
         assertTrue(defaultStrat._expiredPauseState());
 
-        vm.prank(mockAutoPoolETH);
+        vm.prank(mockAutopoolETH);
         defaultStrat.navUpdate(10e18);
 
         assertFalse(defaultStrat._expiredPauseState());
@@ -1766,14 +1766,14 @@ contract AutoPoolETHStrategyTest is Test {
 
     function test_navUpdate_shouldPauseIfDecay() public {
         // reduced to the lookback for testing purposes only
-        AutoPoolETHStrategyConfig.StrategyConfig memory config = helpers.getDefaultConfig();
+        AutopoolETHStrategyConfig.StrategyConfig memory config = helpers.getDefaultConfig();
         config.navLookback.lookback1InDays = 1;
         config.navLookback.lookback2InDays = 2;
         config.navLookback.lookback3InDays = 3;
 
-        AutoPoolETHStrategyHarness strat = deployStrategy(config);
+        AutopoolETHStrategyHarness strat = deployStrategy(config);
 
-        vm.startPrank(mockAutoPoolETH);
+        vm.startPrank(mockAutopoolETH);
         vm.warp(1 days);
         strat.navUpdate(10e18);
         vm.warp(2 days);
@@ -1794,14 +1794,14 @@ contract AutoPoolETHStrategyTest is Test {
 
     function test_navUpdate_shouldNotUpdatePauseTimestampIfAlreadyPaused() public {
         // reduced to the lookback for testing purposes only
-        AutoPoolETHStrategyConfig.StrategyConfig memory config = helpers.getDefaultConfig();
+        AutopoolETHStrategyConfig.StrategyConfig memory config = helpers.getDefaultConfig();
         config.navLookback.lookback1InDays = 1;
         config.navLookback.lookback2InDays = 2;
         config.navLookback.lookback3InDays = 3;
 
-        AutoPoolETHStrategyHarness strat = deployStrategy(config);
+        AutopoolETHStrategyHarness strat = deployStrategy(config);
 
-        vm.startPrank(mockAutoPoolETH);
+        vm.startPrank(mockAutopoolETH);
         vm.warp(1 days);
         strat.navUpdate(10e18);
         vm.warp(2 days);
@@ -1826,8 +1826,8 @@ contract AutoPoolETHStrategyTest is Test {
     /* **************************************** */
     /* rebalanceSuccessfullyExecuted Tests      */
     /* **************************************** */
-    function test_rebalanceSuccessfullyExecuted_RevertIf_notAutoPoolVault() public {
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.NotAutoPoolETH.selector));
+    function test_rebalanceSuccessfullyExecuted_RevertIf_notAutopoolVault() public {
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.NotAutopoolETH.selector));
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
     }
 
@@ -1840,7 +1840,7 @@ contract AutoPoolETHStrategyTest is Test {
         defaultStrat._setPausedTimestamp(1 days - 1); // must be > 0
         assertTrue(defaultStrat._expiredPauseState());
 
-        vm.prank(mockAutoPoolETH);
+        vm.prank(mockAutopoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
 
         // after clearing the expired pause, swapCostOffset == min
@@ -1857,7 +1857,7 @@ contract AutoPoolETHStrategyTest is Test {
         // move forward 45 days = 2 relax steps -> 2 * 3 (relaxStep) + 28 (init) = 34
         vm.warp(startBlockTime + 46 days);
 
-        vm.prank(mockAutoPoolETH);
+        vm.prank(mockAutopoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
 
         assertEq(defaultStrat.swapCostOffsetPeriodInDays(), 34);
@@ -1868,7 +1868,7 @@ contract AutoPoolETHStrategyTest is Test {
         assertEq(defaultStrat.lastRebalanceTimestamp(), startBlockTime - defaultStrat.rebalanceTimeGapInSeconds());
 
         vm.warp(startBlockTime + 23 days);
-        vm.prank(mockAutoPoolETH);
+        vm.prank(mockAutopoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
 
         assertEq(defaultStrat.lastRebalanceTimestamp(), startBlockTime + 23 days);
@@ -1879,7 +1879,7 @@ contract AutoPoolETHStrategyTest is Test {
         assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), 0);
 
         vm.warp(startBlockTime + 23 days);
-        vm.prank(mockAutoPoolETH);
+        vm.prank(mockAutopoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
 
         assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), startBlockTime + 23 days);
@@ -1892,7 +1892,7 @@ contract AutoPoolETHStrategyTest is Test {
         defaultStrat._setLastRebalanceTimestamp(60 days);
         vm.warp(60 days);
 
-        vm.startPrank(mockAutoPoolETH);
+        vm.startPrank(mockAutopoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
         assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), 60 days);
 
@@ -1946,7 +1946,7 @@ contract AutoPoolETHStrategyTest is Test {
         defaultStrat._setLastRebalanceTimestamp(60 days);
         vm.warp(60 days);
 
-        vm.startPrank(mockAutoPoolETH);
+        vm.startPrank(mockAutopoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
         assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), 60 days);
 
@@ -1992,7 +1992,7 @@ contract AutoPoolETHStrategyTest is Test {
         defaultStrat._setLastRebalanceTimestamp(60 days);
         vm.warp(60 days);
 
-        vm.startPrank(mockAutoPoolETH);
+        vm.startPrank(mockAutopoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
         assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), 60 days);
 
@@ -2029,10 +2029,10 @@ contract AutoPoolETHStrategyTest is Test {
         assertEq(state.violationCount, 0);
 
         // idle -> destination
-        defaultParams.destinationOut = mockAutoPoolETH;
+        defaultParams.destinationOut = mockAutopoolETH;
         defaultParams.destinationIn = mockInDest;
 
-        vm.startPrank(mockAutoPoolETH);
+        vm.startPrank(mockAutopoolETH);
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
 
         state = defaultStrat._getViolationTrackingState();
@@ -2042,14 +2042,14 @@ contract AutoPoolETHStrategyTest is Test {
         // check other direction since it skips both in/out of idle
         // destination -> idle
         defaultParams.destinationOut = mockInDest;
-        defaultParams.destinationIn = mockAutoPoolETH;
+        defaultParams.destinationIn = mockAutopoolETH;
 
         defaultStrat.rebalanceSuccessfullyExecuted(defaultParams);
         state = defaultStrat._getViolationTrackingState();
         assertEq(state.len, 0);
         assertEq(state.violationCount, 0);
 
-        assertEq(defaultStrat.lastAddTimestampByDestination(mockAutoPoolETH), 0);
+        assertEq(defaultStrat.lastAddTimestampByDestination(mockAutopoolETH), 0);
         assertEq(defaultStrat.lastAddTimestampByDestination(mockInDest), startBlockTime + 60 days);
     }
 
@@ -2060,7 +2060,7 @@ contract AutoPoolETHStrategyTest is Test {
         vm.warp(90 days);
         uint256 dataTimestamp = 88 days - 1; // tolerance is 2 days
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.StaleData.selector, "data"));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.StaleData.selector, "data"));
         defaultStrat._ensureNotStaleData("data", dataTimestamp);
     }
 
@@ -2151,10 +2151,10 @@ contract AutoPoolETHStrategyTest is Test {
     function test_setIdleThresholdError() public {
         accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
         // Low > High
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.InconsistentIdleThresholds.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.InconsistentIdleThresholds.selector));
         defaultStrat.setIdleThresholds(6e16, 3e16);
         // Only one of low & high is set to 0
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETHStrategy.InconsistentIdleThresholds.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategy.InconsistentIdleThresholds.selector));
         defaultStrat.setIdleThresholds(0, 3e16);
     }
 
@@ -2184,14 +2184,14 @@ contract AutoPoolETHStrategyTest is Test {
     /* Test Helpers                             */
     /* **************************************** */
 
-    function deployStrategy(AutoPoolETHStrategyConfig.StrategyConfig memory cfg)
+    function deployStrategy(AutopoolETHStrategyConfig.StrategyConfig memory cfg)
         internal
-        returns (AutoPoolETHStrategyHarness strat)
+        returns (AutopoolETHStrategyHarness strat)
     {
-        AutoPoolETHStrategyHarness stratHarness =
-            new AutoPoolETHStrategyHarness(ISystemRegistry(address(systemRegistry)), cfg);
-        strat = AutoPoolETHStrategyHarness(Clones.clone(address(stratHarness)));
-        strat.initialize(mockAutoPoolETH);
+        AutopoolETHStrategyHarness stratHarness =
+            new AutopoolETHStrategyHarness(ISystemRegistry(address(systemRegistry)), cfg);
+        strat = AutopoolETHStrategyHarness(Clones.clone(address(stratHarness)));
+        strat.initialize(mockAutopoolETH);
     }
 
     // rebalance params that will pass validation
@@ -2207,65 +2207,65 @@ contract AutoPoolETHStrategyTest is Test {
     }
 
     /* **************************************** */
-    /* AutoPoolETH Mocks                           */
+    /* AutopoolETH Mocks                           */
     /* **************************************** */
-    function setAutoPoolDefaultMocks() private {
-        setAutoPoolVaultIsShutdown(false);
-        setAutoPoolVaultBaseAsset(mockBaseAsset);
-        setAutoPoolDestQueuedForRemoval(mockInDest, false);
-        setAutoPoolDestQueuedForRemoval(mockOutDest, false);
-        setAutoPoolIdle(100e18); // 100 eth
-        setAutoPoolSystemRegistry(address(systemRegistry));
-        setAutoPoolDestinationRegistered(mockInDest, true);
-        setAutoPoolDestinationRegistered(mockOutDest, true);
+    function setAutopoolDefaultMocks() private {
+        setAutopoolVaultIsShutdown(false);
+        setAutopoolVaultBaseAsset(mockBaseAsset);
+        setAutopoolDestQueuedForRemoval(mockInDest, false);
+        setAutopoolDestQueuedForRemoval(mockOutDest, false);
+        setAutopoolIdle(100e18); // 100 eth
+        setAutopoolSystemRegistry(address(systemRegistry));
+        setAutopoolDestinationRegistered(mockInDest, true);
+        setAutopoolDestinationRegistered(mockOutDest, true);
     }
 
-    function setAutoPoolVaultIsShutdown(bool shutdown) private {
-        vm.mockCall(mockAutoPoolETH, abi.encodeWithSelector(IAutoPool.isShutdown.selector), abi.encode(shutdown));
+    function setAutopoolVaultIsShutdown(bool shutdown) private {
+        vm.mockCall(mockAutopoolETH, abi.encodeWithSelector(IAutopool.isShutdown.selector), abi.encode(shutdown));
     }
 
-    function setAutoPoolVaultBaseAsset(address asset) private {
-        vm.mockCall(mockAutoPoolETH, abi.encodeWithSelector(IERC4626.asset.selector), abi.encode(asset));
+    function setAutopoolVaultBaseAsset(address asset) private {
+        vm.mockCall(mockAutopoolETH, abi.encodeWithSelector(IERC4626.asset.selector), abi.encode(asset));
     }
 
-    function setAutoPoolDestQueuedForRemoval(address dest, bool isRemoved) private {
+    function setAutopoolDestQueuedForRemoval(address dest, bool isRemoved) private {
         vm.mockCall(
-            mockAutoPoolETH,
-            abi.encodeWithSelector(IAutoPool.isDestinationQueuedForRemoval.selector, dest),
+            mockAutopoolETH,
+            abi.encodeWithSelector(IAutopool.isDestinationQueuedForRemoval.selector, dest),
             abi.encode(isRemoved)
         );
     }
 
-    function setAutoPoolIdle(uint256 amount) private {
+    function setAutopoolIdle(uint256 amount) private {
         vm.mockCall(
-            mockAutoPoolETH,
-            abi.encodeWithSelector(IAutoPool.getAssetBreakdown.selector),
-            abi.encode(IAutoPool.AssetBreakdown({ totalIdle: amount, totalDebt: 0, totalDebtMin: 0, totalDebtMax: 0 }))
+            mockAutopoolETH,
+            abi.encodeWithSelector(IAutopool.getAssetBreakdown.selector),
+            abi.encode(IAutopool.AssetBreakdown({ totalIdle: amount, totalDebt: 0, totalDebtMin: 0, totalDebtMax: 0 }))
         );
     }
 
-    function setAutoPoolDestInfo(address dest, AutoPoolDebt.DestinationInfo memory info) private {
+    function setAutopoolDestInfo(address dest, AutopoolDebt.DestinationInfo memory info) private {
         // split up in order to get around formatter issue
-        bytes4 selector = IAutoPool.getDestinationInfo.selector;
-        vm.mockCall(mockAutoPoolETH, abi.encodeWithSelector(selector, dest), abi.encode(info));
+        bytes4 selector = IAutopool.getDestinationInfo.selector;
+        vm.mockCall(mockAutopoolETH, abi.encodeWithSelector(selector, dest), abi.encode(info));
     }
 
-    function setAutoPoolTotalAssets(uint256 amount) private {
-        vm.mockCall(mockAutoPoolETH, abi.encodeWithSelector(IERC4626.totalAssets.selector), abi.encode(amount));
+    function setAutopoolTotalAssets(uint256 amount) private {
+        vm.mockCall(mockAutopoolETH, abi.encodeWithSelector(IERC4626.totalAssets.selector), abi.encode(amount));
     }
 
-    function setAutoPoolSystemRegistry(address _systemRegistry) private {
+    function setAutopoolSystemRegistry(address _systemRegistry) private {
         vm.mockCall(
-            mockAutoPoolETH,
+            mockAutopoolETH,
             abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector),
             abi.encode(_systemRegistry)
         );
     }
 
-    function setAutoPoolDestinationRegistered(address dest, bool isRegistered) private {
+    function setAutopoolDestinationRegistered(address dest, bool isRegistered) private {
         vm.mockCall(
-            mockAutoPoolETH,
-            abi.encodeWithSelector(IAutoPool.isDestinationRegistered.selector, dest),
+            mockAutopoolETH,
+            abi.encodeWithSelector(IAutopool.isDestinationRegistered.selector, dest),
             abi.encode(isRegistered)
         );
     }
@@ -2280,7 +2280,7 @@ contract AutoPoolETHStrategyTest is Test {
         setDestinationUnderlyingTokens(mockInDest, underlyingLSTs);
         setDestinationIsShutdown(mockInDest, false);
         setDestinationStats(mockInDest, mockInStats);
-        setAutoPoolDestinationBalanceOf(mockInDest, 100e18);
+        setAutopoolDestinationBalanceOf(mockInDest, 100e18);
         setTokenDecimals(mockInDest, 18);
         setDestinationGetPool(mockInDest, address(0));
     }
@@ -2292,7 +2292,7 @@ contract AutoPoolETHStrategyTest is Test {
         setDestinationUnderlyingTokens(mockOutDest, underlyingLSTs);
         setDestinationIsShutdown(mockOutDest, false);
         setDestinationStats(mockOutDest, mockOutStats);
-        setAutoPoolDestinationBalanceOf(mockOutDest, 100e18);
+        setAutopoolDestinationBalanceOf(mockOutDest, 100e18);
         setTokenDecimals(mockOutDest, 18);
         setDestinationGetPool(mockOutDest, address(0));
     }
@@ -2319,9 +2319,9 @@ contract AutoPoolETHStrategyTest is Test {
         vm.mockCall(dest, abi.encodeWithSelector(IDestinationVault.getStats.selector), abi.encode(stats));
     }
 
-    function setAutoPoolDestinationBalanceOf(address dest, uint256 amount) private {
+    function setAutopoolDestinationBalanceOf(address dest, uint256 amount) private {
         vm.mockCall(
-            dest, abi.encodeWithSelector(IERC20.balanceOf.selector, address(mockAutoPoolETH)), abi.encode(amount)
+            dest, abi.encodeWithSelector(IERC20.balanceOf.selector, address(mockAutopoolETH)), abi.encode(amount)
         );
     }
 
@@ -2411,11 +2411,11 @@ contract AutoPoolETHStrategyTest is Test {
     }
 }
 
-contract AutoPoolETHStrategyHarness is AutoPoolETHStrategy {
+contract AutopoolETHStrategyHarness is AutopoolETHStrategy {
     constructor(
         ISystemRegistry _systemRegistry,
-        AutoPoolETHStrategyConfig.StrategyConfig memory conf
-    ) AutoPoolETHStrategy(_systemRegistry, conf) { }
+        AutopoolETHStrategyConfig.StrategyConfig memory conf
+    ) AutopoolETHStrategy(_systemRegistry, conf) { }
 
     function init(address autoPool) public {
         _initialize(autoPool);

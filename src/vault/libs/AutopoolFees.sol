@@ -3,13 +3,13 @@
 
 pragma solidity 0.8.17;
 
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
-import { AutoPoolToken } from "src/vault/libs/AutoPoolToken.sol";
+import { AutopoolToken } from "src/vault/libs/AutopoolToken.sol";
 
-library AutoPoolFees {
+library AutopoolFees {
     using Math for uint256;
-    using AutoPoolToken for AutoPoolToken.TokenData;
+    using AutopoolToken for AutopoolToken.TokenData;
 
     /// @notice Profit denomination
     uint256 public constant MAX_BPS_PROFIT = 1_000_000_000;
@@ -40,8 +40,8 @@ library AutoPoolFees {
 
     /// @notice Returns the amount of unlocked profit shares that will be burned
     function unlockedShares(
-        IAutoPool.ProfitUnlockSettings storage profitUnlockSettings,
-        AutoPoolToken.TokenData storage tokenData
+        IAutopool.ProfitUnlockSettings storage profitUnlockSettings,
+        AutopoolToken.TokenData storage tokenData
     ) public view returns (uint256 shares) {
         uint256 fullTime = profitUnlockSettings.fullProfitUnlockTime;
         if (fullTime > block.timestamp) {
@@ -52,7 +52,7 @@ library AutoPoolFees {
         }
     }
 
-    function initializeFeeSettings(IAutoPool.AutoPoolFeeSettings storage settings) external {
+    function initializeFeeSettings(IAutopool.AutopoolFeeSettings storage settings) external {
         uint256 timestamp = block.timestamp;
         settings.lastPeriodicFeeTake = timestamp; // Stops fees from being able to be claimed before init timestamp.
         settings.navPerShareLastFeeMark = FEE_DIVISOR;
@@ -61,8 +61,8 @@ library AutoPoolFees {
     }
 
     function burnUnlockedShares(
-        IAutoPool.ProfitUnlockSettings storage profitUnlockSettings,
-        AutoPoolToken.TokenData storage tokenData
+        IAutopool.ProfitUnlockSettings storage profitUnlockSettings,
+        AutopoolToken.TokenData storage tokenData
     ) external {
         uint256 shares = unlockedShares(profitUnlockSettings, tokenData);
         if (shares == 0) {
@@ -75,7 +75,7 @@ library AutoPoolFees {
     }
 
     function _calculateEffectiveNavPerShareLastFeeMark(
-        IAutoPool.AutoPoolFeeSettings storage settings,
+        IAutopool.AutopoolFeeSettings storage settings,
         uint256 currentBlock,
         uint256 currentNavPerShare,
         uint256 aumCurrent
@@ -98,7 +98,7 @@ library AutoPoolFees {
             return currentNavPerShare;
         }
         if (daysSinceLastFeeEarned > 60 && daysSinceLastFeeEarned <= 600) {
-            uint8 decimals = IAutoPool(address(this)).decimals();
+            uint8 decimals = IAutopool(address(this)).decimals();
 
             uint256 one = 10 ** decimals;
             uint256 aumHighMark = settings.totalAssetsHighMark;
@@ -137,8 +137,8 @@ library AutoPoolFees {
     function collectFees(
         uint256 totalAssets,
         uint256 currentTotalSupply,
-        IAutoPool.AutoPoolFeeSettings storage settings,
-        AutoPoolToken.TokenData storage tokenData,
+        IAutopool.AutopoolFeeSettings storage settings,
+        AutopoolToken.TokenData storage tokenData,
         bool collectPeriodicFees
     ) external returns (uint256) {
         // If there's no supply then there should be no assets and so nothing
@@ -223,7 +223,7 @@ library AutoPoolFees {
     }
 
     function _mintStreamingFee(
-        AutoPoolToken.TokenData storage tokenData,
+        AutopoolToken.TokenData storage tokenData,
         uint256 fees,
         uint256 streamingFeeBps,
         uint256 profit,
@@ -281,8 +281,8 @@ library AutoPoolFees {
 
     /// @dev If set to 0, existing shares will unlock immediately and increase nav/share. This is intentional
     function setProfitUnlockPeriod(
-        IAutoPool.ProfitUnlockSettings storage settings,
-        AutoPoolToken.TokenData storage tokenData,
+        IAutopool.ProfitUnlockSettings storage settings,
+        AutopoolToken.TokenData storage tokenData,
         uint48 newUnlockPeriodInSeconds
     ) external {
         settings.unlockPeriodInSeconds = newUnlockPeriodInSeconds;
@@ -305,8 +305,8 @@ library AutoPoolFees {
     }
 
     function calculateProfitLocking(
-        IAutoPool.ProfitUnlockSettings storage settings,
-        AutoPoolToken.TokenData storage tokenData,
+        IAutopool.ProfitUnlockSettings storage settings,
+        AutopoolToken.TokenData storage tokenData,
         uint256 feeShares,
         uint256 newTotalAssets,
         uint256 startTotalAssets,
@@ -383,7 +383,7 @@ library AutoPoolFees {
     }
 
     function _updateProfitUnlockTimings(
-        IAutoPool.ProfitUnlockSettings storage settings,
+        IAutopool.ProfitUnlockSettings storage settings,
         uint256 unlockPeriod,
         uint256 previousLockToBurn,
         uint256 previousLockShares,
@@ -412,7 +412,7 @@ library AutoPoolFees {
     /// @notice Enable or disable the high water mark on the rebalance fee
     /// @dev Will revert if set to the same value
     function setRebalanceFeeHighWaterMarkEnabled(
-        IAutoPool.AutoPoolFeeSettings storage feeSettings,
+        IAutopool.AutopoolFeeSettings storage feeSettings,
         bool enabled
     ) external {
         if (feeSettings.rebalanceFeeHighWaterMarkEnabled == enabled) {
@@ -427,14 +427,14 @@ library AutoPoolFees {
     /// @notice Set the fee that will be taken when profit is realized
     /// @dev Resets the high water to current value
     /// @param fee Percent. 100% == 10000
-    function setStreamingFeeBps(IAutoPool.AutoPoolFeeSettings storage feeSettings, uint256 fee) external {
+    function setStreamingFeeBps(IAutopool.AutopoolFeeSettings storage feeSettings, uint256 fee) external {
         if (fee >= FEE_DIVISOR) {
             revert InvalidFee(fee);
         }
 
         feeSettings.streamingFeeBps = fee;
 
-        IAutoPool vault = IAutoPool(address(this));
+        IAutopool vault = IAutopool(address(this));
 
         // Set the high mark when we change the fee so we aren't able to go farther back in
         // time than one debt reporting and claim fee's against past profits
@@ -453,7 +453,7 @@ library AutoPoolFees {
     /// @notice Set the periodic fee taken.
     /// @dev Zero is allowed, no fee taken.
     /// @param fee Fee to update periodic fee to.
-    function setPeriodicFeeBps(IAutoPool.AutoPoolFeeSettings storage feeSettings, uint256 fee) external {
+    function setPeriodicFeeBps(IAutopool.AutopoolFeeSettings storage feeSettings, uint256 fee) external {
         if (fee > MAX_PERIODIC_FEE_BPS) {
             revert InvalidFee(fee);
         }
@@ -465,7 +465,7 @@ library AutoPoolFees {
 
     /// @notice Set the address that will receive fees
     /// @param newFeeSink Address that will receive fees
-    function setFeeSink(IAutoPool.AutoPoolFeeSettings storage feeSettings, address newFeeSink) external {
+    function setFeeSink(IAutopool.AutopoolFeeSettings storage feeSettings, address newFeeSink) external {
         emit FeeSinkSet(newFeeSink);
 
         // Zero is valid. One way to disable taking fees
@@ -477,7 +477,7 @@ library AutoPoolFees {
     /// @dev Zero address allowable.  Disables fees.
     /// @param newPeriodicFeeSink New periodic fee address.
     function setPeriodicFeeSink(
-        IAutoPool.AutoPoolFeeSettings storage feeSettings,
+        IAutopool.AutopoolFeeSettings storage feeSettings,
         address newPeriodicFeeSink
     ) external {
         emit PeriodicFeeSinkSet(newPeriodicFeeSink);

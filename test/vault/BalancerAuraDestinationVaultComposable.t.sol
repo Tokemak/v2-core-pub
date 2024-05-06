@@ -11,7 +11,7 @@ import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { Test } from "forge-std/Test.sol";
 import { DestinationVault } from "src/vault/DestinationVault.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
-import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
+import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
@@ -52,7 +52,7 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
     DestinationVaultRegistry private _destinationVaultRegistry;
     DestinationRegistry private _destinationTemplateRegistry;
 
-    IAutoPoolRegistry private _autoPoolRegistry;
+    IAutopoolRegistry private _autoPoolRegistry;
     IRootPriceOracle private _rootPriceOracle;
 
     IWETH9 private _asset;
@@ -181,10 +181,10 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
         _systemRegistry.setRootPriceOracle(address(_rootPriceOracle));
 
         // Set autoPool registry for permissions
-        _autoPoolRegistry = IAutoPoolRegistry(vm.addr(237_894));
+        _autoPoolRegistry = IAutopoolRegistry(vm.addr(237_894));
         vm.label(address(_autoPoolRegistry), "autoPoolRegistry");
         _mockSystemBound(address(_systemRegistry), address(_autoPoolRegistry));
-        _systemRegistry.setAutoPoolRegistry(address(_autoPoolRegistry));
+        _systemRegistry.setAutopoolRegistry(address(_autoPoolRegistry));
 
         // Disable Pool RecoveryMode
         // Note: at the forked block pool is in RecoveryMode, we want to use pool without it
@@ -445,7 +445,7 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
     function _mockIsVault(address vault, bool isVault) internal {
         vm.mockCall(
             address(_autoPoolRegistry),
-            abi.encodeWithSelector(IAutoPoolRegistry.isVault.selector, vault),
+            abi.encodeWithSelector(IAutopoolRegistry.isVault.selector, vault),
             abi.encode(isVault)
         );
     }

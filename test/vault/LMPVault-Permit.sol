@@ -7,27 +7,27 @@ pragma solidity >=0.8.7;
 import { Test } from "forge-std/Test.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { ERC2612 } from "test/utils/ERC2612.sol";
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
-import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
+import { AutopoolFactory } from "src/vault/AutopoolFactory.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
-import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
+import { AutopoolRegistry } from "src/vault/AutopoolRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
-import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
-import { AutoPoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutoPoolETHStrategyTestHelpers.sol";
+import { AutopoolETHStrategy } from "src/strategy/AutopoolETHStrategy.sol";
+import { AutopoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutopoolETHStrategyTestHelpers.sol";
 import { TestWETH9 } from "test/mocks/TestWETH9.sol";
 
 contract PermitTests is Test {
     SystemRegistry private _systemRegistry;
     AccessController private _accessController;
-    AutoPoolRegistry private _autoPoolRegistry;
-    AutoPoolFactory private _autoPoolFactory;
+    AutopoolRegistry private _autoPoolRegistry;
+    AutopoolFactory private _autoPoolFactory;
     SystemSecurity private _systemSecurity;
 
     TestERC20 private _asset;
     TestERC20 private _toke;
-    AutoPoolETH private _autoPool;
+    AutopoolETH private _autoPool;
     TestWETH9 private _weth;
 
     function setUp() public {
@@ -46,37 +46,37 @@ contract PermitTests is Test {
         _accessController = new AccessController(address(_systemRegistry));
         _systemRegistry.setAccessController(address(_accessController));
 
-        _autoPoolRegistry = new AutoPoolRegistry(_systemRegistry);
-        _systemRegistry.setAutoPoolRegistry(address(_autoPoolRegistry));
+        _autoPoolRegistry = new AutopoolRegistry(_systemRegistry);
+        _systemRegistry.setAutopoolRegistry(address(_autoPoolRegistry));
 
         _systemSecurity = new SystemSecurity(_systemRegistry);
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
 
-        // Setup the AutoPool Vault
+        // Setup the Autopool Vault
 
         _asset = TestERC20(address(_weth));
         _systemRegistry.addRewardToken(address(_asset));
         vm.label(address(_asset), "asset");
 
-        AutoPoolETH template = new AutoPoolETH(_systemRegistry, address(_asset));
+        AutopoolETH template = new AutopoolETH(_systemRegistry, address(_asset));
         uint256 autoPoolInitDeposit = template.WETH_INIT_DEPOSIT();
 
-        _autoPoolFactory = new AutoPoolFactory(_systemRegistry, address(template), 800, 100);
+        _autoPoolFactory = new AutopoolFactory(_systemRegistry, address(template), 800, 100);
         _accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(_autoPoolFactory));
 
         bytes memory initData = abi.encode("");
 
-        AutoPoolETHStrategy strategyTemplate = new AutoPoolETHStrategy(_systemRegistry, stratHelpers.getDefaultConfig());
+        AutopoolETHStrategy strategyTemplate = new AutopoolETHStrategy(_systemRegistry, stratHelpers.getDefaultConfig());
         _autoPoolFactory.addStrategyTemplate(address(strategyTemplate));
 
-        // Mock AutoPilotRouter call for AutoPoolETH creation.
+        // Mock AutopilotRouter call for AutopoolETH creation.
         vm.mockCall(
             address(_systemRegistry),
             abi.encodeWithSelector(SystemRegistry.autoPoolRouter.selector),
-            abi.encode(makeAddr("AutoPool_VAULT_ROUTER"))
+            abi.encode(makeAddr("Autopool_VAULT_ROUTER"))
         );
 
-        _autoPool = AutoPoolETH(
+        _autoPool = AutopoolETH(
             _autoPoolFactory.createVault{ value: autoPoolInitDeposit }(
                 address(strategyTemplate), "x", "y", keccak256("v1"), initData
             )

@@ -5,12 +5,12 @@ pragma solidity 0.8.17;
 
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { IAccToke } from "src/interfaces/staking/IAccToke.sol";
-import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
+import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
-import { IAutoPilotRouter } from "src/interfaces/vault/IAutoPilotRouter.sol";
-import { IAutoPoolFactory } from "src/interfaces/vault/IAutoPoolFactory.sol";
+import { IAutopilotRouter } from "src/interfaces/vault/IAutopilotRouter.sol";
+import { IAutopoolFactory } from "src/interfaces/vault/IAutopoolFactory.sol";
 import { ISystemSecurity } from "src/interfaces/security/ISystemSecurity.sol";
 import { IDestinationRegistry } from "src/interfaces/destinations/IDestinationRegistry.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
@@ -36,9 +36,9 @@ interface ISystemRegistry {
     /// @return accToke instance of the accToke contract for the system
     function gpToke() external view returns (IAccToke);
 
-    /// @notice Get the AutoPoolRegistry for this system
+    /// @notice Get the AutopoolRegistry for this system
     /// @return registry instance of the registry for this system
-    function autoPoolRegistry() external view returns (IAutoPoolRegistry registry);
+    function autoPoolRegistry() external view returns (IAutopoolRegistry registry);
 
     /// @notice Get the destination Vault registry for this system
     /// @return registry instance of the registry for this system
@@ -54,11 +54,11 @@ interface ISystemRegistry {
 
     /// @notice Auto Pilot Router
     /// @return router instance of the system
-    function autoPoolRouter() external view returns (IAutoPilotRouter router);
+    function autoPoolRouter() external view returns (IAutopilotRouter router);
 
     /// @notice Vault factory lookup by type
     /// @return vaultFactory instance of the vault factory for this vault type
-    function getAutoPoolFactoryByType(bytes32 vaultType) external view returns (IAutoPoolFactory vaultFactory);
+    function getAutopoolFactoryByType(bytes32 vaultType) external view returns (IAutopoolFactory vaultFactory);
 
     /// @notice Get the stats calculator registry for this system
     /// @return registry instance of the registry for this system

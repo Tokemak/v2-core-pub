@@ -3,7 +3,7 @@ cryticArgs:
         "--solc-remap",
         "openzeppelin-contracts/=./lib/openzeppelin-contracts/contracts/ src/=./src/ forge-std/=./lib/forge-std/src/ test/=./test/ crytic/properties/=./lib/properties/",
         "--compile-libraries",
-        "(LMPDebt,0x1f),(LMPDestinations,0x2f),(StructuredLinkedList,0x3f),(WithdrawalQueue,0x4f),(AutoPoolToken,0x5f),(AutoPoolFees,0x6f),(AutoPool4626,0x7f),(ERC2612,0x8f)",
+        "(AutopoolDebt,0x1f),(AutopoolDestinations,0x2f),(StructuredLinkedList,0x3f),(WithdrawalQueue,0x4f),(AutopoolToken,0x5f),(AutopoolFees,0x6f),(Autopool4626,0x7f),(ERC2612,0x8f)",
     ]
 workers: 10
 testLimit: 1000000
@@ -12,8 +12,8 @@ codeSize: 0xffffff
 coverage: false
 filterFunctions:
     [
-        "LMPVaultRouterTest.pullTokenFromAsset(uint256,uint256,uint256)",
-        "LMPVaultRouterTest.queuePullTokenFromAsset(uint256,uint256,uint256)",
+        "AutopilotRouterTests.pullTokenFromAsset(uint256,uint256,uint256)",
+        "AutopilotRouterTests.queuePullTokenFromAsset(uint256,uint256,uint256)",
     ]
 filterBlacklist: true
 allowFFI: true
@@ -23,11 +23,11 @@ sender: [
         "0x73C689aa3121E38B15B0C9d46Fd9147214214c56",
     ] ## _user1/2/3
 deployContracts:
-    - ["0x1f", "LMPDebt"]
-    - ["0x2f", "LMPDestinations"]
+    - ["0x1f", "AutopoolDebt"]
+    - ["0x2f", "AutopoolDestinations"]
     - ["0x3f", "StructuredLinkedList"]
     - ["0x4f", "WithdrawalQueue"]
-    - ["0x5f", "AutoPoolToken"]
-    - ["0x6f", "AutoPoolFees"]
-    - ["0x7f", "AutoPool4626"]
+    - ["0x5f", "AutopoolToken"]
+    - ["0x6f", "AutopoolFees"]
+    - ["0x7f", "Autopool4626"]
     - ["0x8f", "ERC2612"]

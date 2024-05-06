@@ -11,7 +11,7 @@ import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSe
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
 
-library AutoPoolDestinations {
+library AutopoolDestinations {
     using EnumerableSet for EnumerableSet.AddressSet;
     using WithdrawalQueue for StructuredLinkedList.List;
 

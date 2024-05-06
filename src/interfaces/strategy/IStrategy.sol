@@ -18,15 +18,15 @@ interface IStrategy {
 
     error RebalanceFailed(string message);
 
-    /// @notice gets the list of supported destination vaults for the AutoPool/Strategy
+    /// @notice gets the list of supported destination vaults for the Autopool/Strategy
     /// @return _destinations List of supported destination vaults
     function getDestinations() external view returns (address[] memory _destinations);
 
-    /// @notice add supported destination vaults for the AutoPool/Strategy
+    /// @notice add supported destination vaults for the Autopool/Strategy
     /// @param _destinations The list of destination vaults to add
     function addDestinations(address[] calldata _destinations) external;
 
-    /// @notice remove supported destination vaults for the AutoPool/Strategy
+    /// @notice remove supported destination vaults for the Autopool/Strategy
     /// @param _destinations The list of destination vaults to remove
     function removeDestinations(address[] calldata _destinations) external;
 
@@ -72,7 +72,7 @@ interface IStrategy {
         uint256 slashingCost;
     }
 
-    /// @notice rebalance the AutoPool from the tokenOut (decrease) to the tokenIn (increase)
+    /// @notice rebalance the Autopool from the tokenOut (decrease) to the tokenIn (increase)
     /// This uses a flash loan to receive the tokenOut to reduce the working capital requirements of the swapper
     /// @param receiver The contract receiving the tokens, needs to implement the
     /// `onFlashLoan(address user, address token, uint256 amount, uint256 fee, bytes calldata)` interface

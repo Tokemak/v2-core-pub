@@ -7,8 +7,8 @@ pragma solidity 0.8.17;
 import { TestWETH9 } from "test/mocks/TestWETH9.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
-import { AutoPoolFees } from "src/vault/libs/AutoPoolFees.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
+import { AutopoolFees } from "src/vault/libs/AutopoolFees.sol";
 import { Numbers } from "test/echidna/fuzz/utils/Numbers.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { hevm } from "test/echidna/fuzz/utils/Hevm.sol";
@@ -16,7 +16,7 @@ import { BasePoolSetup, TestDestinationVault, TestSolver } from "test/echidna/fu
 
 import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 
-contract AutoPoolETHUsage is BasePoolSetup, Numbers {
+contract AutopoolETHUsage is BasePoolSetup, Numbers {
     TestWETH9 internal _vaultAsset;
 
     /// =====================================================
@@ -41,17 +41,17 @@ contract AutoPoolETHUsage is BasePoolSetup, Numbers {
     /// Modifiers
     /// =====================================================
 
-    modifier opNoNavPerShareChange(IAutoPool.TotalAssetPurpose purpose) {
+    modifier opNoNavPerShareChange(IAutopool.TotalAssetPurpose purpose) {
         uint256 ts = _pool.totalSupply();
         uint256 start = 0;
         if (ts > 0) {
-            start = (_pool.totalAssets(purpose) * AutoPoolFees.FEE_DIVISOR) / ts;
+            start = (_pool.totalAssets(purpose) * AutopoolFees.FEE_DIVISOR) / ts;
         }
         _;
         if (ts > 0) {
             ts = _pool.totalSupply();
             _navPerShareLastNonOpStart = start;
-            _navPerShareLastNonOpEnd = (_pool.totalAssets(purpose) * AutoPoolFees.FEE_DIVISOR) / ts;
+            _navPerShareLastNonOpEnd = (_pool.totalAssets(purpose) * AutopoolFees.FEE_DIVISOR) / ts;
         }
     }
 
@@ -66,13 +66,15 @@ contract AutoPoolETHUsage is BasePoolSetup, Numbers {
         _vaultAsset.setDecimals(18);
         initializeBaseSetup(address(_vaultAsset));
 
-        _vaultAsset.deposit{ value: 100_000 }();
+        _vaultAsset.mint(address(this), 100_000);
         _vaultAsset.approve(address(_pool), 100_000);
 
         _pool.initialize(address(_strategy), "SYMBOL", "NAME", abi.encode(""));
         _pool.setDisableNavDecreaseCheck(true);
         _pool.setCryticFnsEnabled(false);
     }
+
+    receive() external payable { }
 
     /// =====================================================
     /// Nav/Share Changing Ops
@@ -215,7 +217,7 @@ contract AutoPoolETHUsage is BasePoolSetup, Numbers {
         uint8 userScale,
         uint96 assets,
         bool asUser
-    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Deposit) {
+    ) public opNoNavPerShareChange(IAutopool.TotalAssetPurpose.Deposit) {
         _userDeposit(_userFromScale(userScale), assets, asUser);
     }
 
@@ -224,7 +226,7 @@ contract AutoPoolETHUsage is BasePoolSetup, Numbers {
         uint96 assets,
         uint8 loops,
         bool asUser
-    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Deposit) {
+    ) public opNoNavPerShareChange(IAutopool.TotalAssetPurpose.Deposit) {
         address user = _userFromScale(userScale);
         _userDeposit(user, assets, asUser);
         _pool.increaseIdle(assets * 2);
@@ -240,14 +242,14 @@ contract AutoPoolETHUsage is BasePoolSetup, Numbers {
         uint8 userScale,
         uint96 shares,
         bool asUser
-    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Deposit) {
+    ) public opNoNavPerShareChange(IAutopool.TotalAssetPurpose.Deposit) {
         _userMint(_userFromScale(userScale), shares, asUser);
     }
 
     function userRedeem(
         uint8 userScale,
         uint96 shares
-    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Withdraw) {
+    ) public opNoNavPerShareChange(IAutopool.TotalAssetPurpose.Withdraw) {
         _userRedeem(_userFromScale(userScale), shares, address(0));
     }
 
@@ -255,14 +257,14 @@ contract AutoPoolETHUsage is BasePoolSetup, Numbers {
         uint8 userScale,
         uint96 shares,
         address allowedUser
-    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Withdraw) {
+    ) public opNoNavPerShareChange(IAutopool.TotalAssetPurpose.Withdraw) {
         _userRedeem(_userFromScale(userScale), shares, allowedUser);
     }
 
     function userWithdraw(
         uint8 userScale,
         uint96 assets
-    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Withdraw) {
+    ) public opNoNavPerShareChange(IAutopool.TotalAssetPurpose.Withdraw) {
         _userWithdraw(_userFromScale(userScale), assets, address(0));
     }
 
@@ -270,21 +272,21 @@ contract AutoPoolETHUsage is BasePoolSetup, Numbers {
         uint8 userScale,
         uint96 assets,
         address allowedUser
-    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Withdraw) {
+    ) public opNoNavPerShareChange(IAutopool.TotalAssetPurpose.Withdraw) {
         _userWithdraw(_userFromScale(userScale), assets, allowedUser);
     }
 
     function userDonate(
         uint8 userScale,
         uint96 assets
-    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Global) {
+    ) public opNoNavPerShareChange(IAutopool.TotalAssetPurpose.Global) {
         _userDonate(assets, _userFromScale(userScale));
     }
 
     function randomDonate(
         uint96 assets,
         address user
-    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Global) {
+    ) public opNoNavPerShareChange(IAutopool.TotalAssetPurpose.Global) {
         if (_isValidImpersonatedUserAddress(user)) {
             _userDonate(assets, user);
         }
@@ -294,7 +296,7 @@ contract AutoPoolETHUsage is BasePoolSetup, Numbers {
         uint8 userScale,
         uint96 shares,
         address destination
-    ) public opNoNavPerShareChange(IAutoPool.TotalAssetPurpose.Global) {
+    ) public opNoNavPerShareChange(IAutopool.TotalAssetPurpose.Global) {
         _userTransfer(shares, _userFromScale(userScale), destination);
     }
 
@@ -337,7 +339,7 @@ contract AutoPoolETHUsage is BasePoolSetup, Numbers {
 
     function _userWithdraw(address user, uint96 assets, address allowedUser) private returns (uint256 actualAssets) {
         uint256 shares = _pool.convertToShares(
-            assets, _pool.totalAssets(IAutoPool.TotalAssetPurpose.Withdraw), _pool.totalSupply(), Math.Rounding.Down
+            assets, _pool.totalAssets(IAutopool.TotalAssetPurpose.Withdraw), _pool.totalSupply(), Math.Rounding.Down
         );
         uint256 bal = _pool.balanceOf(user);
         if (shares <= bal) {
@@ -376,7 +378,7 @@ contract AutoPoolETHUsage is BasePoolSetup, Numbers {
 
     function _userMint(address user, uint96 shares, bool asUser) private returns (uint256 actualAssets) {
         uint256 assets = _pool.convertToAssets(
-            shares, _pool.totalAssets(IAutoPool.TotalAssetPurpose.Deposit), _pool.totalSupply(), Math.Rounding.Up
+            shares, _pool.totalAssets(IAutopool.TotalAssetPurpose.Deposit), _pool.totalSupply(), Math.Rounding.Up
         );
         if (asUser) {
             _vaultAsset.mint(user, assets * 2);
@@ -420,6 +422,7 @@ contract AutoPoolETHUsage is BasePoolSetup, Numbers {
         if (
             user == address(_pool) || user == address(_vaultAsset) || user == address(_toke) || user == address(_weth)
                 || user == address(_destVault1) || user == address(_destVault2) || user == address(_destVault3)
+                || user == 0x000000000000000000000000000000000000dEaD
         ) {
             return false;
         }
@@ -441,19 +444,14 @@ contract AutoPoolETHUsage is BasePoolSetup, Numbers {
     }
 }
 
-contract AutoPoolETHTest is AutoPoolETHUsage {
-    constructor() AutoPoolETHUsage() { }
+contract AutopoolETHTest is AutopoolETHUsage {
+    constructor() AutopoolETHUsage() { }
 
     function echidna_nav_per_share_cant_decrease_on_user_op() public view returns (bool) {
         return _navPerShareLastNonOpStart <= _navPerShareLastNonOpEnd;
     }
 
-    function echidna_no_assets_left_in_vault() public view returns (bool) {
-        uint256 ts = _pool.totalSupply();
-        uint256 ta = _pool.totalAssets();
-        if (ts == 0) {
-            return ta == 0;
-        }
-        return true;
+    function echidna_total_supply_cannot_be_zero() public view returns (bool) {
+        return _pool.totalSupply() > 0;
     }
 }

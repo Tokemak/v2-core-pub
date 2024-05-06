@@ -12,19 +12,19 @@ import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
-import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
+import { IAutopoolStrategy } from "src/interfaces/strategy/IAutopoolStrategy.sol";
 import { StructuredLinkedList } from "src/strategy/StructuredLinkedList.sol";
 import { WithdrawalQueue } from "src/strategy/WithdrawalQueue.sol";
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
-import { AutoPoolToken } from "src/vault/libs/AutoPoolToken.sol";
+import { AutopoolToken } from "src/vault/libs/AutopoolToken.sol";
 
-library AutoPoolDebt {
+library AutopoolDebt {
     using Math for uint256;
     using SafeERC20 for IERC20;
     using WithdrawalQueue for StructuredLinkedList.List;
     using EnumerableSet for EnumerableSet.AddressSet;
-    using AutoPoolToken for AutoPoolToken.TokenData;
+    using AutopoolToken for AutopoolToken.TokenData;
 
     /// @notice Max time a cached debt report can be used
     uint256 public constant MAX_DEBT_REPORT_AGE_SECONDS = 1 days;
@@ -41,7 +41,7 @@ library AutoPoolDebt {
     error AmountExceedsAllowance(uint256 shares, uint256 allowed);
 
     event DestinationDebtReporting(
-        address destination, AutoPoolDebt.IdleDebtUpdates debtInfo, uint256 claimed, uint256 claimGasUsed
+        address destination, AutopoolDebt.IdleDebtUpdates debtInfo, uint256 claimed, uint256 claimGasUsed
     );
     event NewNavShareFeeMark(uint256 navPerShare, uint256 timestamp);
     event Nav(uint256 idle, uint256 debt, uint256 totalSupply);
@@ -126,7 +126,7 @@ library AutoPoolDebt {
         IERC3156FlashBorrower receiver,
         IStrategy.RebalanceParams memory params,
         IStrategy.SummaryStats memory destSummaryOut,
-        IAutoPoolStrategy autoPoolStrategy,
+        IAutopoolStrategy autoPoolStrategy,
         FlashRebalanceParams memory flashParams,
         bytes calldata data
     ) external returns (IdleDebtUpdates memory result) {
@@ -134,7 +134,7 @@ library AutoPoolDebt {
         // If the tokenOut is _asset we assume they are taking idle
         // which is already in the contract
         result = _handleRebalanceOut(
-            AutoPoolDebt.RebalanceOutParams({
+            AutopoolDebt.RebalanceOutParams({
                 receiver: address(receiver),
                 destinationOut: params.destinationOut,
                 amountOut: params.amountOut,
@@ -347,11 +347,11 @@ library AutoPoolDebt {
 
     function totalAssetsTimeChecked(
         StructuredLinkedList.List storage debtReportQueue,
-        mapping(address => AutoPoolDebt.DestinationInfo) storage destinationInfo,
-        IAutoPool.TotalAssetPurpose purpose
+        mapping(address => AutopoolDebt.DestinationInfo) storage destinationInfo,
+        IAutopool.TotalAssetPurpose purpose
     ) external returns (uint256) {
         IDestinationVault destVault = IDestinationVault(debtReportQueue.peekHead());
-        uint256 recalculatedTotalAssets = IAutoPool(address(this)).totalAssets(purpose);
+        uint256 recalculatedTotalAssets = IAutopool(address(this)).totalAssets(purpose);
 
         while (address(destVault) != address(0)) {
             uint256 lastReport = destinationInfo[address(destVault)].lastReport;
@@ -370,7 +370,7 @@ library AutoPoolDebt {
                 uint256 extremePrice;
 
                 // Figure out exactly which price to use based on its purpose
-                if (purpose == IAutoPool.TotalAssetPurpose.Deposit) {
+                if (purpose == IAutopool.TotalAssetPurpose.Deposit) {
                     // We use max value so that anything deposited is worth less
                     extremePrice = destVault.getUnderlyerCeilingPrice();
 
@@ -379,7 +379,7 @@ library AutoPoolDebt {
                     staleDebt = destinationInfo[address(destVault)].cachedMaxDebtValue.mulDiv(
                         currentShares, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Down
                     );
-                } else if (purpose == IAutoPool.TotalAssetPurpose.Withdraw) {
+                } else if (purpose == IAutopool.TotalAssetPurpose.Withdraw) {
                     // We use min value so that we value the shares as worth less
                     extremePrice = destVault.getUnderlyerFloorPrice();
                     // Round up. We are subtracting this value out of the total so if we take a little
@@ -396,9 +396,9 @@ library AutoPoolDebt {
                 // value we have represents that, then use it. Otherwise, use the new one.
                 uint256 newValue = (currentShares * extremePrice) / destVault.ONE();
 
-                if (purpose == IAutoPool.TotalAssetPurpose.Deposit && staleDebt > newValue) {
+                if (purpose == IAutopool.TotalAssetPurpose.Deposit && staleDebt > newValue) {
                     newValue = staleDebt;
-                } else if (purpose == IAutoPool.TotalAssetPurpose.Withdraw && staleDebt < newValue) {
+                } else if (purpose == IAutopool.TotalAssetPurpose.Withdraw && staleDebt < newValue) {
                     newValue = staleDebt;
                 }
 
@@ -413,7 +413,7 @@ library AutoPoolDebt {
 
     function _updateDebtReporting(
         StructuredLinkedList.List storage debtReportQueue,
-        mapping(address => AutoPoolDebt.DestinationInfo) storage destinationInfo,
+        mapping(address => AutopoolDebt.DestinationInfo) storage destinationInfo,
         uint256 numToProcess
     ) external returns (IdleDebtUpdates memory result) {
         numToProcess = Math.min(numToProcess, debtReportQueue.sizeOf());
@@ -426,17 +426,17 @@ library AutoPoolDebt {
             // Main rewarder on DV's store the earned and liquidated rewards
             // Extra rewarders are disabled at the DV level
             uint256 claimGasUsed = gasleft();
-            uint256 beforeBaseAsset = IERC20(IAutoPool(address(this)).asset()).balanceOf(address(this));
+            uint256 beforeBaseAsset = IERC20(IAutopool(address(this)).asset()).balanceOf(address(this));
             IMainRewarder(destVault.rewarder()).getReward(address(this), false);
             uint256 claimedRewardValue =
-                IERC20(IAutoPool(address(this)).asset()).balanceOf(address(this)) - beforeBaseAsset;
+                IERC20(IAutopool(address(this)).asset()).balanceOf(address(this)) - beforeBaseAsset;
             result.totalIdleIncrease += claimedRewardValue;
 
             // Recalculate the debt info figuring out the change in
             // total debt value we can roll up later
             uint256 currentShareBalance = destVault.balanceOf(address(this));
 
-            AutoPoolDebt.IdleDebtUpdates memory debtResult = _recalculateDestInfo(
+            AutopoolDebt.IdleDebtUpdates memory debtResult = _recalculateDestInfo(
                 destinationInfo[address(destVault)], destVault, currentShareBalance, currentShareBalance
             );
 
@@ -463,7 +463,7 @@ library AutoPoolDebt {
 
     function _initiateWithdrawInfo(
         uint256 assets,
-        IAutoPool.AssetBreakdown storage assetBreakdown
+        IAutopool.AssetBreakdown storage assetBreakdown
     ) private view returns (WithdrawInfo memory) {
         uint256 idle = assetBreakdown.totalIdle;
         WithdrawInfo memory info = WithdrawInfo({
@@ -502,9 +502,9 @@ library AutoPoolDebt {
     function withdraw(
         uint256 assets,
         uint256 applicableTotalAssets,
-        IAutoPool.AssetBreakdown storage assetBreakdown,
+        IAutopool.AssetBreakdown storage assetBreakdown,
         StructuredLinkedList.List storage withdrawalQueue,
-        mapping(address => AutoPoolDebt.DestinationInfo) storage destinationInfo
+        mapping(address => AutopoolDebt.DestinationInfo) storage destinationInfo
     ) public returns (uint256 actualAssets, uint256 actualShares, uint256 debtBurned) {
         WithdrawInfo memory info = _initiateWithdrawInfo(assets, assetBreakdown);
 
@@ -650,10 +650,10 @@ library AutoPoolDebt {
             revert TooFewAssets(assets, actualAssets);
         }
 
-        actualShares = IAutoPool(address(this)).convertToShares(
+        actualShares = IAutopool(address(this)).convertToShares(
             Math.max(actualAssets, debtBurned),
             applicableTotalAssets,
-            IAutoPool(address(this)).totalSupply(),
+            IAutopool(address(this)).totalSupply(),
             Math.Rounding.Up
         );
 
@@ -688,9 +688,9 @@ library AutoPoolDebt {
     function redeem(
         uint256 assets,
         uint256 applicableTotalAssets,
-        IAutoPool.AssetBreakdown storage assetBreakdown,
+        IAutopool.AssetBreakdown storage assetBreakdown,
         StructuredLinkedList.List storage withdrawalQueue,
-        mapping(address => AutoPoolDebt.DestinationInfo) storage destinationInfo
+        mapping(address => AutopoolDebt.DestinationInfo) storage destinationInfo
     ) public returns (uint256 actualAssets, uint256 actualShares, uint256 debtBurned) {
         WithdrawInfo memory info = _initiateWithdrawInfo(assets, assetBreakdown);
 
@@ -799,8 +799,8 @@ library AutoPoolDebt {
         debtBurned = info.assetsFromIdle + info.debtMinDecrease;
         actualAssets = info.assetsFromIdle + info.assetsPulled;
 
-        actualShares = IAutoPool(address(this)).convertToShares(
-            debtBurned, applicableTotalAssets, IAutoPool(address(this)).totalSupply(), Math.Rounding.Up
+        actualShares = IAutopool(address(this)).convertToShares(
+            debtBurned, applicableTotalAssets, IAutopool(address(this)).totalSupply(), Math.Rounding.Up
         );
 
         // Subtract what's taken out of idle from totalIdle
@@ -836,9 +836,9 @@ library AutoPoolDebt {
      * @param shares Amount of shares to be burned from owner.
      * @param owner Owner of shares, user to burn shares from.
      * @param receiver The receiver of the baseAsset.
-     * @param baseAsset Base asset of the AutoPool.
-     * @param assetBreakdown Asset breakdown for the AutoPool.
-     * @param tokenData Token data for the AutoPool.
+     * @param baseAsset Base asset of the Autopool.
+     * @param assetBreakdown Asset breakdown for the Autopool.
+     * @param tokenData Token data for the Autopool.
      */
     function completeWithdrawal(
         uint256 assets,
@@ -846,11 +846,11 @@ library AutoPoolDebt {
         address owner,
         address receiver,
         IERC20 baseAsset,
-        IAutoPool.AssetBreakdown storage assetBreakdown,
-        AutoPoolToken.TokenData storage tokenData
+        IAutopool.AssetBreakdown storage assetBreakdown,
+        AutopoolToken.TokenData storage tokenData
     ) external {
         if (msg.sender != owner) {
-            uint256 allowed = IAutoPool(address(this)).allowance(owner, msg.sender);
+            uint256 allowed = IAutopool(address(this)).allowance(owner, msg.sender);
             if (allowed != type(uint256).max) {
                 if (shares > allowed) revert AmountExceedsAllowance(shares, allowed);
 
@@ -862,7 +862,7 @@ library AutoPoolDebt {
 
         tokenData.burn(owner, shares);
 
-        uint256 ts = IAutoPool(address(this)).totalSupply();
+        uint256 ts = IAutopool(address(this)).totalSupply();
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
@@ -876,10 +876,10 @@ library AutoPoolDebt {
      * @dev Reverts all changing state.
      * @param previewWithdraw Bool denoting whether to preview a redeem or withdrawal.
      * @param assets Assets to be withdrawn or redeemed.
-     * @param applicableTotalAssets Operation dependent assets in the AutoPool.
+     * @param applicableTotalAssets Operation dependent assets in the Autopool.
      * @param functionCallEncoded Abi encoded function signature for recursive call.
-     * @param assetBreakdown Breakdown of vault assets from AutoPool storage.
-     * @param withdrawalQueue Destination vault withdrawal queue from AutoPool storage.
+     * @param assetBreakdown Breakdown of vault assets from Autopool storage.
+     * @param withdrawalQueue Destination vault withdrawal queue from Autopool storage.
      * @param destinationInfo Mapping of information for destinations.
      * @return assetsAmount Preview of amount of assets to send to receiver.
      * @return sharesAmount Preview of amount of assets to burn from owner.
@@ -889,13 +889,13 @@ library AutoPoolDebt {
         uint256 assets,
         uint256 applicableTotalAssets,
         bytes memory functionCallEncoded,
-        IAutoPool.AssetBreakdown storage assetBreakdown,
+        IAutopool.AssetBreakdown storage assetBreakdown,
         StructuredLinkedList.List storage withdrawalQueue,
-        mapping(address => AutoPoolDebt.DestinationInfo) storage destinationInfo
+        mapping(address => AutopoolDebt.DestinationInfo) storage destinationInfo
     ) external returns (uint256 assetsAmount, uint256 sharesAmount) {
         if (msg.sender != address(this)) {
             // Perform a recursive call the function in `funcCallEncoded`.  This will result in a call back to
-            // the AutoPool, and then this function. The intention is to reach the "else" block in this function.
+            // the Autopool, and then this function. The intention is to reach the "else" block in this function.
             // solhint-disable avoid-low-level-calls
             // slither-disable-next-line missing-zero-check,low-level-calls
             (bool success, bytes memory returnData) = address(this).call(functionCallEncoded);

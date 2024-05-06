@@ -9,8 +9,8 @@ import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/ext
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { IDestinationVault } from "src/vault/DestinationVault.sol";
-import { IAutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
+import { IAutopoolFactory } from "src/vault/AutopoolFactory.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { Errors, SystemRegistry } from "src/SystemRegistry.sol";
@@ -23,13 +23,13 @@ import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 
-contract AutoPoolETHBaseTest is BaseTest {
+contract AutopoolETHBaseTest is BaseTest {
     using SafeERC20 for IERC20;
     using Clones for address;
 
     IDestinationVault public destinationVault;
     IDestinationVault public destinationVault2;
-    AutoPoolETH public autoPool;
+    AutopoolETH public autoPool;
     TestDestinationVault public vaultTemplate;
 
     address private autoPoolStrategy = vm.addr(100_001);
@@ -45,8 +45,8 @@ contract AutoPoolETHBaseTest is BaseTest {
     function setUp() public virtual override(BaseTest) {
         BaseTest.setUp();
 
-        deployAutoPoolRegistry();
-        deployAutoPoolFactory();
+        deployAutopoolRegistry();
+        deployAutopoolFactory();
 
         //
         // create and initialize factory
@@ -62,7 +62,7 @@ contract AutoPoolETHBaseTest is BaseTest {
         accessController.grantRole(Roles.AUTO_POOL_REWARD_MANAGER, address(this));
 
         // create test autoPool
-        IAutoPoolFactory vaultFactory = systemRegistry.getAutoPoolFactoryByType(VaultTypes.LST);
+        IAutopoolFactory vaultFactory = systemRegistry.getAutopoolFactoryByType(VaultTypes.LST);
         vaultFactory.addStrategyTemplate(autoPoolStrategy);
         accessController.grantRole(Roles.AUTO_POOL_FACTORY_VAULT_CREATOR, address(vaultFactory));
 
@@ -81,7 +81,7 @@ contract AutoPoolETHBaseTest is BaseTest {
         bytes memory initData = abi.encode("");
         bytes32 template = keccak256("vault");
         autoPool =
-            AutoPoolETH(vaultFactory.createVault{ value: 100_000 }(autoPoolStrategy, "x", "y", template, initData));
+            AutopoolETH(vaultFactory.createVault{ value: 100_000 }(autoPoolStrategy, "x", "y", template, initData));
 
         assert(systemRegistry.autoPoolRegistry().isVault(address(autoPool)));
     }
@@ -211,7 +211,7 @@ contract AutoPoolETHBaseTest is BaseTest {
         assertEq(address(autoPool.rewarder()), rewarder);
     }
 
-    function test_AutoPoolRewardManagerRole_CanSetRewarder() public {
+    function test_AutopoolRewardManagerRole_CanSetRewarder() public {
         assertTrue(accessController.hasRole(Roles.AUTO_POOL_REWARD_MANAGER, address(this)));
 
         address rewarder = makeAddr("REWARDER");

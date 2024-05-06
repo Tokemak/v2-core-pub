@@ -6,15 +6,15 @@ import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSe
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { Roles } from "src/libs/Roles.sol";
 
-import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
+import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
 import { Errors } from "src/utils/Errors.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 
-contract AutoPoolRegistry is SystemComponent, IAutoPoolRegistry, SecurityBase {
+contract AutopoolRegistry is SystemComponent, IAutopoolRegistry, SecurityBase {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private _vaults;
@@ -45,7 +45,7 @@ contract AutoPoolRegistry is SystemComponent, IAutoPoolRegistry, SecurityBase {
     function addVault(address vaultAddress) external onlyUpdater {
         Errors.verifyNotZero(vaultAddress, "vaultAddress");
 
-        IAutoPool vault = IAutoPool(vaultAddress);
+        IAutopool vault = IAutopool(vaultAddress);
 
         address asset = vault.asset();
         bytes32 vaultType = vault.vaultType();
@@ -67,7 +67,7 @@ contract AutoPoolRegistry is SystemComponent, IAutoPoolRegistry, SecurityBase {
         // remove from vaults list
         if (!_vaults.remove(vaultAddress)) revert VaultNotFound(vaultAddress);
 
-        IAutoPool vault = IAutoPool(vaultAddress);
+        IAutopool vault = IAutopool(vaultAddress);
         address asset = vault.asset();
         bytes32 vaultType = vault.vaultType();
 

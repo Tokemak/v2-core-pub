@@ -6,11 +6,11 @@ pragma solidity 0.8.17;
 
 import { ERC4626Test } from "test/fuzz/vault/ERC4626Test.sol";
 import { BaseTest } from "test/BaseTest.t.sol";
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
-import { AutoPoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutoPoolETHStrategyTestHelpers.sol";
-import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
+import { AutopoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutopoolETHStrategyTestHelpers.sol";
+import { AutopoolETHStrategy } from "src/strategy/AutopoolETHStrategy.sol";
 
-contract AutoPoolETHTest is ERC4626Test, BaseTest {
+contract AutopoolETHTest is ERC4626Test, BaseTest {
     address private autoPoolStrategy = vm.addr(10_001);
 
     function setUp() public override(BaseTest, ERC4626Test) {
@@ -24,10 +24,10 @@ contract AutoPoolETHTest is ERC4626Test, BaseTest {
         // create vault
         bytes memory initData = abi.encode("");
 
-        AutoPoolETHStrategy stratTemplate = new AutoPoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        AutopoolETHStrategy stratTemplate = new AutopoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
-        AutoPoolETH vault = AutoPoolETH(
+        AutopoolETH vault = AutopoolETH(
             autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT }(
                 address(stratTemplate), "x", "y", keccak256("v8"), initData
             )

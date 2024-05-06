@@ -2,9 +2,9 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { AutoPoolDebt } from "src/vault/libs/AutoPoolDebt.sol";
+import { AutopoolDebt } from "src/vault/libs/AutopoolDebt.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
@@ -16,7 +16,7 @@ contract Lens is SystemComponent {
     /// Structs
     /// =====================================================
 
-    struct AutoPool {
+    struct Autopool {
         address poolAddress;
         string name;
         string symbol;
@@ -27,7 +27,7 @@ contract Lens is SystemComponent {
         bool feeHighMarkEnabled;
         bool feeSettingsIncomplete;
         bool isShutdown;
-        IAutoPool.VaultShutdownStatus shutdownStatus;
+        IAutopool.VaultShutdownStatus shutdownStatus;
         address rewarder;
         address strategy;
         uint256 totalSupply;
@@ -85,8 +85,8 @@ contract Lens is SystemComponent {
         uint256[] statsAnnualizedRewardAmounts;
     }
 
-    struct AutoPools {
-        AutoPool[] autoPools;
+    struct Autopools {
+        Autopool[] autoPools;
         DestinationVault[][] destinations;
     }
 
@@ -100,14 +100,14 @@ contract Lens is SystemComponent {
     /// Functions - External
     /// =====================================================
 
-    /// @notice Returns all AutoPools currently registered in the system
-    function getPools() external view returns (AutoPool[] memory) {
+    /// @notice Returns all Autopools currently registered in the system
+    function getPools() external view returns (Autopool[] memory) {
         return _getPools();
     }
 
-    /// @notice Returns all AutoPools and their destinations
+    /// @notice Returns all Autopools and their destinations
     /// @dev Makes no state changes. Not a view fn because of stats pricing
-    function getPoolsAndDestinations() external returns (AutoPools memory retValues) {
+    function getPoolsAndDestinations() external returns (Autopools memory retValues) {
         retValues.autoPools = _getPools();
         retValues.destinations = new DestinationVault[][](retValues.autoPools.length);
 
@@ -116,27 +116,27 @@ contract Lens is SystemComponent {
         }
     }
 
-    /// @notice Get the fee settings for an AutoPool
+    /// @notice Get the fee settings for an Autopool
     /// @dev Structure of this return struct has been updated a few times and will fail on the decode. This is paired
     /// with the _fillInFeeSettings call to ensure the failure doesn't bubble up
-    /// @param poolAddress Address of the AutoPool to query
-    function proxyGetFeeSettings(address poolAddress) public view returns (IAutoPool.AutoPoolFeeSettings memory) {
-        return IAutoPool(poolAddress).getFeeSettings();
+    /// @param poolAddress Address of the Autopool to query
+    function proxyGetFeeSettings(address poolAddress) public view returns (IAutopool.AutopoolFeeSettings memory) {
+        return IAutopool(poolAddress).getFeeSettings();
     }
 
     /// =====================================================
     /// Private Helpers
     /// =====================================================
 
-    /// @dev Returns AutoPool information for those currently registered in the system
-    function _getPools() private view returns (AutoPool[] memory autoPools) {
+    /// @dev Returns Autopool information for those currently registered in the system
+    function _getPools() private view returns (Autopool[] memory autoPools) {
         address[] memory autoPoolAddresses = systemRegistry.autoPoolRegistry().listVaults();
-        autoPools = new AutoPool[](autoPoolAddresses.length);
+        autoPools = new Autopool[](autoPoolAddresses.length);
 
         for (uint256 i = 0; i < autoPoolAddresses.length; ++i) {
             address poolAddress = autoPoolAddresses[i];
-            IAutoPool vault = IAutoPool(poolAddress);
-            autoPools[i] = AutoPool({
+            IAutopool vault = IAutopool(poolAddress);
+            autoPools[i] = Autopool({
                 poolAddress: poolAddress,
                 name: vault.name(),
                 symbol: vault.symbol(),
@@ -161,10 +161,10 @@ contract Lens is SystemComponent {
     }
 
     /// @dev Sets the fee settings with a call that loops back to this contract to ensure the struct can be decoded
-    /// @param pool AutoPool to fill in fees far
-    function _fillInFeeSettings(AutoPool memory pool) private view {
+    /// @param pool Autopool to fill in fees far
+    function _fillInFeeSettings(Autopool memory pool) private view {
         try Lens(address(this)).proxyGetFeeSettings(pool.poolAddress) returns (
-            IAutoPool.AutoPoolFeeSettings memory settings
+            IAutopool.AutopoolFeeSettings memory settings
         ) {
             pool.streamingFeeBps = settings.streamingFeeBps;
             pool.periodicFeeBps = settings.periodicFeeBps;
@@ -188,11 +188,11 @@ contract Lens is SystemComponent {
         }
     }
 
-    /// @dev Returns destination information for those currently related to the AutoPool
-    /// @param autoPool AutoPool to query destinations for
+    /// @dev Returns destination information for those currently related to the Autopool
+    /// @param autoPool Autopool to query destinations for
     function _getDestinations(address autoPool) private returns (DestinationVault[] memory destinations) {
-        address[] memory poolDestinations = IAutoPool(autoPool).getDestinations();
-        address[] memory poolQueuedDestRemovals = IAutoPool(autoPool).getRemovalQueue();
+        address[] memory poolDestinations = IAutopool(autoPool).getDestinations();
+        address[] memory poolQueuedDestRemovals = IAutopool(autoPool).getRemovalQueue();
         destinations = new DestinationVault[](poolDestinations.length + poolQueuedDestRemovals.length);
 
         for (uint256 i = 0; i < destinations.length; ++i) {
@@ -201,8 +201,8 @@ contract Lens is SystemComponent {
             (IDexLSTStats.DexLSTStatsData memory currentStats, bool statsIncomplete) =
                 _safeDestinationGetStats(destinationAddress);
             address[] memory destinationTokens = IDestinationVault(destinationAddress).underlyingTokens();
-            AutoPoolDebt.DestinationInfo memory vaultDestInfo =
-                IAutoPool(autoPool).getDestinationInfo(destinationAddress);
+            AutopoolDebt.DestinationInfo memory vaultDestInfo =
+                IAutopool(autoPool).getDestinationInfo(destinationAddress);
             uint256 vaultBalOfDest = IDestinationVault(destinationAddress).balanceOf(autoPool);
 
             destinations[i] = DestinationVault({

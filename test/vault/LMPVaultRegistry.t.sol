@@ -7,15 +7,15 @@ pragma solidity 0.8.17;
 import { BaseTest } from "test/BaseTest.t.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
-import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
-import { IAutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
+import { AutopoolRegistry } from "src/vault/AutopoolRegistry.sol";
+import { IAutopoolRegistry } from "src/vault/AutopoolRegistry.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
-import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
-import { AutoPoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutoPoolETHStrategyTestHelpers.sol";
+import { AutopoolETHStrategy } from "src/strategy/AutopoolETHStrategy.sol";
+import { AutopoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutopoolETHStrategyTestHelpers.sol";
 
-contract AutoPoolRegistryTest is BaseTest {
-    AutoPoolETH internal vault;
+contract AutopoolRegistryTest is BaseTest {
+    AutopoolETH internal vault;
 
     event VaultAdded(address indexed asset, address indexed vault);
     event VaultRemoved(address indexed asset, address indexed vault);
@@ -25,15 +25,15 @@ contract AutoPoolRegistryTest is BaseTest {
 
         super._setUp(false);
 
-        autoPoolRegistry = new AutoPoolRegistry(systemRegistry);
+        autoPoolRegistry = new AutopoolRegistry(systemRegistry);
         accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(this));
 
         bytes memory initData = abi.encode("");
 
-        AutoPoolETHStrategy stratTemplate = new AutoPoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        AutopoolETHStrategy stratTemplate = new AutopoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
-        vault = AutoPoolETH(
+        vault = AutopoolETH(
             autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT }(
                 address(stratTemplate), "x", "y", keccak256("v8"), initData
             )
@@ -50,7 +50,7 @@ contract AutoPoolRegistryTest is BaseTest {
     }
 }
 
-contract AddVault is AutoPoolRegistryTest {
+contract AddVault is AutopoolRegistryTest {
     function test_AddVault() public {
         vm.expectEmit(true, true, false, true);
         emit VaultAdded(vault.asset(), address(vault));
@@ -70,10 +70,10 @@ contract AddVault is AutoPoolRegistryTest {
 
         bytes memory initData = abi.encode("");
 
-        AutoPoolETHStrategy stratTemplate = new AutoPoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        AutopoolETHStrategy stratTemplate = new AutopoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
         autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
-        AutoPoolETH anotherVault = AutoPoolETH(
+        AutopoolETH anotherVault = AutopoolETH(
             autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT }(
                 address(stratTemplate), "x", "y", keccak256("v9"), initData
             )
@@ -133,7 +133,7 @@ contract AddVault is AutoPoolRegistryTest {
     function test_RevertIf_AddingExistingVault() public {
         autoPoolRegistry.addVault(address(vault));
 
-        vm.expectRevert(abi.encodeWithSelector(IAutoPoolRegistry.VaultAlreadyExists.selector, address(vault)));
+        vm.expectRevert(abi.encodeWithSelector(IAutopoolRegistry.VaultAlreadyExists.selector, address(vault)));
         autoPoolRegistry.addVault(address(vault));
     }
 
@@ -143,7 +143,7 @@ contract AddVault is AutoPoolRegistryTest {
     }
 }
 
-contract RemoveVault is AutoPoolRegistryTest {
+contract RemoveVault is AutopoolRegistryTest {
     function test_RemoveVault() public {
         vm.expectEmit(true, true, false, true);
         emit VaultAdded(vault.asset(), address(vault));
@@ -179,7 +179,7 @@ contract RemoveVault is AutoPoolRegistryTest {
     function test_RevertIf_RemovingNonExistingVault() public {
         autoPoolRegistry.addVault(address(vault));
 
-        vm.expectRevert(abi.encodeWithSelector(IAutoPoolRegistry.VaultNotFound.selector, address(123)));
+        vm.expectRevert(abi.encodeWithSelector(IAutopoolRegistry.VaultNotFound.selector, address(123)));
         autoPoolRegistry.removeVault(address(123));
     }
 }

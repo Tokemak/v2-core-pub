@@ -2,48 +2,48 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
-import { IAutoPilotRouterBase } from "src/interfaces/vault/IAutoPilotRouterBase.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
+import { IAutopilotRouterBase } from "src/interfaces/vault/IAutopilotRouterBase.sol";
 import { IRewards } from "src/interfaces/rewarders/IRewards.sol";
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 
 /**
- * @title IAutoPilotRouter Interface
- * @notice Extends the IAutoPilotRouterBase with specific flows to save gas
+ * @title IAutopilotRouter Interface
+ * @notice Extends the IAutopilotRouterBase with specific flows to save gas
  */
-interface IAutoPilotRouter is IAutoPilotRouterBase {
+interface IAutopilotRouter is IAutopilotRouterBase {
     /**
      * ***************************   Deposit ********************************
      */
 
     /**
-     * @notice deposit available asset balance to a AutoPoolETH.
-     * @param vault The AutoPoolETH to deposit assets to.
+     * @notice deposit available asset balance to a AutopoolETH.
+     * @param vault The AutopoolETH to deposit assets to.
      * @param to The destination of ownership shares.
      * @param minSharesOut The min amount of `vault` shares received by `to`.
      * @return sharesOut the amount of shares received by `to`.
      * @dev throws MinSharesError
      */
-    function depositBalance(IAutoPool vault, address to, uint256 minSharesOut) external returns (uint256 sharesOut);
+    function depositBalance(IAutopool vault, address to, uint256 minSharesOut) external returns (uint256 sharesOut);
 
     /**
-     * @notice deposit max assets to a AutoPoolETH.
-     * @param vault The AutoPoolETH to deposit assets to.
+     * @notice deposit max assets to a AutopoolETH.
+     * @param vault The AutopoolETH to deposit assets to.
      * @param to The destination of ownership shares.
      * @param minSharesOut The min amount of `vault` shares received by `to`.
      * @return sharesOut the amount of shares received by `to`.
      * @dev throws MinSharesError
      */
-    function depositMax(IAutoPool vault, address to, uint256 minSharesOut) external returns (uint256 sharesOut);
+    function depositMax(IAutopool vault, address to, uint256 minSharesOut) external returns (uint256 sharesOut);
 
     /**
      * *************************   Withdraw   **********************************
      */
 
     /**
-     * @notice withdraw `amount` to a AutoPoolETH.
-     * @param fromVault The AutoPoolETH to withdraw assets from.
-     * @param toVault The AutoPoolETH to deposit assets to.
+     * @notice withdraw `amount` to a AutopoolETH.
+     * @param fromVault The AutopoolETH to withdraw assets from.
+     * @param toVault The AutopoolETH to deposit assets to.
      * @param to The destination of ownership shares.
      * @param amount The amount of assets to withdraw from fromVault.
      * @param maxSharesIn The max amount of fromVault shares withdrawn by caller.
@@ -52,8 +52,8 @@ interface IAutoPilotRouter is IAutoPilotRouterBase {
      * @dev throws MaxSharesError, MinSharesError
      */
     function withdrawToDeposit(
-        IAutoPool fromVault,
-        IAutoPool toVault,
+        IAutopool fromVault,
+        IAutopool toVault,
         address to,
         uint256 amount,
         uint256 maxSharesIn,
@@ -65,9 +65,9 @@ interface IAutoPilotRouter is IAutoPilotRouterBase {
      */
 
     /**
-     * @notice redeem `shares` to a AutoPoolETH.
-     * @param fromVault The AutoPoolETH to redeem shares from.
-     * @param toVault The AutoPoolETH to deposit assets to.
+     * @notice redeem `shares` to a AutopoolETH.
+     * @param fromVault The AutopoolETH to redeem shares from.
+     * @param toVault The AutopoolETH to deposit assets to.
      * @param to The destination of ownership shares.
      * @param shares The amount of shares to redeem from fromVault.
      * @param minSharesOut The min amount of toVault shares received by `to`.
@@ -75,22 +75,22 @@ interface IAutoPilotRouter is IAutoPilotRouterBase {
      * @dev throws MinAmountError, MinSharesError
      */
     function redeemToDeposit(
-        IAutoPool fromVault,
-        IAutoPool toVault,
+        IAutopool fromVault,
+        IAutopool toVault,
         address to,
         uint256 shares,
         uint256 minSharesOut
     ) external returns (uint256 sharesOut);
 
     /**
-     * @notice redeem max shares to a AutoPoolETH.
-     * @param vault The AutoPoolETH to redeem shares from.
+     * @notice redeem max shares to a AutopoolETH.
+     * @param vault The AutopoolETH to redeem shares from.
      * @param to The destination of assets.
      * @param minAmountOut The min amount of assets received by `to`.
      * @return amountOut the amount of assets received by `to`.
      * @dev throws MinAmountError
      */
-    function redeemMax(IAutoPool vault, address to, uint256 minAmountOut) external returns (uint256 amountOut);
+    function redeemMax(IAutopool vault, address to, uint256 minAmountOut) external returns (uint256 amountOut);
 
     /**
      * @notice swaps token

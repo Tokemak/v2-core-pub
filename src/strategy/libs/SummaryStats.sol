@@ -4,16 +4,16 @@
 pragma solidity 0.8.17;
 
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
-import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
+import { IAutopoolStrategy } from "src/interfaces/strategy/IAutopoolStrategy.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
-import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
+import { IAutopoolStrategy } from "src/interfaces/strategy/IAutopoolStrategy.sol";
 import { StrategyUtils } from "src/strategy/libs/StrategyUtils.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { Incentives } from "src/strategy/libs/Incentives.sol";
 import { PriceReturn } from "src/strategy/libs/PriceReturn.sol";
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -36,11 +36,11 @@ library SummaryStats {
     }
 
     function getDestinationSummaryStats(
-        IAutoPool autoPool,
+        IAutopool autoPool,
         IIncentivesPricingStats incentivePricing,
         address destAddress,
         uint256 price,
-        IAutoPoolStrategy.RebalanceDirection direction,
+        IAutopoolStrategy.RebalanceDirection direction,
         uint256 amount
     ) external returns (IStrategy.SummaryStats memory) {
         // NOTE: creating this as empty to save on variables later
@@ -116,9 +116,9 @@ library SummaryStats {
         result.maxDiscount = interimStats.maxDiscount;
 
         uint256 returnExPrice = (
-            result.baseApr * IAutoPoolStrategy(address(this)).weightBase() / 1e6
-                + result.feeApr * IAutoPoolStrategy(address(this)).weightFee() / 1e6
-                + result.incentiveApr * IAutoPoolStrategy(address(this)).weightIncentive() / 1e6
+            result.baseApr * IAutopoolStrategy(address(this)).weightBase() / 1e6
+                + result.feeApr * IAutopoolStrategy(address(this)).weightFee() / 1e6
+                + result.incentiveApr * IAutopoolStrategy(address(this)).weightIncentive() / 1e6
         );
 
         // price already weighted
@@ -130,7 +130,7 @@ library SummaryStats {
     // Calculate the largest difference between spot & safe price for the underlying LST tokens.
     // This does not support Curve meta pools
     function verifyLSTPriceGap(
-        IAutoPool autoPool,
+        IAutopool autoPool,
         IStrategy.RebalanceParams memory params,
         uint256 tolerance
     ) external returns (bool) {
@@ -190,7 +190,7 @@ library SummaryStats {
 
     function ensureNotStaleData(string memory name, uint256 dataTimestamp) internal view {
         // slither-disable-next-line timestamp
-        if (block.timestamp - dataTimestamp > IAutoPoolStrategy(address(this)).staleDataToleranceInSeconds()) {
+        if (block.timestamp - dataTimestamp > IAutopoolStrategy(address(this)).staleDataToleranceInSeconds()) {
             revert StaleData(name);
         }
     }

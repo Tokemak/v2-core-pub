@@ -6,7 +6,7 @@ pragma solidity 0.8.17;
 
 import { BaseScript } from "script/BaseScript.sol";
 import { Systems } from "script/utils/Constants.sol";
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 
 //solhint-disable no-unused-vars
 contract Deposit is BaseScript {
@@ -17,7 +17,7 @@ contract Deposit is BaseScript {
     function run() external {
         setUp(Systems.LST_GEN1_MAINNET);
 
-        IAutoPool vault = IAutoPool(VAULT_ADDRESS);
+        IAutopool vault = IAutopool(VAULT_ADDRESS);
 
         vm.startBroadcast(privateKey);
 

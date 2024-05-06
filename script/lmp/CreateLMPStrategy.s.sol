@@ -5,22 +5,22 @@ pragma solidity 0.8.17;
 // solhint-disable no-console,reason-string,state-visibility,max-line-length,gas-custom-errors
 
 import { Systems } from "script/utils/Constants.sol";
-import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
+import { AutopoolETHStrategy } from "src/strategy/AutopoolETHStrategy.sol";
 import { BaseScript, console } from "script/BaseScript.sol";
-import { IAutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
-import { AutoPoolETHStrategyConfig } from "src/strategy/AutoPoolETHStrategyConfig.sol";
+import { IAutopoolFactory } from "src/vault/AutopoolFactory.sol";
+import { AutopoolETHStrategyConfig } from "src/strategy/AutopoolETHStrategyConfig.sol";
 
 /**
  * @dev This contract:
- *      1. Deploys a new AutoPool strategy template with the following configuration.
- *      2. Registers the new strategy template in the `lst-guarded-r1` AutoPool Vault Factory.
+ *      1. Deploys a new Autopool strategy template with the following configuration.
+ *      2. Registers the new strategy template in the `lst-guarded-r1` Autopool Vault Factory.
  */
-contract CreateAutoPoolETHStrategy is BaseScript {
+contract CreateAutopoolETHStrategy is BaseScript {
     // 🚨 Manually set variables below. 🚨
     bytes32 public autoPoolType = keccak256("lst-guarded-r1");
 
-    AutoPoolETHStrategyConfig.StrategyConfig config = AutoPoolETHStrategyConfig.StrategyConfig({
-        swapCostOffset: AutoPoolETHStrategyConfig.SwapCostOffsetConfig({
+    AutopoolETHStrategyConfig.StrategyConfig config = AutopoolETHStrategyConfig.StrategyConfig({
+        swapCostOffset: AutopoolETHStrategyConfig.SwapCostOffsetConfig({
             initInDays: 60,
             tightenThresholdInViolations: 5,
             tightenStepInDays: 2,
@@ -29,18 +29,18 @@ contract CreateAutoPoolETHStrategy is BaseScript {
             maxInDays: 60,
             minInDays: 7
         }),
-        navLookback: AutoPoolETHStrategyConfig.NavLookbackConfig({
+        navLookback: AutopoolETHStrategyConfig.NavLookbackConfig({
             lookback1InDays: 30,
             lookback2InDays: 60,
             lookback3InDays: 90
         }),
-        slippage: AutoPoolETHStrategyConfig.SlippageConfig({
+        slippage: AutopoolETHStrategyConfig.SlippageConfig({
             maxNormalOperationSlippage: 5e15, // 0.5%
             maxTrimOperationSlippage: 2e16, // 2%
             maxEmergencyOperationSlippage: 0.025e18, // 2.5%
             maxShutdownOperationSlippage: 0.015e18 // 1.5%
          }),
-        modelWeights: AutoPoolETHStrategyConfig.ModelWeights({
+        modelWeights: AutopoolETHStrategyConfig.ModelWeights({
             baseYield: 1e6,
             feeYield: 1e6,
             incentiveYield: 0.9e6,
@@ -63,15 +63,15 @@ contract CreateAutoPoolETHStrategy is BaseScript {
 
         vm.startBroadcast(privateKey);
 
-        AutoPoolETHStrategy stratTemplate = new AutoPoolETHStrategy(systemRegistry, config);
-        IAutoPoolFactory autoPoolFactory = systemRegistry.getAutoPoolFactoryByType(autoPoolType);
+        AutopoolETHStrategy stratTemplate = new AutopoolETHStrategy(systemRegistry, config);
+        IAutopoolFactory autoPoolFactory = systemRegistry.getAutopoolFactoryByType(autoPoolType);
 
         if (address(autoPoolFactory) == address(0)) {
-            revert("AutoPool Vault Factory not set for lst-guarded-r1 type");
+            revert("Autopool Vault Factory not set for lst-guarded-r1 type");
         }
 
         autoPoolFactory.addStrategyTemplate(address(stratTemplate));
-        console.log("AutoPool Strategy address: %s", address(stratTemplate));
+        console.log("Autopool Strategy address: %s", address(stratTemplate));
 
         vm.stopBroadcast();
     }

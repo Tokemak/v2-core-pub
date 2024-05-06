@@ -19,7 +19,7 @@ import { Test } from "forge-std/Test.sol";
 import { DestinationVault, IDestinationVault } from "src/vault/DestinationVault.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
-import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
+import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { Roles } from "src/libs/Roles.sol";
@@ -63,7 +63,7 @@ contract CurveConvexDestinationVaultTests is Test {
     DestinationVaultRegistry private _destinationVaultRegistry;
     DestinationRegistry private _destinationTemplateRegistry;
 
-    IAutoPoolRegistry private _autoPoolRegistry;
+    IAutopoolRegistry private _autoPoolRegistry;
     IRootPriceOracle private _rootPriceOracle;
 
     IWETH9 internal _asset;
@@ -203,10 +203,10 @@ contract CurveConvexDestinationVaultTests is Test {
         _systemRegistry.setRootPriceOracle(address(_rootPriceOracle));
 
         // Set autoPool registry for permissions
-        _autoPoolRegistry = IAutoPoolRegistry(vm.addr(237_894));
+        _autoPoolRegistry = IAutopoolRegistry(vm.addr(237_894));
         vm.label(address(_autoPoolRegistry), "autoPoolRegistry");
         _mockSystemBound(address(_systemRegistry), address(_autoPoolRegistry));
-        _systemRegistry.setAutoPoolRegistry(address(_autoPoolRegistry));
+        _systemRegistry.setAutopoolRegistry(address(_autoPoolRegistry));
     }
 
     function test_initializer_ConfiguresVault() public {
@@ -471,7 +471,7 @@ contract CurveConvexDestinationVaultTests is Test {
     function _mockIsVault(address vault, bool isVault) internal {
         vm.mockCall(
             address(_autoPoolRegistry),
-            abi.encodeWithSelector(IAutoPoolRegistry.isVault.selector, vault),
+            abi.encodeWithSelector(IAutopoolRegistry.isVault.selector, vault),
             abi.encode(isVault)
         );
     }

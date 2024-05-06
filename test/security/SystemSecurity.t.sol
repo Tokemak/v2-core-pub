@@ -11,14 +11,14 @@ import { Test } from "forge-std/Test.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
-import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
+import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
 
 contract SystemSecurityTests is Test {
     SystemRegistry private _systemRegistry;
     AccessController private _accessController;
     SystemSecurity private _systemSecurity;
 
-    IAutoPoolRegistry private _autoPoolRegistry;
+    IAutopoolRegistry private _autoPoolRegistry;
 
     event SystemPaused(address account);
     event SystemUnpaused(address account);
@@ -35,10 +35,10 @@ contract SystemSecurityTests is Test {
         _accessController.grantRole(Roles.EMERGENCY_PAUSER, address(this));
 
         // Set autoPool registry for permissions
-        _autoPoolRegistry = IAutoPoolRegistry(vm.addr(237_894));
+        _autoPoolRegistry = IAutopoolRegistry(vm.addr(237_894));
         vm.label(address(_autoPoolRegistry), "autoPoolRegistry");
         _mockSystemBound(address(_systemRegistry), address(_autoPoolRegistry));
-        _systemRegistry.setAutoPoolRegistry(address(_autoPoolRegistry));
+        _systemRegistry.setAutopoolRegistry(address(_autoPoolRegistry));
 
         _mockIsVault(address(this), true);
     }
@@ -124,7 +124,7 @@ contract SystemSecurityTests is Test {
         assertEq(_systemSecurity.navOpsInProgress(), 0);
     }
 
-    function test_enterNavOperation_CanOnlyBeCalledByAutoPool() public {
+    function test_enterNavOperation_CanOnlyBeCalledByAutopool() public {
         _mockIsVault(address(this), false);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
@@ -151,7 +151,7 @@ contract SystemSecurityTests is Test {
         _systemSecurity.exitNavOperation();
     }
 
-    function test_exitNavOperation_CanOnlyBeCalledByAutoPool() public {
+    function test_exitNavOperation_CanOnlyBeCalledByAutopool() public {
         _systemSecurity.enterNavOperation();
 
         _mockIsVault(address(this), false);
@@ -170,7 +170,7 @@ contract SystemSecurityTests is Test {
     function _mockIsVault(address vault, bool isVault) internal {
         vm.mockCall(
             address(_autoPoolRegistry),
-            abi.encodeWithSelector(IAutoPoolRegistry.isVault.selector, vault),
+            abi.encodeWithSelector(IAutopoolRegistry.isVault.selector, vault),
             abi.encode(isVault)
         );
     }

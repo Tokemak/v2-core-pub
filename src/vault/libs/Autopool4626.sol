@@ -4,19 +4,19 @@
 pragma solidity 0.8.17;
 
 import { Errors } from "src/utils/Errors.sol";
-import { AutoPoolFees } from "src/vault/libs/AutoPoolFees.sol";
-import { AutoPoolToken } from "src/vault/libs/AutoPoolToken.sol";
-import { AutoPoolDebt } from "src/vault/libs/AutoPoolDebt.sol";
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
+import { AutopoolFees } from "src/vault/libs/AutopoolFees.sol";
+import { AutopoolToken } from "src/vault/libs/AutopoolToken.sol";
+import { AutopoolDebt } from "src/vault/libs/AutopoolDebt.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { StructuredLinkedList } from "src/strategy/StructuredLinkedList.sol";
 import { WithdrawalQueue } from "src/strategy/WithdrawalQueue.sol";
 
-library AutoPool4626 {
+library Autopool4626 {
     using SafeERC20 for IERC20Metadata;
     using WithdrawalQueue for StructuredLinkedList.List;
-    using AutoPoolToken for AutoPoolToken.TokenData;
+    using AutopoolToken for AutopoolToken.TokenData;
 
     /// =====================================================
     /// Errors
@@ -31,20 +31,20 @@ library AutoPool4626 {
     /// @notice Returns the amount of tokens owned by account.
     /// @dev Subtracts any unlocked profit shares that will be burned when account is the Vault itself
     function balanceOf(
-        AutoPoolToken.TokenData storage tokenData,
-        IAutoPool.ProfitUnlockSettings storage profitUnlockSettings,
+        AutopoolToken.TokenData storage tokenData,
+        IAutopool.ProfitUnlockSettings storage profitUnlockSettings,
         address account
     ) public view returns (uint256) {
         if (account == address(this)) {
-            return tokenData.balances[account] - AutoPoolFees.unlockedShares(profitUnlockSettings, tokenData);
+            return tokenData.balances[account] - AutopoolFees.unlockedShares(profitUnlockSettings, tokenData);
         }
         return tokenData.balances[account];
     }
 
     /// @notice Returns the total amount of the underlying asset that is “managed” by Vault.
     /// @dev Utilizes the "Global" purpose internally
-    function totalAssets(IAutoPool.AssetBreakdown storage assetBreakdown) public view returns (uint256) {
-        return totalAssets(assetBreakdown, IAutoPool.TotalAssetPurpose.Global);
+    function totalAssets(IAutopool.AssetBreakdown storage assetBreakdown) public view returns (uint256) {
+        return totalAssets(assetBreakdown, IAutopool.TotalAssetPurpose.Global);
     }
 
     /// @notice Returns the total amount of the underlying asset that is “managed” by the Vault with respect to its
@@ -52,14 +52,14 @@ library AutoPool4626 {
     /// @dev Value changes based on purpose. Global is an avg. Deposit is valued higher. Withdraw is valued lower.
     /// @param purpose The calculation the total assets will be used in
     function totalAssets(
-        IAutoPool.AssetBreakdown storage assetBreakdown,
-        IAutoPool.TotalAssetPurpose purpose
+        IAutopool.AssetBreakdown storage assetBreakdown,
+        IAutopool.TotalAssetPurpose purpose
     ) public view returns (uint256) {
-        if (purpose == IAutoPool.TotalAssetPurpose.Global) {
+        if (purpose == IAutopool.TotalAssetPurpose.Global) {
             return assetBreakdown.totalIdle + assetBreakdown.totalDebt;
-        } else if (purpose == IAutoPool.TotalAssetPurpose.Deposit) {
+        } else if (purpose == IAutopool.TotalAssetPurpose.Deposit) {
             return assetBreakdown.totalIdle + assetBreakdown.totalDebtMax;
-        } else if (purpose == IAutoPool.TotalAssetPurpose.Withdraw) {
+        } else if (purpose == IAutopool.TotalAssetPurpose.Withdraw) {
             return assetBreakdown.totalIdle + assetBreakdown.totalDebtMin;
         } else {
             revert InvalidTotalAssetPurpose();
@@ -67,10 +67,10 @@ library AutoPool4626 {
     }
 
     function maxMint(
-        AutoPoolToken.TokenData storage tokenData,
-        IAutoPool.ProfitUnlockSettings storage profitUnlockSettings,
+        AutopoolToken.TokenData storage tokenData,
+        IAutopool.ProfitUnlockSettings storage profitUnlockSettings,
         StructuredLinkedList.List storage debtReportQueue,
-        mapping(address => AutoPoolDebt.DestinationInfo) storage destinationInfo,
+        mapping(address => AutopoolDebt.DestinationInfo) storage destinationInfo,
         address,
         bool paused,
         bool shutdown
@@ -90,7 +90,7 @@ library AutoPool4626 {
         // We know totalSupply greater than zero now so if totalAssets is zero
         // the vault is in an invalid state and users would be able to mint shares for free
         uint256 ta =
-            AutoPoolDebt.totalAssetsTimeChecked(debtReportQueue, destinationInfo, IAutoPool.TotalAssetPurpose.Deposit);
+            AutopoolDebt.totalAssetsTimeChecked(debtReportQueue, destinationInfo, IAutopool.TotalAssetPurpose.Deposit);
         if (ta == 0) {
             return 0;
         }
@@ -101,17 +101,17 @@ library AutoPool4626 {
     /// @notice Returns the amount of tokens in existence.
     /// @dev Subtracts any unlocked profit shares that will be burned
     function totalSupply(
-        AutoPoolToken.TokenData storage tokenData,
-        IAutoPool.ProfitUnlockSettings storage profitUnlockSettings
+        AutopoolToken.TokenData storage tokenData,
+        IAutopool.ProfitUnlockSettings storage profitUnlockSettings
     ) public view returns (uint256 shares) {
-        shares = tokenData.totalSupply - AutoPoolFees.unlockedShares(profitUnlockSettings, tokenData);
+        shares = tokenData.totalSupply - AutopoolFees.unlockedShares(profitUnlockSettings, tokenData);
     }
 
     function transferAndMint(
         IERC20Metadata baseAsset,
-        IAutoPool.AssetBreakdown storage assetBreakdown,
-        AutoPoolToken.TokenData storage tokenData,
-        IAutoPool.ProfitUnlockSettings storage profitUnlockSettings,
+        IAutopool.AssetBreakdown storage assetBreakdown,
+        AutopoolToken.TokenData storage tokenData,
+        IAutopool.ProfitUnlockSettings storage profitUnlockSettings,
         uint256 assets,
         uint256 shares,
         address receiver
@@ -148,7 +148,7 @@ library AutoPool4626 {
 
         emit TokensRecovered(tokens, amounts, destinations);
 
-        IAutoPool autoPool = IAutoPool(address(this));
+        IAutopool autoPool = IAutopool(address(this));
 
         for (uint256 i = 0; i < len; ++i) {
             (address tokenAddress, uint256 amount, address destination) = (tokens[i], amounts[i], destinations[i]);

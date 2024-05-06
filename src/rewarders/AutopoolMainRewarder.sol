@@ -8,10 +8,10 @@ import { MainRewarder, ISystemRegistry, Errors } from "src/rewarders/MainRewarde
 import { Roles } from "src/libs/Roles.sol";
 
 /**
- * @title AutoPoolMainRewarder
- * @notice Main rewarder for AutoPool contracts.
+ * @title AutopoolMainRewarder
+ * @notice Main rewarder for Autopool contracts.
  */
-contract AutoPoolMainRewarder is MainRewarder {
+contract AutopoolMainRewarder is MainRewarder {
     using SafeERC20 for IERC20;
 
     /// @notice IERC20 instance of token being staked in rewarder.

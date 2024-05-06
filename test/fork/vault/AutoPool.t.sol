@@ -9,7 +9,7 @@ import { Test } from "forge-std/Test.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { CurveV1StableSwap } from "src/swapper/adapters/CurveV1StableSwap.sol";
 import { AccessController } from "src/security/AccessController.sol";
@@ -20,7 +20,7 @@ import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { TokenReturnSolver } from "test/mocks/TokenReturnSolver.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 
-contract AutoPoolTests is Test {
+contract AutopoolTests is Test {
     address internal constant V2_DEPLOYER = 0xA6364F394616DD9238B284CfF97Cd7146C57808D;
     address internal constant SYSTEM_REGISTRY = 0x0406d2D96871f798fcf54d5969F69F55F803eEA4;
 
@@ -29,7 +29,7 @@ contract AutoPoolTests is Test {
     }
 }
 
-contract RedeemTests is AutoPoolTests {
+contract RedeemTests is AutopoolTests {
     SystemRegistry internal _systemRegistry;
 
     function setUp() public virtual {
@@ -63,7 +63,7 @@ contract RedeemTests is AutoPoolTests {
     function test_Redeem() public {
         vm.startPrank(V2_DEPLOYER);
 
-        AutoPoolETH pool = AutoPoolETH(0x21eB47113E148839c30E1A9CA2b00Ea1317b50ed);
+        AutopoolETH pool = AutopoolETH(0x21eB47113E148839c30E1A9CA2b00Ea1317b50ed);
         IWETH9 weth = IWETH9(pool.asset());
         uint256 startingBalance = weth.balanceOf(V2_DEPLOYER);
         assertEq(startingBalance, 0.699e18, "startingBalance");
@@ -82,13 +82,13 @@ contract RedeemTests is AutoPoolTests {
     }
 }
 
-contract ShutdownDestination is AutoPoolTests {
-    AutoPoolETH internal _pool;
+contract ShutdownDestination is AutopoolTests {
+    AutopoolETH internal _pool;
     SystemRegistry internal _systemRegistry;
 
     function setUp() public {
         _setUp(19_640_105);
-        _pool = AutoPoolETH(0x57FA6bb127a428Fe268104AB4d170fe4a99B73B6);
+        _pool = AutopoolETH(0x57FA6bb127a428Fe268104AB4d170fe4a99B73B6);
         _systemRegistry = SystemRegistry(address(_pool.getSystemRegistry()));
     }
 

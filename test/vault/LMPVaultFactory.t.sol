@@ -6,27 +6,27 @@ pragma solidity 0.8.17;
 
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { Test } from "forge-std/Test.sol";
-import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
-import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
+import { AutopoolRegistry } from "src/vault/AutopoolRegistry.sol";
+import { AutopoolFactory } from "src/vault/AutopoolFactory.sol";
 import { AccessController } from "src/security/AccessController.sol";
-import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
+import { AutopoolETHStrategy } from "src/strategy/AutopoolETHStrategy.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
-import { AutoPoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutoPoolETHStrategyTestHelpers.sol";
+import { AutopoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutopoolETHStrategyTestHelpers.sol";
 import { WETH_MAINNET } from "test/utils/Addresses.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 
-contract AutoPoolFactoryTest is Test {
+contract AutopoolFactoryTest is Test {
     uint256 public constant WETH_INIT_DEPOSIT = 100_000;
     address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     SystemRegistry internal _systemRegistry;
     AccessController internal _accessController;
-    AutoPoolRegistry internal _autoPoolRegistry;
-    AutoPoolFactory internal _autoPoolFactory;
+    AutopoolRegistry internal _autoPoolRegistry;
+    AutopoolFactory internal _autoPoolFactory;
     SystemSecurity internal _systemSecurity;
 
     IWETH9 internal _asset;
@@ -56,41 +56,41 @@ contract AutoPoolFactoryTest is Test {
         _accessController = new AccessController(address(_systemRegistry));
         _systemRegistry.setAccessController(address(_accessController));
 
-        _autoPoolRegistry = new AutoPoolRegistry(_systemRegistry);
-        _systemRegistry.setAutoPoolRegistry(address(_autoPoolRegistry));
+        _autoPoolRegistry = new AutopoolRegistry(_systemRegistry);
+        _systemRegistry.setAutopoolRegistry(address(_autoPoolRegistry));
 
         _systemSecurity = new SystemSecurity(_systemRegistry);
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
 
-        // Setup the AutoPool Vault
+        // Setup the Autopool Vault
 
         _asset = IWETH9(WETH_MAINNET);
         _systemRegistry.addRewardToken(address(_asset));
         vm.label(address(_asset), "asset");
 
-        _template = address(new AutoPoolETH(_systemRegistry, address(_asset)));
+        _template = address(new AutopoolETH(_systemRegistry, address(_asset)));
 
-        _autoPoolFactory = new AutoPoolFactory(_systemRegistry, _template, 800, 100);
+        _autoPoolFactory = new AutopoolFactory(_systemRegistry, _template, 800, 100);
         _accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(_autoPoolFactory));
 
         autoPoolInitData = abi.encode("");
 
-        _stratTemplate = address(new AutoPoolETHStrategy(_systemRegistry, stratHelpers.getDefaultConfig()));
+        _stratTemplate = address(new AutopoolETHStrategy(_systemRegistry, stratHelpers.getDefaultConfig()));
         _autoPoolFactory.addStrategyTemplate(_stratTemplate);
 
-        // Mock AutoPilotRouter call.
+        // Mock AutopilotRouter call.
         vm.mockCall(
             address(_systemRegistry),
             abi.encodeWithSelector(SystemRegistry.autoPoolRouter.selector),
-            abi.encode(makeAddr("AutoPool_VAULT_ROUTER"))
+            abi.encode(makeAddr("Autopool_VAULT_ROUTER"))
         );
     }
 }
 
-contract Constructor is AutoPoolFactoryTest {
+contract Constructor is AutopoolFactoryTest {
     function test_RevertIf_TemplateIsZero() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "template"));
-        new AutoPoolFactory(_systemRegistry, address(0), 800, 100);
+        new AutopoolFactory(_systemRegistry, address(0), 800, 100);
     }
 
     function test_SetDefaultRewardRatio() public {
@@ -110,7 +110,7 @@ contract Constructor is AutoPoolFactoryTest {
     }
 }
 
-contract AddStrategyTemplate is AutoPoolFactoryTest {
+contract AddStrategyTemplate is AutopoolFactoryTest {
     event StrategyTemplateAdded(address template);
 
     function test_RevertIf_ItemAlreadyExists() public {
@@ -128,7 +128,7 @@ contract AddStrategyTemplate is AutoPoolFactoryTest {
     }
 }
 
-contract RemoveStrategyTemplate is AutoPoolFactoryTest {
+contract RemoveStrategyTemplate is AutopoolFactoryTest {
     event StrategyTemplateRemoved(address template);
 
     function test_RevertIf_ItemNotFound() public {
@@ -144,7 +144,7 @@ contract RemoveStrategyTemplate is AutoPoolFactoryTest {
     }
 }
 
-contract SetDefaultRewardRatio is AutoPoolFactoryTest {
+contract SetDefaultRewardRatio is AutopoolFactoryTest {
     event DefaultRewardRatioSet(uint256 rewardRatio);
 
     function test_EmitDefaultRewardRatioSet() public {
@@ -155,7 +155,7 @@ contract SetDefaultRewardRatio is AutoPoolFactoryTest {
     }
 }
 
-contract SetDefaultRewardBlockDuration is AutoPoolFactoryTest {
+contract SetDefaultRewardBlockDuration is AutopoolFactoryTest {
     event DefaultBlockDurationSet(uint256 blockDuration);
 
     function test_EmitDefaultBlockDurationSet() public {
@@ -166,7 +166,7 @@ contract SetDefaultRewardBlockDuration is AutoPoolFactoryTest {
     }
 }
 
-contract CreateVault is AutoPoolFactoryTest {
+contract CreateVault is AutopoolFactoryTest {
     error InvalidStrategy();
 
     function test_RevertIf_NotVaultCreator() public {
@@ -187,7 +187,7 @@ contract CreateVault is AutoPoolFactoryTest {
     }
 
     function test_RevertIf_StrategyTemplateDoesNotExist() public {
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolFactory.InvalidStrategy.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolFactory.InvalidStrategy.selector));
 
         _autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT }(
             makeAddr("random"), "x", "y", keccak256("v1"), autoPoolInitData
@@ -195,7 +195,7 @@ contract CreateVault is AutoPoolFactoryTest {
     }
 
     function test_RevertIf_InvalidEthAmount() public {
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolFactory.InvalidEthAmount.selector, WETH_INIT_DEPOSIT + 1));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolFactory.InvalidEthAmount.selector, WETH_INIT_DEPOSIT + 1));
 
         _autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT + 1 }(
             _stratTemplate, "x", "y", keccak256("v1"), autoPoolInitData
@@ -211,13 +211,13 @@ contract CreateVault is AutoPoolFactoryTest {
     }
 }
 
-contract GetStrategyTemplates is AutoPoolFactoryTest {
+contract GetStrategyTemplates is AutopoolFactoryTest {
     function test_ReturnsStrategyTemplates() public {
         assertEq(_autoPoolFactory.getStrategyTemplates()[0], _stratTemplate);
     }
 }
 
-contract IsStrategyTemplate is AutoPoolFactoryTest {
+contract IsStrategyTemplate is AutopoolFactoryTest {
     function test_ReturnsTrueIfStrategyTemplate() public {
         assertTrue(_autoPoolFactory.isStrategyTemplate(_stratTemplate));
     }

@@ -8,18 +8,18 @@ import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
-import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
+import { IAutopoolStrategy } from "src/interfaces/strategy/IAutopoolStrategy.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ViolationTracking } from "src/strategy/ViolationTracking.sol";
 import { NavTracking } from "src/strategy/NavTracking.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
-import { AutoPoolETHStrategyConfig } from "src/strategy/AutoPoolETHStrategyConfig.sol";
+import { AutopoolETHStrategyConfig } from "src/strategy/AutopoolETHStrategyConfig.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
-import { AutoPoolDebt } from "src/vault/libs/AutoPoolDebt.sol";
+import { AutopoolDebt } from "src/vault/libs/AutopoolDebt.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 import { StrategyUtils } from "src/strategy/libs/StrategyUtils.sol";
@@ -27,7 +27,7 @@ import { SubSaturateMath } from "src/strategy/libs/SubSaturateMath.sol";
 import { SummaryStats } from "src/strategy/libs/SummaryStats.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 
-contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrategy, SecurityBase {
+contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrategy, SecurityBase {
     using ViolationTracking for ViolationTracking.State;
     using NavTracking for NavTracking.State;
     using SubSaturateMath for uint256;
@@ -97,7 +97,7 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
     /// recommend setting this higher than maxNormalOperationSlippage
     uint256 public immutable maxEmergencyOperationSlippage; // 100% = 1e18
 
-    /// @notice the maximum amount of slippage to allow when the AutoPoolETH has been shutdown
+    /// @notice the maximum amount of slippage to allow when the AutopoolETH has been shutdown
     uint256 public immutable maxShutdownOperationSlippage; // 100% = 1e18
 
     /// @notice the maximum discount used for price return
@@ -154,8 +154,8 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
     /// between low & high threshold, it does not trigger new idle to be added.
     uint256 public idleHighThreshold;
 
-    /// @notice The AutoPoolETH that this strategy is associated with
-    IAutoPool public autoPool;
+    /// @notice The AutopoolETH that this strategy is associated with
+    IAutopool public autoPool;
 
     /// @notice The timestamp for when rebalancing was last paused
     uint40 public lastPausedTimestamp;
@@ -180,7 +180,7 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
 
     enum RebalanceToIdleReasonEnum {
         DestinationIsShutdown,
-        AutoPoolETHIsShutdown,
+        AutopoolETHIsShutdown,
         TrimDustPosition,
         DestinationIsQueuedForRemoval,
         DestinationViolatedConstraint,
@@ -224,7 +224,7 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
     /* ******************************** */
     /* Errors                           */
     /* ******************************** */
-    error NotAutoPoolETH();
+    error NotAutopoolETH();
     error StrategyPaused();
     error RebalanceTimeGapNotMet();
     error RebalanceDestinationsMatch();
@@ -254,16 +254,16 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
         uint256 slippage;
     }
 
-    modifier onlyAutoPool() {
-        if (msg.sender != address(autoPool)) revert NotAutoPoolETH();
+    modifier onlyAutopool() {
+        if (msg.sender != address(autoPool)) revert NotAutopoolETH();
         _;
     }
 
     constructor(
         ISystemRegistry _systemRegistry,
-        AutoPoolETHStrategyConfig.StrategyConfig memory conf
+        AutopoolETHStrategyConfig.StrategyConfig memory conf
     ) SystemComponent(_systemRegistry) SecurityBase(address(_systemRegistry.accessController())) {
-        AutoPoolETHStrategyConfig.validate(conf);
+        AutopoolETHStrategyConfig.validate(conf);
 
         rebalanceTimeGapInSeconds = conf.rebalanceTimeGapInSeconds;
         pauseRebalancePeriodInDays = conf.pauseRebalancePeriodInDays;
@@ -309,7 +309,7 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
             revert SystemRegistryMismatch();
         }
 
-        autoPool = IAutoPool(_autoPool);
+        autoPool = IAutopool(_autoPool);
 
         lastRebalanceTimestamp = uint40(block.timestamp) - uint40(rebalanceTimeGapInSeconds);
         _swapCostOffsetPeriod = swapCostOffsetInit;
@@ -350,7 +350,7 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
         emit IdleThresholdsSet(newLowValue, newHighValue);
     }
 
-    /// @inheritdoc IAutoPoolStrategy
+    /// @inheritdoc IAutopoolStrategy
     function verifyRebalance(
         IStrategy.RebalanceParams memory params,
         IStrategy.SummaryStats memory outSummary
@@ -450,8 +450,8 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
 
         address baseAsset = autoPool.asset();
 
-        // if the in/out destination is the AutoPoolETH then the in/out token must be the baseAsset
-        // if the in/out is not the AutoPoolETH then the in/out token must match the destinations underlying token
+        // if the in/out destination is the AutopoolETH then the in/out token must be the baseAsset
+        // if the in/out is not the AutopoolETH then the in/out token must match the destinations underlying token
         if (params.destinationIn == address(autoPool)) {
             if (params.tokenIn != baseAsset) {
                 revert RebalanceDestinationUnderlyerMismatch(params.destinationIn, params.tokenIn, baseAsset);
@@ -548,9 +548,9 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
             maxSlippage = maxEmergencyOperationSlippage;
         }
 
-        // Scenario 2: the AutoPoolETH has been shutdown
+        // Scenario 2: the AutopoolETH has been shutdown
         if (autoPool.isShutdown() && maxShutdownOperationSlippage > maxSlippage) {
-            reason = RebalanceToIdleReasonEnum.AutoPoolETHIsShutdown;
+            reason = RebalanceToIdleReasonEnum.AutopoolETHIsShutdown;
             maxSlippage = maxShutdownOperationSlippage;
         }
 
@@ -566,7 +566,7 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
             maxSlippage = maxNormalOperationSlippage;
         }
 
-        // Scenario 5: the destination has been moved out of the AutoPools active destinations
+        // Scenario 5: the destination has been moved out of the Autopools active destinations
         if (autoPool.isDestinationQueuedForRemoval(params.destinationOut) && maxNormalOperationSlippage > maxSlippage) {
             reason = RebalanceToIdleReasonEnum.DestinationIsQueuedForRemoval;
             maxSlippage = maxNormalOperationSlippage;
@@ -594,10 +594,10 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
     function verifyCleanUpOperation(IStrategy.RebalanceParams memory params) internal view returns (bool) {
         IDestinationVault outDest = IDestinationVault(params.destinationOut);
 
-        AutoPoolDebt.DestinationInfo memory destInfo = autoPool.getDestinationInfo(params.destinationOut);
+        AutopoolDebt.DestinationInfo memory destInfo = autoPool.getDestinationInfo(params.destinationOut);
         // revert if information is too old
         ensureNotStaleData("DestInfo", destInfo.lastReport);
-        // shares of the destination currently held by the AutoPoolETH
+        // shares of the destination currently held by the AutopoolETH
         uint256 currentShares = outDest.balanceOf(address(autoPool));
         // withdrawals reduce totalAssets, but do not update the destinationInfo
         // adjust the current debt based on the currently owned shares
@@ -614,7 +614,7 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
     }
 
     function verifyIdleUpOperation(IStrategy.RebalanceParams memory params) internal view returns (bool) {
-        AutoPoolDebt.DestinationInfo memory destInfo = autoPool.getDestinationInfo(params.destinationOut);
+        AutopoolDebt.DestinationInfo memory destInfo = autoPool.getDestinationInfo(params.destinationOut);
         // revert if information is too old
         ensureNotStaleData("DestInfo", destInfo.lastReport);
         uint256 currentIdle = autoPool.getAssetBreakdown().totalIdle;
@@ -643,11 +643,11 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
 
         IDestinationVault outDest = IDestinationVault(params.destinationOut);
 
-        AutoPoolDebt.DestinationInfo memory destInfo = autoPool.getDestinationInfo(params.destinationOut);
+        AutopoolDebt.DestinationInfo memory destInfo = autoPool.getDestinationInfo(params.destinationOut);
         // revert if information is too old
         ensureNotStaleData("DestInfo", destInfo.lastReport);
 
-        // shares of the destination currently held by the AutoPoolETH
+        // shares of the destination currently held by the AutopoolETH
         uint256 currentShares = outDest.balanceOf(address(autoPool));
 
         // withdrawals reduce totalAssets, but do not update the destinationInfo
@@ -671,7 +671,7 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
         if (autoPoolAssetsAfterRebalance > 0) {
             return destValueAfterRebalance * 1e18 / autoPoolAssetsAfterRebalance >= trimAmount;
         } else {
-            // AutoPool assets after rebalance are 0
+            // Autopool assets after rebalance are 0
             return true;
         }
     }
@@ -681,7 +681,7 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
         uint256 discountDaysThreshold = 7; // number of last 10 days that it was >= discountThreshold
         uint256 discountThresholdTwo = 5e5; // 5% 1e7 precision, discount required to completely exit
 
-        // this is always the out destination and guaranteed not to be the AutoPoolETH idle asset
+        // this is always the out destination and guaranteed not to be the AutopoolETH idle asset
         IDexLSTStats.DexLSTStatsData memory stats = dest.getStats().current();
 
         ILSTStats.LSTStatsData[] memory lstStats = stats.lstStatsData;
@@ -731,7 +731,7 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
         }
     }
 
-    /// @inheritdoc IAutoPoolStrategy
+    /// @inheritdoc IAutopoolStrategy
     function getRebalanceOutSummaryStats(IStrategy.RebalanceParams memory rebalanceParams)
         external
         returns (IStrategy.SummaryStats memory outSummary)
@@ -739,7 +739,7 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
         validateRebalanceParams(rebalanceParams);
         // Verify spot & safe price for the individual tokens in the pool are not far apart.
         // Call to verify before remove/add liquidity to the dest in the rebalance txn
-        // if the in dest is not the AutoPool i.e. this is not a rebalance to idle txn, verify price tolerance
+        // if the in dest is not the Autopool i.e. this is not a rebalance to idle txn, verify price tolerance
         if (rebalanceParams.destinationIn != address(autoPool)) {
             if (!SummaryStats.verifyLSTPriceGap(autoPool, rebalanceParams, lstPriceGapTolerance)) {
                 revert LSTPriceGapToleranceExceeded();
@@ -800,8 +800,8 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
         );
     }
 
-    /// @inheritdoc IAutoPoolStrategy
-    function navUpdate(uint256 navPerShare) external onlyAutoPool {
+    /// @inheritdoc IAutopoolStrategy
+    function navUpdate(uint256 navPerShare) external onlyAutopool {
         uint40 blockTime = uint40(block.timestamp);
         navTrackingState.insert(navPerShare, blockTime);
 
@@ -823,8 +823,8 @@ contract AutoPoolETHStrategy is SystemComponent, Initializable, IAutoPoolStrateg
         }
     }
 
-    /// @inheritdoc IAutoPoolStrategy
-    function rebalanceSuccessfullyExecuted(IStrategy.RebalanceParams memory params) external onlyAutoPool {
+    /// @inheritdoc IAutopoolStrategy
+    function rebalanceSuccessfullyExecuted(IStrategy.RebalanceParams memory params) external onlyAutopool {
         // clearExpirePause sets _swapCostOffsetPeriod, so skip when possible to avoid double write
         if (!clearExpiredPause()) _swapCostOffsetPeriod = swapCostOffsetPeriodInDays();
 

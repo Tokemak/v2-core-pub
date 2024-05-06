@@ -12,10 +12,10 @@ import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { WETH_MAINNET, TOKE_MAINNET } from "test/utils/Addresses.sol";
-import { AutoPoolMainRewarder } from "src/rewarders/AutoPoolMainRewarder.sol";
+import { AutopoolMainRewarder } from "src/rewarders/AutopoolMainRewarder.sol";
 
-contract AutoPoolMainRewarderTest is Test {
-    AutoPoolMainRewarder public rewarder;
+contract AutopoolMainRewarderTest is Test {
+    AutopoolMainRewarder public rewarder;
     ERC20Mock public rewardToken;
     ERC20Mock public stakingToken;
     SystemRegistry public systemRegistry;
@@ -40,7 +40,7 @@ contract AutoPoolMainRewarderTest is Test {
         systemRegistry.setAccessController(address(accessController));
         rewardToken = new ERC20Mock("MAIN_REWARD", "MAIN_REWARD", address(this), 0);
         stakingToken = new ERC20Mock("stakingToken", "stakingToken", address(this), 0);
-        rewarder = new AutoPoolMainRewarder(
+        rewarder = new AutopoolMainRewarder(
             systemRegistry, address(rewardToken), newRewardRatio, durationInBlock, true, address(stakingToken)
         );
         accessController.grantRole(Roles.LIQUIDATOR_MANAGER, address(this));

@@ -4,14 +4,14 @@ pragma solidity >=0.8.7;
 
 // solhint-disable func-name-mixedcase,max-states-count
 
-import { AutoPoolDebt } from "src/vault/libs/AutoPoolDebt.sol";
+import { AutopoolDebt } from "src/vault/libs/AutopoolDebt.sol";
 import { Test } from "forge-std/Test.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { DestinationVaultMocks } from "test/unit/mocks/DestinationVaultMocks.t.sol";
 
-contract AutoPoolDebtTests is Test, DestinationVaultMocks {
+contract AutopoolDebtTests is Test, DestinationVaultMocks {
     IDestinationVault internal destVaultOne;
-    AutoPoolDebt.DestinationInfo internal destVaultOneInfo;
+    AutopoolDebt.DestinationInfo internal destVaultOneInfo;
 
     constructor() DestinationVaultMocks(vm) { }
 
@@ -21,15 +21,15 @@ contract AutoPoolDebtTests is Test, DestinationVaultMocks {
     }
 }
 
-contract RecalculateDestInfoTests is AutoPoolDebtTests {
+contract RecalculateDestInfoTests is AutopoolDebtTests {
     function test_NewDebtIsMidPointOfCurrentMinMaxValue() external {
         uint256 min = 1000e18;
         uint256 max = 2000e18;
         uint256 mid = 1500e18;
         _mockDestVaultRangePricesLP(address(destVaultOne), min, max, true);
 
-        AutoPoolDebt.IdleDebtUpdates memory result =
-            AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
+        AutopoolDebt.IdleDebtUpdates memory result =
+            AutopoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
 
         assertEq(result.totalDebtIncrease, mid);
 
@@ -42,8 +42,8 @@ contract RecalculateDestInfoTests is AutoPoolDebtTests {
         uint256 max = 2000e18;
         _mockDestVaultRangePricesLP(address(destVaultOne), min, max, true);
 
-        AutoPoolDebt.IdleDebtUpdates memory result =
-            AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
+        AutopoolDebt.IdleDebtUpdates memory result =
+            AutopoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
 
         assertEq(result.totalMinDebtIncrease, min);
 
@@ -56,8 +56,8 @@ contract RecalculateDestInfoTests is AutoPoolDebtTests {
         uint256 max = 2000e18;
         _mockDestVaultRangePricesLP(address(destVaultOne), min, max, true);
 
-        AutoPoolDebt.IdleDebtUpdates memory result =
-            AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
+        AutopoolDebt.IdleDebtUpdates memory result =
+            AutopoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
 
         assertEq(result.totalMaxDebtIncrease, max, "maxIncrease");
 
@@ -77,8 +77,8 @@ contract RecalculateDestInfoTests is AutoPoolDebtTests {
         destVaultOneInfo.cachedDebtValue = 90e18;
         destVaultOneInfo.ownedShares = originalShares;
 
-        AutoPoolDebt.IdleDebtUpdates memory result =
-            AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
+        AutopoolDebt.IdleDebtUpdates memory result =
+            AutopoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
 
         // 90 value @ 10 shares, now we have 5 shares
         // remaining value should be 45;
@@ -97,8 +97,8 @@ contract RecalculateDestInfoTests is AutoPoolDebtTests {
         destVaultOneInfo.cachedMinDebtValue = 90e18;
         destVaultOneInfo.ownedShares = originalShares;
 
-        AutoPoolDebt.IdleDebtUpdates memory result =
-            AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
+        AutopoolDebt.IdleDebtUpdates memory result =
+            AutopoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
 
         // 90 value @ 10 shares, now we have 5 shares
         // remaining value should be 45;
@@ -117,8 +117,8 @@ contract RecalculateDestInfoTests is AutoPoolDebtTests {
         destVaultOneInfo.cachedMaxDebtValue = 90e18;
         destVaultOneInfo.ownedShares = originalShares;
 
-        AutoPoolDebt.IdleDebtUpdates memory result =
-            AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
+        AutopoolDebt.IdleDebtUpdates memory result =
+            AutopoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
 
         // 90 value @ 10 shares, now we have 5 shares
         // remaining value should be 45;
@@ -139,8 +139,8 @@ contract RecalculateDestInfoTests is AutoPoolDebtTests {
         destVaultOneInfo.cachedMaxDebtValue = 0;
         destVaultOneInfo.ownedShares = 0;
 
-        AutoPoolDebt.IdleDebtUpdates memory result =
-            AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
+        AutopoolDebt.IdleDebtUpdates memory result =
+            AutopoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, originalShares - shareChange, newShares);
 
         assertEq(result.totalDebtDecrease, 0);
         assertEq(result.totalMinDebtDecrease, 0);
@@ -153,7 +153,7 @@ contract RecalculateDestInfoTests is AutoPoolDebtTests {
         _mockDestVaultRangePricesLP(address(destVaultOne), min, max, true);
 
         assertNotEq(destVaultOneInfo.lastReport, block.timestamp);
-        AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
+        AutopoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, 1e18, 1e18);
 
         assertEq(destVaultOneInfo.lastReport, block.timestamp);
     }
@@ -166,7 +166,7 @@ contract RecalculateDestInfoTests is AutoPoolDebtTests {
         _mockDestVaultRangePricesLP(address(destVaultOne), min, max, true);
 
         assertNotEq(destVaultOneInfo.ownedShares, block.timestamp);
-        AutoPoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, shares, shares);
+        AutopoolDebt.recalculateDestInfo(destVaultOneInfo, destVaultOne, shares, shares);
 
         assertEq(destVaultOneInfo.ownedShares, shares);
     }

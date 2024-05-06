@@ -5,15 +5,25 @@ pragma solidity >=0.8.7;
 // solhint-disable func-name-mixedcase, no-console
 
 import { Test } from "forge-std/Test.sol";
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
-import { AutoPoolETHUsage } from "test/echidna/fuzz/vault/AutoPoolETHTests.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
+import { AutopoolETHUsage } from "test/echidna/fuzz/vault/AutopoolETHTests.sol";
+import { AutopoolETHTest } from "test/echidna/fuzz/vault/AutopoolETHTests.sol";
+import { CryticERC4626Harness } from "test/echidna/fuzz/vault/CryticProperties.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-contract AutoPoolETHTests is Test, AutoPoolETHUsage {
-    constructor() AutoPoolETHUsage() { }
+contract AutopoolETHTests is Test, AutopoolETHUsage {
+    constructor() AutopoolETHUsage() { }
 
     function test_Construction() public {
         assertTrue(address(_pool) != address(0), "pool");
+    }
+
+    function test_Deployment() public {
+        new AutopoolETHTest();
+    }
+
+    function test_DeploymentCrytic() public {
+        new CryticERC4626Harness();
     }
 
     function test_Deposit() public {
@@ -40,7 +50,7 @@ contract AutoPoolETHTests is Test, AutoPoolETHUsage {
 
         _pool.setDisableNavDecreaseCheck(false);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavDecreased.selector, 10_000, 7500));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETH.NavDecreased.selector, 10_000, 7500));
         _pool.deposit(1e18, user);
 
         _pool.setDisableNavDecreaseCheck(true);
@@ -153,7 +163,7 @@ contract AutoPoolETHTests is Test, AutoPoolETHUsage {
         userDonate(255, 100e18);
         randomDonate(100e18, address(777_777));
 
-        assertEq(_pool.totalSupply(), 100_000); // AutoPool init deposit.
+        assertEq(_pool.totalSupply(), 100_000); // Autopool init deposit.
         assertEq(_vaultAsset.balanceOf(address(_pool)), 400_000_000_000_000_100_000);
     }
 
@@ -315,8 +325,8 @@ contract AutoPoolETHTests is Test, AutoPoolETHUsage {
     }
 }
 
-contract Scenarios is Test, AutoPoolETHUsage {
-    constructor() AutoPoolETHUsage() { }
+contract Scenarios is Test, AutopoolETHUsage {
+    constructor() AutopoolETHUsage() { }
 
     function test_NavPerShareDecrease_Scenario1() public {
         // User 1 deposit, asUser == false so a deposit on behalf of

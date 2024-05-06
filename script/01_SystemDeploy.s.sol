@@ -11,10 +11,10 @@ import { BaseScript, console } from "./BaseScript.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
-import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
-import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
-import { AutoPilotRouter } from "src/vault/AutoPilotRouter.sol";
+import { AutopoolRegistry } from "src/vault/AutopoolRegistry.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
+import { AutopoolFactory } from "src/vault/AutopoolFactory.sol";
+import { AutopilotRouter } from "src/vault/AutopilotRouter.sol";
 import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
@@ -53,8 +53,8 @@ import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegi
  */
 contract DeploySystem is BaseScript {
     /// @dev Manually set variables below.
-    uint256 public defaultRewardRatioAutoPool = 800;
-    uint256 public defaultRewardBlockDurationAutoPool = 100;
+    uint256 public defaultRewardRatioAutopool = 800;
+    uint256 public defaultRewardBlockDurationAutopool = 100;
     uint256 public defaultRewardRatioDest = 1;
     uint256 public defaultRewardBlockDurationDest = 1000;
     bytes32 public autoPoolType = keccak256("lst-weth-v1");
@@ -72,10 +72,10 @@ contract DeploySystem is BaseScript {
     bytes32 public autoPool2Salt = keccak256("emerging");
 
     SystemSecurity public systemSecurity;
-    AutoPoolRegistry public autoPoolRegistry;
-    AutoPoolETH public autoPoolTemplate;
-    AutoPoolFactory public autoPoolFactory;
-    AutoPilotRouter public autoPoolRouter;
+    AutopoolRegistry public autoPoolRegistry;
+    AutopoolETH public autoPoolTemplate;
+    AutopoolFactory public autoPoolFactory;
+    AutopilotRouter public autoPoolRouter;
     DestinationRegistry public destRegistry;
     DestinationVaultRegistry public destVaultRegistry;
     DestinationVaultFactory public destVaultFactory;
@@ -109,37 +109,37 @@ contract DeploySystem is BaseScript {
         systemRegistry.setSystemSecurity(address(systemSecurity));
         console.log("System Security address: ", address(systemSecurity));
 
-        // AutoPool Registry setup.
-        autoPoolRegistry = new AutoPoolRegistry(systemRegistry);
-        systemRegistry.setAutoPoolRegistry(address(autoPoolRegistry));
-        console.log("AutoPool Vault Registry address: ", address(autoPoolRegistry));
+        // Autopool Registry setup.
+        autoPoolRegistry = new AutopoolRegistry(systemRegistry);
+        systemRegistry.setAutopoolRegistry(address(autoPoolRegistry));
+        console.log("Autopool Vault Registry address: ", address(autoPoolRegistry));
 
-        // Deploy AutoPool Template.
-        autoPoolTemplate = new AutoPoolETH(systemRegistry, wethAddress);
-        console.log("AutoPool Template address: ", address(autoPoolTemplate));
+        // Deploy Autopool Template.
+        autoPoolTemplate = new AutopoolETH(systemRegistry, wethAddress);
+        console.log("Autopool Template address: ", address(autoPoolTemplate));
 
-        // AutoPool Factory setup.
-        autoPoolFactory = new AutoPoolFactory(
-            systemRegistry, address(autoPoolTemplate), defaultRewardRatioAutoPool, defaultRewardBlockDurationAutoPool
+        // Autopool Factory setup.
+        autoPoolFactory = new AutopoolFactory(
+            systemRegistry, address(autoPoolTemplate), defaultRewardRatioAutopool, defaultRewardBlockDurationAutopool
         );
-        systemRegistry.setAutoPoolFactory(autoPoolType, address(autoPoolFactory));
+        systemRegistry.setAutopoolFactory(autoPoolType, address(autoPoolFactory));
         accessController.setupRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
-        console.log("AutoPool Factory address: ", address(autoPoolFactory));
+        console.log("Autopool Factory address: ", address(autoPoolFactory));
 
-        // Initial AutoPool Vault creation.
-        // address establishedAutoPool =
+        // Initial Autopool Vault creation.
+        // address establishedAutopool =
         //     autoPoolFactory.createVault(autoPool1SupplyLimit, autoPool1WalletLimit, autoPool1SymbolSuffix,
         // autoPool1DescPrefix, autoPool1Salt, "");
-        // address emergingAutoPool =
+        // address emergingAutopool =
         //     autoPoolFactory.createVault(autoPool2SupplyLimit, autoPool2WalletLimit, autoPool2SymbolSuffix,
         // autoPool2DescPrefix, autoPool2Salt, "");
-        // console.log("Established AutoPool Vault address: ", establishedAutoPool);
-        // console.log("Emerging AutoPool Vault address: ", emergingAutoPool);
+        // console.log("Established Autopool Vault address: ", establishedAutopool);
+        // console.log("Emerging Autopool Vault address: ", emergingAutopool);
 
-        // AutoPool router setup.
-        autoPoolRouter = new AutoPilotRouter(systemRegistry);
-        systemRegistry.setAutoPilotRouter(address(autoPoolRouter));
-        console.log("AutoPool Router address: ", address(autoPoolRouter));
+        // Autopool router setup.
+        autoPoolRouter = new AutopilotRouter(systemRegistry);
+        systemRegistry.setAutopilotRouter(address(autoPoolRouter));
+        console.log("Autopool Router address: ", address(autoPoolRouter));
 
         // Destination registry setup.
         destRegistry = new DestinationRegistry(systemRegistry);

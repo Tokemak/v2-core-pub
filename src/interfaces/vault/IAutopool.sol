@@ -2,14 +2,14 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { AutoPoolDebt } from "src/vault/libs/AutoPoolDebt.sol";
+import { AutopoolDebt } from "src/vault/libs/AutopoolDebt.sol";
 import { IERC4626 } from "src/interfaces/vault/IERC4626.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
-import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
+import { IAutopoolStrategy } from "src/interfaces/strategy/IAutopoolStrategy.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 
-interface IAutoPool is IERC4626, IERC20Permit {
+interface IAutopool is IERC4626, IERC20Permit {
     enum VaultShutdownStatus {
         Active,
         Deprecated,
@@ -39,7 +39,7 @@ interface IAutoPool is IERC4626, IERC20Permit {
     /// @param navPerShareLastFeeMarkTimestamp The last timestamp we took fees at
     /// @param rebalanceFeeHighWaterMarkEnabled Returns whether the nav/share high water mark is enabled for the
     /// rebalance fee
-    struct AutoPoolFeeSettings {
+    struct AutopoolFeeSettings {
         address feeSink;
         uint256 totalAssetsHighMark;
         uint256 totalAssetsHighMarkTimestamp;
@@ -105,7 +105,7 @@ interface IAutoPool is IERC4626, IERC20Permit {
     function vaultType() external view returns (bytes32);
 
     /// @notice Strategy governing the pools rebalances
-    function autoPoolStrategy() external view returns (IAutoPoolStrategy);
+    function autoPoolStrategy() external view returns (IAutopoolStrategy);
 
     /// @notice Allow token recoverer to collect dust / unintended transfers (non-tracked assets only)
     function recover(address[] calldata tokens, uint256[] calldata amounts, address[] calldata destinations) external;
@@ -118,7 +118,7 @@ interface IAutoPool is IERC4626, IERC20Permit {
     /// @notice Get a list of destination vaults with pending assets to clear out
     function getRemovalQueue() external view returns (address[] memory);
 
-    function getFeeSettings() external view returns (AutoPoolFeeSettings memory);
+    function getFeeSettings() external view returns (AutopoolFeeSettings memory);
 
     /// @notice Initiate the shutdown procedures for this vault
     function shutdown(VaultShutdownStatus reason) external;
@@ -129,7 +129,7 @@ interface IAutoPool is IERC4626, IERC20Permit {
     /// @notice Returns the reason for shutdown (or `Active` if not shutdown)
     function shutdownStatus() external view returns (VaultShutdownStatus);
 
-    /// @notice gets the list of supported destination vaults for the AutoPool/Strategy
+    /// @notice gets the list of supported destination vaults for the Autopool/Strategy
     /// @return _destinations List of supported destination vaults
     function getDestinations() external view returns (address[] memory _destinations);
 
@@ -154,12 +154,12 @@ interface IAutoPool is IERC4626, IERC20Permit {
     /// @notice get a destinations last reported debt value
     /// @param destVault the address of the target destination
     /// @return destinations last reported debt value
-    function getDestinationInfo(address destVault) external view returns (AutoPoolDebt.DestinationInfo memory);
+    function getDestinationInfo(address destVault) external view returns (AutopoolDebt.DestinationInfo memory);
 
     /// @notice check if a destination is registered with the vault
     function isDestinationRegistered(address destination) external view returns (bool);
 
-    /// @notice get if a destinationVault is queued for removal by the AutoPoolETH
+    /// @notice get if a destinationVault is queued for removal by the AutopoolETH
     function isDestinationQueuedForRemoval(address destination) external view returns (bool);
 
     /// @notice Returns instance of vault rewarder.

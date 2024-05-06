@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import { TestERC20 } from "test/mocks/TestERC20.sol";
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
@@ -20,7 +20,7 @@ contract TokenReturnSolver is IERC3156FlashBorrower {
         return abi.encode(returnAmount, IDestinationVault(dv).underlying(), "ERC3156FlashBorrower.onFlashLoan");
     }
 
-    function buildForIdleIn(IAutoPool vault, uint256 returnAmount) public view returns (bytes memory) {
+    function buildForIdleIn(IAutopool vault, uint256 returnAmount) public view returns (bytes memory) {
         return abi.encode(returnAmount, vault.asset(), "ERC3156FlashBorrower.onFlashLoan");
     }
 
@@ -33,7 +33,7 @@ contract TokenReturnSolver is IERC3156FlashBorrower {
     }
 
     function buildForIdleIn(
-        IAutoPool vault,
+        IAutopool vault,
         uint256 returnAmount,
         string memory valueToHash
     ) public view returns (bytes memory) {

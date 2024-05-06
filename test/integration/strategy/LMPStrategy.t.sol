@@ -19,12 +19,12 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
-import { AutoPoolFactory } from "src/vault/AutoPoolFactory.sol";
+import { AutopoolFactory } from "src/vault/AutopoolFactory.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
-import { AutoPoolRegistry } from "src/vault/AutoPoolRegistry.sol";
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
-import { AutoPoolETHStrategy } from "src/strategy/AutoPoolETHStrategy.sol";
-import { AutoPoolETHStrategyConfig } from "src/strategy/AutoPoolETHStrategyConfig.sol";
+import { AutopoolRegistry } from "src/vault/AutopoolRegistry.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
+import { AutopoolETHStrategy } from "src/strategy/AutopoolETHStrategy.sol";
+import { AutopoolETHStrategyConfig } from "src/strategy/AutopoolETHStrategyConfig.sol";
 import { AccToke } from "src/staking/AccToke.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
@@ -38,7 +38,7 @@ import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
 import { ConvexCalculator } from "src/stats/calculators/ConvexCalculator.sol";
 
-contract AutoPoolETHStrategyInt is Test {
+contract AutopoolETHStrategyInt is Test {
     address constant V2_DEPLOYER = 0xA6364F394616DD9238B284CfF97Cd7146C57808D;
     address constant SYSTEM_REGISTRY = 0x0406d2D96871f798fcf54d5969F69F55F803eEA4;
 
@@ -71,10 +71,10 @@ contract AutoPoolETHStrategyInt is Test {
     DestinationVault _stEthOriginalDv;
     DestinationVault _stEthNgDv;
 
-    AutoPoolRegistry _autoPoolRegistry;
-    AutoPoolFactory _autoPoolFactory;
+    AutopoolRegistry _autoPoolRegistry;
+    AutopoolFactory _autoPoolFactory;
 
-    AutoPoolETH _vault;
+    AutopoolETH _vault;
 
     TokenReturnSolver _tokenReturnSolver;
     AccToke _accToke;
@@ -141,9 +141,9 @@ contract AutoPoolETHStrategyInt is Test {
         _stEthOriginalDv = _deployStEthEthOriginalSetupData();
         _stEthNgDv = _deployStEthEthNgSetupData();
 
-        // Setup the AutoPool Vaults
+        // Setup the Autopool Vaults
 
-        _autoPoolRegistry = new AutoPoolRegistry(_systemRegistry);
+        _autoPoolRegistry = new AutopoolRegistry(_systemRegistry);
         (bool success,) = address(_systemRegistry).call(
             abi.encodeWithSignature("setLMPVaultRegistry(address)", address(_autoPoolRegistry))
         );
@@ -157,10 +157,10 @@ contract AutoPoolETHStrategyInt is Test {
             abi.encode(address(_autoPoolRegistry))
         );
 
-        //_systemRegistry.setAutoPoolRegistry(address(_autoPoolRegistry));
+        //_systemRegistry.setAutopoolRegistry(address(_autoPoolRegistry));
 
-        address autoPoolTemplate = address(new AutoPoolETH(_systemRegistry, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));
-        _autoPoolFactory = new AutoPoolFactory(_systemRegistry, autoPoolTemplate, 800, 100);
+        address autoPoolTemplate = address(new AutopoolETH(_systemRegistry, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));
+        _autoPoolFactory = new AutopoolFactory(_systemRegistry, autoPoolTemplate, 800, 100);
 
         _accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(_autoPoolFactory));
         _accessController.grantRole(Roles.AUTO_POOL_FACTORY_VAULT_CREATOR, address(this));
@@ -176,7 +176,7 @@ contract AutoPoolETHStrategyInt is Test {
 
         _autoPoolFactory.addStrategyTemplate(address(_strategyTemplate));
 
-        _vault = AutoPoolETH(
+        _vault = AutopoolETH(
             address(
                 _autoPoolFactory.createVault{ value: WETH_INIT_DEPOSIT }(
                     address(_strategyTemplate), "X", "X", autoPoolSalt, abi.encode("")
@@ -649,9 +649,9 @@ contract AutoPoolETHStrategyInt is Test {
         );
     }
 
-    function getDefaultConfig() internal pure returns (AutoPoolETHStrategyConfig.StrategyConfig memory) {
-        return AutoPoolETHStrategyConfig.StrategyConfig({
-            swapCostOffset: AutoPoolETHStrategyConfig.SwapCostOffsetConfig({
+    function getDefaultConfig() internal pure returns (AutopoolETHStrategyConfig.StrategyConfig memory) {
+        return AutopoolETHStrategyConfig.StrategyConfig({
+            swapCostOffset: AutopoolETHStrategyConfig.SwapCostOffsetConfig({
                 initInDays: 28,
                 tightenThresholdInViolations: 5,
                 tightenStepInDays: 3,
@@ -660,18 +660,18 @@ contract AutoPoolETHStrategyInt is Test {
                 maxInDays: 60,
                 minInDays: 10
             }),
-            navLookback: AutoPoolETHStrategyConfig.NavLookbackConfig({
+            navLookback: AutopoolETHStrategyConfig.NavLookbackConfig({
                 lookback1InDays: 30,
                 lookback2InDays: 60,
                 lookback3InDays: 90
             }),
-            slippage: AutoPoolETHStrategyConfig.SlippageConfig({
+            slippage: AutopoolETHStrategyConfig.SlippageConfig({
                 maxNormalOperationSlippage: 1e16, // 1%
                 maxTrimOperationSlippage: 2e16, // 2%
                 maxEmergencyOperationSlippage: 0.025e18, // 2.5%
                 maxShutdownOperationSlippage: 0.015e18 // 1.5%
              }),
-            modelWeights: AutoPoolETHStrategyConfig.ModelWeights({
+            modelWeights: AutopoolETHStrategyConfig.ModelWeights({
                 baseYield: 1e6,
                 feeYield: 1e6,
                 incentiveYield: 0.9e6,
@@ -798,7 +798,7 @@ contract AutoPoolETHStrategyInt is Test {
     }
 }
 
-contract ValueCheckingStrategy is AutoPoolETHStrategy, Test {
+contract ValueCheckingStrategy is AutopoolETHStrategy, Test {
     uint256 private _checkInLpPrice;
     uint256 private _checkOutLpPrice;
 
@@ -808,8 +808,8 @@ contract ValueCheckingStrategy is AutoPoolETHStrategy, Test {
     constructor(
         ISystemRegistry _systemRegistry,
         address _autoPool,
-        AutoPoolETHStrategyConfig.StrategyConfig memory conf
-    ) AutoPoolETHStrategy(_systemRegistry, conf) { }
+        AutopoolETHStrategyConfig.StrategyConfig memory conf
+    ) AutopoolETHStrategy(_systemRegistry, conf) { }
 
     function setCheckInLpPrice(uint256 price) external {
         _checkInLpPrice = price;

@@ -5,12 +5,12 @@ pragma solidity 0.8.17;
 import { Test } from "forge-std/Test.sol";
 import { Lens } from "src/lens/Lens.sol";
 import { Roles } from "src/libs/Roles.sol";
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
+import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
 
 // solhint-disable func-name-mixedcase,max-states-count,state-visibility,max-line-length
 // solhint-disable avoid-low-level-calls,gas-custom-errors
@@ -20,7 +20,7 @@ contract LensInt is Test {
 
     Lens internal _lens;
 
-    IAutoPoolRegistry autoPoolRegistry;
+    IAutopoolRegistry autoPoolRegistry;
 
     function _setUp(uint256 blockNumber) internal {
         uint256 forkId = vm.createFork(vm.envString("MAINNET_RPC_URL"), blockNumber);
@@ -33,7 +33,7 @@ contract LensInt is Test {
         _lens = new Lens(ISystemRegistry(SYSTEM_REGISTRY));
 
         vm.mockCall(address(SYSTEM_REGISTRY), abi.encodeWithSelector(ISystemRegistry.autoPoolRegistry.selector), data);
-        autoPoolRegistry = IAutoPoolRegistry(abi.decode(data, (address)));
+        autoPoolRegistry = IAutopoolRegistry(abi.decode(data, (address)));
 
         address[] memory vaults = autoPoolRegistry.listVaults();
 
@@ -46,7 +46,7 @@ contract LensInt is Test {
         }
     }
 
-    function _findIndexOfPool(Lens.AutoPool[] memory pools, address toFind) internal returns (uint256) {
+    function _findIndexOfPool(Lens.Autopool[] memory pools, address toFind) internal returns (uint256) {
         uint256 ix = 0;
         bool found = false;
         for (uint256 i = 0; i < pools.length; i++) {
@@ -63,7 +63,7 @@ contract LensInt is Test {
     }
 
     function _findIndexOfDestination(
-        Lens.AutoPools memory data,
+        Lens.Autopools memory data,
         uint256 autoPoolIx,
         address toFind
     ) internal returns (uint256) {
@@ -91,7 +91,7 @@ contract LensIntTest1 is LensInt {
     function test_ReturnsVaults() public {
         // Should only have one deployed at this block
 
-        Lens.AutoPool[] memory vaults = _lens.getPools();
+        Lens.Autopool[] memory vaults = _lens.getPools();
 
         assertEq(vaults.length, 1, "len");
         assertEq(vaults[0].poolAddress, 0xA43a16d818Fea4Ad0Fb9356D33904251d726079b, "addr");
@@ -104,7 +104,7 @@ contract LensIntTest2 is LensInt {
     }
 
     function test_ReturnsDestinations() external {
-        Lens.AutoPools memory retValues = _lens.getPoolsAndDestinations();
+        Lens.Autopools memory retValues = _lens.getPoolsAndDestinations();
 
         assertEq(retValues.autoPools.length, 1, "vaultLen");
         assertEq(retValues.autoPools[0].poolAddress, 0xA43a16d818Fea4Ad0Fb9356D33904251d726079b, "autoPoolAddr");
@@ -158,7 +158,7 @@ contract LensIntTest3 is LensInt {
         // Have deployed the vault 4 time and the vault we're testing has had a debt reporting and claimed
         // rewards so has an increased nav/share
 
-        Lens.AutoPool[] memory vaults = _lens.getPools();
+        Lens.Autopool[] memory vaults = _lens.getPools();
 
         assertEq(vaults.length, 4, "len");
 
@@ -181,18 +181,18 @@ contract LensIntTest4 is LensInt {
     //     uint256 periodicFee = 10;
 
     //     vm.startPrank(admin);
-    //     AutoPoolETH(autoPool).setStreamingFeeBps(streamingFee);
-    //     AutoPoolETH(autoPool).setPeriodicFeeBps(periodicFee);
-    //     AutoPoolETH(autoPool).setRebalanceFeeHighWaterMarkEnabled(true);
-    //     AutoPoolETH(autoPool).shutdown(IAutoPool.VaultShutdownStatus.Exploit);
+    //     AutopoolETH(autoPool).setStreamingFeeBps(streamingFee);
+    //     AutopoolETH(autoPool).setPeriodicFeeBps(periodicFee);
+    //     AutopoolETH(autoPool).setRebalanceFeeHighWaterMarkEnabled(true);
+    //     AutopoolETH(autoPool).shutdown(IAutopool.VaultShutdownStatus.Exploit);
     //     vm.stopPrank();
 
-    //     Lens.AutoPool[] memory autoPools = _lens.getPools();
+    //     Lens.Autopool[] memory autoPools = _lens.getPools();
     //     uint256 ix = _findIndexOfPool(autoPools, autoPool);
     // }
 
     function test_ReturnsDestinationsWhenPricingIsStale() external {
-        Lens.AutoPools memory data = _lens.getPoolsAndDestinations();
+        Lens.Autopools memory data = _lens.getPoolsAndDestinations();
         uint256 ix = _findIndexOfPool(data.autoPools, 0x57FA6bb127a428Fe268104AB4d170fe4a99B73B6);
 
         bool someDestStatsIncomplete = false;
@@ -208,7 +208,7 @@ contract LensIntTest4 is LensInt {
     function test_ReturnsDestinationsQueuedForRemoval() external {
         // We removed cbETH/ETH earlier this day
 
-        Lens.AutoPools memory data = _lens.getPoolsAndDestinations();
+        Lens.Autopools memory data = _lens.getPoolsAndDestinations();
         uint256 pix = _findIndexOfPool(data.autoPools, 0x57FA6bb127a428Fe268104AB4d170fe4a99B73B6);
         uint256 dix = _findIndexOfDestination(data, pix, 0x258Ef53417F3ce45A993b8aD777b87712322Cc7B);
 
@@ -237,14 +237,14 @@ contract LensIntTest5 is LensInt {
         access.grantRole(Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, admin);
         access.grantRole(Roles.AUTO_POOL_MANAGER, admin);
 
-        // AutoPoolETH(autoPool).setStreamingFeeBps(streamingFee);
-        // AutoPoolETH(autoPool).setPeriodicFeeBps(periodicFee);
-        AutoPoolETH(autoPool).setRebalanceFeeHighWaterMarkEnabled(true);
-        AutoPoolETH(autoPool).shutdown(IAutoPool.VaultShutdownStatus.Exploit);
+        // AutopoolETH(autoPool).setStreamingFeeBps(streamingFee);
+        // AutopoolETH(autoPool).setPeriodicFeeBps(periodicFee);
+        AutopoolETH(autoPool).setRebalanceFeeHighWaterMarkEnabled(true);
+        AutopoolETH(autoPool).shutdown(IAutopool.VaultShutdownStatus.Exploit);
         vm.stopPrank();
 
-        Lens.AutoPool[] memory autoPools = _lens.getPools();
-        Lens.AutoPool memory pool = autoPools[_findIndexOfPool(autoPools, autoPool)];
+        Lens.Autopool[] memory autoPools = _lens.getPools();
+        Lens.Autopool memory pool = autoPools[_findIndexOfPool(autoPools, autoPool)];
 
         assertEq(pool.poolAddress, autoPool, "poolAddress");
         // Accidentally had a space in the deploy script for the name at this time
@@ -258,7 +258,7 @@ contract LensIntTest5 is LensInt {
         // assertEq(pool.feeSettingsIncomplete, false, "feeSettingsIncomplete");
         assertEq(pool.feeSettingsIncomplete, true, "feeSettingsIncomplete");
         assertEq(pool.isShutdown, true, "isShutdown");
-        assertEq(uint256(pool.shutdownStatus), uint256(IAutoPool.VaultShutdownStatus.Exploit), "shutdownStatus");
+        assertEq(uint256(pool.shutdownStatus), uint256(IAutopool.VaultShutdownStatus.Exploit), "shutdownStatus");
         assertEq(pool.rewarder, 0xA5e7672f88C4a8995F191d7B7e4725cD3a6d245B, "rewarder");
         assertEq(pool.strategy, 0xb9058eE7866458cDd6f78b12bC3B401C8D284d8E, "strategy");
         assertEq(pool.totalSupply, 26_235_717_700_643_078_755, "totalSupply");
@@ -284,7 +284,7 @@ contract LensIntTest6 is LensInt {
         IDestinationVault(destVault).shutdown(IDestinationVault.VaultShutdownStatus.Exploit);
         vm.stopPrank();
 
-        Lens.AutoPools memory data = _lens.getPoolsAndDestinations();
+        Lens.Autopools memory data = _lens.getPoolsAndDestinations();
         uint256 pix = _findIndexOfPool(data.autoPools, autoPool);
         uint256 dix = _findIndexOfDestination(data, pix, destVault);
         Lens.DestinationVault memory dv = data.destinations[pix][dix];

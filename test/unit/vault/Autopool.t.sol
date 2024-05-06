@@ -5,14 +5,14 @@ pragma solidity >=0.8.7;
 // solhint-disable func-name-mixedcase,max-states-count,var-name-mixedcase,no-console
 
 import { Roles } from "src/libs/Roles.sol";
-import { AutoPoolDebt } from "src/vault/libs/AutoPoolDebt.sol";
+import { AutopoolDebt } from "src/vault/libs/AutopoolDebt.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { Test } from "forge-std/Test.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { DestinationVaultMocks } from "test/unit/mocks/DestinationVaultMocks.t.sol";
 import { AccessControllerMocks } from "test/unit/mocks/AccessControllerMocks.t.sol";
-import { AutoPoolStrategyMocks } from "test/unit/mocks/AutoPoolStrategyMocks.t.sol";
-import { AutoPoolETH } from "src/vault/AutoPoolETH.sol";
+import { AutopoolStrategyMocks } from "test/unit/mocks/AutopoolStrategyMocks.t.sol";
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { SystemRegistryMocks } from "test/unit/mocks/SystemRegistryMocks.t.sol";
@@ -24,28 +24,28 @@ import { SystemSecurityMocks } from "test/unit/mocks/SystemSecurityMocks.t.sol";
 import { TestBase } from "test/base/TestBase.sol";
 import { StructuredLinkedList } from "src/strategy/StructuredLinkedList.sol";
 import { WithdrawalQueue } from "src/strategy/WithdrawalQueue.sol";
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
-import { AutoPoolToken } from "src/vault/libs/AutoPoolToken.sol";
+import { AutopoolToken } from "src/vault/libs/AutopoolToken.sol";
 import { console } from "forge-std/console.sol";
-import { AutoPoolFees } from "src/vault/libs/AutoPoolFees.sol";
-import { AutoPoolDestinations } from "src/vault/libs/AutoPoolDestinations.sol";
+import { AutopoolFees } from "src/vault/libs/AutopoolFees.sol";
+import { AutopoolDestinations } from "src/vault/libs/AutopoolDestinations.sol";
 import { Pausable } from "src/security/Pausable.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
-import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
+import { IAutopoolStrategy } from "src/interfaces/strategy/IAutopoolStrategy.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 import { TokenReturnSolver } from "test/mocks/TokenReturnSolver.sol";
 import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
-import { Events } from "test/unit/vault/AutoPool.Events.sol";
+import { Events } from "test/unit/vault/Autopool.Events.sol";
 
-contract AutoPoolETHTests is
+contract AutopoolETHTests is
     Test,
     TestBase,
     SystemRegistryMocks,
     SystemSecurityMocks,
     DestinationVaultMocks,
     AccessControllerMocks,
-    AutoPoolStrategyMocks
+    AutopoolStrategyMocks
 {
     address internal FEE_RECIPIENT = address(4335);
     uint256 public constant WETH_INIT_DEPOSIT = 100_000;
@@ -56,7 +56,7 @@ contract AutoPoolETHTests is
         SystemSecurityMocks(vm)
         DestinationVaultMocks(vm)
         AccessControllerMocks(vm)
-        AutoPoolStrategyMocks(vm)
+        AutopoolStrategyMocks(vm)
     { }
 
     ISystemRegistry internal systemRegistry;
@@ -70,7 +70,7 @@ contract AutoPoolETHTests is
 
     struct DVSetup {
         FeeAndProfitTestVault autoPool;
-        uint256 dvSharesToAutoPool;
+        uint256 dvSharesToAutopool;
         uint256 valuePerShare;
         uint256 minDebtValue;
         uint256 maxDebtValue;
@@ -98,7 +98,7 @@ contract AutoPoolETHTests is
     event Nav(uint256 idle, uint256 debt, uint256 totalSupply);
     event RewarderSet(address rewarder);
     event DestinationDebtReporting(
-        address destination, AutoPoolDebt.IdleDebtUpdates debtInfo, uint256 claimed, uint256 claimGasUsed
+        address destination, AutopoolDebt.IdleDebtUpdates debtInfo, uint256 claimed, uint256 claimGasUsed
     );
     event FeeCollected(uint256 fees, address feeSink, uint256 mintedShares, uint256 profit, uint256 idle, uint256 debt);
     event PeriodicFeeCollected(uint256 fees, address feeSink, uint256 mintedShares);
@@ -133,7 +133,7 @@ contract AutoPoolETHTests is
         vault.initialize(autoPoolStrategy, "1", "1", initData);
         vm.label(address(vault), "FeeAndProfitTestVaultProxy");
 
-        // AutoPool init weth deposit was added later, breaks many tests in this file.  Zero out to avoid issues.
+        // Autopool init weth deposit was added later, breaks many tests in this file.  Zero out to avoid issues.
         vault.setTotalIdle(0);
         vault.setTotalSupply(0);
 
@@ -181,7 +181,7 @@ contract AutoPoolETHTests is
             (setup.minDebtValue + setup.maxDebtValue) / 2,
             setup.minDebtValue,
             setup.maxDebtValue,
-            setup.dvSharesToAutoPool,
+            setup.dvSharesToAutopool,
             setup.lastDebtReportTimestamp
         );
     }
@@ -199,7 +199,7 @@ contract AutoPoolETHTests is
         // Set the price that the dv shares are worth.
         // This also affects how much base asset is returned when shares are burned
         dv.setDebtValuePerShare(setup.valuePerShare);
-        dv.mint(setup.dvSharesToAutoPool, address(setup.autoPool));
+        dv.mint(setup.dvSharesToAutopool, address(setup.autoPool));
 
         // Act as though we've rebalanced into this destination
         // ------------------------------------------------------------------
@@ -251,7 +251,7 @@ contract AutoPoolETHTests is
     }
 }
 
-contract BaseConstructionTests is AutoPoolETHTests {
+contract BaseConstructionTests is AutopoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -335,7 +335,7 @@ contract BaseConstructionTests is AutoPoolETHTests {
     function test_setPeriodicFeeBps_RevertIf_FeeIsGreaterThanTenPercent() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, true);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolFees.InvalidFee.selector, 1001));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolFees.InvalidFee.selector, 1001));
         vault.setPeriodicFeeBps(1001);
 
         vault.setPeriodicFeeBps(1000);
@@ -360,24 +360,24 @@ contract BaseConstructionTests is AutoPoolETHTests {
     }
 }
 
-contract InitializationTests is AutoPoolETHTests {
+contract InitializationTests is AutopoolETHTests {
     address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
-    TestAutoPoolETH public initTestVault;
-    AutoPoolETH public initTestVaultRestricted;
+    TestAutopoolETH public initTestVault;
+    AutopoolETH public initTestVaultRestricted;
 
     error ValueSharesMismatch(uint256 value, uint256 shares);
 
     function setUp() public virtual override {
         super.setUp();
 
-        TestAutoPoolETH initTestVaultTemplate = new TestAutoPoolETH(systemRegistry, address(vaultAsset));
-        AutoPoolETH initTestVaultRestrictedTemplate = new AutoPoolETH(systemRegistry, address(vaultAsset));
+        TestAutopoolETH initTestVaultTemplate = new TestAutopoolETH(systemRegistry, address(vaultAsset));
+        AutopoolETH initTestVaultRestrictedTemplate = new AutopoolETH(systemRegistry, address(vaultAsset));
 
-        initTestVault = TestAutoPoolETH(Clones.cloneDeterministic(address(initTestVaultTemplate), "salt1"));
+        initTestVault = TestAutopoolETH(Clones.cloneDeterministic(address(initTestVaultTemplate), "salt1"));
         // solhint-disable-next-line max-line-length
         initTestVaultRestricted =
-            AutoPoolETH(Clones.cloneDeterministic(address(initTestVaultRestrictedTemplate), "salt2"));
+            AutopoolETH(Clones.cloneDeterministic(address(initTestVaultRestrictedTemplate), "salt2"));
 
         vaultAsset.mint(address(this), WETH_INIT_DEPOSIT);
         vaultAsset.approve(address(initTestVault), WETH_INIT_DEPOSIT);
@@ -406,9 +406,9 @@ contract InitializationTests is AutoPoolETHTests {
         assertEq(initTestVault.name(), prefix);
         assertEq(address(initTestVault.autoPoolStrategy()), autoPoolStrategy);
 
-        IAutoPool.AutoPoolFeeSettings memory feeSettings = initTestVault.getFeeSettings();
+        IAutopool.AutopoolFeeSettings memory feeSettings = initTestVault.getFeeSettings();
         assertEq(feeSettings.lastPeriodicFeeTake, blockTimestamp);
-        assertEq(feeSettings.navPerShareLastFeeMark, AutoPoolFees.FEE_DIVISOR);
+        assertEq(feeSettings.navPerShareLastFeeMark, AutopoolFees.FEE_DIVISOR);
         assertEq(feeSettings.navPerShareLastFeeMarkTimestamp, blockTimestamp);
     }
 
@@ -452,7 +452,7 @@ contract InitializationTests is AutoPoolETHTests {
     }
 }
 
-contract Deposit is AutoPoolETHTests {
+contract Deposit is AutopoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -510,7 +510,7 @@ contract Deposit is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 5e18,
                 maxDebtValue: 15e18,
@@ -519,9 +519,9 @@ contract Deposit is AutoPoolETHTests {
         );
         vault.setTotalIdle(0);
 
-        uint256 calculatedShares = vault.convertToShares(1e18, IAutoPool.TotalAssetPurpose.Deposit);
-        uint256 withdrawShares = vault.convertToShares(1e18, IAutoPool.TotalAssetPurpose.Withdraw);
-        uint256 globalShares = vault.convertToShares(1e18, IAutoPool.TotalAssetPurpose.Global);
+        uint256 calculatedShares = vault.convertToShares(1e18, IAutopool.TotalAssetPurpose.Deposit);
+        uint256 withdrawShares = vault.convertToShares(1e18, IAutopool.TotalAssetPurpose.Withdraw);
+        uint256 globalShares = vault.convertToShares(1e18, IAutopool.TotalAssetPurpose.Global);
         uint256 actualShares = _depositFor(user, 1e18);
 
         assertEq(actualShares, calculatedShares, "actual");
@@ -537,7 +537,7 @@ contract Deposit is AutoPoolETHTests {
         DestinationVaultFake destVault = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 9e18,
                 maxDebtValue: 11e18,
@@ -547,7 +547,7 @@ contract Deposit is AutoPoolETHTests {
         vault.setTotalIdle(0);
 
         // Get the expected shares based on the value at the last deployment
-        uint256 calculatedShares = vault.convertToShares(1e18, IAutoPool.TotalAssetPurpose.Deposit);
+        uint256 calculatedShares = vault.convertToShares(1e18, IAutopool.TotalAssetPurpose.Deposit);
 
         // We had a valuePerShare of 1e18 when we deployed, lets value each LP at 5e18
         // This is the idea that when a pool is attacked and skewed to one side we will take the highest priced
@@ -568,7 +568,7 @@ contract Deposit is AutoPoolETHTests {
         DestinationVaultFake destVault = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e9,
                 minDebtValue: 9e9,
                 maxDebtValue: 11e9,
@@ -579,7 +579,7 @@ contract Deposit is AutoPoolETHTests {
         vault.setTotalIdle(0);
 
         // Get the expected shares based on the value at the last deployment
-        uint256 calculatedShares = vault.convertToShares(1e18, IAutoPool.TotalAssetPurpose.Deposit);
+        uint256 calculatedShares = vault.convertToShares(1e18, IAutopool.TotalAssetPurpose.Deposit);
 
         // We had a valuePerShare of 1e18 when we deployed, lets value each LP at 0.5e18
         // This is the idea that when a pool is attacked and skewed to one side we will take the highest priced
@@ -601,7 +601,7 @@ contract Deposit is AutoPoolETHTests {
         DestinationVaultFake staleDv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 8e9,
                 maxDebtValue: 16e9,
@@ -611,7 +611,7 @@ contract Deposit is AutoPoolETHTests {
         DestinationVaultFake staleDv2 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 5e9,
                 maxDebtValue: 13e9,
@@ -621,7 +621,7 @@ contract Deposit is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9e9,
                 maxDebtValue: 11e9,
@@ -644,7 +644,7 @@ contract Deposit is AutoPoolETHTests {
         // Get the expected shares based on the value at the last deployment
         // We'd use the max debt value on deposit, (40e9 debt + 2 idle), and 2e9 existing shares
         // 1e9 * 2e9 / 42e9 = 47619047
-        uint256 calculatedShares = vault.convertToShares(1e9, IAutoPool.TotalAssetPurpose.Deposit);
+        uint256 calculatedShares = vault.convertToShares(1e9, IAutopool.TotalAssetPurpose.Deposit);
         assertEq(calculatedShares, 47_619_047);
 
         // We use the ceiling price during a repricing
@@ -767,7 +767,7 @@ contract Deposit is AutoPoolETHTests {
         vaultAsset.mint(address(this), 1e18);
         vaultAsset.approve(address(vault), 1e18);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolToken.ERC20InvalidReceiver.selector, address(0)));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolToken.ERC20InvalidReceiver.selector, address(0)));
         vault.deposit(1e18, address(0));
     }
 
@@ -780,7 +780,7 @@ contract Deposit is AutoPoolETHTests {
 
         vault.nextDepositGetsDoubleShares();
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavDecreased.selector, 10_000, 7500));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETH.NavDecreased.selector, 10_000, 7500));
         vault.deposit(1e18, user);
     }
 
@@ -789,9 +789,9 @@ contract Deposit is AutoPoolETHTests {
         vaultAsset.approve(address(vault), 1e18);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
 
-        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626DepositExceedsMax.selector, 1000, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutopool.ERC4626DepositExceedsMax.selector, 1000, 0));
         vault.deposit(1000, address(this));
     }
 
@@ -801,7 +801,7 @@ contract Deposit is AutoPoolETHTests {
         vaultAsset.mint(address(this), 1e18);
         vaultAsset.approve(address(vault), 1e18);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavOpsInProgress.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETH.NavOpsInProgress.selector));
         vault.deposit(1000, address(this));
 
         _mockSysSecurityNavOpsInProgress(systemSecurity, 0);
@@ -835,7 +835,7 @@ contract Deposit is AutoPoolETHTests {
 
         vault.pause();
 
-        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626DepositExceedsMax.selector, 1000, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutopool.ERC4626DepositExceedsMax.selector, 1000, 0));
         vault.deposit(1000, address(this));
 
         vault.unpause();
@@ -852,7 +852,7 @@ contract Deposit is AutoPoolETHTests {
 
         _mockSysSecurityIsSystemPaused(systemSecurity, true);
 
-        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626DepositExceedsMax.selector, 1000, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutopool.ERC4626DepositExceedsMax.selector, 1000, 0));
         vault.deposit(1000, address(this));
 
         _mockSysSecurityIsSystemPaused(systemSecurity, false);
@@ -870,7 +870,7 @@ contract Deposit is AutoPoolETHTests {
         vaultAsset.mint(address(this), 2e18);
         vaultAsset.approve(address(vault), 2e18);
 
-        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626DepositExceedsMax.selector, 2e18, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutopool.ERC4626DepositExceedsMax.selector, 2e18, 0));
         vault.deposit(2e18, user);
 
         vault.setTotalIdle(2e18);
@@ -883,12 +883,12 @@ contract Deposit is AutoPoolETHTests {
         vaultAsset.approve(address(vault), type(uint112).max);
         vault.deposit(type(uint112).max, address(this));
 
-        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626DepositExceedsMax.selector, 1, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutopool.ERC4626DepositExceedsMax.selector, 1, 0));
         vault.deposit(1, address(this));
     }
 }
 
-contract MaxDepositTests is AutoPoolETHTests {
+contract MaxDeposit is AutopoolETHTests {
     function test_CalculatesAtOneToOne() public {
         address user = makeAddr("user1");
         uint256 depositAmount = 1e18;
@@ -941,7 +941,7 @@ contract MaxDepositTests is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -973,7 +973,7 @@ contract MaxDepositTests is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -999,7 +999,7 @@ contract MaxDepositTests is AutoPoolETHTests {
     }
 }
 
-contract PreviewDepositTests is AutoPoolETHTests {
+contract PreviewDepositTests is AutopoolETHTests {
     function test_CalculatesAtOneToOne() public {
         address user = makeAddr("user1");
         uint256 depositAmount = 1e18;
@@ -1021,7 +1021,7 @@ contract PreviewDepositTests is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -1044,7 +1044,7 @@ contract PreviewDepositTests is AutoPoolETHTests {
     }
 }
 
-contract MintTests is AutoPoolETHTests {
+contract MintTests is AutopoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -1105,7 +1105,7 @@ contract MintTests is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 5e18,
                 maxDebtValue: 15e18,
@@ -1114,9 +1114,9 @@ contract MintTests is AutoPoolETHTests {
         );
         vault.setTotalIdle(0);
 
-        uint256 calculatedAssets = vault.convertToAssets(1e18, IAutoPool.TotalAssetPurpose.Deposit);
-        uint256 withdrawAssets = vault.convertToAssets(1e18, IAutoPool.TotalAssetPurpose.Withdraw);
-        uint256 globalAssets = vault.convertToAssets(1e18, IAutoPool.TotalAssetPurpose.Global);
+        uint256 calculatedAssets = vault.convertToAssets(1e18, IAutopool.TotalAssetPurpose.Deposit);
+        uint256 withdrawAssets = vault.convertToAssets(1e18, IAutopool.TotalAssetPurpose.Withdraw);
+        uint256 globalAssets = vault.convertToAssets(1e18, IAutopool.TotalAssetPurpose.Global);
         uint256 actualAssets = _mintFor(user, calculatedAssets, 1e18);
 
         assertEq(actualAssets, calculatedAssets, "actual");
@@ -1136,7 +1136,7 @@ contract MintTests is AutoPoolETHTests {
         DestinationVaultFake destVault = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 9e18,
                 maxDebtValue: 11e18,
@@ -1146,7 +1146,7 @@ contract MintTests is AutoPoolETHTests {
         vault.setTotalIdle(0);
 
         // Get the assets required for the shares we want to deposit
-        uint256 calculatedAssets = vault.convertToAssets(1e18, IAutoPool.TotalAssetPurpose.Deposit);
+        uint256 calculatedAssets = vault.convertToAssets(1e18, IAutopool.TotalAssetPurpose.Deposit);
 
         // We had a valuePerShare of 1e18 when we deployed, lets value each LP at 5e18
         // This is the idea that when a pool is attacked and skewed to one side we will take the highest priced
@@ -1170,7 +1170,7 @@ contract MintTests is AutoPoolETHTests {
         DestinationVaultFake destVault = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e9,
                 minDebtValue: 9e9,
                 maxDebtValue: 11e9,
@@ -1181,7 +1181,7 @@ contract MintTests is AutoPoolETHTests {
         vault.setTotalIdle(0);
 
         // Get the expected shares based on the value at the last deployment
-        uint256 calculatedShares = vault.convertToShares(1e18, IAutoPool.TotalAssetPurpose.Deposit);
+        uint256 calculatedShares = vault.convertToShares(1e18, IAutopool.TotalAssetPurpose.Deposit);
 
         // We had a valuePerShare of 1e18 when we deployed, lets value each LP at 0.5e18
         // This is the idea that when a pool is attacked and skewed to one side we will take the highest priced
@@ -1201,7 +1201,7 @@ contract MintTests is AutoPoolETHTests {
         DestinationVaultFake staleDv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 8e9,
                 maxDebtValue: 16e9,
@@ -1211,7 +1211,7 @@ contract MintTests is AutoPoolETHTests {
         DestinationVaultFake staleDv2 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 5e9,
                 maxDebtValue: 13e9,
@@ -1221,7 +1221,7 @@ contract MintTests is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9e9,
                 maxDebtValue: 11e9,
@@ -1244,7 +1244,7 @@ contract MintTests is AutoPoolETHTests {
         // Get the expected shares based on the value at the last deployment
         // We'd use the max debt value on deposit, (40e9 debt + 2 idle), and 2e9 existing shares
         // 1e9 * 42e9 / 2e9 = 47619047
-        uint256 calculatedShares = vault.convertToAssets(1e9, IAutoPool.TotalAssetPurpose.Deposit);
+        uint256 calculatedShares = vault.convertToAssets(1e9, IAutopool.TotalAssetPurpose.Deposit);
         assertEq(calculatedShares, 21e9);
 
         // We use the ceiling price during a repricing
@@ -1291,6 +1291,41 @@ contract MintTests is AutoPoolETHTests {
         assertEq(vault.getAssetBreakdown().totalIdle, 1e18, "idle");
     }
 
+    function test_DoesNotMintSharesAtZeroCostOnInit() public {
+        vaultAsset.mint(address(this), 1);
+        vaultAsset.approve(address(vault), 1);
+
+        uint256 assets = vault.mint(1, address(this));
+
+        assertGt(assets, 0, "assets");
+    }
+
+    function test_DoesNotMintSharesAtZeroCost() public {
+        vaultAsset.mint(address(this), 1e18);
+        vaultAsset.approve(address(vault), 1e18);
+        vault.mint(1e18, address(this));
+
+        vaultAsset.mint(address(this), 1);
+        vaultAsset.approve(address(vault), 1);
+        uint256 assets = vault.mint(1, address(this));
+
+        assertGt(assets, 0, "assets");
+    }
+
+    function test_DoesNotMintSharesAtZeroCostWhenUnderCollateralized() public {
+        address user = makeAddr("user1");
+        uint256 depositAmount = 100_000;
+        _depositFor(user, depositAmount);
+
+        vault.setTotalIdle(0);
+
+        vaultAsset.mint(address(this), 1);
+        vaultAsset.approve(address(vault), 1);
+
+        vm.expectRevert(abi.encodeWithSelector(IAutopool.ERC4626MintExceedsMax.selector, 1, 0));
+        vault.mint(1, address(this));
+    }
+
     function test_RevertIf_NavDecreases() public {
         address user = makeAddr("user1");
         _depositFor(user, 2e18);
@@ -1300,7 +1335,7 @@ contract MintTests is AutoPoolETHTests {
 
         vault.nextDepositGetsDoubleShares();
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavDecreased.selector, 10_000, 7500));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETH.NavDecreased.selector, 10_000, 7500));
         vault.mint(1e18, user);
     }
 
@@ -1309,9 +1344,9 @@ contract MintTests is AutoPoolETHTests {
         vaultAsset.approve(address(vault), 1e18);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
 
-        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626MintExceedsMax.selector, 1000, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutopool.ERC4626MintExceedsMax.selector, 1000, 0));
         vault.mint(1000, address(this));
     }
 
@@ -1321,7 +1356,7 @@ contract MintTests is AutoPoolETHTests {
         vaultAsset.mint(address(this), 1e18);
         vaultAsset.approve(address(vault), 1e18);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavOpsInProgress.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETH.NavOpsInProgress.selector));
         vault.mint(1000, address(this));
 
         _mockSysSecurityNavOpsInProgress(systemSecurity, 0);
@@ -1337,7 +1372,7 @@ contract MintTests is AutoPoolETHTests {
 
         vault.pause();
 
-        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626MintExceedsMax.selector, 1000, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutopool.ERC4626MintExceedsMax.selector, 1000, 0));
         vault.mint(1000, address(this));
 
         vault.unpause();
@@ -1354,7 +1389,7 @@ contract MintTests is AutoPoolETHTests {
 
         _mockSysSecurityIsSystemPaused(systemSecurity, true);
 
-        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626MintExceedsMax.selector, 1000, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutopool.ERC4626MintExceedsMax.selector, 1000, 0));
         vault.mint(1000, address(this));
 
         _mockSysSecurityIsSystemPaused(systemSecurity, false);
@@ -1372,7 +1407,7 @@ contract MintTests is AutoPoolETHTests {
         vaultAsset.mint(address(this), 4e18);
         vaultAsset.approve(address(vault), 4e18);
 
-        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626MintExceedsMax.selector, 2e18, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutopool.ERC4626MintExceedsMax.selector, 2e18, 0));
         vault.mint(2e18, user);
 
         vault.setTotalIdle(2e18);
@@ -1385,12 +1420,12 @@ contract MintTests is AutoPoolETHTests {
         vaultAsset.approve(address(vault), type(uint112).max);
         vault.deposit(type(uint112).max, address(this));
 
-        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626MintExceedsMax.selector, 1, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutopool.ERC4626MintExceedsMax.selector, 1, 0));
         vault.mint(1, address(this));
     }
 }
 
-contract MaxMintTests is AutoPoolETHTests {
+contract MaxMintTests is AutopoolETHTests {
     function test_CalculatesAtOneToOne() public {
         address user = makeAddr("user1");
         uint256 depositAmount = 1e18;
@@ -1427,7 +1462,7 @@ contract MaxMintTests is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -1463,7 +1498,7 @@ contract MaxMintTests is AutoPoolETHTests {
     }
 }
 
-contract PreviewMintTests is AutoPoolETHTests {
+contract PreviewMint is AutopoolETHTests {
     function test_CalculatesAtOneToOne() public {
         address user = makeAddr("user1");
         uint256 depositAmount = 1e18;
@@ -1477,6 +1512,39 @@ contract PreviewMintTests is AutoPoolETHTests {
         assertEq(previewMint, 1e18, "previewMint");
     }
 
+    function test_DoesNotMintSharesAtZeroCostOnInit() public {
+        vm.startStateDiffRecording();
+        uint256 previewMint = vault.previewMint(1);
+        VmSafe.AccountAccess[] memory records = vm.stopAndReturnStateDiff();
+        _ensureNoStateChanges(records);
+
+        assertGt(previewMint, 0, "previewMint");
+    }
+
+    function test_DoesNotMintSharesAtZeroCost() public {
+        address user = makeAddr("user1");
+        uint256 depositAmount = 1e18;
+        _depositFor(user, depositAmount);
+
+        vm.startStateDiffRecording();
+        uint256 previewMint = vault.previewMint(1);
+        VmSafe.AccountAccess[] memory records = vm.stopAndReturnStateDiff();
+        _ensureNoStateChanges(records);
+
+        assertGt(previewMint, 0, "previewMint");
+    }
+
+    function test_DoesNotMintSharesAtZeroCostWhenUnderCollateralized() public {
+        address user = makeAddr("user1");
+        uint256 depositAmount = 100_000;
+        _depositFor(user, depositAmount);
+
+        vault.setTotalIdle(0);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "assets"));
+        vault.previewMint(1);
+    }
+
     function test_CalculatesWithUpdatedAssetsWhenStale() public {
         address user = makeAddr("user1");
         uint256 depositAmount = 10e18;
@@ -1485,7 +1553,7 @@ contract PreviewMintTests is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -1508,7 +1576,7 @@ contract PreviewMintTests is AutoPoolETHTests {
     }
 }
 
-contract Withdraw is AutoPoolETHTests {
+contract Withdraw is AutopoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -1548,7 +1616,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -1590,7 +1658,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -1621,7 +1689,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -1654,7 +1722,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -1705,7 +1773,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 9e9,
+                dvSharesToAutopool: 9e9,
                 valuePerShare: 1e9,
                 minDebtValue: 8.99e9,
                 maxDebtValue: 9.01e9,
@@ -1757,7 +1825,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 9e9,
+                dvSharesToAutopool: 9e9,
                 valuePerShare: 1e9,
                 minDebtValue: 8.99e9,
                 maxDebtValue: 9.01e9,
@@ -1806,7 +1874,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -1825,7 +1893,7 @@ contract Withdraw is AutoPoolETHTests {
 
         vm.startPrank(user);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.TooFewAssets.selector, 8e9, 5e9));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolDebt.TooFewAssets.selector, 8e9, 5e9));
         vault.withdraw(8e9, user, user);
 
         vm.stopPrank();
@@ -1928,7 +1996,7 @@ contract Withdraw is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 5e18,
                 maxDebtValue: 15e18,
@@ -1941,7 +2009,7 @@ contract Withdraw is AutoPoolETHTests {
 
         // We try to request more than we have overall, which is the min debt value of dv1, 5e18
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.TooFewAssets.selector, 6e18, 5e18));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolDebt.TooFewAssets.selector, 6e18, 5e18));
         vault.withdraw(6e18, user2, user1);
         vm.revertTo(snapshotId);
 
@@ -1988,7 +2056,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -2013,7 +2081,7 @@ contract Withdraw is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -2045,7 +2113,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 100e9,
+                dvSharesToAutopool: 100e9,
                 valuePerShare: 2e9,
                 minDebtValue: 1.95e9 * 100,
                 maxDebtValue: 2.05e9 * 100,
@@ -2057,7 +2125,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake destVault2 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 800e9,
+                dvSharesToAutopool: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
                 maxDebtValue: 1.05e9 * 800,
@@ -2120,7 +2188,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 100e9,
+                dvSharesToAutopool: 100e9,
                 valuePerShare: 2e9,
                 minDebtValue: 1.95e9 * 100,
                 maxDebtValue: 2.05e9 * 100,
@@ -2132,7 +2200,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake destVault2 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 800e9,
+                dvSharesToAutopool: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
                 maxDebtValue: 1.05e9 * 800,
@@ -2206,7 +2274,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 800e9,
+                dvSharesToAutopool: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
                 maxDebtValue: 1.05e9 * 800,
@@ -2218,7 +2286,7 @@ contract Withdraw is AutoPoolETHTests {
 
         // Get how many shares we'd expect this to take
         // 1 * 1000 / 760 = ~1.3e9
-        uint256 calculatedShares = vault.convertToShares(1e9, IAutoPool.TotalAssetPurpose.Withdraw);
+        uint256 calculatedShares = vault.convertToShares(1e9, IAutopool.TotalAssetPurpose.Withdraw);
 
         // We knock the price of our assets nearly in half though
         // 1 * 1000 / 400 (.5 price * 800 shares) = 2.5
@@ -2237,7 +2305,7 @@ contract Withdraw is AutoPoolETHTests {
         _depositFor(user, 2e9);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
 
         assertEq(vaultAsset.balanceOf(user), 0, "prevBal");
 
@@ -2254,7 +2322,7 @@ contract Withdraw is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -2267,7 +2335,7 @@ contract Withdraw is AutoPoolETHTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -2293,7 +2361,7 @@ contract Withdraw is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -2306,7 +2374,7 @@ contract Withdraw is AutoPoolETHTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -2325,7 +2393,7 @@ contract Withdraw is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -2338,7 +2406,7 @@ contract Withdraw is AutoPoolETHTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -2358,7 +2426,7 @@ contract Withdraw is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -2371,7 +2439,7 @@ contract Withdraw is AutoPoolETHTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -2399,7 +2467,7 @@ contract Withdraw is AutoPoolETHTests {
         vault.setNextWithdrawHalvesIdle();
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavDecreased.selector, 10_000, 5000));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETH.NavDecreased.selector, 10_000, 5000));
         vault.withdraw(1e18, user, user);
         vm.stopPrank();
     }
@@ -2409,14 +2477,14 @@ contract Withdraw is AutoPoolETHTests {
         _depositFor(user, 2e9);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
 
         assertEq(vaultAsset.balanceOf(user), 0, "prevBal");
 
         _mockSysSecurityNavOpsInProgress(systemSecurity, 1);
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavOpsInProgress.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETH.NavOpsInProgress.selector));
         vault.withdraw(1e9, user, user);
         vm.stopPrank();
 
@@ -2476,13 +2544,13 @@ contract Withdraw is AutoPoolETHTests {
         vaultAsset.approve(address(vault), 4e18);
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.TooFewAssets.selector, 1e18, 0));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolDebt.TooFewAssets.selector, 1e18, 0));
         vault.withdraw(1e18, user, user);
         vm.stopPrank();
     }
 }
 
-contract MaxWithdrawTests is AutoPoolETHTests {
+contract MaxWithdrawTests is AutopoolETHTests {
     function test_CalculatesAtOneToOne() public {
         address user = makeAddr("user1");
         uint256 depositAmount = 1e18;
@@ -2534,7 +2602,7 @@ contract MaxWithdrawTests is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -2574,7 +2642,7 @@ contract MaxWithdrawTests is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -2608,7 +2676,7 @@ contract MaxWithdrawTests is AutoPoolETHTests {
     }
 }
 
-contract Redeem is AutoPoolETHTests {
+contract Redeem is AutopoolETHTests {
     using WithdrawalQueue for StructuredLinkedList.List;
 
     function setUp() public virtual override {
@@ -2659,7 +2727,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -2691,7 +2759,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -2724,7 +2792,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9.99e9,
                 maxDebtValue: 10.01e9,
@@ -2851,7 +2919,7 @@ contract Redeem is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 5e9,
                 maxDebtValue: 15e9,
@@ -2895,7 +2963,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 9.99e18,
                 maxDebtValue: 10.01e18,
@@ -2920,7 +2988,7 @@ contract Redeem is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -2952,7 +3020,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 100e9,
+                dvSharesToAutopool: 100e9,
                 valuePerShare: 2e9,
                 minDebtValue: 1.95e9 * 100,
                 maxDebtValue: 2.05e9 * 100,
@@ -2964,7 +3032,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake destVault2 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 800e9,
+                dvSharesToAutopool: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
                 maxDebtValue: 1.05e9 * 800,
@@ -3027,7 +3095,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 100e9,
+                dvSharesToAutopool: 100e9,
                 valuePerShare: 2e9,
                 minDebtValue: 1.95e9 * 100,
                 maxDebtValue: 2.05e9 * 100,
@@ -3039,7 +3107,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake destVault2 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 800e9,
+                dvSharesToAutopool: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
                 maxDebtValue: 1.05e9 * 800,
@@ -3097,7 +3165,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 800e9,
+                dvSharesToAutopool: 800e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0.95e9 * 800,
                 maxDebtValue: 1.05e9 * 800,
@@ -3109,7 +3177,7 @@ contract Redeem is AutoPoolETHTests {
 
         // Get how many shares we'd expect this to take
         // 1 * 760 / 1000 = .76
-        uint256 calculatedAssets = vault.convertToAssets(1e9, IAutoPool.TotalAssetPurpose.Withdraw);
+        uint256 calculatedAssets = vault.convertToAssets(1e9, IAutopool.TotalAssetPurpose.Withdraw);
 
         // We knock the price of our assets nearly in half though
         // 1 * 400 / 100 = .4
@@ -3128,7 +3196,7 @@ contract Redeem is AutoPoolETHTests {
         _depositFor(user, 2e9);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
 
         assertEq(vaultAsset.balanceOf(user), 0, "prevBal");
 
@@ -3145,7 +3213,7 @@ contract Redeem is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -3158,7 +3226,7 @@ contract Redeem is AutoPoolETHTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -3184,7 +3252,7 @@ contract Redeem is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -3197,7 +3265,7 @@ contract Redeem is AutoPoolETHTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -3216,7 +3284,7 @@ contract Redeem is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -3229,7 +3297,7 @@ contract Redeem is AutoPoolETHTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -3249,7 +3317,7 @@ contract Redeem is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -3262,7 +3330,7 @@ contract Redeem is AutoPoolETHTests {
         // Of our 15 that was deposited, 10 went to the destination, 5 stayed in idle
         // Prices are still 1:1
 
-        IAutoPool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
         assertEq(assets.totalIdle, 5e9, "startingIdle");
         assertEq(assets.totalDebt, 10e9, "startingDebt");
 
@@ -3288,7 +3356,7 @@ contract Redeem is AutoPoolETHTests {
         vault.setNextWithdrawHalvesIdle();
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavDecreased.selector, 10_000, 5000));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETH.NavDecreased.selector, 10_000, 5000));
         vault.redeem(1e18, user, user);
         vm.stopPrank();
     }
@@ -3298,14 +3366,14 @@ contract Redeem is AutoPoolETHTests {
         _depositFor(user, 2e9);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
 
         assertEq(vaultAsset.balanceOf(user), 0, "prevBal");
 
         _mockSysSecurityNavOpsInProgress(systemSecurity, 1);
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.NavOpsInProgress.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETH.NavOpsInProgress.selector));
         vault.redeem(1e9, user, user);
         vm.stopPrank();
 
@@ -3382,13 +3450,13 @@ contract Redeem is AutoPoolETHTests {
         vaultAsset.approve(address(vault), 4e18);
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(IAutoPool.ERC4626ExceededMaxRedeem.selector, user, 1e18, 0));
+        vm.expectRevert(abi.encodeWithSelector(IAutopool.ERC4626ExceededMaxRedeem.selector, user, 1e18, 0));
         vault.redeem(1e18, user, user);
         vm.stopPrank();
     }
 }
 
-contract MaxRedeem is AutoPoolETHTests {
+contract MaxRedeem is AutopoolETHTests {
     function test_CalculatesAtOneToOne() public {
         address user = makeAddr("user1");
         uint256 depositAmount = 1e18;
@@ -3425,7 +3493,7 @@ contract MaxRedeem is AutoPoolETHTests {
         DestinationVaultFake destVault1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -3461,7 +3529,7 @@ contract MaxRedeem is AutoPoolETHTests {
     }
 }
 
-contract Shutdown is AutoPoolETHTests {
+contract Shutdown is AutopoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -3471,7 +3539,7 @@ contract Shutdown is AutoPoolETHTests {
 
         assertEq(vault.isShutdown(), false, "before");
 
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
 
         assertEq(vault.isShutdown(), true, "after");
     }
@@ -3479,49 +3547,49 @@ contract Shutdown is AutoPoolETHTests {
     function test_SetsShutdownStatusToProvidedValue() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
-        assertEq(uint256(vault.shutdownStatus()), uint256(IAutoPool.VaultShutdownStatus.Active), "before");
+        assertEq(uint256(vault.shutdownStatus()), uint256(IAutopool.VaultShutdownStatus.Active), "before");
 
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
 
-        assertEq(uint256(vault.shutdownStatus()), uint256(IAutoPool.VaultShutdownStatus.Deprecated), "after");
+        assertEq(uint256(vault.shutdownStatus()), uint256(IAutopool.VaultShutdownStatus.Deprecated), "after");
     }
 
     function test_EmitsEventDeprecated() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
-        emit Events.Shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        emit Events.Shutdown(IAutopool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
     }
 
     function test_EmitsEventExploit() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
-        emit Events.Shutdown(IAutoPool.VaultShutdownStatus.Exploit);
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Exploit);
+        emit Events.Shutdown(IAutopool.VaultShutdownStatus.Exploit);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Exploit);
     }
 
     function test_RevertIf_NotCalledByAdmin() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, false);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
     }
 
     function test_RevertIf_TriedToSetToActiveStatus() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
         vm.expectRevert(
-            abi.encodeWithSelector(IAutoPool.InvalidShutdownStatus.selector, IAutoPool.VaultShutdownStatus.Active)
+            abi.encodeWithSelector(IAutopool.InvalidShutdownStatus.selector, IAutopool.VaultShutdownStatus.Active)
         );
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Active);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Active);
     }
 }
 
-contract Recover is AutoPoolETHTests {
+contract Recover is AutopoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -3661,7 +3729,7 @@ contract Recover is AutoPoolETHTests {
     //         _setupDestinationVault(
     //             DVSetup({
     //                 autoPool: vault,
-    //                 dvSharesToAutoPool: 10e18,
+    //                 dvSharesToAutopool: 10e18,
     //                 valuePerShare: 1e18,
     //                 minDebtValue: 5e18,
     //                 maxDebtValue: 15e18,
@@ -3681,7 +3749,7 @@ contract Recover is AutoPoolETHTests {
     // }
 }
 
-contract PeriodicFees is AutoPoolETHTests {
+contract PeriodicFees is AutopoolETHTests {
     function setUp() public virtual override {
         super.setUp();
 
@@ -3867,7 +3935,7 @@ contract PeriodicFees is AutoPoolETHTests {
     }
 }
 
-contract TransferFrom is AutoPoolETHTests {
+contract TransferFrom is AutopoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -3884,7 +3952,7 @@ contract TransferFrom is AutoPoolETHTests {
 
         vm.startPrank(user);
         vm.expectRevert(
-            abi.encodeWithSelector(AutoPoolToken.ERC20InsufficientBalance.selector, address(this), 1000, 2000)
+            abi.encodeWithSelector(AutopoolToken.ERC20InsufficientBalance.selector, address(this), 1000, 2000)
         );
         vault.transferFrom(address(this), recipient, 2000);
         vm.stopPrank();
@@ -3901,7 +3969,7 @@ contract TransferFrom is AutoPoolETHTests {
         vault.approve(user, 500);
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolToken.ERC20InsufficientAllowance.selector, user, 500, 1000));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolToken.ERC20InsufficientAllowance.selector, user, 500, 1000));
         vault.transferFrom(address(this), recipient, 1000);
         vm.stopPrank();
     }
@@ -3916,7 +3984,7 @@ contract TransferFrom is AutoPoolETHTests {
         vault.approve(user, 500);
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolToken.ERC20InvalidReceiver.selector, address(0)));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolToken.ERC20InvalidReceiver.selector, address(0)));
         vault.transferFrom(address(this), address(0), 10);
         vm.stopPrank();
     }
@@ -3942,7 +4010,7 @@ contract TransferFrom is AutoPoolETHTests {
     }
 }
 
-contract Transfer is AutoPoolETHTests {
+contract Transfer is AutopoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -3969,7 +4037,7 @@ contract Transfer is AutoPoolETHTests {
         vault.mint(1000, address(this));
 
         vm.expectRevert(
-            abi.encodeWithSelector(AutoPoolToken.ERC20InsufficientBalance.selector, address(this), 1000, 2000)
+            abi.encodeWithSelector(AutopoolToken.ERC20InsufficientBalance.selector, address(this), 1000, 2000)
         );
         vault.transfer(recipient, 2000);
     }
@@ -3979,16 +4047,16 @@ contract Transfer is AutoPoolETHTests {
         vaultAsset.approve(address(vault), 1000);
         vault.mint(1000, address(this));
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolToken.ERC20InvalidReceiver.selector, address(0)));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolToken.ERC20InvalidReceiver.selector, address(0)));
         vault.transfer(address(0), 10);
     }
 }
 
-contract Approve is AutoPoolETHTests {
+contract Approve is AutopoolETHTests {
     function test_RevertIf_ApprovingFromAddressZero() public {
         vm.startPrank(address(0));
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolToken.ERC20InvalidApprover.selector, address(0)));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolToken.ERC20InvalidApprover.selector, address(0)));
         vault.approve(address(1), 1);
 
         vm.stopPrank();
@@ -3997,21 +4065,21 @@ contract Approve is AutoPoolETHTests {
     function test_RevertIf_ApprovingToAddressZero() public {
         vm.startPrank(address(1));
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolToken.ERC20InvalidSpender.selector, address(0)));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolToken.ERC20InvalidSpender.selector, address(0)));
         vault.approve(address(0), 1);
 
         vm.stopPrank();
     }
 }
 
-contract SetSymbolAndDescTests is AutoPoolETHTests {
+contract SetSymbolAndDescTests is AutopoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
 
     function test_EmitsEvent() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
 
         vm.expectEmit(true, true, true, true);
         emit SymbolAndDescSet("A", "B");
@@ -4020,7 +4088,7 @@ contract SetSymbolAndDescTests is AutoPoolETHTests {
 
     function test_SetsNewSymbolAndName() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
 
         string memory newSymbol = "A";
         string memory newName = "B";
@@ -4044,7 +4112,7 @@ contract SetSymbolAndDescTests is AutoPoolETHTests {
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
         vault.setSymbolAndDescAfterShutdown("A", "B");
     }
 
@@ -4052,18 +4120,18 @@ contract SetSymbolAndDescTests is AutoPoolETHTests {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
 
         vm.expectRevert(
-            abi.encodeWithSelector(IAutoPool.InvalidShutdownStatus.selector, IAutoPool.VaultShutdownStatus.Active)
+            abi.encodeWithSelector(IAutopool.InvalidShutdownStatus.selector, IAutopool.VaultShutdownStatus.Active)
         );
         vault.setSymbolAndDescAfterShutdown("A", "B");
 
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
 
         vault.setSymbolAndDescAfterShutdown("A", "B");
     }
 
     function test_RevertIf_NewSymbolIsBlank() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "newSymbol"));
         vault.setSymbolAndDescAfterShutdown("", "B");
         vault.setSymbolAndDescAfterShutdown("A", "B");
@@ -4071,14 +4139,14 @@ contract SetSymbolAndDescTests is AutoPoolETHTests {
 
     function test_RevertIf_NewNameIsBlank() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "newName"));
         vault.setSymbolAndDescAfterShutdown("A", "");
         vault.setSymbolAndDescAfterShutdown("A", "B");
     }
 }
 
-contract FeeAndProfitTests is AutoPoolETHTests {
+contract FeeAndProfitTests is AutopoolETHTests {
     using Math for uint256;
 
     struct ProfitSetupState {
@@ -4317,7 +4385,7 @@ contract FeeAndProfitTests is AutoPoolETHTests {
                 lastUnlockTime: block.timestamp - 1 days / 2,
                 unlockPeriodInSeconds: 1 days,
                 currentShares: 10e18,
-                currentProfitUnlockRate: 10e18 * AutoPoolFees.MAX_BPS_PROFIT / 1 days,
+                currentProfitUnlockRate: 10e18 * AutopoolFees.MAX_BPS_PROFIT / 1 days,
                 fullProfitUnlockTime: block.timestamp + 1 days / 2
             })
         );
@@ -4390,7 +4458,7 @@ contract FeeAndProfitTests is AutoPoolETHTests {
                 lastUnlockTime: block.timestamp - (1 days * 98 / 100),
                 unlockPeriodInSeconds: 1 days,
                 currentShares: 10e18,
-                currentProfitUnlockRate: 10e18 * AutoPoolFees.MAX_BPS_PROFIT / 1 days,
+                currentProfitUnlockRate: 10e18 * AutopoolFees.MAX_BPS_PROFIT / 1 days,
                 fullProfitUnlockTime: block.timestamp + (1 days * 2 / 100)
             })
         );
@@ -4448,7 +4516,7 @@ contract FeeAndProfitTests is AutoPoolETHTests {
                 lastUnlockTime: block.timestamp - (1 days * 90 / 100),
                 unlockPeriodInSeconds: 1 days,
                 currentShares: 10e18,
-                currentProfitUnlockRate: 10e18 * AutoPoolFees.MAX_BPS_PROFIT / 1 days,
+                currentProfitUnlockRate: 10e18 * AutopoolFees.MAX_BPS_PROFIT / 1 days,
                 fullProfitUnlockTime: block.timestamp + (1 days * 10 / 100)
             })
         );
@@ -4492,7 +4560,7 @@ contract FeeAndProfitTests is AutoPoolETHTests {
         // Rate is the shares over the time period
         assertEq(
             vault.getProfitUnlockSettings().profitUnlockRate,
-            newLockShares * AutoPoolFees.MAX_BPS_PROFIT / 77_865,
+            newLockShares * AutopoolFees.MAX_BPS_PROFIT / 77_865,
             "newUnlockRate"
         );
 
@@ -4521,7 +4589,7 @@ contract FeeAndProfitTests is AutoPoolETHTests {
                 lastUnlockTime: block.timestamp - (1 days * 90 / 100),
                 unlockPeriodInSeconds: 1 days,
                 currentShares: 10e18,
-                currentProfitUnlockRate: 10e18 * AutoPoolFees.MAX_BPS_PROFIT / 1 days,
+                currentProfitUnlockRate: 10e18 * AutopoolFees.MAX_BPS_PROFIT / 1 days,
                 fullProfitUnlockTime: block.timestamp + (1 days * 10 / 100)
             })
         );
@@ -4585,7 +4653,7 @@ contract FeeAndProfitTests is AutoPoolETHTests {
                 lastUnlockTime: block.timestamp - 1 days / 2,
                 unlockPeriodInSeconds: 1 days,
                 currentShares: 10e18,
-                currentProfitUnlockRate: 10e18 * AutoPoolFees.MAX_BPS_PROFIT / 1 days,
+                currentProfitUnlockRate: 10e18 * AutopoolFees.MAX_BPS_PROFIT / 1 days,
                 fullProfitUnlockTime: block.timestamp + 1 days / 2
             })
         );
@@ -4666,7 +4734,7 @@ contract FeeAndProfitTests is AutoPoolETHTests {
                 lastUnlockTime: block.timestamp - 1 days / 2,
                 unlockPeriodInSeconds: 1 days,
                 currentShares: 10e18,
-                currentProfitUnlockRate: 10e18 * AutoPoolFees.MAX_BPS_PROFIT / 1 days,
+                currentProfitUnlockRate: 10e18 * AutopoolFees.MAX_BPS_PROFIT / 1 days,
                 fullProfitUnlockTime: block.timestamp + 1 days / 2
             })
         );
@@ -4731,7 +4799,7 @@ contract FeeAndProfitTests is AutoPoolETHTests {
                 lastUnlockTime: block.timestamp - 1 days / 2,
                 unlockPeriodInSeconds: 1 days,
                 currentShares: 10e18,
-                currentProfitUnlockRate: 10e18 * AutoPoolFees.MAX_BPS_PROFIT / 1 days,
+                currentProfitUnlockRate: 10e18 * AutopoolFees.MAX_BPS_PROFIT / 1 days,
                 fullProfitUnlockTime: block.timestamp + 1 days / 2
             })
         );
@@ -4809,7 +4877,7 @@ contract FeeAndProfitTests is AutoPoolETHTests {
                 lastUnlockTime: block.timestamp - 1 days / 2,
                 unlockPeriodInSeconds: 1 days,
                 currentShares: 10e18,
-                currentProfitUnlockRate: 10e18 * AutoPoolFees.MAX_BPS_PROFIT / 1 days,
+                currentProfitUnlockRate: 10e18 * AutopoolFees.MAX_BPS_PROFIT / 1 days,
                 fullProfitUnlockTime: block.timestamp + 1 days / 2
             })
         );
@@ -4863,7 +4931,7 @@ contract FeeAndProfitTests is AutoPoolETHTests {
     }
 }
 
-contract FlashRebalanceSetup is AutoPoolETHTests {
+contract FlashRebalanceSetup is AutopoolETHTests {
     DestinationVaultFake internal dv1;
     DestinationVaultFake internal dv2;
     TokenReturnSolver internal solver;
@@ -4874,7 +4942,7 @@ contract FlashRebalanceSetup is AutoPoolETHTests {
         dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 0e9,
+                dvSharesToAutopool: 0e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0e9,
                 maxDebtValue: 0e9,
@@ -4885,7 +4953,7 @@ contract FlashRebalanceSetup is AutoPoolETHTests {
         dv2 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 0e9,
+                dvSharesToAutopool: 0e9,
                 valuePerShare: 1e9,
                 minDebtValue: 0e9,
                 maxDebtValue: 0e9,
@@ -5121,7 +5189,7 @@ contract FlashRebalance is FlashRebalanceSetup {
         address asset = vault.asset();
 
         vm.expectCall(
-            autoPoolStrategy, abi.encodeWithSelector(IAutoPoolStrategy.rebalanceSuccessfullyExecuted.selector)
+            autoPoolStrategy, abi.encodeWithSelector(IAutopoolStrategy.rebalanceSuccessfullyExecuted.selector)
         );
         vault.flashRebalance(
             solver,
@@ -5421,7 +5489,7 @@ contract FlashRebalance is FlashRebalanceSetup {
         address inUnderlyer = address(dvs[48].underlyer());
         address baseAsset = address(vault.asset());
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolDestinations.TooManyDeployedDestinations.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolDestinations.TooManyDeployedDestinations.selector));
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5450,7 +5518,7 @@ contract FlashRebalance is FlashRebalanceSetup {
         address tokenIn = address(dv1.underlyer());
         address tokenOut = vault.asset();
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.RebalanceFailed.selector, "msg"));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolDebt.RebalanceFailed.selector, "msg"));
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5548,7 +5616,7 @@ contract FlashRebalance is FlashRebalanceSetup {
 
         // Idle to Idle
         address baseAsset = vault.asset();
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.RebalanceDestinationsMatch.selector, address(vault)));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETH.RebalanceDestinationsMatch.selector, address(vault)));
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5567,7 +5635,7 @@ contract FlashRebalance is FlashRebalanceSetup {
         _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
         address dv1Underlyer = address(dv1.underlyer());
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolETH.RebalanceDestinationsMatch.selector, address(dv1)));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETH.RebalanceDestinationsMatch.selector, address(dv1)));
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5594,12 +5662,12 @@ contract FlashRebalance is FlashRebalanceSetup {
         bytes memory data = solver.buildDataForDvIn(address(dv1), 50e9);
         _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
 
-        vault.shutdown(IAutoPool.VaultShutdownStatus.Deprecated);
+        vault.shutdown(IAutopool.VaultShutdownStatus.Deprecated);
 
         address dv1Underlyer = address(dv1.underlyer());
         address tokenOut = vault.asset();
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.VaultShutdown.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolDebt.VaultShutdown.selector));
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5628,7 +5696,7 @@ contract FlashRebalance is FlashRebalanceSetup {
         address dv1Underlyer = address(dv1.underlyer());
         address tokenOut = vault.asset();
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.InvalidPrices.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolDebt.InvalidPrices.selector));
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5673,7 +5741,7 @@ contract FlashRebalance is FlashRebalanceSetup {
         address asset = vault.asset();
         address tokenOut = address(dv1.underlyer());
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.InvalidPrices.selector));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolDebt.InvalidPrices.selector));
         vault.flashRebalance(
             solver,
             IStrategy.RebalanceParams({
@@ -5804,7 +5872,7 @@ contract FlashRebalance is FlashRebalanceSetup {
             ret[i] = _createAddDestinationVault(
                 DVSetup({
                     autoPool: vault,
-                    dvSharesToAutoPool: 0e9,
+                    dvSharesToAutopool: 0e9,
                     valuePerShare: 1e9,
                     minDebtValue: 0e9,
                     maxDebtValue: 0e9,
@@ -5816,7 +5884,7 @@ contract FlashRebalance is FlashRebalanceSetup {
     }
 }
 
-contract UpdateDebtReporting is AutoPoolETHTests {
+contract UpdateDebtReporting is AutopoolETHTests {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -5829,7 +5897,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -5862,7 +5930,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -5874,7 +5942,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -5907,7 +5975,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -5919,7 +5987,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -5959,7 +6027,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -5971,7 +6039,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 10e18,
                 maxDebtValue: 10e18,
@@ -6024,7 +6092,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -6036,7 +6104,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -6096,7 +6164,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -6108,7 +6176,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -6168,7 +6236,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -6180,7 +6248,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -6227,7 +6295,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 9e9,
                 maxDebtValue: 11e9,
@@ -6239,7 +6307,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv2 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 5e9,
+                dvSharesToAutopool: 5e9,
                 valuePerShare: 1e9,
                 minDebtValue: 4.5e9,
                 maxDebtValue: 5.5e9,
@@ -6334,7 +6402,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         // DV2 has 5 shares so we burn 3.889 of them. They're worth 1:1 so we pulled an
         // extra 0.3889 which drops into idle. Cached values don't change, only totals
 
-        IAutoPool.AssetBreakdown memory s5 = vault.getAssetBreakdown();
+        IAutopool.AssetBreakdown memory s5 = vault.getAssetBreakdown();
         assertEq(s5.totalIdle, 1.138888888e9, /* .75 + .3889*/ "stage5Idle");
         assertEq(s5.totalDebt, 1.111111112e9, /* 1.11111111 shares left @ 1 */ "stage5Debt");
         assertEq(s5.totalDebtMin, 1e9, /* 1.11111111 shares left @ .9 */ "stage5DebtMin");
@@ -6351,7 +6419,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         vault.updateDebtReporting(4);
 
         // Reflect exhausted DV1 and updated cached DV2
-        IAutoPool.AssetBreakdown memory s6 = vault.getAssetBreakdown();
+        IAutopool.AssetBreakdown memory s6 = vault.getAssetBreakdown();
         assertEq(s6.totalIdle, 1.138888888e9, "stage6Idle");
         assertEq(s6.totalDebt, 2.222222224e9, "stage6Debt");
         assertEq(s6.totalDebtMin, 2.000000001e9, "stage6DebtMin");
@@ -6369,7 +6437,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         uint256 assets = vault.redeem(1e9, user, user);
         vm.stopPrank();
 
-        IAutoPool.AssetBreakdown memory s7 = vault.getAssetBreakdown();
+        IAutopool.AssetBreakdown memory s7 = vault.getAssetBreakdown();
         assertEq(vault.totalSupply(), 0, "stage7TotalSupply");
         assertEq(assets, 2.25e9, /* totalIdle + remaining dv2 @ 1:1 price from stage6 */ "stage7AssetsRet");
         assertEq(s7.totalIdle, 0, "stage7Idle");
@@ -6386,7 +6454,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         // Final debt reporting that should clear out the remaining cached values
         vault.updateDebtReporting(4);
 
-        IAutoPool.AssetBreakdown memory s8 = vault.getAssetBreakdown();
+        IAutopool.AssetBreakdown memory s8 = vault.getAssetBreakdown();
         assertEq(s8.totalIdle, 0, "stage8Idle");
         assertEq(s8.totalDebt, 0, "stage8Debt");
         assertEq(s8.totalDebtMin, 0, "stage8DebtMin");
@@ -6409,7 +6477,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationWithRewarder(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e9,
+                dvSharesToAutopool: 10e9,
                 valuePerShare: 1e9,
                 minDebtValue: 10e9,
                 maxDebtValue: 10e9,
@@ -6705,7 +6773,7 @@ contract UpdateDebtReporting is AutoPoolETHTests {
     }
 }
 
-contract AddDestinations is AutoPoolETHTests {
+contract AddDestinations is AutopoolETHTests {
     IDestinationVaultRegistry private _destVaultRegistry;
 
     event DestinationVaultAdded(address destination);
@@ -6799,7 +6867,7 @@ contract AddDestinations is AutoPoolETHTests {
             _setupDestinationVault(
                 DVSetup({
                     autoPool: vault,
-                    dvSharesToAutoPool: 10e18,
+                    dvSharesToAutopool: 10e18,
                     valuePerShare: 1e18,
                     minDebtValue: 5e18,
                     maxDebtValue: 15e18,
@@ -6929,7 +6997,7 @@ contract AddDestinations is AutoPoolETHTests {
     }
 }
 
-contract RemoveDestinations is AutoPoolETHTests {
+contract RemoveDestinations is AutopoolETHTests {
     IDestinationVaultRegistry private _destVaultRegistry;
 
     event DestinationVaultRemoved(address destination);
@@ -7070,7 +7138,7 @@ contract RemoveDestinations is AutoPoolETHTests {
     }
 }
 
-contract TotalAssets is AutoPoolETHTests {
+contract TotalAssets is AutopoolETHTests {
     function test_TotalAssetsTimeCheckedDoesNotAllowGlobalUsage() public {
         address user = makeAddr("user1");
         _depositFor(user, 2e18);
@@ -7079,7 +7147,7 @@ contract TotalAssets is AutoPoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutoPool: 10e18,
+                dvSharesToAutopool: 10e18,
                 valuePerShare: 1e18,
                 minDebtValue: 9e18,
                 maxDebtValue: 11e18,
@@ -7088,8 +7156,8 @@ contract TotalAssets is AutoPoolETHTests {
         );
         vault.setTotalIdle(0);
 
-        vm.expectRevert(abi.encodeWithSelector(AutoPoolDebt.InvalidTotalAssetPurpose.selector));
-        vault.totalAssetsTimeChecked(IAutoPool.TotalAssetPurpose.Global);
+        vm.expectRevert(abi.encodeWithSelector(AutopoolDebt.InvalidTotalAssetPurpose.selector));
+        vault.totalAssetsTimeChecked(IAutopool.TotalAssetPurpose.Global);
     }
 }
 
@@ -7348,22 +7416,22 @@ contract DestinationVaultFake {
     }
 }
 
-contract TestAutoPoolETH is AutoPoolETH {
+contract TestAutopoolETH is AutopoolETH {
     using WithdrawalQueue for StructuredLinkedList.List;
     using EnumerableSet for EnumerableSet.AddressSet;
-    using AutoPoolToken for AutoPoolToken.TokenData;
+    using AutopoolToken for AutopoolToken.TokenData;
 
     bool private _nextDepositGetsDoubleShares;
     bool private _nextWithdrawHalvesIdle;
 
-    constructor(ISystemRegistry _systemRegistry, address _vaultAsset) AutoPoolETH(_systemRegistry, _vaultAsset) { }
+    constructor(ISystemRegistry _systemRegistry, address _vaultAsset) AutopoolETH(_systemRegistry, _vaultAsset) { }
 
     function directTransfer(address to, uint256 value) external {
-        AutoPoolToken.transfer(_tokenData, to, value);
+        AutopoolToken.transfer(_tokenData, to, value);
     }
 
     function directTransferFrom(address from, address to, uint256 value) external {
-        AutoPoolToken.transferFrom(_tokenData, from, to, value);
+        AutopoolToken.transferFrom(_tokenData, from, to, value);
     }
 
     function nextDepositGetsDoubleShares() public {
@@ -7447,7 +7515,7 @@ contract TestAutoPoolETH is AutoPoolETH {
         uint256 ownedShares,
         uint256 lastDebtReportTimestamp
     ) external {
-        _destinationInfo[destination] = AutoPoolDebt.DestinationInfo({
+        _destinationInfo[destination] = AutopoolDebt.DestinationInfo({
             cachedDebtValue: cachedDebtValue,
             cachedMinDebtValue: cachedMinDebtValue,
             cachedMaxDebtValue: cachedMaxDebtValue,
@@ -7483,13 +7551,13 @@ contract TestAutoPoolETH is AutoPoolETH {
     }
 }
 
-contract FeeAndProfitTestVault is TestAutoPoolETH {
+contract FeeAndProfitTestVault is TestAutopoolETH {
     using WithdrawalQueue for StructuredLinkedList.List;
 
     uint256 private _feeSharesToBeCollected;
     bool private _useRealCollectFees;
 
-    constructor(ISystemRegistry _systemRegistry, address _vaultAsset) TestAutoPoolETH(_systemRegistry, _vaultAsset) { }
+    constructor(ISystemRegistry _systemRegistry, address _vaultAsset) TestAutopoolETH(_systemRegistry, _vaultAsset) { }
 
     function _updateStrategyNav(uint256 assets, uint256 supply) internal override {
         // If these tests we have 0'd total supply. This can't happen under normal circumstances
@@ -7501,7 +7569,7 @@ contract FeeAndProfitTestVault is TestAutoPoolETH {
     }
 
     function totalAssetsTimeChecked(TotalAssetPurpose purpose) public returns (uint256) {
-        return AutoPoolDebt.totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, purpose);
+        return AutopoolDebt.totalAssetsTimeChecked(_debtReportQueue, _destinationInfo, purpose);
     }
 
     function useRealCollectFees() public {

@@ -8,7 +8,7 @@ import { SystemRegistry } from "src/SystemRegistry.sol";
 import { TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { ISystemSecurity } from "src/interfaces/security/ISystemSecurity.sol";
-import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
+import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { IDestinationRegistry } from "src/interfaces/destinations/IDestinationRegistry.sol";
 import { IStatsCalculatorRegistry } from "src/interfaces/stats/IStatsCalculatorRegistry.sol";
@@ -19,7 +19,7 @@ import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaul
 contract SystemRegistryTest is Test {
     SystemRegistry private _systemRegistry;
 
-    event AutoPoolRegistrySet(address newAddress);
+    event AutopoolRegistrySet(address newAddress);
     event AccessControllerSet(address newAddress);
     event StatsCalculatorRegistrySet(address newAddress);
     event DestinationVaultRegistrySet(address newAddress);
@@ -28,8 +28,8 @@ contract SystemRegistryTest is Test {
     event SwapRouterSet(address swapRouter);
     event CurveResolverSet(address curveResolver);
     event SystemSecuritySet(address security);
-    event AutoPilotRouterSet(address router);
-    event AutoPoolFactorySet(bytes32 vaultType, address factory);
+    event AutopilotRouterSet(address router);
+    event AutopoolFactorySet(bytes32 vaultType, address factory);
     event IncentivePricingStatsSet(address incentivePricingStats);
     event MessageProxySet(address messageProxy);
 
@@ -38,162 +38,162 @@ contract SystemRegistryTest is Test {
     }
 
     /* ******************************** */
-    /* AutoPool Vault Registry
+    /* Autopool Vault Registry
     /* ******************************** */
 
-    function testSystemRegistryAutoPoolETHSetOnceDuplicateValue() public {
+    function testSystemRegistryAutopoolETHSetOnceDuplicateValue() public {
         address autoPool = vm.addr(1);
         mockSystemComponent(autoPool);
-        _systemRegistry.setAutoPoolRegistry(autoPool);
+        _systemRegistry.setAutopoolRegistry(autoPool);
         vm.expectRevert(abi.encodeWithSelector(Errors.AlreadySet.selector, "autoPoolRegistry"));
-        _systemRegistry.setAutoPoolRegistry(autoPool);
+        _systemRegistry.setAutopoolRegistry(autoPool);
     }
 
-    function testSystemRegistryAutoPoolETHSetOnceDifferentValue() public {
+    function testSystemRegistryAutopoolETHSetOnceDifferentValue() public {
         address autoPool = vm.addr(1);
         mockSystemComponent(autoPool);
-        _systemRegistry.setAutoPoolRegistry(autoPool);
+        _systemRegistry.setAutopoolRegistry(autoPool);
         autoPool = vm.addr(2);
         vm.expectRevert(abi.encodeWithSelector(Errors.AlreadySet.selector, "autoPoolRegistry"));
-        _systemRegistry.setAutoPoolRegistry(autoPool);
+        _systemRegistry.setAutopoolRegistry(autoPool);
     }
 
-    function testSystemRegistryAutoPoolETHZeroNotAllowed() public {
+    function testSystemRegistryAutopoolETHZeroNotAllowed() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "autoPoolRegistry"));
-        _systemRegistry.setAutoPoolRegistry(address(0));
+        _systemRegistry.setAutopoolRegistry(address(0));
     }
 
-    function testSystemRegistryAutoPoolETHRetrieveSetValue() public {
+    function testSystemRegistryAutopoolETHRetrieveSetValue() public {
         address autoPool = vm.addr(3);
         mockSystemComponent(autoPool);
-        _systemRegistry.setAutoPoolRegistry(autoPool);
-        IAutoPoolRegistry queried = _systemRegistry.autoPoolRegistry();
+        _systemRegistry.setAutopoolRegistry(autoPool);
+        IAutopoolRegistry queried = _systemRegistry.autoPoolRegistry();
 
         assertEq(autoPool, address(queried));
     }
 
-    function testSystemRegistryAutoPoolETHEmitsEventWithNewAddress() public {
+    function testSystemRegistryAutopoolETHEmitsEventWithNewAddress() public {
         address autoPool = vm.addr(3);
 
         vm.expectEmit(true, true, true, true);
-        emit AutoPoolRegistrySet(autoPool);
+        emit AutopoolRegistrySet(autoPool);
 
         mockSystemComponent(autoPool);
-        _systemRegistry.setAutoPoolRegistry(autoPool);
+        _systemRegistry.setAutopoolRegistry(autoPool);
     }
 
-    function testSystemRegistryAutoPoolETHOnlyCallableByOwner() public {
+    function testSystemRegistryAutopoolETHOnlyCallableByOwner() public {
         address autoPool = vm.addr(3);
         address newOwner = vm.addr(4);
 
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(newOwner);
-        _systemRegistry.setAutoPoolRegistry(autoPool);
+        _systemRegistry.setAutopoolRegistry(autoPool);
     }
 
-    function testSystemRegistryAutoPoolETHSystemsMatch() public {
+    function testSystemRegistryAutopoolETHSystemsMatch() public {
         address autoPool = vm.addr(1);
         address fakeRegistry = vm.addr(2);
         bytes memory registry = abi.encode(fakeRegistry);
         vm.mockCall(autoPool, abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector), registry);
         vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(_systemRegistry), fakeRegistry));
-        _systemRegistry.setAutoPoolRegistry(autoPool);
+        _systemRegistry.setAutopoolRegistry(autoPool);
     }
 
-    function testSystemRegistryAutoPoolETHInvalidContractCaught() public {
+    function testSystemRegistryAutopoolETHInvalidContractCaught() public {
         // When its not a contract
         address fakeRegistry = vm.addr(2);
         vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeRegistry));
-        _systemRegistry.setAutoPoolRegistry(fakeRegistry);
+        _systemRegistry.setAutopoolRegistry(fakeRegistry);
 
         // When it is a contract, just incorrect
         address emptyContract = address(new EmptyContract());
         vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
-        _systemRegistry.setAutoPoolRegistry(emptyContract);
+        _systemRegistry.setAutopoolRegistry(emptyContract);
     }
 
     /* ******************************** */
-    /* AutoPool Vault Router
+    /* Autopool Vault Router
     /* ******************************** */
 
-    function test_OnlyOwner_setAutoPilotRouter() external {
+    function test_OnlyOwner_setAutopilotRouter() external {
         address fakeOwner = vm.addr(3);
-        address fakeAutoPoolRouter = vm.addr(4);
+        address fakeAutopoolRouter = vm.addr(4);
 
         vm.prank(fakeOwner);
         vm.expectRevert("Ownable: caller is not the owner");
 
-        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter);
+        _systemRegistry.setAutopilotRouter(fakeAutopoolRouter);
     }
 
-    function test_ZeroAddress_setAutoPilotRouter() external {
+    function test_ZeroAddress_setAutopilotRouter() external {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "autoPoolRouter"));
-        _systemRegistry.setAutoPilotRouter(address(0));
+        _systemRegistry.setAutopilotRouter(address(0));
     }
 
-    function test_Duplicate_setAutoPilotRouter() external {
-        address fakeAutoPoolRouter = vm.addr(4);
-        mockSystemComponent(fakeAutoPoolRouter);
+    function test_Duplicate_setAutopilotRouter() external {
+        address fakeAutopoolRouter = vm.addr(4);
+        mockSystemComponent(fakeAutopoolRouter);
 
-        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter);
+        _systemRegistry.setAutopilotRouter(fakeAutopoolRouter);
 
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.DuplicateSet.selector, fakeAutoPoolRouter));
-        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter);
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.DuplicateSet.selector, fakeAutopoolRouter));
+        _systemRegistry.setAutopilotRouter(fakeAutopoolRouter);
     }
 
-    function test_WorksProperly_setAutoPilotRouter() external {
-        address fakeAutoPoolRouter = vm.addr(4);
-        mockSystemComponent(fakeAutoPoolRouter);
+    function test_WorksProperly_setAutopilotRouter() external {
+        address fakeAutopoolRouter = vm.addr(4);
+        mockSystemComponent(fakeAutopoolRouter);
 
         vm.expectEmit(false, false, false, true);
-        emit AutoPilotRouterSet(fakeAutoPoolRouter);
-        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter);
+        emit AutopilotRouterSet(fakeAutopoolRouter);
+        _systemRegistry.setAutopilotRouter(fakeAutopoolRouter);
 
-        assertEq(fakeAutoPoolRouter, address(_systemRegistry.autoPoolRouter()));
+        assertEq(fakeAutopoolRouter, address(_systemRegistry.autoPoolRouter()));
     }
 
-    function test_SetMultipleTimes_setAutoPilotRouter() external {
-        address fakeAutoPoolRouter1 = vm.addr(4);
-        address fakeAutoPoolRouter2 = vm.addr(5);
+    function test_SetMultipleTimes_setAutopilotRouter() external {
+        address fakeAutopoolRouter1 = vm.addr(4);
+        address fakeAutopoolRouter2 = vm.addr(5);
 
-        mockSystemComponent(fakeAutoPoolRouter1);
-        mockSystemComponent(fakeAutoPoolRouter2);
+        mockSystemComponent(fakeAutopoolRouter1);
+        mockSystemComponent(fakeAutopoolRouter2);
 
         // First set
         vm.expectEmit(false, false, false, true);
-        emit AutoPilotRouterSet(fakeAutoPoolRouter1);
-        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter1);
-        assertEq(fakeAutoPoolRouter1, address(_systemRegistry.autoPoolRouter()));
+        emit AutopilotRouterSet(fakeAutopoolRouter1);
+        _systemRegistry.setAutopilotRouter(fakeAutopoolRouter1);
+        assertEq(fakeAutopoolRouter1, address(_systemRegistry.autoPoolRouter()));
 
         // Second set
         vm.expectEmit(false, false, false, true);
-        emit AutoPilotRouterSet(fakeAutoPoolRouter2);
-        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter2);
-        assertEq(fakeAutoPoolRouter2, address(_systemRegistry.autoPoolRouter()));
+        emit AutopilotRouterSet(fakeAutopoolRouter2);
+        _systemRegistry.setAutopilotRouter(fakeAutopoolRouter2);
+        assertEq(fakeAutopoolRouter2, address(_systemRegistry.autoPoolRouter()));
     }
 
-    function test_SystemMismatch_setAutoPilotRouter() external {
-        address fakeAutoPoolRouter = vm.addr(4);
+    function test_SystemMismatch_setAutopilotRouter() external {
+        address fakeAutopoolRouter = vm.addr(4);
         address fakeRegistry = vm.addr(3);
 
         vm.mockCall(
-            fakeAutoPoolRouter,
+            fakeAutopoolRouter,
             abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector),
             abi.encode(fakeRegistry)
         );
         vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(_systemRegistry), fakeRegistry));
 
-        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter);
+        _systemRegistry.setAutopilotRouter(fakeAutopoolRouter);
     }
 
-    function test_InvalidContract_setAutoPilotRouter() external {
-        address fakeAutoPoolRouter = vm.addr(4);
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeAutoPoolRouter));
-        _systemRegistry.setAutoPilotRouter(fakeAutoPoolRouter);
+    function test_InvalidContract_setAutopilotRouter() external {
+        address fakeAutopoolRouter = vm.addr(4);
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeAutopoolRouter));
+        _systemRegistry.setAutopilotRouter(fakeAutopoolRouter);
 
         address emptyContract = address(new EmptyContract());
         vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
-        _systemRegistry.setAutoPilotRouter(emptyContract);
+        _systemRegistry.setAutopilotRouter(emptyContract);
     }
 
     /* ******************************** */
@@ -879,60 +879,60 @@ contract SystemRegistryTest is Test {
     }
 
     /* ******************************** */
-    /* AutoPool Vault Factory
+    /* Autopool Vault Factory
     /* ******************************** */
 
-    function test_OnlyOwner_setAutoPoolFactory() external {
-        address fakeAutoPoolFactory = vm.addr(4);
+    function test_OnlyOwner_setAutopoolFactory() external {
+        address fakeAutopoolFactory = vm.addr(4);
         vm.prank(vm.addr(1));
 
         vm.expectRevert("Ownable: caller is not the owner");
-        _systemRegistry.setAutoPoolFactory(bytes32("Test bytes"), fakeAutoPoolFactory);
+        _systemRegistry.setAutopoolFactory(bytes32("Test bytes"), fakeAutopoolFactory);
     }
 
-    function test_ZeroAddress_setAutoPoolFactory() external {
+    function test_ZeroAddress_setAutopoolFactory() external {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "factoryAddress"));
-        _systemRegistry.setAutoPoolFactory(bytes32("Test bytes"), address(0));
+        _systemRegistry.setAutopoolFactory(bytes32("Test bytes"), address(0));
     }
 
-    function test_ZeroBytes_setAutoPoolFactory() external {
+    function test_ZeroBytes_setAutopoolFactory() external {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "vaultType"));
-        _systemRegistry.setAutoPoolFactory(bytes32(0), vm.addr(4));
+        _systemRegistry.setAutopoolFactory(bytes32(0), vm.addr(4));
     }
 
-    function test_ProperAdd_setAutoPoolFactory() external {
-        bytes32 fakeAutoPoolFactoryBytes = bytes32("Fake AutoPool");
-        address fakeAutoPoolFactory = vm.addr(4);
-        mockSystemComponent(fakeAutoPoolFactory);
+    function test_ProperAdd_setAutopoolFactory() external {
+        bytes32 fakeAutopoolFactoryBytes = bytes32("Fake Autopool");
+        address fakeAutopoolFactory = vm.addr(4);
+        mockSystemComponent(fakeAutopoolFactory);
 
         vm.expectEmit(false, false, false, true);
-        emit AutoPoolFactorySet(fakeAutoPoolFactoryBytes, fakeAutoPoolFactory);
+        emit AutopoolFactorySet(fakeAutopoolFactoryBytes, fakeAutopoolFactory);
 
-        _systemRegistry.setAutoPoolFactory(fakeAutoPoolFactoryBytes, fakeAutoPoolFactory);
-        assertEq(address(_systemRegistry.getAutoPoolFactoryByType(fakeAutoPoolFactoryBytes)), fakeAutoPoolFactory);
+        _systemRegistry.setAutopoolFactory(fakeAutopoolFactoryBytes, fakeAutopoolFactory);
+        assertEq(address(_systemRegistry.getAutopoolFactoryByType(fakeAutopoolFactoryBytes)), fakeAutopoolFactory);
     }
 
-    function test_SystemMismatch_setAutoPoolFactory() external {
+    function test_SystemMismatch_setAutopoolFactory() external {
         address fakeRegistry = vm.addr(3);
-        address fakeAutoPoolFactory = vm.addr(4);
+        address fakeAutopoolFactory = vm.addr(4);
 
         vm.mockCall(
-            fakeAutoPoolFactory,
+            fakeAutopoolFactory,
             abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector),
             abi.encode(fakeRegistry)
         );
         vm.expectRevert(abi.encodeWithSelector(Errors.SystemMismatch.selector, address(_systemRegistry), fakeRegistry));
-        _systemRegistry.setAutoPoolFactory(bytes32("Test bytes"), fakeAutoPoolFactory);
+        _systemRegistry.setAutopoolFactory(bytes32("Test bytes"), fakeAutopoolFactory);
     }
 
-    function test_InvalidContract_setAutoPoolFactory() external {
+    function test_InvalidContract_setAutopoolFactory() external {
         address eoa = vm.addr(3);
         vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, eoa));
-        _systemRegistry.setAutoPoolFactory(bytes32("Test bytes"), eoa);
+        _systemRegistry.setAutopoolFactory(bytes32("Test bytes"), eoa);
 
         address emptyContract = address(new EmptyContract());
         vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
-        _systemRegistry.setAutoPoolFactory(bytes32("Test bytes"), emptyContract);
+        _systemRegistry.setAutopoolFactory(bytes32("Test bytes"), emptyContract);
     }
 
     /* ******************************** */

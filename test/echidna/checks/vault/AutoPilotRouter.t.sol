@@ -5,15 +5,15 @@ pragma solidity >=0.8.7;
 // solhint-disable func-name-mixedcase, no-console
 
 import { Test } from "forge-std/Test.sol";
-import { AutoPilotRouterUsage } from "test/echidna/fuzz/vault/router/AutoPilotRouterTests.sol";
+import { AutopilotRouterUsage } from "test/echidna/fuzz/vault/router/AutopilotRouterTests.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { IAutoPool } from "src/vault/AutoPoolETH.sol";
+import { IAutopool } from "src/vault/AutopoolETH.sol";
 import { Vm } from "forge-std/Vm.sol";
 
-contract UsageTest is AutoPilotRouterUsage {
+contract UsageTest is AutopilotRouterUsage {
     Vm private _vm;
 
-    constructor(Vm vm) AutoPilotRouterUsage() {
+    constructor(Vm vm) AutopilotRouterUsage() {
         _vm = vm;
     }
 
@@ -50,7 +50,7 @@ contract UsageTest is AutoPilotRouterUsage {
     }
 }
 
-contract AutoPoolETHTests is Test {
+contract AutopoolETHTests is Test {
     UsageTest internal usage;
 
     constructor() { }
@@ -71,13 +71,13 @@ contract AutoPoolETHTests is Test {
         usage.approveAssetsToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 0, "startShareBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0, "startShareBal");
 
         vm.startPrank(usage.user1());
         usage.mint(1, 10_000_000, 100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 10_000_000, "endShareBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 10_000_000, "endShareBal");
     }
 
     function test_MintMulticall() public {
@@ -87,7 +87,7 @@ contract AutoPoolETHTests is Test {
         usage.approveAssetsToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 0, "startShareBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0, "startShareBal");
 
         usage.queueMint(1, 10_000_000, 100e18);
 
@@ -95,7 +95,7 @@ contract AutoPoolETHTests is Test {
         usage.executeMulticall();
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 10_000_000, "endShareBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 10_000_000, "endShareBal");
     }
 
     function test_Deposit() public {
@@ -105,13 +105,13 @@ contract AutoPoolETHTests is Test {
         usage.approveAssetsToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 0, "startShareBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0, "startShareBal");
 
         vm.startPrank(usage.user1());
         usage.deposit(1, 100e18, 10_000_000);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 100e18, "endShareBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 100e18, "endShareBal");
     }
 
     function test_DepositMulticall() public {
@@ -121,7 +121,7 @@ contract AutoPoolETHTests is Test {
         usage.approveAssetsToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 0, "startShareBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0, "startShareBal");
 
         usage.queueDeposit(1, 100e18, 10_000_000);
 
@@ -129,7 +129,7 @@ contract AutoPoolETHTests is Test {
         usage.executeMulticall();
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 100e18, "endShareBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 100e18, "endShareBal");
     }
 
     function test_SwapToDeposit() public {
@@ -145,7 +145,7 @@ contract AutoPoolETHTests is Test {
         vm.stopPrank();
 
         // Verify starting shares & balances
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 0, "startShareBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0, "startShareBal");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "buyTokenStartBal");
         assertEq(IERC20(usage.weth()).balanceOf(usage.user1()), amount, "sellTokenStartBal");
 
@@ -155,7 +155,7 @@ contract AutoPoolETHTests is Test {
         vm.stopPrank();
 
         // Verify ending shares & balances
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), amount, "endShareBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), amount, "endShareBal");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "endBuyTokenBal");
         assertEq(IERC20(usage.weth()).balanceOf(usage.user1()), 0, "endSellTokenBal");
     }
@@ -173,7 +173,7 @@ contract AutoPoolETHTests is Test {
         vm.stopPrank();
 
         // Verify starting shares & balances
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 0, "startShareBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0, "startShareBal");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "buyTokenStartBal");
         assertEq(IERC20(usage.weth()).balanceOf(usage.user1()), amount, "sellTokenStartBal");
 
@@ -186,7 +186,7 @@ contract AutoPoolETHTests is Test {
         vm.stopPrank();
 
         // Verify ending shares & balances
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), amount, "endShareBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), amount, "endShareBal");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "endBuyTokenBal");
         assertEq(IERC20(usage.weth()).balanceOf(usage.user1()), 0, "endSellTokenBal");
     }
@@ -202,13 +202,13 @@ contract AutoPoolETHTests is Test {
         usage.deposit(1, 100e18, 10_000_000);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).allowance(usage.user1(), address(usage.router())), 0, "startAllowance");
+        assertEq(IAutopool(usage.pool()).allowance(usage.user1(), address(usage.router())), 0, "startAllowance");
 
         vm.startPrank(usage.user1());
         usage.permit(1, 1, 100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).allowance(usage.user1(), address(usage.router())), 100e18, "endAllowance");
+        assertEq(IAutopool(usage.pool()).allowance(usage.user1(), address(usage.router())), 100e18, "endAllowance");
 
         vm.startPrank(usage.user1());
         usage.withdraw(1, 1000, 100e18);
@@ -226,7 +226,7 @@ contract AutoPoolETHTests is Test {
         usage.deposit(1, 100e18, 10_000_000);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).allowance(usage.user1(), address(usage.router())), 0, "startAllowance");
+        assertEq(IAutopool(usage.pool()).allowance(usage.user1(), address(usage.router())), 0, "startAllowance");
 
         usage.queuePermit(1, 100e18);
 
@@ -234,7 +234,7 @@ contract AutoPoolETHTests is Test {
         usage.executeMulticall();
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).allowance(usage.user1(), address(usage.router())), 100e18, "endAllowance");
+        assertEq(IAutopool(usage.pool()).allowance(usage.user1(), address(usage.router())), 100e18, "endAllowance");
 
         vm.startPrank(usage.user1());
         usage.withdraw(1, 1000, 100e18);
@@ -270,7 +270,7 @@ contract AutoPoolETHTests is Test {
     }
 
     function test_ApproveSharesMulticall() public {
-        assertEq(IAutoPool(usage.pool()).allowance(address(usage.router()), usage.user1()), 0, "startAllowance");
+        assertEq(IAutopool(usage.pool()).allowance(address(usage.router()), usage.user1()), 0, "startAllowance");
 
         usage.queueApproveShare(1, 100e18);
 
@@ -278,7 +278,7 @@ contract AutoPoolETHTests is Test {
         usage.executeMulticall();
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).allowance(address(usage.router()), usage.user1()), 100e18, "endAllowance");
+        assertEq(IAutopool(usage.pool()).allowance(address(usage.router()), usage.user1()), 100e18, "endAllowance");
     }
 
     function test_PullTokenFromAsset() public {
@@ -361,16 +361,16 @@ contract AutoPoolETHTests is Test {
         vm.stopPrank();
 
         vm.startPrank(usage.user1());
-        IAutoPool(usage.pool()).approve(usage.router(), 100e18);
+        IAutopool(usage.pool()).approve(usage.router(), 100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 0, "startBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 0, "startBal");
 
         vm.startPrank(usage.user1());
         usage.pullTokenShare(100e18, 2);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 100e18, "endBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 100e18, "endBal");
     }
 
     function test_PullTokenShareMulticall() public {
@@ -385,10 +385,10 @@ contract AutoPoolETHTests is Test {
         vm.stopPrank();
 
         vm.startPrank(usage.user1());
-        IAutoPool(usage.pool()).approve(usage.router(), 100e18);
+        IAutopool(usage.pool()).approve(usage.router(), 100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 0, "startBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 0, "startBal");
 
         usage.queuePullTokenShare(100e18, 2);
 
@@ -396,7 +396,7 @@ contract AutoPoolETHTests is Test {
         usage.executeMulticall();
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 100e18, "endBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 100e18, "endBal");
     }
 
     function test_PullTokenAssetRouter() public {
@@ -445,16 +445,16 @@ contract AutoPoolETHTests is Test {
         vm.stopPrank();
 
         vm.startPrank(usage.user1());
-        IAutoPool(usage.pool()).approve(usage.router(), 100e18);
+        IAutopool(usage.pool()).approve(usage.router(), 100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.router()), 0, "startBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.router()), 0, "startBal");
 
         vm.startPrank(usage.user1());
         usage.pullTokenShareToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.router()), 100e18, "endBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.router()), 100e18, "endBal");
     }
 
     function test_PullTokenShareRouterMulticall() public {
@@ -469,10 +469,10 @@ contract AutoPoolETHTests is Test {
         vm.stopPrank();
 
         vm.startPrank(usage.user1());
-        IAutoPool(usage.pool()).approve(usage.router(), 100e18);
+        IAutopool(usage.pool()).approve(usage.router(), 100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.router()), 0, "startBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.router()), 0, "startBal");
 
         usage.queuePullTokenShareToRouter(100e18);
 
@@ -480,7 +480,7 @@ contract AutoPoolETHTests is Test {
         usage.executeMulticall();
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.router()), 100e18, "endBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.router()), 100e18, "endBal");
     }
 
     function test_SweepTokenAsset() public {
@@ -537,20 +537,20 @@ contract AutoPoolETHTests is Test {
         vm.stopPrank();
 
         vm.startPrank(usage.user1());
-        IAutoPool(usage.pool()).approve(usage.router(), 100e18);
+        IAutopool(usage.pool()).approve(usage.router(), 100e18);
         vm.stopPrank();
 
         vm.startPrank(usage.user1());
         usage.pullTokenShareToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 0, "startBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 0, "startBal");
 
         vm.startPrank(usage.user1());
         usage.sweepTokenShare(1e18, 2);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 100e18, "endBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 100e18, "endBal");
     }
 
     function test_SweepTokenShareMulticall() public {
@@ -565,14 +565,14 @@ contract AutoPoolETHTests is Test {
         vm.stopPrank();
 
         vm.startPrank(usage.user1());
-        IAutoPool(usage.pool()).approve(usage.router(), 100e18);
+        IAutopool(usage.pool()).approve(usage.router(), 100e18);
         vm.stopPrank();
 
         vm.startPrank(usage.user1());
         usage.pullTokenShareToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 0, "startBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 0, "startBal");
 
         usage.queueSweepTokenShare(1e18, 2);
 
@@ -580,7 +580,7 @@ contract AutoPoolETHTests is Test {
         usage.executeMulticall();
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 100e18, "endBal");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 100e18, "endBal");
     }
 
     function test_Redeem() public {
@@ -598,14 +598,14 @@ contract AutoPoolETHTests is Test {
         usage.approveSharesToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "startBalAsset");
 
         vm.startPrank(usage.user1());
         usage.redeem(1, 100e18, 1);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 0e18, "endBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0e18, "endBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 100e18, "endBalAsset");
     }
 
@@ -624,7 +624,7 @@ contract AutoPoolETHTests is Test {
         usage.approveSharesToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "startBalAsset");
 
         usage.queueRedeem(1, 100e18, 1, false);
@@ -633,7 +633,7 @@ contract AutoPoolETHTests is Test {
         usage.executeMulticall();
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 0e18, "endBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0e18, "endBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 100e18, "endBalAsset");
     }
 
@@ -652,14 +652,14 @@ contract AutoPoolETHTests is Test {
         usage.approveSharesToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "startBalAsset");
 
         vm.startPrank(usage.user1());
         usage.withdraw(1, 100e18, 100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 0e18, "endBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0e18, "endBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 100e18, "endBalAsset");
     }
 
@@ -678,7 +678,7 @@ contract AutoPoolETHTests is Test {
         usage.approveSharesToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "startBalAsset");
 
         usage.queueWithdraw(1, 100e18, 100e18, false);
@@ -687,7 +687,7 @@ contract AutoPoolETHTests is Test {
         usage.executeMulticall();
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 0e18, "endBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0e18, "endBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 100e18, "endBalAsset");
     }
 
@@ -698,14 +698,14 @@ contract AutoPoolETHTests is Test {
         usage.approveAssetsToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 0, "startBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0, "startBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 100e18, "startBalAsset");
 
         vm.startPrank(usage.user1());
         usage.depositMax(1, 10_000_000);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 100e18, "endBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 100e18, "endBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "endBalAsset");
     }
 
@@ -716,7 +716,7 @@ contract AutoPoolETHTests is Test {
         usage.approveAssetsToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 0, "startBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0, "startBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 100e18, "startBalAsset");
 
         usage.queueDepositMax(1, 10_000_000);
@@ -725,7 +725,7 @@ contract AutoPoolETHTests is Test {
         usage.executeMulticall();
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 100e18, "endBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 100e18, "endBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "endBalAsset");
     }
 
@@ -744,14 +744,14 @@ contract AutoPoolETHTests is Test {
         usage.approveSharesToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "startBalAsset");
 
         vm.startPrank(usage.user1());
         usage.redeemMax(1, 10e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 0, "endBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0, "endBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 100e18, "endBalAsset");
     }
 
@@ -770,7 +770,7 @@ contract AutoPoolETHTests is Test {
         usage.approveSharesToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "startBalAsset");
 
         usage.queueRedeemMax(1, 10e18);
@@ -779,7 +779,7 @@ contract AutoPoolETHTests is Test {
         usage.executeMulticall();
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 0, "endBalShare");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0, "endBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 100e18, "endBalAsset");
     }
 
@@ -798,15 +798,15 @@ contract AutoPoolETHTests is Test {
         usage.approveSharesToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare1");
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 0e18, "startBalShare2");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare1");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 0e18, "startBalShare2");
 
         vm.startPrank(usage.user1());
         usage.redeemToDeposit(2, 10e18, 1e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 90e18, "endBalShare1");
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 10e18, "endBalShare2");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 90e18, "endBalShare1");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 10e18, "endBalShare2");
     }
 
     function test_RedeemToDepositMulticall() public {
@@ -824,8 +824,8 @@ contract AutoPoolETHTests is Test {
         usage.approveSharesToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare1");
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 0e18, "startBalShare2");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare1");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 0e18, "startBalShare2");
 
         usage.queueRedeemToDeposit(2, 10e18, 1e18);
 
@@ -833,8 +833,8 @@ contract AutoPoolETHTests is Test {
         usage.executeMulticall();
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 90e18, "endBalShare1");
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 10e18, "endBalShare2");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 90e18, "endBalShare1");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 10e18, "endBalShare2");
     }
 
     function test_WithdrawToDeposit() public {
@@ -852,15 +852,15 @@ contract AutoPoolETHTests is Test {
         usage.approveSharesToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare1");
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 0e18, "startBalShare2");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare1");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 0e18, "startBalShare2");
 
         vm.startPrank(usage.user1());
         usage.withdrawToDeposit(2, 10e18, 100e18, 0.1e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 90e18, "endBalShare1");
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 10e18, "endBalShare2");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 90e18, "endBalShare1");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 10e18, "endBalShare2");
     }
 
     function test_WithdrawToDepositMulticall() public {
@@ -878,8 +878,8 @@ contract AutoPoolETHTests is Test {
         usage.approveSharesToRouter(100e18);
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare1");
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 0e18, "startBalShare2");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 100e18, "startBalShare1");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 0e18, "startBalShare2");
 
         usage.queueWithdrawToDeposit(2, 10e18, 100e18, 0.1e18);
 
@@ -887,7 +887,7 @@ contract AutoPoolETHTests is Test {
         usage.executeMulticall();
         vm.stopPrank();
 
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user1()), 90e18, "endBalShare1");
-        assertEq(IAutoPool(usage.pool()).balanceOf(usage.user2()), 10e18, "endBalShare2");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 90e18, "endBalShare1");
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user2()), 10e18, "endBalShare2");
     }
 }

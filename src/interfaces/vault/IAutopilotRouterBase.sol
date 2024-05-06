@@ -2,13 +2,13 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity >=0.8.7;
 
-import { IAutoPool } from "src/interfaces/vault/IAutoPool.sol";
+import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 /**
- * @title AutoPoolETH Router Base Interface
- * @notice A canonical router between AutoPoolETHs
+ * @title AutopoolETH Router Base Interface
+ * @notice A canonical router between AutopoolETHs
  *
  * The base router is a multicall style router inspired by Uniswap v3 with built-in features for permit,
  * WETH9 wrap/unwrap, and ERC20 token pulling/sweeping/approving. It includes methods for the four mutable
@@ -21,7 +21,7 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
  * The router makes no special considerations for unique ERC20 implementations such as fee on transfer.
  * There are no built in protections for unexpected behavior beyond enforcing the minSharesOut is received.
  */
-interface IAutoPilotRouterBase {
+interface IAutopilotRouterBase {
     /// @notice thrown when amount of assets received is below the min set by caller
     error MinAmountError();
 
@@ -36,7 +36,7 @@ interface IAutoPilotRouterBase {
 
     /**
      * @notice mint `shares` from an ERC4626 vault.
-     * @param vault The AutoPoolETH to mint shares from.
+     * @param vault The AutopoolETH to mint shares from.
      * @param to The destination of ownership shares.
      * @param shares The amount of shares to mint from `vault`.
      * @param maxAmountIn The max amount of assets used to mint.
@@ -44,7 +44,7 @@ interface IAutoPilotRouterBase {
      * @dev throws MaxAmountError
      */
     function mint(
-        IAutoPool vault,
+        IAutopool vault,
         address to,
         uint256 shares,
         uint256 maxAmountIn
@@ -52,7 +52,7 @@ interface IAutoPilotRouterBase {
 
     /**
      * @notice deposit `amount` to an ERC4626 vault.
-     * @param vault The AutoPoolETH to deposit assets to.
+     * @param vault The AutopoolETH to deposit assets to.
      * @param to The destination of ownership shares.
      * @param amount The amount of assets to deposit to `vault`.
      * @param minSharesOut The min amount of `vault` shares received by `to`.
@@ -60,7 +60,7 @@ interface IAutoPilotRouterBase {
      * @dev throws MinSharesError
      */
     function deposit(
-        IAutoPool vault,
+        IAutopool vault,
         address to,
         uint256 amount,
         uint256 minSharesOut
@@ -68,7 +68,7 @@ interface IAutoPilotRouterBase {
 
     /**
      * @notice withdraw `amount` from an ERC4626 vault.
-     * @param vault The AutoPoolETH to withdraw assets from.
+     * @param vault The AutopoolETH to withdraw assets from.
      * @param to The destination of assets.
      * @param amount The amount of assets to withdraw from vault.
      * @param maxSharesOut The max amount of shares burned for assets requested.
@@ -76,15 +76,15 @@ interface IAutoPilotRouterBase {
      * @dev throws MaxSharesError
      */
     function withdraw(
-        IAutoPool vault,
+        IAutopool vault,
         address to,
         uint256 amount,
         uint256 maxSharesOut
     ) external payable returns (uint256 sharesOut);
 
     /**
-     * @notice redeem `shares` shares from a AutoPoolETH
-     * @param vault The AutoPoolETH to redeem shares from.
+     * @notice redeem `shares` shares from a AutopoolETH
+     * @param vault The AutopoolETH to redeem shares from.
      * @param to The destination of assets.
      * @param shares The amount of shares to redeem from vault.
      * @param minAmountOut The min amount of assets received by `to`.
@@ -92,33 +92,33 @@ interface IAutoPilotRouterBase {
      * @dev throws MinAmountError
      */
     function redeem(
-        IAutoPool vault,
+        IAutopool vault,
         address to,
         uint256 shares,
         uint256 minAmountOut
     ) external payable returns (uint256 amountOut);
 
     /// @notice Stakes vault token to corresponding rewarder.
-    /// @param vault IERC20 instance of an AutoPool to stake to.
+    /// @param vault IERC20 instance of an Autopool to stake to.
     /// @param maxAmount Maximum amount for user to stake.  Amount > balanceOf(user) will stake all present tokens.
     /// @return staked Returns total amount staked.
     function stakeVaultToken(IERC20 vault, uint256 maxAmount) external returns (uint256 staked);
 
     /// @notice Unstakes vault token from corresponding rewarder.
-    /// @param vault IAutoPool instance of the vault token to withdraw.
+    /// @param vault IAutopool instance of the vault token to withdraw.
     /// @param rewarder Rewarder to withdraw from.
     /// @param maxAmount Amount of vault token to withdraw Amount > balanceOf(user) will withdraw all owned tokens.
     /// @param claim Claiming rewards or not on unstaking.
     /// @return withdrawn Amount of vault token withdrawn.
     function withdrawVaultToken(
-        IAutoPool vault,
+        IAutopool vault,
         IMainRewarder rewarder,
         uint256 maxAmount,
         bool claim
     ) external returns (uint256 withdrawn);
 
     /// @notice Claims rewards on user stake of vault token.
-    /// @param vault IAutoPool instance of vault token to claim rewards for.
+    /// @param vault IAutopool instance of vault token to claim rewards for.
     /// @param rewarder Rewarder to claim rewards from.
-    function claimAutoPoolRewards(IAutoPool vault, IMainRewarder rewarder) external;
+    function claimAutopoolRewards(IAutopool vault, IMainRewarder rewarder) external;
 }

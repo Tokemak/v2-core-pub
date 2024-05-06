@@ -5,10 +5,10 @@ pragma solidity >=0.8.7;
 // solhint-disable func-name-mixedcase,max-states-count
 
 import { Vm } from "forge-std/Vm.sol";
-import { IAutoPoolStrategy } from "src/interfaces/strategy/IAutoPoolStrategy.sol";
+import { IAutopoolStrategy } from "src/interfaces/strategy/IAutopoolStrategy.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 
-contract AutoPoolStrategyMocks {
+contract AutopoolStrategyMocks {
     Vm private vm;
 
     constructor(Vm _vm) {
@@ -29,7 +29,7 @@ contract AutoPoolStrategyMocks {
 
     function _mockVerifyRebalance(address strategy, bool success, string memory message) internal {
         vm.mockCall(
-            strategy, abi.encodeWithSelector(IAutoPoolStrategy.verifyRebalance.selector), abi.encode(success, message)
+            strategy, abi.encodeWithSelector(IAutopoolStrategy.verifyRebalance.selector), abi.encode(success, message)
         );
     }
 
@@ -42,18 +42,18 @@ contract AutoPoolStrategyMocks {
     ) internal {
         vm.mockCall(
             strategy,
-            abi.encodeWithSelector(IAutoPoolStrategy.verifyRebalance.selector, params, stats),
+            abi.encodeWithSelector(IAutopoolStrategy.verifyRebalance.selector, params, stats),
             abi.encode(success, message)
         );
     }
 
     function _mockNavUpdate(address strategy) internal {
-        vm.mockCall(strategy, abi.encodeWithSelector(IAutoPoolStrategy.navUpdate.selector), abi.encode(""));
+        vm.mockCall(strategy, abi.encodeWithSelector(IAutopoolStrategy.navUpdate.selector), abi.encode(""));
     }
 
     function _mockRebalanceSuccessfullyExecuted(address strategy) internal {
         vm.mockCall(
-            strategy, abi.encodeWithSelector(IAutoPoolStrategy.rebalanceSuccessfullyExecuted.selector), abi.encode("")
+            strategy, abi.encodeWithSelector(IAutopoolStrategy.rebalanceSuccessfullyExecuted.selector), abi.encode("")
         );
     }
 
@@ -61,7 +61,7 @@ contract AutoPoolStrategyMocks {
         IStrategy.SummaryStats memory ret;
 
         vm.mockCall(
-            strategy, abi.encodeWithSelector(IAutoPoolStrategy.getRebalanceOutSummaryStats.selector), abi.encode(ret)
+            strategy, abi.encodeWithSelector(IAutopoolStrategy.getRebalanceOutSummaryStats.selector), abi.encode(ret)
         );
     }
 }

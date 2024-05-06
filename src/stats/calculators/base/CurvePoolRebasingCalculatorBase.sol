@@ -185,7 +185,7 @@ abstract contract CurvePoolRebasingCalculatorBase is IDexLSTStats, BaseStatsCalc
         // subtracting base yield is an approximation b/c it uses the point-in-time reserve balances to estimate the
         // yield earned from the rebasing token. An attacker could shift the balance of the pool, causing us to believe
         // the fee apr is higher or lower. For a number of reasons, FeeApr has a low weight in the rebalancing logic.
-        // AutoPool strategies understand that this signal can be noisy and correct accordingly A price check against an
+        // Autopool strategies understand that this signal can be noisy and correct accordingly A price check against an
         // oracle is an option to further mitigate the issue
         uint256 rebasingTokenEth = 0;
         uint256 totalPoolEth = 0;

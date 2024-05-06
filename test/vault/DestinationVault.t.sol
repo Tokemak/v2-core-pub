@@ -11,7 +11,7 @@ import { Test } from "forge-std/Test.sol";
 import { IDestinationVault, DestinationVault } from "src/vault/DestinationVault.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
-import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
+import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
@@ -29,7 +29,7 @@ contract DestinationVaultBaseTests is Test {
     SystemRegistry private systemRegistry;
     IAccessController private accessController;
     IMainRewarder private mainRewarder;
-    IAutoPoolRegistry private autoPoolRegistry;
+    IAutopoolRegistry private autoPoolRegistry;
 
     TestERC20 private baseAsset;
     TestERC20 private underlyer;
@@ -52,7 +52,7 @@ contract DestinationVaultBaseTests is Test {
         testUser2 = vm.addr(2);
         pool = vm.addr(234_234);
         mainRewarder = IMainRewarder(vm.addr(3));
-        autoPoolRegistry = IAutoPoolRegistry(vm.addr(3));
+        autoPoolRegistry = IAutopoolRegistry(vm.addr(3));
 
         _weth = address(new TestERC20("weth", "weth"));
         vm.label(_weth, "weth");
@@ -62,7 +62,7 @@ contract DestinationVaultBaseTests is Test {
 
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
-        systemRegistry.setAutoPoolRegistry(address(autoPoolRegistry));
+        systemRegistry.setAutopoolRegistry(address(autoPoolRegistry));
 
         accessController.grantRole(Roles.DESTINATION_VAULT_MANAGER, address(this));
 
@@ -152,20 +152,20 @@ contract DestinationVaultBaseTests is Test {
         assertEq(decimals, underlyer.decimals());
     }
 
-    function testOnlyAutoPoolVaultCanDepositUnderlying() public {
-        mockIsAutoPoolVault(address(this), false);
+    function testOnlyAutopoolVaultCanDepositUnderlying() public {
+        mockIsAutopoolVault(address(this), false);
         underlyer.approve(address(testVault), 10);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         testVault.depositUnderlying(10);
 
-        mockIsAutoPoolVault(address(this), true);
+        mockIsAutopoolVault(address(this), true);
 
         testVault.depositUnderlying(10);
     }
 
     function testShutdownOnlyAccessibleByOwner() public {
-        mockIsAutoPoolVault(address(this), false);
+        mockIsAutopoolVault(address(this), false);
         underlyer.approve(address(testVault), 10);
 
         address caller = address(5);
@@ -204,9 +204,9 @@ contract DestinationVaultBaseTests is Test {
     }
 
     function testCannotDepositWhenShutdown() public {
-        mockIsAutoPoolVault(address(this), false);
+        mockIsAutopoolVault(address(this), false);
         underlyer.approve(address(testVault), 10);
-        mockIsAutoPoolVault(address(this), true);
+        mockIsAutopoolVault(address(this), true);
 
         testVault.shutdown(IDestinationVault.VaultShutdownStatus.Deprecated);
 
@@ -218,7 +218,7 @@ contract DestinationVaultBaseTests is Test {
         uint256 depositAmount = 10;
         uint256 originalBalance = testVault.balanceOf(address(this));
 
-        mockIsAutoPoolVault(address(this), true);
+        mockIsAutopoolVault(address(this), true);
         underlyer.approve(address(testVault), depositAmount);
         uint256 shares = testVault.depositUnderlying(depositAmount);
 
@@ -232,7 +232,7 @@ contract DestinationVaultBaseTests is Test {
         uint256 depositAmount = 10;
         uint256 originalBalance = underlyer.balanceOf(address(this));
 
-        mockIsAutoPoolVault(address(this), true);
+        mockIsAutopoolVault(address(this), true);
         underlyer.approve(address(testVault), depositAmount);
         testVault.depositUnderlying(depositAmount);
 
@@ -241,33 +241,33 @@ contract DestinationVaultBaseTests is Test {
         assertEq(originalBalance - afterBalance, depositAmount);
     }
 
-    function testOnlyAutoPoolVaultCanWithdrawUnderlying() public {
+    function testOnlyAutopoolVaultCanWithdrawUnderlying() public {
         // Deposit
         uint256 depositAmount = 10;
-        mockIsAutoPoolVault(address(this), true);
+        mockIsAutopoolVault(address(this), true);
         underlyer.approve(address(testVault), depositAmount);
         testVault.depositUnderlying(depositAmount);
 
-        // No Longer AutoPool
-        mockIsAutoPoolVault(address(this), false);
+        // No Longer Autopool
+        mockIsAutopoolVault(address(this), false);
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         testVault.withdrawUnderlying(10, address(this));
 
-        // AutoPool again
-        mockIsAutoPoolVault(address(this), true);
+        // Autopool again
+        mockIsAutopoolVault(address(this), true);
         testVault.withdrawUnderlying(10, address(this));
     }
 
     function testCanWithdrawUnderlyingWhenShutdown() public {
         // Deposit
         uint256 depositAmount = 10;
-        mockIsAutoPoolVault(address(this), true);
+        mockIsAutopoolVault(address(this), true);
         underlyer.approve(address(testVault), depositAmount);
         testVault.depositUnderlying(depositAmount);
         testVault.shutdown(IDestinationVault.VaultShutdownStatus.Deprecated);
 
-        // AutoPool again
-        mockIsAutoPoolVault(address(this), true);
+        // Autopool again
+        mockIsAutopoolVault(address(this), true);
         testVault.withdrawUnderlying(10, address(this));
     }
 
@@ -277,7 +277,7 @@ contract DestinationVaultBaseTests is Test {
 
         // Deposit
         uint256 depositAmount = 10;
-        mockIsAutoPoolVault(address(this), true);
+        mockIsAutopoolVault(address(this), true);
         underlyer.approve(address(testVault), depositAmount);
         testVault.depositUnderlying(depositAmount);
         uint256 beforeVaultShareBalance = testVault.balanceOf(address(this));
@@ -438,10 +438,10 @@ contract DestinationVaultBaseTests is Test {
         );
     }
 
-    function mockIsAutoPoolVault(address addr, bool isVault) internal {
+    function mockIsAutopoolVault(address addr, bool isVault) internal {
         vm.mockCall(
             address(autoPoolRegistry),
-            abi.encodeWithSelector(IAutoPoolRegistry.isVault.selector, addr),
+            abi.encodeWithSelector(IAutopoolRegistry.isVault.selector, addr),
             abi.encode(isVault)
         );
     }

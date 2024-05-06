@@ -7,9 +7,9 @@ pragma solidity 0.8.17;
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
-import { AutoPilotRouter } from "src/vault/AutoPilotRouter.sol";
-import { IAutoPool } from "src/vault/AutoPoolETH.sol";
-import { ISystemRegistry } from "src/vault/AutoPilotRouterBase.sol";
+import { AutopilotRouter } from "src/vault/AutopilotRouter.sol";
+import { IAutopool } from "src/vault/AutopoolETH.sol";
+import { ISystemRegistry } from "src/vault/AutopilotRouterBase.sol";
 import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { AsyncSwapperRegistry } from "src/liquidation/AsyncSwapperRegistry.sol";
 import { hevm } from "test/echidna/fuzz/utils/Hevm.sol";
@@ -18,10 +18,10 @@ import { PropertiesAsserts } from "crytic/properties/contracts/util/PropertiesHe
 import { ERC2612 } from "test/utils/ERC2612.sol";
 import { TestWETH9, TestERC20 } from "test/mocks/TestWETH9.sol";
 
-contract TestRouter is AutoPilotRouter {
+contract TestRouter is AutopilotRouter {
     using SafeERC20 for IERC20;
 
-    constructor(ISystemRegistry _systemRegistry) AutoPilotRouter(_systemRegistry) { }
+    constructor(ISystemRegistry _systemRegistry) AutopilotRouter(_systemRegistry) { }
 
     /// @notice Intentionally vulnerable. Will filter out for normal runs but used to test checks are working
     function pullTokenFrom(IERC20 token, uint256 amount, address from, address recipient) public payable {
@@ -40,7 +40,7 @@ contract SwapperMock is BaseAsyncSwapper {
     }
 }
 
-abstract contract AutoPilotRouterUsage is BasePoolSetup, PropertiesAsserts {
+abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
     TestERC20 internal _vaultAsset;
     TestRouter internal autoPoolRouter;
     SwapperMock internal swapperMock;
@@ -154,7 +154,7 @@ abstract contract AutoPilotRouterUsage is BasePoolSetup, PropertiesAsserts {
 
     function mint(uint256 toSeed, uint256 shares, uint256 maxAmountIn) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
-        IERC20 baseAsset = IERC20(IAutoPool(_pool).asset());
+        IERC20 baseAsset = IERC20(IAutopool(_pool).asset());
 
         _startPrank(msg.sender);
         autoPoolRouter.pullToken(baseAsset, shares, address(autoPoolRouter));
@@ -165,7 +165,7 @@ abstract contract AutoPilotRouterUsage is BasePoolSetup, PropertiesAsserts {
 
     function queueMint(uint256 toSeed, uint256 shares, uint256 maxAmountIn) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
-        IERC20 baseAsset = IERC20(IAutoPool(_pool).asset());
+        IERC20 baseAsset = IERC20(IAutopool(_pool).asset());
         queuedCalls.push(abi.encodeCall(autoPoolRouter.pullToken, (baseAsset, shares, address(autoPoolRouter))));
         queuedCalls.push(abi.encodeCall(autoPoolRouter.approve, (baseAsset, address(_pool), shares)));
         queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.mint.selector, _pool, to, shares, maxAmountIn));
@@ -174,7 +174,7 @@ abstract contract AutoPilotRouterUsage is BasePoolSetup, PropertiesAsserts {
     // Deposit
     function deposit(uint256 toSeed, uint256 amount, uint256 minSharesOut) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
-        IERC20 baseAsset = IERC20(IAutoPool(_pool).asset());
+        IERC20 baseAsset = IERC20(IAutopool(_pool).asset());
 
         _startPrank(msg.sender);
         autoPoolRouter.pullToken(baseAsset, amount, address(autoPoolRouter));
@@ -185,7 +185,7 @@ abstract contract AutoPilotRouterUsage is BasePoolSetup, PropertiesAsserts {
 
     function queueDeposit(uint256 toSeed, uint256 amount, uint256 minSharesOut) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
-        IERC20 baseAsset = IERC20(IAutoPool(_pool).asset());
+        IERC20 baseAsset = IERC20(IAutopool(_pool).asset());
         queuedCalls.push(abi.encodeCall(autoPoolRouter.pullToken, (baseAsset, amount, address(autoPoolRouter))));
         queuedCalls.push(abi.encodeCall(autoPoolRouter.approve, (baseAsset, address(_pool), amount)));
         queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.deposit.selector, _pool, to, amount, minSharesOut));
@@ -523,8 +523,8 @@ abstract contract AutoPilotRouterUsage is BasePoolSetup, PropertiesAsserts {
 }
 
 // Echidna test
-contract AutoPilotRouterTest is AutoPilotRouterUsage {
-    constructor() AutoPilotRouterUsage() { }
+contract AutopilotRouterTest is AutopilotRouterUsage {
+    constructor() AutopilotRouterUsage() { }
 
     // Check that User 1 balances didn't change
     function echidna_only_user_initiated_tx_can_decrease_users_balances_through_router() public view returns (bool) {

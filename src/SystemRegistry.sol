@@ -24,10 +24,10 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
-import { IAutoPilotRouter } from "src/interfaces/vault/IAutoPilotRouter.sol";
-import { IAutoPoolFactory } from "src/interfaces/vault/IAutoPoolFactory.sol";
+import { IAutopilotRouter } from "src/interfaces/vault/IAutopilotRouter.sol";
+import { IAutopoolFactory } from "src/interfaces/vault/IAutopoolFactory.sol";
 import { ISystemSecurity } from "src/interfaces/security/ISystemSecurity.sol";
-import { IAutoPoolRegistry } from "src/interfaces/vault/IAutoPoolRegistry.sol";
+import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
@@ -62,18 +62,18 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     /// =====================================================
 
     IAccToke private _accToke;
-    IAutoPoolRegistry private _autoPoolRegistry;
+    IAutopoolRegistry private _autoPoolRegistry;
     IDestinationVaultRegistry private _destinationVaultRegistry;
     IAccessController private _accessController;
     IDestinationRegistry private _destinationTemplateRegistry;
-    IAutoPilotRouter private _autoPoolRouter;
+    IAutopilotRouter private _autoPoolRouter;
     IRootPriceOracle private _rootPriceOracle;
     IAsyncSwapperRegistry private _asyncSwapperRegistry;
     ISwapRouter private _swapRouter;
     ICurveResolver private _curveResolver;
     IIncentivesPricingStats private _incentivePricingStats;
     ISystemSecurity private _systemSecurity;
-    mapping(bytes32 => IAutoPoolFactory) private _autoPoolFactoryByType;
+    mapping(bytes32 => IAutopoolFactory) private _autoPoolFactoryByType;
     EnumerableSet.Bytes32Set private _autoPoolFactoryTypes;
     IStatsCalculatorRegistry private _statsCalculatorRegistry;
     EnumerableSet.AddressSet private _rewardTokens;
@@ -84,13 +84,13 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     /// =====================================================
 
     event AccTokeSet(address newAddress);
-    event AutoPoolRegistrySet(address newAddress);
+    event AutopoolRegistrySet(address newAddress);
     event DestinationVaultRegistrySet(address newAddress);
     event AccessControllerSet(address newAddress);
     event DestinationTemplateRegistrySet(address newAddress);
-    event AutoPilotRouterSet(address newAddress);
-    event AutoPoolFactorySet(bytes32 vaultType, address factoryAddress);
-    event AutoPoolFactoryRemoved(bytes32 vaultType, address factoryAddress);
+    event AutopilotRouterSet(address newAddress);
+    event AutopoolFactorySet(bytes32 vaultType, address factoryAddress);
+    event AutopoolFactoryRemoved(bytes32 vaultType, address factoryAddress);
     event StatsCalculatorRegistrySet(address newAddress);
     event RootPriceOracleSet(address rootPriceOracle);
     event AsyncSwapperRegistrySet(address newAddress);
@@ -141,36 +141,36 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
         _verifySystemsAgree(address(newAccToke));
     }
 
-    /// @notice Set the AutoPoolRegistry for this instance of the system
+    /// @notice Set the AutopoolRegistry for this instance of the system
     /// @dev Should only be able to set this value one time
     /// @param registry Address of the registry
-    function setAutoPoolRegistry(address registry) external onlyOwner {
+    function setAutopoolRegistry(address registry) external onlyOwner {
         Errors.verifyNotZero(registry, "autoPoolRegistry");
 
         if (address(_autoPoolRegistry) != address(0)) {
             revert Errors.AlreadySet("autoPoolRegistry");
         }
 
-        emit AutoPoolRegistrySet(registry);
+        emit AutopoolRegistrySet(registry);
 
-        _autoPoolRegistry = IAutoPoolRegistry(registry);
+        _autoPoolRegistry = IAutopoolRegistry(registry);
 
         _verifySystemsAgree(registry);
     }
 
-    /// @notice Set the AutoPilotRouter for this instance of the system
+    /// @notice Set the AutopilotRouter for this instance of the system
     /// @dev allows setting multiple times
-    /// @param router Address of the AutoPilotRouter
-    function setAutoPilotRouter(address router) external onlyOwner {
+    /// @param router Address of the AutopilotRouter
+    function setAutopilotRouter(address router) external onlyOwner {
         Errors.verifyNotZero(router, "autoPoolRouter");
 
         if (address(_autoPoolRouter) == router) {
             revert DuplicateSet(router);
         }
 
-        emit AutoPilotRouterSet(router);
+        emit AutopilotRouterSet(router);
 
-        _autoPoolRouter = IAutoPilotRouter(router);
+        _autoPoolRouter = IAutopilotRouter(router);
 
         _verifySystemsAgree(router);
     }
@@ -353,9 +353,9 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
         emit RewardTokenRemoved(rewardToken);
     }
 
-    /// @notice Configure an AutoPool factory for type
-    /// @param vaultType Type of AutoPool to configure
-    function setAutoPoolFactory(bytes32 vaultType, address factoryAddress) external onlyOwner {
+    /// @notice Configure an Autopool factory for type
+    /// @param vaultType Type of Autopool to configure
+    function setAutopoolFactory(bytes32 vaultType, address factoryAddress) external onlyOwner {
         Errors.verifyNotZero(factoryAddress, "factoryAddress");
         Errors.verifyNotZero(vaultType, "vaultType");
 
@@ -363,16 +363,16 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
         // slither-disable-next-line unused-return
         _autoPoolFactoryTypes.add(vaultType);
 
-        _autoPoolFactoryByType[vaultType] = IAutoPoolFactory(factoryAddress);
+        _autoPoolFactoryByType[vaultType] = IAutopoolFactory(factoryAddress);
 
-        emit AutoPoolFactorySet(vaultType, factoryAddress);
+        emit AutopoolFactorySet(vaultType, factoryAddress);
 
         _verifySystemsAgree(factoryAddress);
     }
 
-    /// @notice Remove a previously configured AutoPool factory
-    /// @param vaultType AutoPool type to remove the factory for
-    function removeAutoPoolFactory(bytes32 vaultType) external onlyOwner {
+    /// @notice Remove a previously configured Autopool factory
+    /// @param vaultType Autopool type to remove the factory for
+    function removeAutopoolFactory(bytes32 vaultType) external onlyOwner {
         Errors.verifyNotZero(vaultType, "vaultType");
         address factoryAddress = address(_autoPoolFactoryByType[vaultType]);
 
@@ -383,7 +383,7 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
 
         delete _autoPoolFactoryByType[vaultType];
 
-        emit AutoPoolFactoryRemoved(vaultType, factoryAddress);
+        emit AutopoolFactoryRemoved(vaultType, factoryAddress);
     }
 
     /// @notice Set the System Security instance for this system
@@ -426,7 +426,7 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     }
 
     /// @inheritdoc ISystemRegistry
-    function autoPoolRegistry() external view returns (IAutoPoolRegistry) {
+    function autoPoolRegistry() external view returns (IAutopoolRegistry) {
         return _autoPoolRegistry;
     }
 
@@ -446,12 +446,12 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     }
 
     /// @inheritdoc ISystemRegistry
-    function autoPoolRouter() external view returns (IAutoPilotRouter router) {
+    function autoPoolRouter() external view returns (IAutopilotRouter router) {
         return _autoPoolRouter;
     }
 
     /// @inheritdoc ISystemRegistry
-    function getAutoPoolFactoryByType(bytes32 vaultType) external view returns (IAutoPoolFactory vaultFactory) {
+    function getAutopoolFactoryByType(bytes32 vaultType) external view returns (IAutopoolFactory vaultFactory) {
         if (!_autoPoolFactoryTypes.contains(vaultType)) {
             revert Errors.ItemNotFound();
         }

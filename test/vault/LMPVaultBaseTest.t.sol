@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-/* solhint-disable func-name-mixedcase, no-unused-import*/
+/* solhint-disable func-name-mixedcase */
 
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -62,7 +62,7 @@ contract AutopoolETHBaseTest is BaseTest {
         accessController.grantRole(Roles.AUTO_POOL_REWARD_MANAGER, address(this));
 
         // create test autoPool
-        IAutoPoolFactory vaultFactory = systemRegistry.getAutoPoolFactoryByType(VaultTypes.LST);
+        IAutopoolFactory vaultFactory = systemRegistry.getAutoPoolFactoryByType(VaultTypes.LST);
 
         vm.mockCall(
             autoPoolStrategy,

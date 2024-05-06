@@ -4,76 +4,35 @@ pragma solidity >=0.8.7;
 
 // solhint-disable func-name-mixedcase
 
-import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
 import { Test } from "forge-std/Test.sol";
 import { Utilities } from "src/libs/Utilities.sol";
-import { WETH_MAINNET } from "test/utils/Addresses.sol";
 
 contract UtilitiesTest is Test {
-    IERC20Metadata internal testTokenMetadata = IERC20Metadata(WETH_MAINNET);
-
-    function setUp() public {
-        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"));
-    }
-
     function test_getScaleDownFactor() public {
         // >18 decimals
-        vm.mockCall(WETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(24));
-        assertEq(Utilities.getScaleDownFactor(testTokenMetadata), 4);
+        assertFactors(24, 1e21, 1e3);
 
         // 18 decimals
-        vm.mockCall(WETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
-        assertEq(Utilities.getScaleDownFactor(testTokenMetadata), 4);
+        assertFactors(18, 1e15, 1e3);
 
-        // >6 decimals
-        vm.mockCall(WETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(7));
-        assertEq(Utilities.getScaleDownFactor(testTokenMetadata), 3);
+        // >=6 <18 decimals
+        assertFactors(17, 1e15, 1e2);
+        assertFactors(9, 1e7, 1e2);
+        assertFactors(6, 1e4, 1e2);
 
-        // 6 decimals
-        vm.mockCall(WETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(6));
-        assertEq(Utilities.getScaleDownFactor(testTokenMetadata), 2);
-
-        // >2 decimals
-        vm.mockCall(WETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(3));
-        assertEq(Utilities.getScaleDownFactor(testTokenMetadata), 1);
-
-        // 2 decimals
-        vm.mockCall(WETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(2));
-        assertEq(Utilities.getScaleDownFactor(testTokenMetadata), 0);
+        // <6 >=2 decimals
+        assertFactors(5, 1e4, 1e1);
+        assertFactors(3, 1e2, 1e1);
+        assertFactors(2, 1e1, 1e1);
 
         // <2 decimals
-        vm.mockCall(WETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(1));
-        assertEq(Utilities.getScaleDownFactor(testTokenMetadata), 0);
+        assertFactors(1, 10, 1);
+        assertFactors(0, 1, 1);
     }
 
-    function test_getScaledDownDecimals() public {
-        // >18 decimals
-        vm.mockCall(WETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(24));
-        assertEq(Utilities.getScaledDownDecimals(testTokenMetadata), 20);
-
-        // 18 decimals
-        vm.mockCall(WETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
-        assertEq(Utilities.getScaledDownDecimals(testTokenMetadata), 14);
-
-        // >6 decimals
-        vm.mockCall(WETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(7));
-        assertEq(Utilities.getScaledDownDecimals(testTokenMetadata), 4);
-
-        // 6 decimals
-        vm.mockCall(WETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(6));
-        assertEq(Utilities.getScaledDownDecimals(testTokenMetadata), 4);
-
-        // >2 decimals
-        vm.mockCall(WETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(3));
-        assertEq(Utilities.getScaledDownDecimals(testTokenMetadata), 2);
-
-        // 2 decimals
-        vm.mockCall(WETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(2));
-        assertEq(Utilities.getScaledDownDecimals(testTokenMetadata), 2);
-
-        // <2 decimals
-        vm.mockCall(WETH_MAINNET, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(1));
-        assertEq(Utilities.getScaledDownDecimals(testTokenMetadata), 1);
+    function assertFactors(uint8 decimals, uint256 scaledDownUnit, uint256 padUnit) internal {
+        (uint256 actualScaledDownUnit, uint256 actualPadUnit) = Utilities.getScaleDownFactor(decimals);
+        assertEq(actualScaledDownUnit, scaledDownUnit, "scaledDownUnit");
+        assertEq(padUnit, actualPadUnit, "padUnit");
     }
 }

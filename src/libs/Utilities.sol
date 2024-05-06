@@ -3,37 +3,22 @@
 
 pragma solidity 0.8.17;
 
-import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
 library Utilities {
-    /**
-     * @notice We subtract decimals to help us not impact a pool when making swaps, pricing, etc.
-     */
-    function getScaledDownDecimals(IERC20Metadata token) public view returns (uint256) {
-        return token.decimals() - getScaleDownFactor(token);
-    }
-
     /**
      * @notice Gets a subtraction factor based on decimals size.
      * @dev We're making this factor dynamic based on the decimals of the token.
+     * @return one unit in scaled down terms, one unit to pad back out
      */
-    function getScaleDownFactor(IERC20Metadata token) public view returns (uint256 scaleDownFactor) {
-        uint256 decimals = token.decimals();
-
-        if (decimals <= 2) {
-            scaleDownFactor = 0;
-        }
-        if (decimals > 2) {
-            scaleDownFactor = 1;
-        }
-        if (decimals == 6) {
-            scaleDownFactor = 2;
-        }
-        if (decimals > 6) {
-            scaleDownFactor = 3;
-        }
+    function getScaleDownFactor(uint8 decimals) public pure returns (uint256, uint256) {
         if (decimals >= 18) {
-            scaleDownFactor = 4;
+            return (10 ** (decimals - 3), 1e3);
         }
+        if (decimals >= 6) {
+            return (10 ** (decimals - 2), 1e2);
+        }
+        if (decimals >= 2) {
+            return (10 ** (decimals - 1), 1e1);
+        }
+        return (10 ** decimals, 1);
     }
 }

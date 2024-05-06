@@ -197,11 +197,8 @@ contract CurveV2CryptoEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
         }
 
         // Scale swap down token decimal to minimize swap impact on smaller pools, scale back up after swap.
-        uint256 scaledDownDecimals = Utilities.getScaledDownDecimals(IERC20Metadata(token));
-        uint256 scaleDownFactor = Utilities.getScaleDownFactor(IERC20Metadata(token));
-        uint256 dy = ICurveV2Swap(pool).get_dy(
-            tokenIndex, quoteTokenIndex, 10 ** (scaledDownDecimals) * 1 ** 10 ** scaleDownFactor
-        );
+        (uint256 downScaledUnit, uint256 padUnit) = Utilities.getScaleDownFactor(IERC20Metadata(token).decimals());
+        uint256 dy = ICurveV2Swap(pool).get_dy(tokenIndex, quoteTokenIndex, downScaledUnit) * padUnit;
 
         /// @dev The fee is dynamically based on current balances; slight discrepancies post-calculation are acceptable
         /// for low-value swaps.

@@ -194,11 +194,9 @@ contract CurveV1StableEthOracle is SystemComponent, SecurityBase, ISpotPriceOrac
         }
 
         // Scale swap down token decimal to minimize swap impact on smaller pools, scale back up after swap.
-        uint256 scaledDownDecimals = Utilities.getScaledDownDecimals(IERC20Metadata(token));
-        uint256 scaleDownFactor = Utilities.getScaleDownFactor(IERC20Metadata(token));
-        uint256 dy = ICurveV1StableSwap(pool).get_dy(
-            int128(tokenIndex), int128(quoteTokenIndex), 10 ** (scaledDownDecimals)
-        ) * 1 * 10 ** scaleDownFactor;
+        (uint256 downScaledUnit, uint256 padUnit) = Utilities.getScaleDownFactor(IERC20Metadata(token).decimals());
+        uint256 dy =
+            ICurveV1StableSwap(pool).get_dy(int128(tokenIndex), int128(quoteTokenIndex), downScaledUnit) * padUnit;
 
         uint256 fee = ICurveV1StableSwap(pool).fee();
         price = (dy * FEE_PRECISION) / (FEE_PRECISION - fee);

@@ -121,12 +121,12 @@ contract MavEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
 
     /// @dev This function gets price using Maverick's `PoolInformation` contract
     function _getSpotPrice(address token, IPool pool, bool isTokenA) private returns (uint256 price) {
-        uint256 scaledDownDecimals = Utilities.getScaledDownDecimals(IERC20Metadata(token));
+        (uint256 downScaledUnit, uint256 padUnit) = Utilities.getScaleDownFactor(IERC20Metadata(token).decimals());
 
         price = poolInformation.calculateSwap(
             pool,
             // we swap scaled-down units to minimize the impact on small pools
-            uint128(10 ** scaledDownDecimals),
+            uint128(downScaledUnit),
             isTokenA, // tokenAIn
             false, // exactOutput
             0 // sqrtPriceLimit
@@ -135,7 +135,7 @@ contract MavEthOracle is SystemComponent, SecurityBase, ISpotPriceOracle {
         // Maverick Fee is in 1e18.
         // We scale up the price by 1000 (1e21) so the returned price is in 1 unit
         // https://docs.mav.xyz/guides/technical-reference/pool#fn-fee
-        price = (price * 1e21) / (1e18 - pool.fee());
+        price = (price * (1e18 * padUnit)) / (1e18 - pool.fee());
     }
 
     ///@dev Scale decimals back to original value from 1e18

@@ -186,7 +186,7 @@ contract CurveV1StableEthOracleTests is Test {
         // FEE_PRECISION: 10000000000
         // price: 1000713478643081308
 
-        assertEq(price, 1_000_713_478_643_081_308);
+        assertEq(price, 1_000_713_478_643_024_402);
     }
 
     // Testing fix for bug involving Eth being submitted as `address token` param on `getSpotPrice()`
@@ -229,7 +229,7 @@ contract CurveV1StableEthOracleTests is Test {
         assertEq(reserves[0].rawSpotPrice, 999_099, "token1: invalid spot price");
         assertEq(reserves[1].token, USDC_MAINNET, "wrong token2");
         assertEq(reserves[1].reserveAmount, 152_789_951_049_354, "token2: invalid reserve amount");
-        assertEq(reserves[1].rawSpotPrice, 1_000_713_478_643_081_308, "token2: invalid spot price");
+        assertEq(reserves[1].rawSpotPrice, 1_000_713_478_643_024_402, "token2: invalid spot price");
     }
 
     function testGetSafeSpotPriceInfoThreePool() public {
@@ -246,11 +246,11 @@ contract CurveV1StableEthOracleTests is Test {
         assertEq(reserves[0].actualQuoteToken, USDT_MAINNET, "token1: invalid actual quote");
         assertEq(reserves[1].token, USDC_MAINNET, "wrong token2");
         assertEq(reserves[1].reserveAmount, 152_756_629_190_183, "token2: invalid reserve amount");
-        assertEq(reserves[1].rawSpotPrice, 999_099, "token2: invalid spot price");
+        assertEq(reserves[1].rawSpotPrice, 999_699, "token2: invalid spot price");
         assertEq(reserves[1].actualQuoteToken, USDT_MAINNET, "token2: invalid actual quote");
         assertEq(reserves[2].token, USDT_MAINNET, "wrong token3");
         assertEq(reserves[2].reserveAmount, 90_235_560_413_842, "token3: invalid reserve amount");
-        assertEq(reserves[2].rawSpotPrice, 1_000_321_887_265_214_521, "token3: invalid spot price");
+        assertEq(reserves[2].rawSpotPrice, 1_000_321_887_265_154_115, "token3: invalid spot price");
         assertEq(reserves[2].actualQuoteToken, DAI_MAINNET, "token3: invalid actual quote");
     }
 

@@ -9,7 +9,7 @@ library Utilities {
      * @dev We're making this factor dynamic based on the decimals of the token.
      * @return one unit in scaled down terms, one unit to pad back out
      */
-    function getScaleDownFactor(uint8 decimals) public pure returns (uint256, uint256) {
+    function getScaleDownFactor(uint8 decimals) internal pure returns (uint256, uint256) {
         if (decimals >= 18) {
             return (10 ** (decimals - 3), 1e3);
         }

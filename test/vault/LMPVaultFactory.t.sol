@@ -99,7 +99,7 @@ contract Constructor is AutopoolFactoryTest {
 
         // Don't have address of factory because this revert is in constructor, just check to make sure revert happening
         vm.expectRevert();
-        new AutoPoolFactory(_systemRegistry, _template, 800, 100);
+        new AutopoolFactory(_systemRegistry, _template, 800, 100);
     }
 
     function test_SetDefaultRewardRatio() public {

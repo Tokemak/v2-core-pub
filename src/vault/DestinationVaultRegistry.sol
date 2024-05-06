@@ -10,8 +10,6 @@ import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaul
 import { SystemComponent } from "src/SystemComponent.sol";
 import { Roles } from "src/libs/Roles.sol";
 
-import { console } from "forge-std/console.sol";
-
 contract DestinationVaultRegistry is SystemComponent, IDestinationVaultRegistry, SecurityBase {
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -19,8 +17,6 @@ contract DestinationVaultRegistry is SystemComponent, IDestinationVaultRegistry,
     EnumerableSet.AddressSet private vaults;
 
     modifier onlyFactory() {
-        console.log(msg.sender);
-        console.log(address(factory));
         if (msg.sender != address(factory)) {
             revert OnlyFactory();
         }

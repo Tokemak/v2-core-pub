@@ -265,6 +265,42 @@ contract AutopoolETHStrategyTest is Test {
         assertEq(destOutSummary.pricePerShare, 1817e18);
     }
 
+    function test_getRebalanceSummaryStats_ReturnsDataForDestination() public {
+        vm.warp(181 days);
+        defaultStrat._setLastRebalanceTimestamp(180 days);
+
+        // ensure the vault has enough assets
+        setAutopoolDestinationBalanceOf(mockOutDest, 200e18);
+
+        defaultParams.amountIn = 199e18; // 199 eth
+        defaultParams.amountOut = 200e18; // 200 eth
+
+        IDexLSTStats.DexLSTStatsData memory inStats;
+        inStats.lastSnapshotTimestamp = 180 days;
+        inStats.feeApr = 0.095656855707106963e18; // calculated manually
+        setStatsCurrent(mockInStats, inStats);
+        IDexLSTStats.DexLSTStatsData memory outStats;
+        outStats.lastSnapshotTimestamp = 180 days;
+        outStats.feeApr = 0.03e18;
+        setStatsCurrent(mockOutStats, outStats);
+
+        setDestinationSafePrice(mockOutDest, 1817e18);
+
+        IStrategy.SummaryStats memory destOutSummary = defaultStrat.getDestinationSummaryStats(
+            defaultParams.destinationIn, IAutopoolStrategy.RebalanceDirection.In, 1e18
+        );
+        assertGt(destOutSummary.pricePerShare, 0);
+    }
+
+    function test_getRebalanceSummaryStats_ReturnsDataForIdle() public {
+        vm.warp(181 days);
+        defaultStrat._setLastRebalanceTimestamp(180 days);
+
+        IStrategy.SummaryStats memory destOutSummary =
+            defaultStrat.getDestinationSummaryStats(mockAutopoolETH, IAutopoolStrategy.RebalanceDirection.In, 1e18);
+        assertEq(destOutSummary.pricePerShare, 1e18);
+    }
+
     function test_getRebalanceOutSummaryStats_RevertIf_invalidParams() public {
         // this test ensures that `validateRebalanceParams` is called. It is not exhaustive
         defaultParams.amountIn = 0;

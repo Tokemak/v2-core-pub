@@ -432,6 +432,24 @@ contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrateg
         return (true, "");
     }
 
+    /// @notice Returns stats for a given destination
+    /// @dev Used to evaluate the current state of the destinations and decide best action
+    /// @param destAddress Destination address. Can be a DestinationVault or the AutoPool
+    /// @param direction Direction to evaluate the stats at
+    /// @param amount Amount to evaluate the stats at
+    function getDestinationSummaryStats(
+        address destAddress,
+        IAutopoolStrategy.RebalanceDirection direction,
+        uint256 amount
+    ) external returns (IStrategy.SummaryStats memory) {
+        address token =
+            destAddress == address(autoPool) ? autoPool.asset() : IDestinationVault(destAddress).underlying();
+        uint256 outPrice = _getInOutTokenPriceInEth(token, destAddress);
+        return SummaryStats.getDestinationSummaryStats(
+            autoPool, systemRegistry.incentivePricing(), destAddress, outPrice, direction, amount
+        );
+    }
+
     function validateRebalanceParams(IStrategy.RebalanceParams memory params) internal view {
         Errors.verifyNotZero(params.destinationIn, "destinationIn");
         Errors.verifyNotZero(params.destinationOut, "destinationOut");

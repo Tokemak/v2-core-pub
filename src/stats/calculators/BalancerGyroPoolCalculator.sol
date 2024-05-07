@@ -32,7 +32,7 @@ contract BalancerGyroPoolCalculator is BalancerStablePoolCalculatorBase {
         IRootPriceOracle pricer,
         uint256[] memory balances,
         uint256 index,
-        bool snapshot
+        bool inSnapshot
     ) internal virtual override returns (uint256) {
         address token = reserveTokens[index];
 
@@ -48,7 +48,7 @@ contract BalancerGyroPoolCalculator is BalancerStablePoolCalculatorBase {
             currentReserve = Stats.getFilteredValue(DEX_RESERVE_ALPHA, reservesEth[index], currentReserve);
         }
         // Is it time to run a snapshot and update filter state?
-        if (snapshot) {
+        if (inSnapshot) {
             // slither-disable-next-line reentrancy-events
             emit UpdatedReservesEth(block.timestamp, index, reservesEth[index], currentReserve);
             reservesEth[index] = currentReserve;

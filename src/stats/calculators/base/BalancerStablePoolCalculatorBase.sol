@@ -54,7 +54,7 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
     /// @notice The ethPerShare for the reserve tokens
     uint256[] public lastEthPerShare;
 
-    bytes32 private _aprId;
+    bytes32 internal _aprId;
 
     struct InitData {
         address poolAddress;
@@ -80,7 +80,10 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
     }
 
     /// @inheritdoc IStatsCalculator
-    function initialize(bytes32[] calldata dependentAprIds, bytes calldata initData) external override initializer {
+    function initialize(
+        bytes32[] calldata dependentAprIds,
+        bytes calldata initData
+    ) external virtual override initializer {
         InitData memory decodedInitData = abi.decode(initData, (InitData));
 
         Errors.verifyNotZero(decodedInitData.poolAddress, "poolAddress");
@@ -143,7 +146,7 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
     }
 
     /// @inheritdoc IStatsCalculator
-    function shouldSnapshot() public view override returns (bool) {
+    function shouldSnapshot() public view virtual override returns (bool) {
         if (feeAprFilterInitialized) {
             // slither-disable-next-line timestamp
             return block.timestamp >= lastSnapshotTimestamp + Stats.DEX_FEE_APR_SNAPSHOT_INTERVAL;
@@ -154,7 +157,7 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
     }
 
     /// @inheritdoc IDexLSTStats
-    function current() external returns (DexLSTStatsData memory) {
+    function current() external virtual returns (DexLSTStatsData memory) {
         IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
 
         uint256[] memory reservesInEth = new uint256[](numTokens);
@@ -163,7 +166,7 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
         (, uint256[] memory balances) = getPoolTokens();
 
         for (uint256 i = 0; i < numTokens; i++) {
-            reservesInEth[i] = calculateReserveInEthByIndex(pricer, balances, i);
+            reservesInEth[i] = calculateReserveInEthByIndex(pricer, balances, i, false);
             ILSTStats stats = lstStats[i];
             if (address(stats) != address(0)) {
                 ILSTStats.LSTStatsData memory statsData = stats.current();
@@ -188,7 +191,7 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
 
     /// @notice Capture stat data about this setup
     /// @dev This is protected by the STATS_SNAPSHOT_EXECUTOR
-    function _snapshot() internal override {
+    function _snapshot() internal virtual override {
         IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
 
         uint256 currentVirtualPrice = getVirtualPrice();
@@ -199,14 +202,14 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
 
         // subtracting base yield is an approximation b/c it uses the point-in-time reserve balances to estimate the
         // yield earned from the rebasing token. An attacker could shift the balance of the pool, causing us to believe
-        // the fee apr is higher or lower. For a number of reasons, FeeApr has a low weight in the rebalancing logic.
+        // the fee apr is higher or lower.
         // Autopool strategies understand that this signal can be noisy and correct accordingly A price check against an
         // oracle is an option to further mitigate the issue
         uint256 weightedBaseApr = 0;
         uint256 totalReservesInEth = 0;
 
         for (uint256 i = 0; i < numTokens; i++) {
-            uint256 reserveValue = calculateReserveInEthByIndex(pricer, balances, i);
+            uint256 reserveValue = calculateReserveInEthByIndex(pricer, balances, i, true);
             reservesInEth[i] = reserveValue;
             totalReservesInEth += reserveValue;
 
@@ -256,11 +259,14 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
         feeApr = newFeeApr;
     }
 
+    /// @notice Get the reserves of the token at the given index in ETH
+    /// @dev Last param is to denote whether you are running in the context of a snapshot or not
     function calculateReserveInEthByIndex(
         IRootPriceOracle pricer,
         uint256[] memory balances,
-        uint256 index
-    ) internal returns (uint256) {
+        uint256 index,
+        bool
+    ) internal virtual returns (uint256) {
         address token = reserveTokens[index];
 
         // the price oracle is always 18 decimals, so divide by the decimals of the token

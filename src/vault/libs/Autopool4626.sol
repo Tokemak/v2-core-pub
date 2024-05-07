@@ -95,6 +95,10 @@ library Autopool4626 {
             return 0;
         }
 
+        if (ts > type(uint112).max) {
+            return 0;
+        }
+
         return type(uint112).max - ts;
     }
 

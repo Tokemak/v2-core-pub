@@ -147,7 +147,7 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
 
         // Determine if incentive credits earned should continue to be decayed
         if (decayState) {
-            uint256 totalAPR = _computeTotalAPR();
+            uint256 totalAPR = _computeTotalAPR(false);
 
             // Apply additional decay if APR is within tolerance
             // slither-disable-next-line incorrect-equality
@@ -245,7 +245,7 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
         // Record a new snapshot of total APR across all rewarders
         // Also, triggers a new snapshot or finalize snapshot for total supply across all the rewarders
         // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
-        lastSnapshotTotalAPR = _computeTotalAPR();
+        lastSnapshotTotalAPR = _computeTotalAPR(true);
         uint8 currentCredits = incentiveCredits;
         uint256 elapsedTime = block.timestamp - lastIncentiveTimestamp;
 
@@ -491,10 +491,10 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
         periodFinish = IBaseRewardPool(_rewarder).periodFinish();
     }
 
-    function _computeTotalAPR() internal returns (uint256 apr) {
+    function _computeTotalAPR(bool performSnapshot) internal returns (uint256 apr) {
         // Get reward pool metrics for the main rewarder and take a snapshot if necessary
         (uint256 rewardRate, uint256 totalSupply, uint256 periodFinish) = _getRewardPoolMetrics(address(rewarder));
-        if (_shouldSnapshot(address(rewarder), rewardRate, periodFinish, totalSupply)) {
+        if (performSnapshot && _shouldSnapshot(address(rewarder), rewardRate, periodFinish, totalSupply)) {
             _snapshotRewarder(address(rewarder), totalSupply, rewardRate);
         }
 

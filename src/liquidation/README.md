@@ -1,3 +1,5 @@
+# Reward Liquidation
+
 ## Claim Rewards
 
 The primary goal of this process is to claim rewards for each Vault. Once rewards are claimed, they are sent to the Liquidator Row contract for subsequent liquidation.

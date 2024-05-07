@@ -31,9 +31,6 @@ In this example, there are three stats calculators. Each adds additional stats r
 2. Curve V1 stETH/ETH Stats Calculator: provides stats on the DEX, primarily trading fees
 3. Convex Curve V1 stETH/ETH Stats Calculator: provides additional incentive yields
 
-LMP Vaults read the highest-level stats calculator, in this case the Convex/Curve calculator, that provides a complete rollup of the information from the three calculators.
-Each calculator has a `current` method that the LMP calls.
-
 A keeper network is used to periodically snapshot new data. Each calculator type defines the frequency and conditions under which a snapshot should be taken.
 Importantly, each calculator only stores the required information to provide its stats. If it needs to provide stats from another calculator,
 those are read at the time of the request to ensure that data is consistent.

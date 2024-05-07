@@ -2,20 +2,20 @@
 
 The rewards architecture consists of a few main contracts:
 
--   LMPVaultMainRewarder,
+-   AutopoolMainRewarder,
 -   DestinationVaultMainRewarder,
 -   MainRewarder,
 -   ExtraRewarder
 
 The purpose of these contracts is to distribute rewards to users who stake their tokens.
 
-## LMPVaultMainRewarder
+## AutopoolMainRewarder
 
-The LMPVaultMainRewarder contract is responsible for LMPVault rewards. This contract takes control of a user's LMPVault tokens, and is meant to be interacted with via the LMPVaultRouter and directly by the user. This contract inherits the majority of its functionality from the MainRewarder and AbstractRewarder contracts.
+The AutopoolMainRewarder contract is responsible for Autopool rewards. This contract takes control of a user's Autopool tokens, and is meant to be interacted with via the AutopoolRouter and directly by the user. This contract inherits the majority of its functionality from the MainRewarder and AbstractRewarder contracts.
 
 ## DestinationVaultMainRewarder
 
-The DestinationVaultMainRewarder is responsible for Destination Vault rewards. This contract does not take control of tokens, and can only be interacted with via its paired Destination Vault contract, also known as a stake tracker. Much like the LMPVaultMainRewarder, this contract inherits most of its functionality from the MainRewarder and AbstractRewarder contracts.
+The DestinationVaultMainRewarder is responsible for Destination Vault rewards. This contract does not take control of tokens, and can only be interacted with via its paired Destination Vault contract, also known as a stake tracker. Much like the AutopoolMainRewarder, this contract inherits most of its functionality from the MainRewarder and AbstractRewarder contracts.
 
 ## MainRewarder
 

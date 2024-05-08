@@ -11,7 +11,7 @@ import { DestinationVault, IDestinationVault } from "src/vault/DestinationVault.
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
-import { ILMPVaultRegistry } from "src/interfaces/vault/ILMPVaultRegistry.sol";
+import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
@@ -46,7 +46,7 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
     DestinationVaultRegistry private _destinationVaultRegistry;
     DestinationRegistry private _destinationTemplateRegistry;
 
-    ILMPVaultRegistry private _lmpVaultRegistry;
+    IAutopoolRegistry private _autopoolRegistry;
     IRootPriceOracle private _rootPriceOracle;
 
     IWETH9 private _asset;
@@ -119,7 +119,7 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
         dvAddresses[0] = address(dvTemplate);
         _destinationTemplateRegistry.register(dvTypes, dvAddresses);
 
-        _accessController.grantRole(Roles.CREATE_DESTINATION_VAULT_ROLE, address(this));
+        _accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
 
         BalancerDestinationVault.InitParams memory initParams =
             BalancerDestinationVault.InitParams({ balancerPool: POOL_ADDRESS });
@@ -147,11 +147,11 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
         _mockSystemBound(address(_systemRegistry), address(_rootPriceOracle));
         _systemRegistry.setRootPriceOracle(address(_rootPriceOracle));
 
-        // Set lmp vault registry for permissions
-        _lmpVaultRegistry = ILMPVaultRegistry(vm.addr(237_894));
-        vm.label(address(_lmpVaultRegistry), "lmpVaultRegistry");
-        _mockSystemBound(address(_systemRegistry), address(_lmpVaultRegistry));
-        _systemRegistry.setLMPVaultRegistry(address(_lmpVaultRegistry));
+        // Set Autopool registry for permissions
+        _autopoolRegistry = IAutopoolRegistry(vm.addr(237_894));
+        vm.label(address(_autopoolRegistry), "autopoolRegistry");
+        _mockSystemBound(address(_systemRegistry), address(_autopoolRegistry));
+        _systemRegistry.setAutopoolRegistry(address(_autopoolRegistry));
     }
 
     function test_initializer_ConfiguresVault() public {
@@ -220,7 +220,7 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
         // solhint-disable-next-line not-rely-on-time
         vm.warp(block.timestamp + 7 days);
 
-        _accessController.grantRole(Roles.LIQUIDATOR_ROLE, address(this));
+        _accessController.grantRole(Roles.LIQUIDATOR_MANAGER, address(this));
 
         (uint256[] memory amounts, address[] memory tokens) = _destVault.collectRewards();
 
@@ -276,34 +276,6 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
 
         assertEq(_asset.balanceOf(receiver) - startingBalance, 10_117_177_497_526_466);
         assertEq(received, _asset.balanceOf(receiver) - startingBalance);
-    }
-
-    /// @dev Based on the same data as test_withdrawBaseAsset_ReturnsAppropriateAmount
-    function test_estimateWithdrawBaseAsset_ReturnsAppropriateAmount() public {
-        // Get some tokens to play with
-        vm.prank(LP_TOKEN_WHALE);
-        _underlyer.transfer(address(this), 0.1e18);
-
-        // Give us deposit rights
-        _mockIsVault(address(this), true);
-
-        // Deposit
-        _underlyer.approve(address(_destVault), 0.1e18);
-        _destVault.depositUnderlying(0.1e18);
-
-        address receiver = vm.addr(555);
-
-        uint256 beforeBalance = _asset.balanceOf(receiver);
-        uint256 received = _destVault.estimateWithdrawBaseAsset(0.01e18, receiver, address(0));
-        uint256 afterBalance = _asset.balanceOf(receiver);
-
-        // Gyro pool has a rough pool value of $6,152,143
-        // Total Supply of 1897770448632704828929
-        // Eth Price: $3190
-        // PPS: 1.0117177497526466 w/0.1 shares ~= 0.110117177497526466
-
-        assertEq(received, 10_117_177_497_526_466);
-        assertEq(beforeBalance, afterBalance);
     }
 
     //
@@ -375,8 +347,8 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
     function test_recoverUnderlying_RunsProperly_RecoverInternal() external {
         address recoveryAddress = vm.addr(1);
 
-        // Give contract TOKEN_RECOVERY_ROLE.
-        _accessController.setupRole(Roles.TOKEN_RECOVERY_ROLE, address(this));
+        // Give contract TOKEN_RECOVERY_MANAGER.
+        _accessController.setupRole(Roles.TOKEN_RECOVERY_MANAGER, address(this));
 
         // Transfer tokens to this contract.
         vm.prank(LP_TOKEN_WHALE);
@@ -397,8 +369,8 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
     function test_recoverUnderlying_RunsProperly_ExternalDebt() external {
         address recoveryAddress = vm.addr(1);
 
-        // Give contract TOKEN_RECOVERY_ROLE.
-        _accessController.setupRole(Roles.TOKEN_RECOVERY_ROLE, address(this));
+        // Give contract TOKEN_RECOVERY_MANAGER.
+        _accessController.setupRole(Roles.TOKEN_RECOVERY_MANAGER, address(this));
 
         // Transfer tokens to this contract.
         vm.prank(LP_TOKEN_WHALE);
@@ -490,8 +462,8 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
 
     function _mockIsVault(address vault, bool isVault) internal {
         vm.mockCall(
-            address(_lmpVaultRegistry),
-            abi.encodeWithSelector(ILMPVaultRegistry.isVault.selector, vault),
+            address(_autopoolRegistry),
+            abi.encodeWithSelector(IAutopoolRegistry.isVault.selector, vault),
             abi.encode(isVault)
         );
     }

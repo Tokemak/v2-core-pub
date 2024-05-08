@@ -15,8 +15,6 @@ import { IVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IAsset } from "src/interfaces/external/balancer/IAsset.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 
-import { console } from "forge-std/console.sol";
-
 abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
     /// @notice The Balancer Vault that all tokens we're resolving here should reference
     /// @dev BPTs themselves are configured with an immutable vault reference
@@ -74,16 +72,10 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
         Errors.verifyNotZero(lpToken, "lpToken");
         Errors.verifyNotZero(quoteToken, "quoteToken");
 
-        console.log("log1");
-
         totalLPSupply = getTotalSupply_(pool);
-
-        console.log("log2");
 
         // Get the pool tokens/reserves
         (IERC20[] memory tokens, uint256[] memory balances) = getPoolTokens_(pool);
-
-        console.log("log3");
 
         uint256 nTokens = tokens.length;
         reserves = new ReserveItemInfo[](nTokens);
@@ -93,8 +85,6 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
             (uint256 spotPrice, address actualQuoteToken) = _getSpotPrice(token, pool, tokens, quoteToken);
             reserves[i] = ReserveItemInfo(token, balances[i], spotPrice, actualQuoteToken);
         }
-
-        console.log("log4");
     }
 
     function _getSpotPrice(
@@ -146,8 +136,8 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
 
         // Prepare swap parameters.
         IAsset[] memory assets = new IAsset[](2);
-        assets[0] = IAsset(address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));
-        assets[1] = IAsset(address(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0));
+        assets[0] = IAsset(address(tokens[uint256(tokenIndex)]));
+        assets[1] = IAsset(actualQuoteToken);
 
         IVault.FundManagement memory funds = IVault.FundManagement(address(this), false, payable(address(this)), false);
 

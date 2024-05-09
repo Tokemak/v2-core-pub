@@ -403,7 +403,7 @@ abstract contract DestinationVault is
         }
 
         if (from != address(0)) {
-            _rewarder.withdraw(from, amount, true);
+            _rewarder.withdraw(from, amount, false);
         }
     }
 

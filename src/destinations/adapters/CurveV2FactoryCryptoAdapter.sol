@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
+import { ICurveStableSwapNG } from "src/interfaces/external/curve/ICurveStableSwapNG.sol";
 import { ICryptoSwapPool, IPool } from "src/interfaces/external/curve/ICryptoSwapPool.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
@@ -21,6 +22,16 @@ library CurveV2FactoryCryptoAdapter {
         address poolAddress
     );
 
+    function removeLiquidity(
+        uint256[] memory amounts,
+        uint256 maxLpBurnAmount,
+        address poolAddress,
+        address lpTokenAddress,
+        IWETH9 weth
+    ) public returns (address[] memory, uint256[] memory) {
+        return removeLiquidity(amounts, maxLpBurnAmount, poolAddress, lpTokenAddress, weth, false);
+    }
+
     /**
      * @notice Withdraw liquidity from Curve pool
      *  @dev Calls to external contract
@@ -31,6 +42,7 @@ library CurveV2FactoryCryptoAdapter {
      *  @param poolAddress Curve pool address
      *  @param lpTokenAddress LP token of the pool to burn
      *  @param weth WETH address on the operating chain
+     *  @param isNg is a newer ng pool with dynamic arrays
      *  @return tokens Addresses of the withdrawn tokens
      *  @return actualAmounts Amounts of the withdrawn tokens
      */
@@ -39,7 +51,8 @@ library CurveV2FactoryCryptoAdapter {
         uint256 maxLpBurnAmount,
         address poolAddress,
         address lpTokenAddress,
-        IWETH9 weth
+        IWETH9 weth,
+        bool isNg
     ) public returns (address[] memory tokens, uint256[] memory actualAmounts) {
         //slither-disable-start reentrancy-events
         if (amounts.length > 4) {
@@ -67,7 +80,7 @@ library CurveV2FactoryCryptoAdapter {
         }
         uint256 lpTokenBalanceBefore = IERC20(lpTokenAddress).balanceOf(address(this));
 
-        _runWithdrawal(poolAddress, amounts, maxLpBurnAmount);
+        _runWithdrawal(poolAddress, amounts, maxLpBurnAmount, isNg);
 
         uint256 lpTokenBalanceAfter = IERC20(lpTokenAddress).balanceOf(address(this));
         uint256 lpTokenAmount = lpTokenBalanceBefore - lpTokenBalanceAfter;
@@ -147,18 +160,30 @@ library CurveV2FactoryCryptoAdapter {
         }
     }
 
-    function _runWithdrawal(address poolAddress, uint256[] memory amounts, uint256 maxLpBurnAmount) private {
-        uint256 nTokens = amounts.length;
-        ICryptoSwapPool pool = ICryptoSwapPool(poolAddress);
-        if (nTokens == 2) {
-            uint256[2] memory staticParamArray = [amounts[0], amounts[1]];
-            pool.remove_liquidity(maxLpBurnAmount, staticParamArray);
-        } else if (nTokens == 3) {
-            uint256[3] memory staticParamArray = [amounts[0], amounts[1], amounts[2]];
-            pool.remove_liquidity(maxLpBurnAmount, staticParamArray);
-        } else if (nTokens == 4) {
-            uint256[4] memory staticParamArray = [amounts[0], amounts[1], amounts[2], amounts[3]];
-            pool.remove_liquidity(maxLpBurnAmount, staticParamArray);
+    function _runWithdrawal(
+        address poolAddress,
+        uint256[] memory amounts,
+        uint256 maxLpBurnAmount,
+        bool isNg
+    ) private {
+        if (isNg) {
+            ICurveStableSwapNG pool = ICurveStableSwapNG(poolAddress);
+
+            // slither-disable-next-line unused-return
+            pool.remove_liquidity(maxLpBurnAmount, amounts);
+        } else {
+            uint256 nTokens = amounts.length;
+            ICryptoSwapPool pool = ICryptoSwapPool(poolAddress);
+            if (nTokens == 2) {
+                uint256[2] memory staticParamArray = [amounts[0], amounts[1]];
+                pool.remove_liquidity(maxLpBurnAmount, staticParamArray);
+            } else if (nTokens == 3) {
+                uint256[3] memory staticParamArray = [amounts[0], amounts[1], amounts[2]];
+                pool.remove_liquidity(maxLpBurnAmount, staticParamArray);
+            } else if (nTokens == 4) {
+                uint256[4] memory staticParamArray = [amounts[0], amounts[1], amounts[2], amounts[3]];
+                pool.remove_liquidity(maxLpBurnAmount, staticParamArray);
+            }
         }
     }
 

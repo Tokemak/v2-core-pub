@@ -18,7 +18,7 @@ import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/ext
 import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 
 /// @notice Destination Vault to proxy a Curve Pool that goes into Convex
-/// @dev Supports Curve V1 StableSwap, Curve V2 CryptoSwap, and Curve-ng pools
+/// @dev Supports Curve V1 StableSwap, Curve V2 CryptoSwap, and Curve stETH/ETH-ng Pool
 contract CurveConvexDestinationVault is DestinationVault {
     /// @notice Only used to initialize the vault
     struct InitParams {
@@ -74,7 +74,7 @@ contract CurveConvexDestinationVault is DestinationVault {
     address[] private constituentTokens;
 
     /// @dev Always 0, used as min amounts during withdrawals
-    uint256[] private minAmounts;
+    uint256[] internal minAmounts;
 
     constructor(
         ISystemRegistry sysRegistry,
@@ -194,12 +194,12 @@ contract CurveConvexDestinationVault is DestinationVault {
     }
 
     /// @inheritdoc IDestinationVault
-    function poolType() external view override returns (string memory) {
+    function poolType() external view virtual override returns (string memory) {
         return isStableSwap ? "curveV1" : "curveV2";
     }
 
     /// @inheritdoc IDestinationVault
-    function poolDealInEth() external view override returns (bool) {
+    function poolDealInEth() external view virtual override returns (bool) {
         return _poolDealInEth;
     }
 
@@ -230,6 +230,7 @@ contract CurveConvexDestinationVault is DestinationVault {
             ConvexRewards.claimRewards(convexStaking, defaultStakingRewardToken, msg.sender, _trackedTokens);
     }
 
+    // slither-disable-start dead-code
     /// @inheritdoc DestinationVault
     function _burnUnderlyer(uint256 underlyerAmount)
         internal
@@ -246,6 +247,7 @@ contract CurveConvexDestinationVault is DestinationVault {
             minAmounts, underlyerAmount, curvePool, curveLpToken, IWETH9(systemRegistry.weth())
         );
     }
+    // slither-disable-end dead-code
 
     /// @inheritdoc DestinationVault
     function getPool() public view override returns (address) {

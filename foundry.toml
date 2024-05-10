@@ -16,6 +16,9 @@ libraries = [
     "src/vault/libs/LMPDestinations.sol:LMPDestinations:0x5B6EAaC27CDeba310A335aFeC9d18f9b3137EFA5",
     "src/vault/libs/AutoPool4626.sol:AutoPool4626:0xDf768df195eDE3172E971Cfc1968f703BF325109",
     "src/vault/libs/AutoPoolFees.sol:AutoPoolFees:0x447536DF798693404686266ba4c8800aDE8372A3",
+    "src/destinations/adapters/staking/ConvexAdapter.sol:ConvexStaking:0x6c2f91978004B0A769c622dfe352EdF331044d49",
+    "src/destinations/adapters/rewards/ConvexRewardsAdapter.sol:ConvexRewards:0x08F295fD04B52Ab6a7f8A86bC9A0A1c0EA8aDE01",
+    "src/destinations/adapters/CurveV2FactoryCryptoAdapter.sol:CurveV2FactoryCryptoAdapter:0xe46E7634d6e0BC954407078818fF62eDfF414184",
 ]
 
 [fmt]

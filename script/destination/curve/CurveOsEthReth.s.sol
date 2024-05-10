@@ -23,7 +23,7 @@ contract CurveOsEthReth is CurveDestinationVaultBase {
         )
     {
         return (
-            "curve-convex",
+            "curve-ng-convex",
             0xd8a92c00AF7856B64840Df2eb65978EA155d1C40,
             0xe080027Bd47353b5D1639772b4a75E9Ed3658A0d,
             0xe080027Bd47353b5D1639772b4a75E9Ed3658A0d,

@@ -8,17 +8,15 @@ import { SecurityBase } from "src/security/SecurityBase.sol";
 import { Client } from "src/external/chainlink/ccip/Client.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IMessageProxy } from "src/interfaces/messageProxy/IMessageProxy.sol";
-import { IRouterClient } from "src/interfaces/external/chainlink/IRouterClient.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
+
+import { CrossChainMessagingUtilities as CCUtils, IRouterClient } from "src/libs/CrossChainMessagingUtilities.sol";
 
 /// @title Proxy contract, sits in from of Chainlink CCIP and routes messages to various chains
 contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     /// =====================================================
     /// Constant Vars
     /// =====================================================
-
-    /// @notice Version of the messages being sent to our receivers
-    uint256 public constant VERSION = 1;
 
     /// =====================================================
     /// Immutable Vars
@@ -51,16 +49,6 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     /// Structs
     /// =====================================================
 
-    /// @notice Data structure going across the wire to destination chain.
-    /// Encoded and stored in `data` field of EVM2AnyMessage Chainlink struct.
-    struct Message {
-        address sender;
-        uint256 version;
-        uint256 messageTimestamp;
-        bytes32 messageType;
-        bytes message;
-    }
-
     /// @notice Destination chain to send a message to and the gas required for that chain
     struct MessageRouteConfig {
         uint64 destinationChainSelector;
@@ -68,7 +56,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     }
 
     /// @notice Arguments used to resend the last message for a sender + type
-    struct RetryArgs {
+    struct ResendArgsSendingChain {
         address msgSender;
         bytes32 messageType;
         uint256 messageRetryTimestamp; // Timestamp of original message, emitted in `MessageData` event.
@@ -92,11 +80,6 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     /// =====================================================
     /// Events
     /// =====================================================
-
-    /// @notice Emitted when message is built to be sent for message sender and type.
-    event MessageData(
-        bytes32 indexed messageHash, uint256 messageTimestamp, address sender, bytes32 messageType, bytes message
-    );
 
     /// @notice Emitted when a message is sent.
     event MessageSent(uint64 destChainSelector, bytes32 messageHash, bytes32 ccipMessageId);
@@ -170,12 +153,12 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
         uint256 messageTimestamp = block.timestamp;
 
         // Encode and hash message, set hash to last message for sender and messageType
-        bytes memory encodedMessage = encodeMessage(msg.sender, VERSION, messageTimestamp, messageType, message);
+        bytes memory encodedMessage = CCUtils.encodeMessage(msg.sender, messageTimestamp, messageType, message);
         bytes32 messageHash = keccak256(encodedMessage);
 
         lastMessageSent[msg.sender][messageType] = messageHash;
 
-        emit MessageData(messageHash, messageTimestamp, msg.sender, messageType, message);
+        emit CCUtils.MessageData(messageHash, messageTimestamp, msg.sender, messageType, message);
 
         // Loop through configs, attempt to send message to each destination.
         for (uint256 i = 0; i < configsLength; ++i) {
@@ -223,15 +206,19 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     /// @notice Retry for multiple messages to multiple destinations per message.
     /// @dev Caller must send in ETH to cover router fees. Cannot use contract balance
     /// @dev Excess ETH is not refunded, use getFee() to calculate needed amount
-    /// @param args Array of RetryArgs structs
-    function resendLastMessage(RetryArgs[] memory args) external payable hasRole(Roles.MESSAGE_PROXY_MANAGER) {
+    /// @param args Array of ResendArgsSendingChain structs
+    function resendLastMessage(ResendArgsSendingChain[] memory args)
+        external
+        payable
+        hasRole(Roles.MESSAGE_PROXY_MANAGER)
+    {
         // Tracking for fee
         uint256 feeLeft = msg.value;
 
-        // Loop through RetryArgs array.
+        // Loop through ResendArgsSendingChain array.
         for (uint256 i = 0; i < args.length; ++i) {
             // Store vars with multiple usages locally
-            RetryArgs memory currentRetry = args[i];
+            ResendArgsSendingChain memory currentRetry = args[i];
             address msgSender = currentRetry.msgSender;
             bytes32 messageType = currentRetry.messageType;
             uint256 messageRetryTimestamp = currentRetry.messageRetryTimestamp;
@@ -239,9 +226,9 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
 
             // Get hash from data passed in, hash from last message, revert if they are not equal.
             // solhint-disable-next-line max-line-length
-            bytes memory encodedMessage = encodeMessage(msgSender, VERSION, messageRetryTimestamp, messageType, message);
+            bytes memory encodedMessage = CCUtils.encodeMessage(msgSender, messageRetryTimestamp, messageType, message);
             bytes32 currentMessageHash =
-                keccak256(encodeMessage(msgSender, VERSION, messageRetryTimestamp, messageType, message));
+                keccak256(CCUtils.encodeMessage(msgSender, messageRetryTimestamp, messageType, message));
             {
                 bytes32 storedMessageHash = lastMessageSent[msgSender][messageType];
                 if (currentMessageHash != storedMessageHash) {
@@ -249,7 +236,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
                 }
             }
 
-            // Loop through and send off to destinations in specific RetryArgs struct, fee dependent.
+            // Loop through and send off to destinations in specific ResendArgsSendingChain struct, fee dependent.
             for (uint256 j = 0; j < currentRetry.configs.length; ++j) {
                 uint64 currentDestChainSelector = currentRetry.configs[j].destinationChainSelector;
                 address destChainReceiver = destinationChainReceivers[currentDestChainSelector];
@@ -290,7 +277,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     ) external hasRole(Roles.MESSAGE_PROXY_MANAGER) {
         // Check that we aren't doing cleanup if a chain is deprecated
         if (destinationChainReceiver != address(0)) {
-            _verifyValidChain(destinationChainSelector);
+            CCUtils._validateChain(routerClient, destinationChainSelector);
         }
 
         emit ReceiverSet(destinationChainSelector, destinationChainReceiver);
@@ -317,7 +304,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
         for (uint256 i = 0; i < routesLength; ++i) {
             uint64 currentDestChainSelector = routes[i].destinationChainSelector;
 
-            _verifyValidChain(currentDestChainSelector);
+            CCUtils._validateChain(routerClient, currentDestChainSelector);
 
             Errors.verifyNotZero(uint256(routes[i].gas), "gas");
 
@@ -415,30 +402,6 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
         }
     }
 
-    /// @notice Encodes message to be sent to receiving chain
-    /// @param sender Message sender
-    /// @param version Version of message to be sent
-    /// @param messageTimestamp Timestamp of message to be sent
-    /// @param messageType message type to be sent
-    /// @param message Bytes message to be processed on receiving chain.
-    function encodeMessage(
-        address sender,
-        uint256 version,
-        uint256 messageTimestamp,
-        bytes32 messageType,
-        bytes memory message
-    ) public pure returns (bytes memory) {
-        return abi.encode(
-            Message({
-                sender: sender,
-                version: version,
-                messageTimestamp: messageTimestamp,
-                messageType: messageType,
-                message: message
-            })
-        );
-    }
-
     /// @notice Estimate fees off-chain for purpose of retries
     /// @param messageSender Address of the message sender for fee estimation
     /// @param messageType Message type for fee estimation
@@ -454,7 +417,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
         chains = new uint64[](len);
         fees = new uint256[](len);
 
-        bytes memory encodedMessage = encodeMessage(messageSender, VERSION, block.timestamp, messageType, message);
+        bytes memory encodedMessage = CCUtils.encodeMessage(messageSender, block.timestamp, messageType, message);
 
         // Loop through configs and get fee by destination chain.
         for (uint256 i = 0; i < len; ++i) {
@@ -511,13 +474,5 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
             feeToken: address(0), // Native Eth
             extraArgs: Client._argsToBytes(Client.EVMExtraArgsV1({ gasLimit: gas }))
         });
-    }
-
-    /// @notice Verify the given chain id is valid in CCIP
-    /// @dev Reverts when not valid
-    function _verifyValidChain(uint64 chain) private view {
-        if (!routerClient.isChainSupported(chain)) {
-            revert ChainNotSupported(chain);
-        }
     }
 }

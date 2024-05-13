@@ -70,6 +70,7 @@ library Roles {
     // Admin Roles
     bytes32 public constant TOKEN_RECOVERY_MANAGER = keccak256("TOKEN_RECOVERY_ROLE");
 
-    // Message Proxy Roles
+    // Cross chain communications roles
     bytes32 public constant MESSAGE_PROXY_MANAGER = keccak256("MESSAGE_PROXY_MANAGER");
+    bytes32 public constant RECEIVING_ROUTER_MANAGER = keccak256("RECEIVING_ROUTER_MANAGER");
 }

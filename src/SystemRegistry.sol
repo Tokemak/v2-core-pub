@@ -38,6 +38,7 @@ import { IAsyncSwapperRegistry } from "src/interfaces/liquidation/IAsyncSwapperR
 import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IMessageProxy } from "src/interfaces/messageProxy/IMessageProxy.sol";
+import { IAny2EVMMessageReceiver } from "src/interfaces/external/chainlink/IAny2EVMMessageReceiver.sol";
 
 // solhint-disable max-states-count
 
@@ -78,6 +79,7 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     IStatsCalculatorRegistry private _statsCalculatorRegistry;
     EnumerableSet.AddressSet private _rewardTokens;
     IMessageProxy private _messageProxy;
+    IAny2EVMMessageReceiver private _receivingRouter;
 
     /// =====================================================
     /// Events
@@ -101,6 +103,7 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     event IncentivePricingStatsSet(address incentivePricingStats);
     event SystemSecuritySet(address security);
     event MessageProxySet(address messageProxy);
+    event ReceivingRouterSet(address receivingRouter);
 
     /// =====================================================
     /// Errors
@@ -420,6 +423,24 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
         _verifySystemsAgree(proxy);
     }
 
+    /// @notice Set Receiving Router instance for this system
+    /// @dev Value can be replaced
+    /// @dev This is expected to be the zero address on a chain that is not receving messages from other chains
+    /// @param router Address of the Receiving Router
+    function setReceivingRouter(address router) external onlyOwner {
+        Errors.verifyNotZero(router, "receivingRouter");
+
+        if (router == address(_receivingRouter)) {
+            revert DuplicateSet(router);
+        }
+
+        emit ReceivingRouterSet(router);
+
+        _receivingRouter = IAny2EVMMessageReceiver(router);
+
+        _verifySystemsAgree(router);
+    }
+
     /// @inheritdoc ISystemRegistry
     function accToke() external view returns (IAccToke) {
         return _accToke;
@@ -502,6 +523,11 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     /// @inheritdoc ISystemRegistry
     function messageProxy() external view returns (IMessageProxy) {
         return _messageProxy;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function receivingRouter() external view returns (IAny2EVMMessageReceiver) {
+        return _receivingRouter;
     }
 
     /// =====================================================

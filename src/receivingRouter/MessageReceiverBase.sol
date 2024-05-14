@@ -14,6 +14,7 @@ abstract contract MessageReceiverBase is IMessageReceiverBase {
     error NotReceivingRouter();
 
     // TODO: Will take in systemregistry, become systemcomponent etc
+    // TODO: Zero address check for receivingRouter?
     constructor(address _receivingRouter) {
         Errors.verifyNotZero(_receivingRouter, "_receivingRouter");
     }

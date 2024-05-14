@@ -32,6 +32,7 @@ contract SystemRegistryTest is Test {
     event AutopoolFactorySet(bytes32 vaultType, address factory);
     event IncentivePricingStatsSet(address incentivePricingStats);
     event MessageProxySet(address messageProxy);
+    event ReceivingRouterSet(address recevingRouter);
 
     function setUp() public {
         _systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
@@ -984,6 +985,57 @@ contract SystemRegistryTest is Test {
         _systemRegistry.setMessageProxy(proxy);
 
         assertEq(address(_systemRegistry.messageProxy()), proxy);
+    }
+
+    /* ******************************** */
+    /* Receiving Router
+    /* ******************************** */
+
+    function test_setReceivingRouter_RevertsInvalidOwner() public {
+        vm.prank(makeAddr("NOT_OWNER"));
+        vm.expectRevert("Ownable: caller is not the owner");
+        _systemRegistry.setReceivingRouter(makeAddr("RECEVING_ROUTER"));
+    }
+
+    function test_setReceivingRouter_RevertsDuplicate() public {
+        address router = makeAddr("RECEVING_ROUTER");
+        mockSystemComponent(router);
+
+        vm.expectEmit(true, true, true, true);
+        emit ReceivingRouterSet(router);
+
+        _systemRegistry.setReceivingRouter(router);
+
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.DuplicateSet.selector, router));
+
+        _systemRegistry.setReceivingRouter(router);
+    }
+
+    function test_setRecevingRouter_CanSetMutipleTimes() public {
+        address router = makeAddr("RECEIVING_ROUTER");
+        mockSystemComponent(router);
+
+        vm.expectEmit(true, true, true, true);
+        emit ReceivingRouterSet(router);
+
+        _systemRegistry.setReceivingRouter(router);
+
+        address replacementRouter = makeAddr("REPLACEMENT");
+        mockSystemComponent(replacementRouter);
+
+        vm.expectEmit(true, true, true, true);
+        emit ReceivingRouterSet(replacementRouter);
+
+        _systemRegistry.setReceivingRouter(replacementRouter);
+    }
+
+    function test_receivingRouter_ReturnsCorrectly() public {
+        address router = makeAddr("RECEIVING_ROUTER");
+        mockSystemComponent(router);
+
+        _systemRegistry.setReceivingRouter(router);
+
+        assertEq(address(_systemRegistry.receivingRouter()), router);
     }
 
     /* ******************************** */

@@ -3,25 +3,17 @@
 pragma solidity 0.8.17;
 
 import { IMessageReceiverBase } from "src/interfaces/receivingRouter/IMessageReceiverBase.sol";
-import { Errors } from "src/utils/Errors.sol";
+import { SystemComponent, ISystemRegistry } from "src/SystemComponent.sol";
 
 /// @title Inherited by message receiver contracts for cross chain interactions.
-abstract contract MessageReceiverBase is IMessageReceiverBase {
-    // TODO: This will be moved to SystemRegistry.
-    address public receivingRouter;
-
+abstract contract MessageReceiverBase is SystemComponent, IMessageReceiverBase {
     /// @notice Thrown when message sender is not receiving router
     error NotReceivingRouter();
 
-    // TODO: Will take in systemregistry, become systemcomponent etc
-    // TODO: Zero address check for receivingRouter?
-    constructor(address _receivingRouter) {
-        Errors.verifyNotZero(_receivingRouter, "_receivingRouter");
-    }
+    constructor(ISystemRegistry _systemRegistry) SystemComponent(_systemRegistry) { }
 
-    // TODO: This wil call system registry.
     modifier onlyReceivingRouter() {
-        if (msg.sender != receivingRouter) revert NotReceivingRouter();
+        if (msg.sender != address(systemRegistry.receivingRouter())) revert NotReceivingRouter();
         _;
     }
 

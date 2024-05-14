@@ -59,6 +59,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
         uint256 messageTimestamp,
         address messageOrigin,
         bytes32 messageType,
+        bytes32 ccipMessageId,
         uint64 sourceChainSelector,
         bytes message
     );
@@ -118,6 +119,11 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
         }
 
         CCUtils.Message memory messageFromProxy = decodeMessage(messageData);
+        uint256 messageProxyVersion = messageFromProxy.version;
+        uint256 recevingRouterVersion = CCUtils.getVersion();
+        if (messageProxyVersion != recevingRouterVersion) {
+            revert CCUtils.VersionMismatch(messageProxyVersion, recevingRouterVersion);
+        }
 
         address origin = messageFromProxy.messageOrigin;
         bytes32 messageType = messageFromProxy.messageType;
@@ -127,7 +133,6 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
             messageReceivers[_getMessageReceiversKey(origin, sourceChainSelector, messageType)];
         uint256 messageReceiversForRouteLength = messageReceiversForRoute.length;
 
-        // This may be able to revert.
         if (messageReceiversForRouteLength == 0) {
             emit NoMessageReceiversRegistered(origin, messageType);
             return;
@@ -138,7 +143,13 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
         lastMessageSent[origin][messageType] = messageHash;
 
         emit MessageData(
-            messageHash, messageFromProxy.messageTimestamp, origin, messageType, sourceChainSelector, message
+            messageHash,
+            messageFromProxy.messageTimestamp,
+            origin,
+            messageType,
+            ccipMessage.messageId,
+            sourceChainSelector,
+            message
         );
 
         for (uint256 i = 0; i < messageReceiversForRouteLength; ++i) {

@@ -9,6 +9,7 @@ import { Roles } from "src/libs/Roles.sol";
 import { MessageProxy } from "src/messageProxy/MessageProxy.sol";
 import { IRouterClient } from "src/interfaces/external/chainlink/IRouterClient.sol";
 import { IRouter, Client } from "src/interfaces/external/chainlink/IRouter.sol";
+import { CrossChainMessagingUtilities as CCUtils } from "src/libs/CrossChainMessagingUtilities.sol";
 
 // solhint-disable const-name-snakecase,max-line-length,func-name-mixedcase
 
@@ -143,7 +144,7 @@ contract SendMessageIntegTests is MessageProxyIntegTests {
 
     function test_sendMessage_SingleDestination() public {
         uint256 timestamp = block.timestamp;
-        bytes memory messageBytes = messageProxy.encodeMessage(address(this), 1, timestamp, messageType1, message1);
+        bytes memory messageBytes = CCUtils.encodeMessage(address(this), timestamp, messageType1, message1);
         bytes32 messageHash = keccak256(messageBytes);
 
         // get fees
@@ -193,7 +194,7 @@ contract SendMessageIntegTests is MessageProxyIntegTests {
         _addMessageRoute(optimismDestSelector, messageType1);
 
         uint256 timestamp = block.timestamp;
-        bytes memory messageBytes = messageProxy.encodeMessage(address(this), 1, timestamp, messageType1, message1);
+        bytes memory messageBytes = CCUtils.encodeMessage(address(this), timestamp, messageType1, message1);
         bytes32 messageHash = keccak256(messageBytes);
 
         // Get expected fees
@@ -298,18 +299,18 @@ contract ResendLastMessageIntegTests is MessageProxyIntegTests {
     function test_resendLastMessage_RevertWhen_MessageHashMismatch() public {
         // Recreate hash on our own, make sure that we have correct hash stored.
         bytes32 expectedStoredMessageHash =
-            keccak256(messageProxy.encodeMessage(address(this), 1, message1Type1SendTimestamp, messageType1, message1));
+            keccak256(CCUtils.encodeMessage(address(this), message1Type1SendTimestamp, messageType1, message1));
         assertEq(messageProxy.lastMessageSent(address(this), messageType1), expectedStoredMessageHash);
 
         // Build incorrect message hash for error validation.  Change message.
         bytes32 messageHashBuiltOnFunctionCall =
-            keccak256(messageProxy.encodeMessage(address(this), 1, message1Type1SendTimestamp, messageType1, message2));
+            keccak256(CCUtils.encodeMessage(address(this), message1Type1SendTimestamp, messageType1, message2));
 
         // Build retryArgs array with same data as above
         // Configs being zero length doesn't matter here, targeted revert above where configs touched.
         MessageProxy.MessageRouteConfig[] memory configs = new MessageProxy.MessageRouteConfig[](0);
-        MessageProxy.RetryArgs[] memory retryArgs = new MessageProxy.RetryArgs[](1);
-        retryArgs[0] = MessageProxy.RetryArgs({
+        MessageProxy.ResendArgsSendingChain[] memory retryArgs = new MessageProxy.ResendArgsSendingChain[](1);
+        retryArgs[0] = MessageProxy.ResendArgsSendingChain({
             msgSender: address(this),
             messageType: messageType1,
             messageRetryTimestamp: message1Type1SendTimestamp,
@@ -320,24 +321,24 @@ contract ResendLastMessageIntegTests is MessageProxyIntegTests {
         // Call resend incorrect params causing an invalid message hash to be created, will fail.
         vm.expectRevert(
             abi.encodeWithSelector(
-                MessageProxy.MismatchMessageHash.selector, expectedStoredMessageHash, messageHashBuiltOnFunctionCall
+                CCUtils.MismatchMessageHash.selector, expectedStoredMessageHash, messageHashBuiltOnFunctionCall
             )
         );
         messageProxy.resendLastMessage(retryArgs);
     }
 
-    // Test single `RetryArgs` struct with single config.
-    function test_resendLastMessage_SingleRetryArgsStruct_SingleConfig() public {
+    // Test single `ResendArgsSendingChain` struct with single config.
+    function test_resendLastMessage_SingleResendArgsSendingChainStruct_SingleConfig() public {
         // Get message hash for below checks
         bytes32 messageHash =
-            keccak256(messageProxy.encodeMessage(address(this), 1, message1Type1SendTimestamp, messageType1, message1));
+            keccak256(CCUtils.encodeMessage(address(this), message1Type1SendTimestamp, messageType1, message1));
 
         // Build retryArgs and configs
         MessageProxy.MessageRouteConfig[] memory configs = new MessageProxy.MessageRouteConfig[](1);
         configs[0] =
             MessageProxy.MessageRouteConfig({ destinationChainSelector: baseDestSelector, gas: uint192(gasLimit) });
-        MessageProxy.RetryArgs[] memory retryArgs = new MessageProxy.RetryArgs[](1);
-        retryArgs[0] = MessageProxy.RetryArgs({
+        MessageProxy.ResendArgsSendingChain[] memory retryArgs = new MessageProxy.ResendArgsSendingChain[](1);
+        retryArgs[0] = MessageProxy.ResendArgsSendingChain({
             msgSender: address(this),
             messageType: messageType1,
             messageRetryTimestamp: message1Type1SendTimestamp,
@@ -388,13 +389,13 @@ contract ResendLastMessageIntegTests is MessageProxyIntegTests {
         assertEq(messageProxy.lastMessageSent(address(this), messageType1), messageHash, "messageHash");
     }
 
-    // Test single `RetryArgs` struct with multiple configs.
-    function test_resendLastMessage_SingleRetryArgsStruct_MultipleConfigs() public {
+    // Test single `ResendArgsSendingChain` struct with multiple configs.
+    function test_resendLastMessage_SingleResendArgsSendingChainStruct_MultipleConfigs() public {
         _addMessageRoute(optimismDestSelector, messageType1);
 
         // Get message hash for below checks
         bytes32 messageHash =
-            keccak256(messageProxy.encodeMessage(address(this), 1, message1Type1SendTimestamp, messageType1, message1));
+            keccak256(CCUtils.encodeMessage(address(this), message1Type1SendTimestamp, messageType1, message1));
 
         // Build retryArgs and configs
         MessageProxy.MessageRouteConfig[] memory configs = new MessageProxy.MessageRouteConfig[](2);
@@ -402,8 +403,8 @@ contract ResendLastMessageIntegTests is MessageProxyIntegTests {
             MessageProxy.MessageRouteConfig({ destinationChainSelector: baseDestSelector, gas: uint192(gasLimit) });
         configs[1] =
             MessageProxy.MessageRouteConfig({ destinationChainSelector: optimismDestSelector, gas: uint192(gasLimit) });
-        MessageProxy.RetryArgs[] memory retryArgs = new MessageProxy.RetryArgs[](1);
-        retryArgs[0] = MessageProxy.RetryArgs({
+        MessageProxy.ResendArgsSendingChain[] memory retryArgs = new MessageProxy.ResendArgsSendingChain[](1);
+        retryArgs[0] = MessageProxy.ResendArgsSendingChain({
             msgSender: address(this),
             messageType: messageType1,
             messageRetryTimestamp: message1Type1SendTimestamp,
@@ -483,20 +484,20 @@ contract ResendLastMessageIntegTests is MessageProxyIntegTests {
         assertEq(messageProxy.lastMessageSent(address(this), messageType1), messageHash, "messageHash");
     }
 
-    // Test single `RetryArgs` struct with multiple configs registered but only one used.
-    function test_resendLastMessage_SingleRetryArgsStruct_MultipleConfigs_WithOneNotUsed() public {
+    // Test single `ResendArgsSendingChain` struct with multiple configs registered but only one used.
+    function test_resendLastMessage_SingleResendArgsSendingChainStruct_MultipleConfigs_WithOneNotUsed() public {
         _addMessageRoute(optimismDestSelector, messageType1);
 
         // Get message hash for below checks
         bytes32 messageHash =
-            keccak256(messageProxy.encodeMessage(address(this), 1, message1Type1SendTimestamp, messageType1, message1));
+            keccak256(CCUtils.encodeMessage(address(this), message1Type1SendTimestamp, messageType1, message1));
 
         // Build retryArgs and configs.  Only optimism for this one.
         MessageProxy.MessageRouteConfig[] memory configs = new MessageProxy.MessageRouteConfig[](1);
         configs[0] =
             MessageProxy.MessageRouteConfig({ destinationChainSelector: optimismDestSelector, gas: uint192(gasLimit) });
-        MessageProxy.RetryArgs[] memory retryArgs = new MessageProxy.RetryArgs[](1);
-        retryArgs[0] = MessageProxy.RetryArgs({
+        MessageProxy.ResendArgsSendingChain[] memory retryArgs = new MessageProxy.ResendArgsSendingChain[](1);
+        retryArgs[0] = MessageProxy.ResendArgsSendingChain({
             msgSender: address(this),
             messageType: messageType1,
             messageRetryTimestamp: message1Type1SendTimestamp,
@@ -555,8 +556,8 @@ contract ResendLastMessageIntegTests is MessageProxyIntegTests {
         assertEq(messageProxy.lastMessageSent(address(this), messageType1), messageHash, "messageHash");
     }
 
-    // Test multiple `RetryArgs` structs, one with multiple configs, other with single config.
-    function test_resendLastMessage_MultipleRetryArgsStructs_MultipleConfigs() public {
+    // Test multiple `ResendArgsSendingChain` structs, one with multiple configs, other with single config.
+    function test_resendLastMessage_MultipleResendArgsSendingChainStructs_MultipleConfigs() public {
         _addMessageRoute(optimismDestSelector, messageType1);
         // Add a second route, same sender different message type.
         _addMessageRoute(baseDestSelector, messageType2);
@@ -570,9 +571,9 @@ contract ResendLastMessageIntegTests is MessageProxyIntegTests {
 
         // Get message hash for below checks
         bytes32 messageHashType1 =
-            keccak256(messageProxy.encodeMessage(address(this), 1, message1Type1SendTimestamp, messageType1, message1));
+            keccak256(CCUtils.encodeMessage(address(this), message1Type1SendTimestamp, messageType1, message1));
         bytes32 messageHashType2 =
-            keccak256(messageProxy.encodeMessage(address(this), 1, message2Type2SendTimestamp, messageType2, message2));
+            keccak256(CCUtils.encodeMessage(address(this), message2Type2SendTimestamp, messageType2, message2));
 
         //
         // Build retryArgs and configs
@@ -591,15 +592,15 @@ contract ResendLastMessageIntegTests is MessageProxyIntegTests {
             MessageProxy.MessageRouteConfig({ destinationChainSelector: baseDestSelector, gas: uint192(gasLimit) });
 
         // Retry args array, two memebers for two different message sender and type combinations
-        MessageProxy.RetryArgs[] memory retryArgs = new MessageProxy.RetryArgs[](2);
-        retryArgs[0] = MessageProxy.RetryArgs({
+        MessageProxy.ResendArgsSendingChain[] memory retryArgs = new MessageProxy.ResendArgsSendingChain[](2);
+        retryArgs[0] = MessageProxy.ResendArgsSendingChain({
             msgSender: address(this),
             messageType: messageType1,
             messageRetryTimestamp: message1Type1SendTimestamp,
             message: message1,
             configs: configsMessageType1
         });
-        retryArgs[1] = MessageProxy.RetryArgs({
+        retryArgs[1] = MessageProxy.ResendArgsSendingChain({
             msgSender: address(this),
             messageType: messageType2,
             messageRetryTimestamp: message2Type2SendTimestamp,

@@ -19,6 +19,7 @@ import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { MessageProxy, IRouterClient } from "src/messageProxy/MessageProxy.sol";
+import { CrossChainMessagingUtilities as CCUtils } from "src/libs/CrossChainMessagingUtilities.sol";
 
 contract LSTCalculatorBaseTest is Test {
     SystemRegistry private systemRegistry;
@@ -783,9 +784,8 @@ contract LSTCalculatorBaseTest is Test {
         // Building message hash to compare to one emitted in event from MessageProxy
         // Values used for `newBaseApr` and `currentEthPerToken` fields console logged from contract
         bytes32 messageHash = keccak256(
-            messageProxy.encodeMessage(
+            CCUtils.encodeMessage(
                 address(testCalculator),
-                1,
                 timestamp,
                 testCalculator.LST_SNAPSHOT_MESSAGE_TYPE(),
                 abi.encode(

@@ -12,6 +12,7 @@ import { AccessControllerMocks } from "test/unit/mocks/AccessControllerMocks.t.s
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { Client } from "src/external/chainlink/ccip/Client.sol";
+import { CrossChainMessagingUtilities as CCUtils } from "src/libs/CrossChainMessagingUtilities.sol";
 
 // solhint-disable func-name-mixedcase,avoid-low-level-calls
 
@@ -102,7 +103,7 @@ contract MessageProxyTests is Test, SystemRegistryMocks, AccessControllerMocks {
         bytes32 messageType,
         bytes memory message
     ) internal view returns (bytes32) {
-        bytes memory encodedMsg = _proxy.encodeMessage(sender, _proxy.VERSION(), timestamp, messageType, message);
+        bytes memory encodedMsg = CCUtils.encodeMessage(sender, timestamp, messageType, message);
         return keccak256(encodedMsg);
     }
 
@@ -119,7 +120,7 @@ contract MessageProxyTests is Test, SystemRegistryMocks, AccessControllerMocks {
         bytes memory message,
         uint256 fee
     ) internal {
-        bytes memory wireMsg = _proxy.encodeMessage(sender, _proxy.VERSION(), block.timestamp, messageType, message);
+        bytes memory wireMsg = CCUtils.encodeMessage(sender, block.timestamp, messageType, message);
         Client.EVM2AnyMessage memory ccipMessage = _proxy.buildMsg(destinationChainReceiver, gas, wireMsg);
         vm.mockCall(
             address(_routerClient),
@@ -198,7 +199,7 @@ contract SetDestinationChainReceiver is MessageProxyTests {
         _mockIsProxyAdmin(address(this), true);
         _mockRouterIsChainSupported(chainId, false);
 
-        vm.expectRevert(abi.encodeWithSelector(MessageProxy.ChainNotSupported.selector, chainId));
+        vm.expectRevert(abi.encodeWithSelector(CCUtils.ChainNotSupported.selector, chainId));
         _proxy.setDestinationChainReceiver(chainId, address(1));
     }
 
@@ -366,7 +367,7 @@ contract AddMessageRoutes is MessageProxyTests {
         _mockRouterIsChainSupported(chainId, false);
         routes[0] = MessageProxy.MessageRouteConfig({ destinationChainSelector: chainId, gas: 1 });
 
-        vm.expectRevert(abi.encodeWithSelector(MessageProxy.ChainNotSupported.selector, chainId));
+        vm.expectRevert(abi.encodeWithSelector(CCUtils.ChainNotSupported.selector, chainId));
         _proxy.addMessageRoutes(sender, messageType, routes);
     }
 
@@ -1337,8 +1338,8 @@ contract ResendLastMessage is MessageProxyTests {
         bytes32 ccipMsgId2 = keccak256("msgId2");
         _mockRouterCcipSendAll(ccipMsgId2);
 
-        MessageProxy.RetryArgs[] memory args = new MessageProxy.RetryArgs[](1);
-        args[0] = MessageProxy.RetryArgs({
+        MessageProxy.ResendArgsSendingChain[] memory args = new MessageProxy.ResendArgsSendingChain[](1);
+        args[0] = MessageProxy.ResendArgsSendingChain({
             msgSender: sender,
             messageType: messageType,
             messageRetryTimestamp: timestamp,
@@ -1386,8 +1387,8 @@ contract ResendLastMessage is MessageProxyTests {
         bytes32 ccipMsgId2 = keccak256("msgId2");
         _mockRouterCcipSendAll(ccipMsgId2);
 
-        MessageProxy.RetryArgs[] memory args = new MessageProxy.RetryArgs[](1);
-        args[0] = MessageProxy.RetryArgs({
+        MessageProxy.ResendArgsSendingChain[] memory args = new MessageProxy.ResendArgsSendingChain[](1);
+        args[0] = MessageProxy.ResendArgsSendingChain({
             msgSender: sender,
             messageType: messageType,
             messageRetryTimestamp: timestamp,

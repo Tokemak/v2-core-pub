@@ -5,24 +5,25 @@ pragma solidity 0.8.17;
 import { IRouterClient } from "src/interfaces/external/chainlink/IRouterClient.sol";
 
 /// @title Contains some common errors, events, structs, functionality for cross chain comms.
-
-/**
- * NOTES
- *
- * Events, errors, _validateChain, common imports, maybe some hashing, decoding, encoding can all go here.
- *
- * QUESTIONS
- */
 library CrossChainMessagingUtilities {
+    /// =====================================================
+    /// Constants
+    /// =====================================================
+
     uint256 public constant VERSION = 1;
+
+    /// =====================================================
+    /// Errors
+    /// =====================================================
 
     error ChainNotSupported(uint64 chainId);
 
-    event MessageData(
-        bytes32 indexed messageHash, uint256 messageTimestamp, address sender, bytes32 messageType, bytes message
-    );
+    error MismatchMessageHash(bytes32 storedHash, bytes32 currentHash);
 
-    // Not sure if this should be here or in separate interface.
+    /// =====================================================
+    /// Structs
+    /// =====================================================
+
     struct Message {
         address messageOrigin;
         uint256 version;
@@ -31,17 +32,26 @@ library CrossChainMessagingUtilities {
         bytes message;
     }
 
+    /// =====================================================
+    /// External Functions
+    /// =====================================================
+
+    /// @notice Returns current version of Message struct.
+    function getVersion() external pure returns (uint256) {
+        return VERSION;
+    }
+
     /// @notice Encodes message to be sent to receiving chain
     /// @param sender Message sender
     /// @param messageTimestamp Timestamp of message to be sent
     /// @param messageType message type to be sent
-    /// @param message Bytes message to be processed on receiving chain.
+    /// @param message Bytes message to be processed on receiving chain
     function encodeMessage(
         address sender,
         uint256 messageTimestamp,
         bytes32 messageType,
         bytes memory message
-    ) public pure returns (bytes memory) {
+    ) external pure returns (bytes memory) {
         return abi.encode(
             Message({
                 messageOrigin: sender,
@@ -53,6 +63,7 @@ library CrossChainMessagingUtilities {
         );
     }
 
+    /// @notice Validates the chain selector with the ccip router
     function _validateChain(IRouterClient routerClient, uint64 chain) public view {
         if (!routerClient.isChainSupported(chain)) {
             revert ChainNotSupported(chain);

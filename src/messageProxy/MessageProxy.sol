@@ -5,19 +5,14 @@ pragma solidity 0.8.17;
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
-import { Client } from "src/external/chainlink/ccip/Client.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IMessageProxy } from "src/interfaces/messageProxy/IMessageProxy.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
-
+import { Client } from "src/external/chainlink/ccip/Client.sol";
 import { CrossChainMessagingUtilities as CCUtils, IRouterClient } from "src/libs/CrossChainMessagingUtilities.sol";
 
 /// @title Proxy contract, sits in from of Chainlink CCIP and routes messages to various chains
 contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
-    /// =====================================================
-    /// Constant Vars
-    /// =====================================================
-
     /// =====================================================
     /// Immutable Vars
     /// =====================================================
@@ -71,15 +66,14 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     /// @notice Thrown when not enough fee is left for send.
     error NotEnoughFee(uint256 available, uint256 needed);
 
-    /// @notice Thrown when message data is different on retry, resulting in mismatch hash.
-    error MismatchMessageHash(bytes32 storedHash, bytes32 currentHash);
-
-    /// @notice Thrown when registering routes and the given chain id isn't supported CCIP
-    error ChainNotSupported(uint64 chainId);
-
     /// =====================================================
     /// Events
     /// =====================================================
+
+    /// @notice Emitted when message is built to be sent for message sender and type.
+    event MessageData(
+        bytes32 indexed messageHash, uint256 messageTimestamp, address sender, bytes32 messageType, bytes message
+    );
 
     /// @notice Emitted when a message is sent.
     event MessageSent(uint64 destChainSelector, bytes32 messageHash, bytes32 ccipMessageId);
@@ -158,7 +152,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
 
         lastMessageSent[msg.sender][messageType] = messageHash;
 
-        emit CCUtils.MessageData(messageHash, messageTimestamp, msg.sender, messageType, message);
+        emit MessageData(messageHash, messageTimestamp, msg.sender, messageType, message);
 
         // Loop through configs, attempt to send message to each destination.
         for (uint256 i = 0; i < configsLength; ++i) {
@@ -227,12 +221,11 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
             // Get hash from data passed in, hash from last message, revert if they are not equal.
             // solhint-disable-next-line max-line-length
             bytes memory encodedMessage = CCUtils.encodeMessage(msgSender, messageRetryTimestamp, messageType, message);
-            bytes32 currentMessageHash =
-                keccak256(CCUtils.encodeMessage(msgSender, messageRetryTimestamp, messageType, message));
+            bytes32 currentMessageHash = keccak256(encodedMessage);
             {
                 bytes32 storedMessageHash = lastMessageSent[msgSender][messageType];
                 if (currentMessageHash != storedMessageHash) {
-                    revert MismatchMessageHash(storedMessageHash, currentMessageHash);
+                    revert CCUtils.MismatchMessageHash(storedMessageHash, currentMessageHash);
                 }
             }
 

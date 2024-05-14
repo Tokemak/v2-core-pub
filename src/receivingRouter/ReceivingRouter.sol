@@ -119,10 +119,12 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
         }
 
         CCUtils.Message memory messageFromProxy = decodeMessage(messageData);
-        uint256 messageProxyVersion = messageFromProxy.version;
-        uint256 recevingRouterVersion = CCUtils.getVersion();
-        if (messageProxyVersion != recevingRouterVersion) {
-            revert CCUtils.VersionMismatch(messageProxyVersion, recevingRouterVersion);
+        {
+            uint256 messageProxyVersion = messageFromProxy.version;
+            uint256 recevingRouterVersion = CCUtils.getVersion();
+            if (messageProxyVersion != recevingRouterVersion) {
+                revert CCUtils.VersionMismatch(messageProxyVersion, recevingRouterVersion);
+            }
         }
 
         address origin = messageFromProxy.messageOrigin;
@@ -154,11 +156,13 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
 
         for (uint256 i = 0; i < messageReceiversForRouteLength; ++i) {
             address currentMessageReceiver = messageReceiversForRoute[i];
+            // slither-disable-start reentrancy-events
             try IMessageReceiverBase(currentMessageReceiver).onMessageReceive(message) {
                 emit MessageReceived(currentMessageReceiver);
             } catch {
                 emit MessageFailed(currentMessageReceiver);
             }
+            // slither-disable-end reentrancy-events
         }
     }
 
@@ -211,8 +215,10 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
                     }
                 }
 
+                // slither-disable-start reentrancy-events
                 emit MessageReceivedOnResend(currentReceiver, message);
                 IMessageReceiverBase(currentReceiver).onMessageReceive(message);
+                // slither-disable-end reentrancy-events
             }
         }
     }

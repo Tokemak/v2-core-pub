@@ -24,5 +24,6 @@ abstract contract MessageReceiverBase is SystemComponent, IMessageReceiverBase {
     }
 
     /// @dev This function will decode the incoming message and perform any other actions needed.
+    // slither-disable-next-line unimplemented-functions
     function _onMessageReceive(bytes memory message) internal virtual;
 }

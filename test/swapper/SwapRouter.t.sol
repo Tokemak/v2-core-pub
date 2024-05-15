@@ -13,15 +13,30 @@ import { BalancerV2Swap } from "src/swapper/adapters/BalancerV2Swap.sol";
 import { CurveV1StableSwap } from "src/swapper/adapters/CurveV1StableSwap.sol";
 import { ISyncSwapper } from "src/interfaces/swapper/ISyncSwapper.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
+import { IRouter } from "src/interfaces/external/aerodrome/IRouter.sol";
+import { AerodromeSwap } from "src/swapper/adapters/AerodromeSwap.sol";
 import { IDestinationVaultRegistry, DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
 import { Roles } from "src/libs/Roles.sol";
 
 import {
-    TOKE_MAINNET, WSTETH_MAINNET, STETH_MAINNET, WETH_MAINNET, FRXETH_MAINNET, RANDOM
+    TOKE_MAINNET,
+    WSTETH_MAINNET,
+    STETH_MAINNET,
+    WETH_MAINNET,
+    FRXETH_MAINNET,
+    RANDOM,
+    USDC_BASE,
+    RANDOM,
+    DAI_BASE,
+    WETH9_BASE,
+    AERODROME_SWAP_ROUTER_BASE,
+    AERO_BASE,
+    USDBC_BASE
 } from "../utils/Addresses.sol";
 
 // solhint-disable func-name-mixedcase
+// solhint-disable max-line-length
 contract SwapRouterTest is Test {
     address private constant BALANCER_VAULT = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
 
@@ -29,9 +44,11 @@ contract SwapRouterTest is Test {
     AccessController private accessController;
     DestinationVaultRegistry public destinationVaultRegistry;
     SwapRouter private swapRouter;
+    IRouter private aerodromeRouter;
 
     BalancerV2Swap private balSwapper;
     CurveV1StableSwap private curveSwapper;
+    AerodromeSwap private aerodromeAdapter;
 
     function setUp() public {
         string memory endpoint = vm.envString("MAINNET_RPC_URL");
@@ -89,6 +106,35 @@ contract SwapRouterTest is Test {
             data: abi.encode(0, 1)
         });
         swapRouter.setSwapRoute(WETH_MAINNET, curveTwoHopRoute);
+    }
+
+    function _setUpBase() internal {
+        string memory endpoint = vm.envString("BASE_MAINNET_RPC_URL");
+        uint256 forkId = vm.createFork(endpoint, 14_406_720);
+
+        vm.selectFork(forkId);
+
+        // setup system
+        systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
+        accessController = new AccessController(address(systemRegistry));
+        systemRegistry.setAccessController(address(accessController));
+        destinationVaultRegistry = new DestinationVaultRegistry(systemRegistry);
+
+        accessController.grantRole(Roles.SWAP_ROUTER_MANAGER, address(this));
+
+        systemRegistry.setDestinationVaultRegistry(address(destinationVaultRegistry));
+
+        vm.mockCall(
+            address(destinationVaultRegistry),
+            abi.encodeWithSelector(IDestinationVaultRegistry.isRegistered.selector),
+            abi.encode(true)
+        );
+
+        // setup swap router
+        swapRouter = new SwapRouter(systemRegistry);
+
+        aerodromeAdapter = new AerodromeSwap(address(swapRouter));
+        aerodromeRouter = IRouter(AERODROME_SWAP_ROUTER_BASE);
     }
 
     function test_setSwapRoute_Reverts_IfAccessDenied() public {
@@ -249,5 +295,152 @@ contract SwapRouterTest is Test {
 
         uint256 val = swapRouter.swapForQuote(asset, sellAmount, quote, 1);
         assertGe(val, 0);
+    }
+
+    function test_swap_AerodromeBase() public {
+        _setUpBase();
+
+        uint256 sellAmount = 1e18;
+
+        deal(DAI_BASE, address(this), 10 * sellAmount);
+        IERC20(DAI_BASE).approve(address(swapRouter), 4 * sellAmount);
+
+        // get balance of WETH_MAINNET before swap
+        uint256 usdcBalanceBefore = IERC20(USDC_BASE).balanceOf(address(this));
+
+        //route DAI_BASE ---> USDC_BASE
+        IRouter.Route[] memory aerodromeRoutes = new IRouter.Route[](1);
+
+        aerodromeRoutes[0] =
+            IRouter.Route({ from: DAI_BASE, to: USDC_BASE, stable: true, factory: aerodromeRouter.defaultFactory() });
+
+        ISwapRouter.SwapData[] memory route = new ISwapRouter.SwapData[](1);
+        route[0] = ISwapRouter.SwapData({
+            token: USDC_BASE,
+            pool: address(aerodromeRouter), // Router address
+            swapper: aerodromeAdapter,
+            data: abi.encode(aerodromeRoutes)
+        });
+
+        swapRouter.setSwapRoute(DAI_BASE, route);
+
+        uint256 balDiff = swapRouter.swapForQuote(DAI_BASE, sellAmount, USDC_BASE, 1);
+
+        // get balance of USDC after swap
+        uint256 usdcBalanceAfter = IERC20(USDC_BASE).balanceOf(address(this));
+
+        assertGt(usdcBalanceAfter, usdcBalanceBefore);
+        assertEq(balDiff, usdcBalanceAfter - usdcBalanceBefore);
+    }
+
+    function test_swap_AerodromeBase_Many() public {
+        _setUpBase();
+
+        //test from WETH to AERO
+        uint256 sellAmount = 1e18;
+
+        deal(WETH9_BASE, address(this), 10 * sellAmount);
+        IERC20(WETH9_BASE).approve(address(swapRouter), 4 * sellAmount);
+
+        // get balance of AERO_BASE before swap
+        uint256 aeroBalanceBefore = IERC20(AERO_BASE).balanceOf(address(this));
+
+        IRouter.Route[] memory aerodromeRoutes = new IRouter.Route[](4);
+        aerodromeRoutes[0] =
+            IRouter.Route({ from: WETH9_BASE, to: USDC_BASE, stable: false, factory: aerodromeRouter.defaultFactory() });
+
+        aerodromeRoutes[1] =
+            IRouter.Route({ from: USDC_BASE, to: DAI_BASE, stable: true, factory: aerodromeRouter.defaultFactory() });
+
+        aerodromeRoutes[2] =
+            IRouter.Route({ from: DAI_BASE, to: USDBC_BASE, stable: true, factory: aerodromeRouter.defaultFactory() });
+        aerodromeRoutes[3] =
+            IRouter.Route({ from: USDBC_BASE, to: AERO_BASE, stable: true, factory: aerodromeRouter.defaultFactory() });
+
+        ISwapRouter.SwapData[] memory route = new ISwapRouter.SwapData[](1);
+        route[0] = ISwapRouter.SwapData({
+            token: AERO_BASE,
+            pool: address(aerodromeRouter), // Router address
+            swapper: aerodromeAdapter,
+            data: abi.encode(aerodromeRoutes)
+        });
+
+        swapRouter.setSwapRoute(WETH9_BASE, route);
+
+        uint256 balDiff = swapRouter.swapForQuote(WETH9_BASE, sellAmount, AERO_BASE, 1);
+
+        uint256 aeroBalanceAfter = IERC20(AERO_BASE).balanceOf(address(this));
+
+        assertGt(aeroBalanceAfter, aeroBalanceBefore);
+        assertEq(balDiff, aeroBalanceAfter - aeroBalanceBefore);
+    }
+
+    function test_swap_AerodromeBase_ManyHops() public {
+        _setUpBase();
+
+        //test from WETH to AERO
+        uint256 sellAmount = 1e18;
+
+        deal(WETH9_BASE, address(this), 10 * sellAmount);
+        IERC20(WETH9_BASE).approve(address(swapRouter), 4 * sellAmount);
+
+        // get balance of AERO_BASE before swap
+        uint256 aeroBalanceBefore = IERC20(AERO_BASE).balanceOf(address(this));
+
+        IRouter.Route[] memory aerodromeRoutes0 = new IRouter.Route[](1);
+        IRouter.Route[] memory aerodromeRoutes1 = new IRouter.Route[](1);
+        IRouter.Route[] memory aerodromeRoutes2 = new IRouter.Route[](1);
+        IRouter.Route[] memory aerodromeRoutes3 = new IRouter.Route[](1);
+
+        aerodromeRoutes0[0] =
+            IRouter.Route({ from: WETH9_BASE, to: USDC_BASE, stable: false, factory: aerodromeRouter.defaultFactory() });
+
+        aerodromeRoutes1[0] =
+            IRouter.Route({ from: USDC_BASE, to: DAI_BASE, stable: true, factory: aerodromeRouter.defaultFactory() });
+
+        aerodromeRoutes2[0] =
+            IRouter.Route({ from: DAI_BASE, to: USDBC_BASE, stable: true, factory: aerodromeRouter.defaultFactory() });
+
+        aerodromeRoutes3[0] =
+            IRouter.Route({ from: USDBC_BASE, to: AERO_BASE, stable: true, factory: aerodromeRouter.defaultFactory() });
+
+        ISwapRouter.SwapData[] memory route = new ISwapRouter.SwapData[](4);
+
+        route[0] = ISwapRouter.SwapData({
+            token: USDC_BASE,
+            pool: address(aerodromeRouter), // Router address
+            swapper: aerodromeAdapter,
+            data: abi.encode(aerodromeRoutes0)
+        });
+
+        route[1] = ISwapRouter.SwapData({
+            token: DAI_BASE,
+            pool: address(aerodromeRouter), // Router address
+            swapper: aerodromeAdapter,
+            data: abi.encode(aerodromeRoutes1)
+        });
+
+        route[2] = ISwapRouter.SwapData({
+            token: USDBC_BASE,
+            pool: address(aerodromeRouter), // Router address
+            swapper: aerodromeAdapter,
+            data: abi.encode(aerodromeRoutes2)
+        });
+
+        route[3] = ISwapRouter.SwapData({
+            token: AERO_BASE,
+            pool: address(aerodromeRouter), // Router address
+            swapper: aerodromeAdapter,
+            data: abi.encode(aerodromeRoutes3)
+        });
+
+        swapRouter.setSwapRoute(WETH9_BASE, route);
+
+        uint256 balDiff = swapRouter.swapForQuote(WETH9_BASE, sellAmount, AERO_BASE, 1);
+
+        uint256 aeroBalanceAfter = IERC20(AERO_BASE).balanceOf(address(this));
+
+        assertGt(aeroBalanceAfter, aeroBalanceBefore);
+        assertEq(balDiff, aeroBalanceAfter - aeroBalanceBefore);
     }
 }

@@ -20,8 +20,6 @@ library CrossChainMessagingUtilities {
 
     error MismatchMessageHash(bytes32 storedHash, bytes32 currentHash);
 
-    error VersionMismatch(uint256 messageProxyVersion, uint256 receivingRouterVersion);
-
     /// =====================================================
     /// Structs
     /// =====================================================

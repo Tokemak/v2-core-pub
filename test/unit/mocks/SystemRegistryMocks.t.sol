@@ -29,4 +29,12 @@ contract SystemRegistryMocks {
             abi.encode(systemSecurity)
         );
     }
+
+    function _mockSysRegReceivingRouter(ISystemRegistry systemRegistry, address receivingRouter) internal {
+        vm.mockCall(
+            address(systemRegistry),
+            abi.encodeWithSelector(ISystemRegistry.receivingRouter.selector),
+            abi.encode(receivingRouter)
+        );
+    }
 }

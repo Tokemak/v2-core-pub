@@ -274,7 +274,6 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
         }
 
         emit ReceiverSet(destinationChainSelector, destinationChainReceiver);
-
         destinationChainReceivers[destinationChainSelector] = destinationChainReceiver;
     }
 

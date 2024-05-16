@@ -27,8 +27,8 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     /// @dev The contract that sends the message across chains
     mapping(uint64 => address) public sourceChainSenders;
 
-    /// @notice address sender => bytes32 messageType => bytes32 hash
-    mapping(address => mapping(bytes32 => bytes32)) public lastMessageSent;
+    /// @notice keccack256(address origin, uint256 sourceChainSelector, bytes32 messageType) => bytes32 hash
+    mapping(bytes32 => bytes32) public lastMessageSent;
 
     /// =====================================================
     /// Structs
@@ -37,7 +37,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     struct ResendArgsReceivingChain {
         address messageOrigin;
         bytes32 messageType;
-        uint256 messageRetryTimestamp;
+        uint256 messageResendTimestamp;
         uint64 sourceChainSelector;
         bytes message;
         address[] messageReceivers;
@@ -84,9 +84,13 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     /// Failure Events
     /// =====================================================
 
-    event InvalidSenderFromSource(uint256 sourceChainSelector, address sourceChainSender);
+    event InvalidSenderFromSource(
+        uint256 sourceChainSelector, address sourceChainSender, address sourceChainSenderRegistered
+    );
 
-    event NoMessageReceiversRegistered(address messageOrigin, bytes32 messageType);
+    event NoMessageReceiversRegistered(address messageOrigin, bytes32 messageType, uint64 sourceChainSelector);
+
+    event MessageVersionMismatch(uint256 versionSource, uint256 versionReceiver);
 
     event MessageFailed(address messageReceiver);
 
@@ -110,20 +114,26 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     /// @inheritdoc CCIPReceiver
     function _ccipReceive(Client.Any2EVMMessage memory ccipMessage) internal override {
         uint64 sourceChainSelector = ccipMessage.sourceChainSelector;
-        address proxySender = abi.decode(ccipMessage.sender, (address));
         bytes memory messageData = ccipMessage.data;
 
-        if (sourceChainSenders[sourceChainSelector] != proxySender) {
-            emit InvalidSenderFromSource(sourceChainSelector, proxySender);
-            return;
+        // Scope stack too deep
+        {
+            address proxySender = abi.decode(ccipMessage.sender, (address));
+            address registeredSender = sourceChainSenders[sourceChainSelector];
+            if (registeredSender != proxySender) {
+                emit InvalidSenderFromSource(sourceChainSelector, proxySender, registeredSender);
+                return;
+            }
         }
 
         CCUtils.Message memory messageFromProxy = decodeMessage(messageData);
+        // Scope stack too deep
         {
-            uint256 messageProxyVersion = messageFromProxy.version;
-            uint256 recevingRouterVersion = CCUtils.getVersion();
-            if (messageProxyVersion != recevingRouterVersion) {
-                revert CCUtils.VersionMismatch(messageProxyVersion, recevingRouterVersion);
+            uint256 sourceVersion = messageFromProxy.version;
+            uint256 receiverVersion = CCUtils.getVersion();
+            if (sourceVersion != receiverVersion) {
+                emit MessageVersionMismatch(sourceVersion, receiverVersion);
+                return;
             }
         }
 
@@ -131,18 +141,13 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
         bytes32 messageType = messageFromProxy.messageType;
         bytes memory message = messageFromProxy.message;
 
-        address[] memory messageReceiversForRoute =
-            messageReceivers[_getMessageReceiversKey(origin, sourceChainSelector, messageType)];
+        bytes32 receiverKey = _getMessageReceiversKey(origin, sourceChainSelector, messageType);
+        address[] memory messageReceiversForRoute = messageReceivers[receiverKey];
         uint256 messageReceiversForRouteLength = messageReceiversForRoute.length;
-
-        if (messageReceiversForRouteLength == 0) {
-            emit NoMessageReceiversRegistered(origin, messageType);
-            return;
-        }
 
         // Hash encoded Message struct.
         bytes32 messageHash = keccak256(messageData);
-        lastMessageSent[origin][messageType] = messageHash;
+        lastMessageSent[receiverKey] = messageHash;
 
         emit MessageData(
             messageHash,
@@ -153,6 +158,11 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
             sourceChainSelector,
             message
         );
+
+        if (messageReceiversForRouteLength == 0) {
+            emit NoMessageReceiversRegistered(origin, messageType, sourceChainSelector);
+            return;
+        }
 
         for (uint256 i = 0; i < messageReceiversForRouteLength; ++i) {
             address currentMessageReceiver = messageReceiversForRoute[i];
@@ -184,19 +194,20 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
 
             // Get hash from data passed in, hash from last message, revert if they are not equal.
             bytes32 currentMessageHash = keccak256(
-                CCUtils.encodeMessage(messageOrigin, currentResend.messageRetryTimestamp, messageType, message)
+                CCUtils.encodeMessage(messageOrigin, currentResend.messageResendTimestamp, messageType, message)
             );
 
+            // solhint-disable-next-line max-line-length
+            bytes32 receiverKey = _getMessageReceiversKey(messageOrigin, currentResend.sourceChainSelector, messageType);
+
             {
-                bytes32 storedMessageHash = lastMessageSent[messageOrigin][messageType];
+                bytes32 storedMessageHash = lastMessageSent[receiverKey];
                 if (currentMessageHash != storedMessageHash) {
                     revert CCUtils.MismatchMessageHash(storedMessageHash, currentMessageHash);
                 }
             }
 
-            address[] memory storedMessageReceiversForKey =
-            // solhint-disable-next-line max-line-length
-             messageReceivers[_getMessageReceiversKey(messageOrigin, currentResend.sourceChainSelector, messageType)];
+            address[] memory storedMessageReceiversForKey = messageReceivers[receiverKey];
             uint256 storedReceiversLength = storedMessageReceiversForKey.length;
             Errors.verifyNotZero(storedReceiversLength, "storedReceiversLength");
 
@@ -206,13 +217,14 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
                 Errors.verifyNotZero(currentReceiver, "currentReceiver");
 
                 // Checking that message receiver exists in our routing information.
-                for (uint256 k = 0; k < storedReceiversLength; ++k) {
+                uint256 k;
+                for (; k < storedReceiversLength; ++k) {
                     if (currentReceiver == storedMessageReceiversForKey[k]) {
                         break;
                     }
-                    if (k == storedReceiversLength) {
-                        revert MessageReceiverDoesNotExist(currentReceiver);
-                    }
+                }
+                if (k == storedReceiversLength) {
+                    revert MessageReceiverDoesNotExist(currentReceiver);
                 }
 
                 // slither-disable-start reentrancy-events
@@ -240,14 +252,14 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
             revert CCUtils.ChainNotSupported(sourceChainSelector);
         }
 
-        address[] memory currentStoredMessageReceivers =
-            messageReceivers[_getMessageReceiversKey(messageOrigin, sourceChainSelector, messageType)];
-        uint256 currentStoredMessageReceiversLength = currentStoredMessageReceivers.length;
         for (uint256 i = 0; i < messageReceiversToSetLength; ++i) {
             address receiverToAdd = messageReceiversToSet[i];
             Errors.verifyNotZero(receiverToAdd, "receiverToAdd");
 
-            // TODO: Bug here, will not update
+            address[] memory currentStoredMessageReceivers =
+                messageReceivers[_getMessageReceiversKey(messageOrigin, sourceChainSelector, messageType)];
+            uint256 currentStoredMessageReceiversLength = currentStoredMessageReceivers.length;
+
             if (currentStoredMessageReceiversLength > 0) {
                 for (uint256 j = 0; j < currentStoredMessageReceiversLength; ++j) {
                     if (receiverToAdd == currentStoredMessageReceivers[j]) {
@@ -276,11 +288,15 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
             messageReceivers[_getMessageReceiversKey(messageOrigin, sourceChainSelector, messageType)];
 
         for (uint256 i = 0; i < messageReceiversToRemoveLength; ++i) {
+            // Takes care of checks for origin, type, selector being zero.
             uint256 receiversStoredLength = messageReceiversStored.length;
-            address receiverToRemove = messageReceiversToRemove[i];
             if (receiversStoredLength == 0) {
                 revert Errors.ItemNotFound();
             }
+
+            address receiverToRemove = messageReceiversToRemove[i];
+            Errors.verifyNotZero(receiverToRemove, "receiverToRemove");
+
             // For each route we want to remove, loop through stored routes.
             uint256 j = 0;
             for (; j < receiversStoredLength; ++j) {
@@ -310,11 +326,8 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
         uint64 sourceChainSelector,
         address sourceChainSender
     ) external hasRole(Roles.RECEIVING_ROUTER_MANAGER) {
-        Errors.verifyNotZero(sourceChainSender, "sourceChainSender");
-        CCUtils._validateChain(IRouterClient(i_ccipRouter), sourceChainSelector);
-
-        if (sourceChainSenders[sourceChainSelector] != address(0)) {
-            revert Errors.ItemExists();
+        if (sourceChainSender != address(0)) {
+            CCUtils._validateChain(IRouterClient(i_ccipRouter), sourceChainSelector);
         }
 
         emit SourceChainSenderSet(sourceChainSelector, sourceChainSender);
@@ -329,6 +342,15 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
 
         emit SourceChainSenderDeleted(sourceChainSelector);
         delete sourceChainSenders[sourceChainSelector];
+    }
+
+    function getMessageReceivers(
+        address messageOrigin,
+        uint64 sourceChainSelector,
+        bytes32 messageType
+    ) external view returns (address[] memory receivers) {
+        bytes32 receiversKey = _getMessageReceiversKey(messageOrigin, sourceChainSelector, messageType);
+        receivers = messageReceivers[receiversKey];
     }
 
     /// =====================================================

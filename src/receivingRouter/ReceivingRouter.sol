@@ -197,7 +197,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     }
 
     /// @notice Used to resend messages that failed when attempting to go to message receivers
-    /// @dev This can be used even if messages did not fail, be aware of receivers being sent in..
+    /// @dev This can be used even if messages did not fail, be aware of receivers being sent in
     /// @param args Array of Resend structs with information for retries
     function resendLastMessage(ResendArgsReceivingChain[] memory args)
         external
@@ -325,7 +325,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
         uint256 messageReceiversToRemoveLength = messageReceiversToRemove.length;
         Errors.verifyNotZero(messageReceiversToRemoveLength, "messageReceiversToRemoveLength");
 
-        // Get stored receivers as storage, be manipulating later.
+        // Get stored receivers as storage, manipulating later.
         // Acts as security for origin, type, selector.  If none registered, will revert.  Zeros checked on reg
         address[] storage messageReceiversStored =
             messageReceivers[_getMessageReceiversKey(messageOrigin, sourceChainSelector, messageType)];
@@ -357,7 +357,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
                 }
             }
 
-            // If we get to the end of the currentStoredRoutes array, item to be deleted does not exist.
+            // If we get to the end of the messageReceiversStored array, item to be deleted does not exist.
             if (j == receiversStoredLength) {
                 revert Errors.ItemNotFound();
             }
@@ -397,7 +397,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     /// Functions - Helpers
     /// =====================================================
 
-    /// @dev Decodes CCUtils.Message struct send from source chain
+    /// @dev Decodes CCUtils.Message struct sent from source chain
     function decodeMessage(bytes memory encodedMessage) private pure returns (CCUtils.Message memory) {
         return abi.decode(encodedMessage, (CCUtils.Message));
     }

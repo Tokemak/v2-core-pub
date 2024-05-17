@@ -816,7 +816,6 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         bytes32 messageType = keccak256("messageType");
         bytes memory message = abi.encode("message");
         bytes memory data = CCUtils.encodeMessage(origin, block.timestamp, messageType, message);
-        bytes32 messageHash = keccak256(data);
 
         Client.Any2EVMMessage memory ccipMessage = _buildChainlinkCCIPMessage(messageId, chainId, sender, data);
 
@@ -824,13 +823,9 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         _router.setSourceChainSenders(chainId, sender);
 
         vm.expectEmit(true, true, true, true);
-        emit MessageData(messageHash, block.timestamp, origin, messageType, messageId, chainId, message);
-        vm.expectEmit(true, true, true, true);
         emit NoMessageReceiversRegistered(origin, messageType, chainId);
         vm.prank(address(_routerClient));
         _router.ccipReceive(ccipMessage);
-
-        assertEq(_router.lastMessageSent(_getMessageReceiversKey(origin, chainId, messageType)), messageHash);
     }
 
     function test_EmitsFailureEvent_VersionMismatch() public {

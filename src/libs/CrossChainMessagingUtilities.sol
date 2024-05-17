@@ -10,20 +10,24 @@ library CrossChainMessagingUtilities {
     /// Constants
     /// =====================================================
 
+    /// @notice Message struct version
     uint256 public constant VERSION = 1;
 
     /// =====================================================
     /// Errors
     /// =====================================================
 
+    /// @notice Thrown when chain selector is not supported
     error ChainNotSupported(uint64 chainId);
 
+    /// @notice Thrown when stored and supplied message hashes don't match in resend functions.
     error MismatchMessageHash(bytes32 storedHash, bytes32 currentHash);
 
     /// =====================================================
     /// Structs
     /// =====================================================
 
+    /// @notice Message struct.  Encoded and sent across chain.
     struct Message {
         address messageOrigin;
         uint256 version;

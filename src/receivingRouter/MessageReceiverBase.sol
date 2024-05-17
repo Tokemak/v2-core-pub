@@ -12,6 +12,7 @@ abstract contract MessageReceiverBase is SystemComponent, IMessageReceiverBase {
 
     constructor(ISystemRegistry _systemRegistry) SystemComponent(_systemRegistry) { }
 
+    /// @notice Ensure that receiving router registered on regsitry is only contract to call
     modifier onlyReceivingRouter() {
         if (msg.sender != address(systemRegistry.receivingRouter())) revert NotReceivingRouter();
         _;
@@ -24,6 +25,7 @@ abstract contract MessageReceiverBase is SystemComponent, IMessageReceiverBase {
     }
 
     /// @dev This function will decode the incoming message and perform any other actions needed.
+    /// @param message Bytes message to decode.
     // slither-disable-next-line unimplemented-functions
     function _onMessageReceive(bytes memory message) internal virtual;
 }

@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity >=0.8.7;
 
-// solhint-disable func-name-mixedcase,max-states-count,var-name-mixedcase,no-console
+// solhint-disable func-name-mixedcase,max-states-count,var-name-mixedcase,no-console,max-line-length
 
 import { Roles } from "src/libs/Roles.sol";
 import { AutopoolDebt } from "src/vault/libs/AutopoolDebt.sol";
@@ -138,6 +138,11 @@ contract AutopoolETHTests is
         vault.setTotalSupply(0);
 
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
+
+        vault.toggleAllowedUser(address(this));
+        vault.toggleAllowedUser(makeAddr("user"));
+        vault.toggleAllowedUser(makeAddr("user1"));
+        vault.toggleAllowedUser(makeAddr("user2"));
     }
 
     function test_SetUpState() public {
@@ -156,6 +161,10 @@ contract AutopoolETHTests is
     function _depositFor(address user, uint256 amount) internal returns (uint256 sharesReceived) {
         vaultAsset.mint(address(this), amount);
         vaultAsset.approve(address(vault), amount);
+
+        if (!vault.allowedUsers(address(this))) {
+            vault.toggleAllowedUser(address(this));
+        }
 
         sharesReceived = vault.deposit(amount, user);
     }
@@ -372,7 +381,7 @@ contract InitializationTests is AutopoolETHTests {
         super.setUp();
 
         TestAutopoolETH initTestVaultTemplate = new TestAutopoolETH(systemRegistry, address(vaultAsset));
-        AutopoolETH initTestVaultRestrictedTemplate = new AutopoolETH(systemRegistry, address(vaultAsset), false);
+        AutopoolETH initTestVaultRestrictedTemplate = new AutopoolETH(systemRegistry, address(vaultAsset), true);
 
         initTestVault = TestAutopoolETH(Clones.cloneDeterministic(address(initTestVaultTemplate), "salt1"));
         // solhint-disable-next-line max-line-length
@@ -739,7 +748,7 @@ contract Deposit is AutopoolETHTests {
         uint256 user1TotalDeposited = totalDeposited - totalWithdrawn;
 
         // Deposit for user2, almost 2x total deposits of user1
-        address user2 = newAddr(1002, "user2");
+        address user2 = makeAddr("user2");
         uint256 user2Deposit = 2 * vault.totalAssets() - 1;
         _depositFor(user2, user2Deposit);
 
@@ -766,6 +775,8 @@ contract Deposit is AutopoolETHTests {
     function test_RevertIf_ReceiverIsZeroAddress() public {
         vaultAsset.mint(address(this), 1e18);
         vaultAsset.approve(address(vault), 1e18);
+
+        vault.toggleAllowedUser(address(0));
 
         vm.expectRevert(abi.encodeWithSelector(AutopoolToken.ERC20InvalidReceiver.selector, address(0)));
         vault.deposit(1e18, address(0));
@@ -7424,10 +7435,7 @@ contract TestAutopoolETH is AutopoolETH {
     bool private _nextDepositGetsDoubleShares;
     bool private _nextWithdrawHalvesIdle;
 
-    constructor(
-        ISystemRegistry _systemRegistry,
-        address _vaultAsset
-    ) AutopoolETH(_systemRegistry, _vaultAsset, false) { }
+    constructor(ISystemRegistry _systemRegistry, address _vaultAsset) AutopoolETH(_systemRegistry, _vaultAsset, true) { }
 
     function directTransfer(address to, uint256 value) external {
         AutopoolToken.transfer(_tokenData, to, value);

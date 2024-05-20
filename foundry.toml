@@ -1,11 +1,10 @@
 [profile.default]
-name = 'contracts-template'
+name = 'v2-core'
 src = 'src'
 out = 'out'
 libs = ['lib']
 solc = "0.8.17"
 evm_version = "shanghai"
-fs_permissions = [{ access = "read-write", path = "./" }]
 
 [profile.mainnet]
 libraries = [
@@ -19,6 +18,29 @@ libraries = [
     "src/destinations/adapters/staking/ConvexAdapter.sol:ConvexStaking:0x6c2f91978004B0A769c622dfe352EdF331044d49",
     "src/destinations/adapters/rewards/ConvexRewardsAdapter.sol:ConvexRewards:0x08F295fD04B52Ab6a7f8A86bC9A0A1c0EA8aDE01",
     "src/destinations/adapters/CurveV2FactoryCryptoAdapter.sol:CurveV2FactoryCryptoAdapter:0xe46E7634d6e0BC954407078818fF62eDfF414184",
+]
+
+[profile.mainnet-gen2]
+libraries = [
+    "src/strategy/StructuredLinkedList.sol:StructuredLinkedList:0x6C566a67b34CFed9821FC7433750A1391fa97989",
+    "src/strategy/WithdrawalQueue.sol:WithdrawalQueue:0xC754773B0e8CaFbD17e978be3c31ef34869ba733",
+    "src/destinations/adapters/staking/ConvexAdapter.sol:ConvexStaking:0x6c2f91978004B0A769c622dfe352EdF331044d49",
+    "src/destinations/adapters/rewards/ConvexRewardsAdapter.sol:ConvexRewards:0x08F295fD04B52Ab6a7f8A86bC9A0A1c0EA8aDE01",
+    "src/destinations/adapters/CurveV2FactoryCryptoAdapter.sol:CurveV2FactoryCryptoAdapter:0xe46E7634d6e0BC954407078818fF62eDfF414184",
+    "src/destinations/adapters/staking/AuraAdapter.sol:AuraStaking:0x9f121874565cC071Fd2E830DF2021987210DD853",
+    "src/destinations/adapters/rewards/AuraRewardsAdapter.sol:AuraRewards:0x27401aca0EA294195187F6aE0673451AB01e5471",
+    "src/destinations/adapters/BalancerBeethovenAdapter.sol:BalancerBeethovenAdapter:0xeE9d4bDA0a124157D05756e48e12C67289833191",
+    "src/libs/BalancerUtilities.sol:BalancerUtilities:0xa986Cc1bc9C8987E7b679F4edF8e065079BA461B",
+    "src/destinations/adapters/rewards/MaverickRewardsAdapter.sol:MaverickRewardsAdapter:0x487F4bdf1201Ac0eD5D8c9A9b706A3b62De5249e",
+    "src/destinations/adapters/rewards/MaverickStakingAdapter.sol:MaverickStakingAdapter:0x123d88094FEfB727Bef3906123485C2AF49810bC",
+    "src/vault/libs/Autopool4626.sol:Autopool4626:0x1Dc315a9d153Dc516A007358C173df51C78C61e4",
+    "src/vault/libs/AutopoolDebt.sol:AutopoolDebt:0xc2d3450E1b80136aE8fa3bC6EE8E4b702C7D4942",
+    "src/vault/libs/AutopoolDestinations.sol:AutopoolDestinations:0x93B5d679C4FC5b5705cba9D8e505Ff66b962C7aD",
+    "src/vault/libs/AutopoolFees.sol:AutopoolFees:0x35400b052d96ce4d9943AEeE9f36beB63eCB6b2b",
+    "src/vault/libs/AutopoolToken.sol:AutopoolToken:0xb916038B047C637bD2be297A7480708Ba74E1A82",
+    "src/vault/strategy/libs/Incentives.sol:Incentives:0x451cE891E340A22bB6c2CE046827D4d69f571648",
+    "src/vault/strategy/libs/PriceReturn.sol:PriceReturn:0xF8e01E7120C0C4cF8Ba90d12DDdF0E3bE9e3DBaD",
+    "src/vault/strategy/libs/SummaryStats.sol:SummaryStats:0x88eA6A9B3d27Ee782f8c3e6bEE6392fabAD59796",
 ]
 
 [fmt]
@@ -42,9 +64,7 @@ runs = 50
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
 
 [rpc_endpoints]
-goerli = "${GOERLI_RPC_URL}"
 mainnet = "${MAINNET_RPC_URL}"
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_API_KEY}" }
-goerli = { key = "${ETHERSCAN_API_KEY}" }

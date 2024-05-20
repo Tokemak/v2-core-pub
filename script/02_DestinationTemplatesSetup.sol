@@ -5,50 +5,86 @@ pragma solidity 0.8.17;
 // solhint-disable max-states-count
 // solhint-disable no-console
 
-import { BaseScript, console } from "./BaseScript.sol";
+import { Script } from "forge-std/Script.sol";
+import { console } from "forge-std/console.sol";
+import { Roles } from "src/libs/Roles.sol";
 
 // Contracts
 import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 import { Systems } from "./utils/Constants.sol";
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
 import { CurveConvexDestinationVault } from "src/vault/CurveConvexDestinationVault.sol";
+import { CurveNGConvexDestinationVault } from "src/vault/CurveNGConvexDestinationVault.sol";
 import { MaverickDestinationVault } from "src/vault/MaverickDestinationVault.sol";
 
-contract DestinationTemplatesSetupScript is BaseScript {
+import { Systems, Constants } from "./utils/Constants.sol";
+
+contract DestinationTemplatesSetupScript is Script {
     function run() external {
-        setUp(Systems.LST_GEN1_GOERLI);
+        vm.startBroadcast();
 
-        vm.startBroadcast(privateKey);
+        (, address owner,) = vm.readCallers();
 
-        BalancerAuraDestinationVault balVault =
-            new BalancerAuraDestinationVault(systemRegistry, constants.ext.balancerVault, constants.tokens.bal);
+        Constants.Values memory constants = Constants.get(Systems.LST_GEN2_MAINNET);
 
-        CurveConvexDestinationVault curveVault =
-            new CurveConvexDestinationVault(systemRegistry, constants.tokens.cvx, constants.ext.convexBooster);
+        BalancerAuraDestinationVault balVault = new BalancerAuraDestinationVault(
+            constants.sys.systemRegistry, address(constants.ext.balancerVault), constants.tokens.aura
+        );
 
-        MaverickDestinationVault mavVault = new MaverickDestinationVault(systemRegistry);
+        CurveConvexDestinationVault curveVault = new CurveConvexDestinationVault(
+            constants.sys.systemRegistry, constants.tokens.cvx, constants.ext.convexBooster
+        );
 
-        console.log("Bal Vault Template - bal-v1-no-aura: ", address(balVault));
-        console.log("Curve Vault Template - crv-v1-no-cvx: ", address(curveVault));
+        CurveNGConvexDestinationVault curveNGVault = new CurveNGConvexDestinationVault(
+            constants.sys.systemRegistry, constants.tokens.cvx, constants.ext.convexBooster
+        );
+
+        MaverickDestinationVault mavVault = new MaverickDestinationVault(constants.sys.systemRegistry);
+
+        console.log("Bal Aura Vault Template - bal-aura-v1: ", address(balVault));
+        console.log("Curve Convex Vault Template - crv-cvx-v1: ", address(curveVault));
+        console.log("CurveNG Convex Vault Template - crv-cvx-ng-v1: ", address(curveNGVault));
         console.log("Mav Vault Template: mav-v1", address(mavVault));
 
-        bytes32 balKey = keccak256(abi.encode("bal-v1-no-aura"));
-        bytes32 curveKey = keccak256(abi.encode("crv-v1-no-cvx"));
+        bytes32 balKey = keccak256(abi.encode("bal-aura-v1"));
+        bytes32 curveKey = keccak256(abi.encode("crv-cvx-v1"));
+        bytes32 curveNGKey = keccak256(abi.encode("crv-cvx-ng-v1"));
         bytes32 mavKey = keccak256(abi.encode("mav-v1"));
 
-        bytes32[] memory keys = new bytes32[](3);
+        console.log("\nbal-aura-v1: ");
+        console.logBytes32(balKey);
+        console.log("\ncrv-cvx-v1: ");
+        console.logBytes32(curveKey);
+        console.log("\ncrv-cvx-ng-v1: ");
+        console.logBytes32(curveNGKey);
+        console.log("\nmav-v1: ");
+        console.logBytes32(mavKey);
+
+        bytes32[] memory keys = new bytes32[](4);
         keys[0] = balKey;
         keys[1] = curveKey;
-        keys[2] = mavKey;
+        keys[2] = curveNGKey;
+        keys[3] = mavKey;
 
-        address[] memory addresses = new address[](3);
+        address[] memory addresses = new address[](4);
         addresses[0] = address(balVault);
         addresses[1] = address(curveVault);
-        addresses[2] = address(mavVault);
+        addresses[2] = address(curveNGVault);
+        addresses[3] = address(mavVault);
+
+        constants.sys.accessController.grantRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, owner);
 
         DestinationRegistry destRegistry = DestinationRegistry(constants.sys.destinationTemplateRegistry);
         destRegistry.addToWhitelist(keys);
         destRegistry.register(keys, addresses);
+
+        constants.sys.accessController.revokeRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, owner);
+
+        console.log("\n\n  **************************************");
+        console.log("======================================");
+        console.log("Remember to put any libraries that were deployed into the foundry.toml");
+        console.log("======================================");
+        console.log("**************************************\n\n");
 
         vm.stopBroadcast();
     }

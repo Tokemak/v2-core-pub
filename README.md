@@ -53,3 +53,11 @@ ERC4626 prop fuzz tests from a16z can be executed against the Autopool with:
 ```
 forge test --match-path test/fuzz/vault/Autopool.t.sol --fuzz-runs 10000
 ```
+
+## Deployment
+
+### Mainnet
+
+```
+forge script script/01_SystemDeploy.s.sol --rpc-url mainnet --sender $V2DEPLOY2
+```

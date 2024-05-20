@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IAutopool, IAutopilotRouterBase, IMainRewarder } from "src/interfaces/vault/IAutopilotRouterBase.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-
+import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { SelfPermit } from "src/utils/SelfPermit.sol";
 import { PeripheryPayments } from "src/utils/PeripheryPayments.sol";
 import { Multicall } from "src/utils/Multicall.sol";
@@ -20,6 +20,15 @@ abstract contract AutopilotRouterBase is
     PeripheryPayments,
     SystemComponent
 {
+    error UserNotAllowed();
+
+    modifier onlyAllowedUsers(IAutopool vault, address user) {
+        if (AutopoolETH(address(vault))._checkUsers() && !AutopoolETH(address(vault)).allowedUsers(user)) {
+            revert UserNotAllowed();
+        }
+        _;
+    }
+
     //read weth from system registry and give it to periphery payments
     constructor(ISystemRegistry _systemRegistry)
         PeripheryPayments(_systemRegistry.weth())
@@ -33,7 +42,15 @@ abstract contract AutopilotRouterBase is
         address to,
         uint256 shares,
         uint256 maxAmountIn
-    ) public payable virtual override returns (uint256 amountIn) {
+    )
+        public
+        payable
+        virtual
+        override
+        onlyAllowedUsers(vault, msg.sender)
+        onlyAllowedUsers(vault, to)
+        returns (uint256 amountIn)
+    {
         amountIn = vault.mint(shares, to);
         if (amountIn > maxAmountIn) {
             revert MaxAmountError();
@@ -46,7 +63,15 @@ abstract contract AutopilotRouterBase is
         address to,
         uint256 amount,
         uint256 minSharesOut
-    ) public payable virtual override returns (uint256 sharesOut) {
+    )
+        public
+        payable
+        virtual
+        override
+        onlyAllowedUsers(vault, msg.sender)
+        onlyAllowedUsers(vault, to)
+        returns (uint256 sharesOut)
+    {
         if ((sharesOut = vault.deposit(amount, to)) < minSharesOut) {
             revert MinSharesError();
         }
@@ -58,7 +83,15 @@ abstract contract AutopilotRouterBase is
         address to,
         uint256 amount,
         uint256 maxSharesOut
-    ) public payable virtual override returns (uint256 sharesOut) {
+    )
+        public
+        payable
+        virtual
+        override
+        onlyAllowedUsers(vault, msg.sender)
+        onlyAllowedUsers(vault, to)
+        returns (uint256 sharesOut)
+    {
         sharesOut = vault.withdraw(amount, to, msg.sender);
         if (sharesOut > maxSharesOut) {
             revert MaxSharesError();
@@ -71,7 +104,15 @@ abstract contract AutopilotRouterBase is
         address to,
         uint256 shares,
         uint256 minAmountOut
-    ) public payable virtual override returns (uint256 amountOut) {
+    )
+        public
+        payable
+        virtual
+        override
+        onlyAllowedUsers(vault, msg.sender)
+        onlyAllowedUsers(vault, to)
+        returns (uint256 amountOut)
+    {
         if ((amountOut = vault.redeem(shares, to, msg.sender)) < minAmountOut) {
             revert MinAmountError();
         }

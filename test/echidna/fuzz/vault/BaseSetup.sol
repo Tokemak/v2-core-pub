@@ -309,7 +309,7 @@ contract TestingPool is AutopoolETH, CryticIERC4626Internal {
         }
     }
 
-    constructor(ISystemRegistry sr, address va) AutopoolETH(sr, va) { }
+    constructor(ISystemRegistry sr, address va) AutopoolETH(sr, va, false) { }
 
     function setCryticFnsEnabled(bool val) public {
         _enableCryticFns = val;

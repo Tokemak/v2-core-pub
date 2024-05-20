@@ -5,15 +5,14 @@ pragma solidity 0.8.17;
 // solhint-disable max-states-count
 // solhint-disable no-console
 
-import { BaseScript, console } from "./BaseScript.sol";
+import { Script } from "forge-std/Script.sol";
+import { console } from "forge-std/console.sol";
 
 // Contracts
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { AutopoolRegistry } from "src/vault/AutopoolRegistry.sol";
-import { AutopoolETH } from "src/vault/AutopoolETH.sol";
-import { AutopoolFactory } from "src/vault/AutopoolFactory.sol";
 import { AutopilotRouter } from "src/vault/AutopilotRouter.sol";
 import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
@@ -22,59 +21,37 @@ import { SwapRouter } from "src/swapper/SwapRouter.sol";
 import { AsyncSwapperRegistry } from "src/liquidation/AsyncSwapperRegistry.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { StatsCalculatorRegistry } from "src/stats/StatsCalculatorRegistry.sol";
+import { StatsCalculatorFactory } from "src/stats/StatsCalculatorFactory.sol";
 import { AccToke } from "src/staking/AccToke.sol";
 import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
 import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { Lens } from "src/lens/Lens.sol";
+import { IncentivePricingStats } from "src/stats/calculators/IncentivePricingStats.sol";
 
 // Libraries
 import { Roles } from "src/libs/Roles.sol";
-import { Systems } from "./utils/Constants.sol";
+import { Systems, Constants } from "./utils/Constants.sol";
 
 // Interfaces
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
 
-/**
- * @dev FIRST GROUP OF STATE VARIABLES MUST BE MANUALLY SET!  DO NOT BROADCAST THIS SCRIPT TO MAINNET WITHOUT
- *      FIRST CHECKING THAT THESE VARIABLES WORK!
- *
- * @dev Check `.env.example` for environment variables that need are needed for this script to run.
- *
- * @dev This script sets up base functionality for TokemakV2.  This includes setting up the system registry, all
- *      contracts that are set on the system registry, and their dependencies.  All other actions within the system
- *      will be handled via other scripts.
- *
- * @dev To deploy test this script locally against a fork, run the following:
- *      `forge script script/01_SystemDeploy.s.sol --rpc-url<YOUR_URL_HERE>`.
- *
- *      To broadcast these transactions to the chain your rpc url points to, add the `--broadcast` flag.
- *
- *      To verify these contracts on Etherscan, add the `--verify` flag.
- */
-contract DeploySystem is BaseScript {
+contract DeploySystem is Script {
     /// @dev Manually set variables below.
+
+    // Rewarders
     uint256 public defaultRewardRatioAutopool = 800;
     uint256 public defaultRewardBlockDurationAutopool = 100;
     uint256 public defaultRewardRatioDest = 1;
     uint256 public defaultRewardBlockDurationDest = 1000;
-    bytes32 public autoPoolType = keccak256("lst-weth-v1");
+
+    // Acc
     uint256 public startEpoch = block.timestamp;
     uint256 public minStakeDuration = 30 days;
-    uint256 public autoPool1SupplyLimit = type(uint112).max;
-    uint256 public autoPool1WalletLimit = type(uint112).max;
-    string public autoPool1SymbolSuffix = "EST";
-    string public autoPool1DescPrefix = "Established";
-    bytes32 public autoPool1Salt = keccak256("established");
-    uint256 public autoPool2SupplyLimit = type(uint112).max;
-    uint256 public autoPool2WalletLimit = type(uint112).max;
-    string public autoPool2SymbolSuffix = "EMRG";
-    string public autoPool2DescPrefix = "Emerging";
-    bytes32 public autoPool2Salt = keccak256("emerging");
 
+    SystemRegistry public systemRegistry;
+    AccessController public accessController;
     SystemSecurity public systemSecurity;
     AutopoolRegistry public autoPoolRegistry;
-    AutopoolETH public autoPoolTemplate;
-    AutopoolFactory public autoPoolFactory;
     AutopilotRouter public autoPoolRouter;
     DestinationRegistry public destRegistry;
     DestinationVaultRegistry public destVaultRegistry;
@@ -84,114 +61,98 @@ contract DeploySystem is BaseScript {
     RootPriceOracle public priceOracle;
     StatsCalculatorRegistry public statsRegistry;
     AccToke public accToke;
-
     CurveResolverMainnet public curveResolver;
+    IncentivePricingStats public incentivePricingStats;
 
     function run() external {
-        setUp(Systems.LST_GEN1_GOERLI);
+        vm.startBroadcast();
 
-        address owner = vm.addr(vm.envUint(constants.privateKeyEnvVar));
+        (, address owner,) = vm.readCallers();
 
-        vm.startBroadcast(privateKey);
+        Constants.Values memory values = Constants.get(Systems.NEW);
 
+        deployCore(values, owner);
+
+        vm.stopBroadcast();
+    }
+
+    function deployCore(Constants.Values memory values, address owner) internal {
         // System registry setup
-        systemRegistry = new SystemRegistry(tokeAddress, wethAddress);
-        systemRegistry.addRewardToken(tokeAddress);
-        console.log("System Registry address: ", address(systemRegistry));
+        systemRegistry = new SystemRegistry(values.tokens.toke, values.tokens.weth);
+        systemRegistry.addRewardToken(values.tokens.toke);
+        systemRegistry.addRewardToken(values.tokens.weth);
+        console.log("System Registry: ", address(systemRegistry));
 
         // Access controller setup.
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
-        console.log("Access Controller address: ", address(accessController));
+        console.log("Access Controller: ", address(accessController));
 
         // System security setup
         systemSecurity = new SystemSecurity(systemRegistry);
         systemRegistry.setSystemSecurity(address(systemSecurity));
-        console.log("System Security address: ", address(systemSecurity));
+        console.log("System Security: ", address(systemSecurity));
 
         // Autopool Registry setup.
         autoPoolRegistry = new AutopoolRegistry(systemRegistry);
         systemRegistry.setAutopoolRegistry(address(autoPoolRegistry));
-        console.log("Autopool Vault Registry address: ", address(autoPoolRegistry));
-
-        // Deploy Autopool Template.
-        autoPoolTemplate = new AutopoolETH(systemRegistry, wethAddress);
-        console.log("Autopool Template address: ", address(autoPoolTemplate));
-
-        // Autopool Factory setup.
-        autoPoolFactory = new AutopoolFactory(
-            systemRegistry, address(autoPoolTemplate), defaultRewardRatioAutopool, defaultRewardBlockDurationAutopool
-        );
-        systemRegistry.setAutopoolFactory(autoPoolType, address(autoPoolFactory));
-        accessController.setupRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));
-        console.log("Autopool Factory address: ", address(autoPoolFactory));
-
-        // Initial Autopool Vault creation.
-        // address establishedAutopool =
-        //     autoPoolFactory.createVault(autoPool1SupplyLimit, autoPool1WalletLimit, autoPool1SymbolSuffix,
-        // autoPool1DescPrefix, autoPool1Salt, "");
-        // address emergingAutopool =
-        //     autoPoolFactory.createVault(autoPool2SupplyLimit, autoPool2WalletLimit, autoPool2SymbolSuffix,
-        // autoPool2DescPrefix, autoPool2Salt, "");
-        // console.log("Established Autopool Vault address: ", establishedAutopool);
-        // console.log("Emerging Autopool Vault address: ", emergingAutopool);
-
-        // Autopool router setup.
-        autoPoolRouter = new AutopilotRouter(systemRegistry);
-        systemRegistry.setAutopilotRouter(address(autoPoolRouter));
-        console.log("Autopool Router address: ", address(autoPoolRouter));
+        console.log("Autopool Registry: ", address(autoPoolRegistry));
 
         // Destination registry setup.
         destRegistry = new DestinationRegistry(systemRegistry);
         systemRegistry.setDestinationTemplateRegistry(address(destRegistry));
-        console.log("Destination Registry address: ", address(destRegistry));
+        console.log("Destination Template Registry: ", address(destRegistry));
 
         // Destination vault registry setup.
         destVaultRegistry = new DestinationVaultRegistry(systemRegistry);
         systemRegistry.setDestinationVaultRegistry(address(destVaultRegistry));
-        console.log("Destination Vault Registry address: ", address(destVaultRegistry));
+        console.log("Destination Vault Registry: ", address(destVaultRegistry));
 
         // Destination vault factory setup.
+        accessController.grantRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, owner);
         destVaultFactory =
             new DestinationVaultFactory(systemRegistry, defaultRewardRatioDest, defaultRewardBlockDurationDest);
         destVaultRegistry.setVaultFactory(address(destVaultFactory));
-        console.log("Destination Vault Factory address: ", address(destVaultFactory));
+        console.log("Destination Vault Factory: ", address(destVaultFactory));
+        accessController.revokeRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, owner);
 
         // Swap router setup.
         swapRouter = new SwapRouter(systemRegistry);
         systemRegistry.setSwapRouter(address(swapRouter));
-        console.log("Swap Router address: ", address(swapRouter));
+        console.log("Swap Router: ", address(swapRouter));
 
         // Async swapper setup.
         asyncSwapperRegistry = new AsyncSwapperRegistry(systemRegistry);
         systemRegistry.setAsyncSwapperRegistry(address(asyncSwapperRegistry));
-        console.log("Async Swapper Registry address: ", address(asyncSwapperRegistry));
+        console.log("Async Swapper Registry: ", address(asyncSwapperRegistry));
 
         // Price oracle setup.
         priceOracle = new RootPriceOracle(systemRegistry);
         systemRegistry.setRootPriceOracle(address(priceOracle));
-        console.log("Price Oracle address: ", address(priceOracle));
+        console.log("Root Price Oracle: ", address(priceOracle));
 
         // Stats registry setup.
         statsRegistry = new StatsCalculatorRegistry(systemRegistry);
         systemRegistry.setStatsCalculatorRegistry(address(statsRegistry));
-        console.log("Stats Calculator Registry address: ", address(statsRegistry));
+        console.log("Stats Calculator Registry: ", address(statsRegistry));
+
+        StatsCalculatorFactory statsFactory = new StatsCalculatorFactory(systemRegistry);
+        statsRegistry.setCalculatorFactory(address(statsFactory));
+        console.log("Stats Calculator Factory: ", address(statsFactory));
 
         // accToke setup.
         accToke = new AccToke(systemRegistry, startEpoch, minStakeDuration);
         systemRegistry.setAccToke(address(accToke));
-        console.log("AccToke address: ", address(accToke));
+        console.log("AccToke: ", address(accToke));
 
         // Curve resolver setup.
-        if (curveMetaRegistryAddress != address(0)) {
-            curveResolver = new CurveResolverMainnet(ICurveMetaRegistry(curveMetaRegistryAddress));
-            systemRegistry.setCurveResolver(address(curveResolver));
-            console.log("Curve Resolver Address: ", address(curveResolver));
-        }
+        curveResolver = new CurveResolverMainnet(ICurveMetaRegistry(values.ext.curveMetaRegistry));
+        systemRegistry.setCurveResolver(address(curveResolver));
+        console.log("Curve Resolver: ", address(curveResolver));
 
         // Setup the 0x swapper
         accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, owner);
-        BaseAsyncSwapper zeroExSwapper = new BaseAsyncSwapper(constants.ext.zeroExProxy);
+        BaseAsyncSwapper zeroExSwapper = new BaseAsyncSwapper(values.ext.zeroExProxy);
         asyncSwapperRegistry.register(address(zeroExSwapper));
         console.log("Base Async Swapper: ", address(zeroExSwapper));
         accessController.revokeRole(Roles.AUTO_POOL_REGISTRY_UPDATER, owner);
@@ -200,10 +161,9 @@ contract DeploySystem is BaseScript {
         Lens lens = new Lens(systemRegistry);
         console.log("Lens: ", address(lens));
 
-        // Setup our core reward tokens
-        systemRegistry.addRewardToken(constants.tokens.weth);
-        systemRegistry.addRewardToken(constants.tokens.toke);
-
-        vm.stopBroadcast();
+        // Incentive Pricing
+        incentivePricingStats = new IncentivePricingStats(systemRegistry);
+        systemRegistry.setIncentivePricingStats(address(incentivePricingStats));
+        console.log("Incentive Pricing Stats: ", address(incentivePricingStats));
     }
 }

@@ -117,7 +117,7 @@ contract BaseTest is Test {
         systemRegistry.addRewardToken(address(baseAsset));
         systemRegistry.addRewardToken(address(TOKE_MAINNET));
 
-        autoPoolTemplate = address(new AutopoolETH(systemRegistry, address(baseAsset)));
+        autoPoolTemplate = address(new AutopoolETH(systemRegistry, address(baseAsset), false));
 
         autoPoolFactory = new AutopoolFactory(systemRegistry, autoPoolTemplate, 800, 100);
         // NOTE: deployer grants factory permission to update the registry

@@ -106,7 +106,7 @@ library Stats {
      * @param value2 The second value.
      * @return A boolean indicating if the difference between the two values is more than 5%.
      */
-    function differsByMoreThanFivePercent(uint256 value1, uint256 value2) public pure returns (bool) {
+    function differsByMoreThanFivePercent(uint256 value1, uint256 value2) internal pure returns (bool) {
         if (value1 > value2) {
             return value1 > (value2 + (value2 / 20)); // value2 / 20 represents 5% of value2
         } else {

@@ -162,7 +162,8 @@ contract AutopoolETHStrategyInt is Test {
         );
         //_systemRegistry.setAutopoolRegistry(address(_autoPoolRegistry));
 
-        address autoPoolTemplate = address(new AutopoolETH(_systemRegistry, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));
+        address autoPoolTemplate =
+            address(new AutopoolETH(_systemRegistry, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, false));
         _autoPoolFactory = new AutopoolFactory(_systemRegistry, autoPoolTemplate, 800, 100);
 
         _accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(_autoPoolFactory));

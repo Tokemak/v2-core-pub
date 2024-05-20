@@ -1263,7 +1263,7 @@ contract AutopilotRouterTest is BaseTest {
         //
         // Update factory to support WETH instead of regular mock (one time just for this test)
         //
-        autoPoolTemplate = address(new AutopoolETH(systemRegistry, address(weth)));
+        autoPoolTemplate = address(new AutopoolETH(systemRegistry, address(weth), false));
         autoPoolFactory = new AutopoolFactory(systemRegistry, autoPoolTemplate, 800, 100);
         // NOTE: deployer grants factory permission to update the registry
         accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(autoPoolFactory));

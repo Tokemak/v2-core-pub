@@ -58,7 +58,7 @@ contract PermitTests is Test {
         _systemRegistry.addRewardToken(address(_asset));
         vm.label(address(_asset), "asset");
 
-        AutopoolETH template = new AutopoolETH(_systemRegistry, address(_asset));
+        AutopoolETH template = new AutopoolETH(_systemRegistry, address(_asset), false);
         uint256 autoPoolInitDeposit = template.WETH_INIT_DEPOSIT();
 
         _autoPoolFactory = new AutopoolFactory(_systemRegistry, address(template), 800, 100);

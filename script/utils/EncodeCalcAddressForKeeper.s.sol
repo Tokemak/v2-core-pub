@@ -4,10 +4,11 @@ pragma solidity 0.8.17;
 
 // solhint-disable no-console
 
-import { BaseScript, console } from "script/BaseScript.sol";
+import { Script } from "forge-std/Script.sol";
+import { console } from "forge-std/console.sol";
 
-contract EncodeCalcAddressForKeeper is BaseScript {
-    address[] private ar = [
+contract EncodeCalcAddressForKeeper is Script {
+    address[] private gen1Mainnet = [
         0x1Bb5f0B50F505934B5fc1821b24ecc1E1b287543,
         0xaed4850Ce877C0e0b051EbfF9286074C9378205c,
         0x1177b0C6eC38b6A79C06A35321c59C99392FBf57,
@@ -35,8 +36,31 @@ contract EncodeCalcAddressForKeeper is BaseScript {
         0xd8a92c00AF7856B64840Df2eb65978EA155d1C40
     ];
 
+    address[] private gen2Mainnet = [
+        0x059C6005b96ED7a71dD34BFF700800Ddd61A1A38,
+        0x1854C26405c83b0bBC741E6C8DF964dEF786C7e2,
+        0x05710c444530E55241516a4d6B6c5dd8E5508B15,
+        0x612871600a5112F2f8309C294D62C83B7bBE466d,
+        0xa3EA6066862cA93D098F6b514eF612E825eb8BBC,
+        0x204D06DadC5B4a227Ff721a4fde31c47c057aEE2,
+        0x9e72eb5c9dA439EE83670DC48d3dA2a6b833621a,
+        0xD00d55e56fCa8552d712987452B794ffEBA1AeB4,
+        0xa76b61329adA5F6b8aCfFE8e8E8552f67b733FA2,
+        0x5A38b7292b71Ba02c066a621b1dDB8267BE79433,
+        0x005191029332EAEcBBf7747e10e44a773E53F8e5,
+        0x3031b6A1b4cFc43CCcdEdA1152B6D50A9DCd14c4,
+        0x1603E7e6CA29e14272D5eA90080ad1e62A310B3a,
+        0x433dc857E4d68104CE5739ca0EF987D6563f4807,
+        0xb10Fb8a3473Ee0A3748875B30ea1f8C8aa600231,
+        0xcE91eBF2959189bA5BDf90C61241a2ce830Ad82d,
+        0xfCd0563AA43ab98F5EEFBFe647f846959c2A78db,
+        0x9d47238d31B6e38552847abC977BC5113302b230,
+        0x93DeeF8ef1922ff3C30abf6EbA85Dc62ADC378db,
+        0x551050d2dB5043b70598B148e83c9ca16fa21B10
+    ];
+
     function run() external view {
-        bytes memory x = abi.encode(ar);
+        bytes memory x = abi.encode(gen2Mainnet);
         console.logBytes(x);
     }
 }

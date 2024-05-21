@@ -133,7 +133,7 @@ contract SwapRouterTest is Test {
         // setup swap router
         swapRouter = new SwapRouter(systemRegistry);
 
-        aerodromeAdapter = new AerodromeSwap(address(swapRouter));
+        aerodromeAdapter = new AerodromeSwap(AERODROME_SWAP_ROUTER_BASE, address(swapRouter));
         aerodromeRouter = IRouter(AERODROME_SWAP_ROUTER_BASE);
     }
 

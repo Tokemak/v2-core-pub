@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
+import { Errors } from "src/utils/Errors.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { IRouter } from "src/interfaces/external/aerodrome/IRouter.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
@@ -11,17 +12,31 @@ import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { BaseAdapter, ISyncSwapper } from "src/swapper/adapters/BaseAdapter.sol";
 
 contract AerodromeSwap is BaseAdapter {
-    constructor(address _router) BaseAdapter(_router) { }
+    IRouter public immutable aerodromeRouter;
+
+    constructor(address _aerodromeRouter, address _router) BaseAdapter(_router) {
+        Errors.verifyNotZero(_aerodromeRouter, "aerodromeRouter");
+        aerodromeRouter = IRouter(_aerodromeRouter);
+    }
 
     /// @inheritdoc ISyncSwapper
-    function validate(address fromAddress, ISwapRouter.SwapData memory swapData) external pure override {
+    function validate(address fromAddress, ISwapRouter.SwapData memory swapData) external view override {
         IRouter.Route[] memory routes = abi.decode(swapData.data, (IRouter.Route[]));
-        if (fromAddress != routes[0].from) revert DataMismatch("fromToken");
-        if (swapData.token != routes[routes.length - 1].to) revert DataMismatch("toToken");
 
-        // TODO: check if aerodromeRouter should be available in this scope
-        // address fetchedPool = aerodromeRouter.poolFor(route.from, route.to, route.stable, route.factory);
-        // if (fetchedPool != swapData.pool) revert DataMismatch("pool");
+        uint256 routesLength = routes.length;
+        if (routesLength == 0) revert Errors.ItemNotFound();
+        if (fromAddress != routes[0].from) revert DataMismatch("fromToken");
+        if (swapData.token != routes[routesLength - 1].to) revert DataMismatch("toToken");
+
+        uint256 iter = 0;
+        for (; iter < routesLength - 1;) {
+            if (routes[iter].to != routes[iter + 1].from) revert DataMismatch("internalRoute");
+            unchecked {
+                ++iter;
+            }
+        }
+
+        if (address(aerodromeRouter) != swapData.pool) revert DataMismatch("router");
     }
 
     /// @inheritdoc ISyncSwapper
@@ -38,6 +53,11 @@ contract AerodromeSwap is BaseAdapter {
         uint256[] memory amounts = IRouter(routerAddress).swapExactTokensForTokens(
             sellAmount, minBuyAmount, abi.decode(data, (IRouter.Route[])), address(this), block.timestamp
         );
+
+        uint256 amountReceived = amounts[amounts.length - 1];
+
+        // slither-disable-next-line timestamp
+        if (amountReceived < minBuyAmount) revert Errors.SlippageExceeded(minBuyAmount, amountReceived);
 
         return amounts[amounts.length - 1];
     }

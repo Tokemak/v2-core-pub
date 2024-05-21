@@ -42,7 +42,7 @@ contract AerodromeSwapTest is Test {
 
         vm.selectFork(forkId);
 
-        adapter = new AerodromeSwap(address(this));
+        adapter = new AerodromeSwap(AERODROME_SWAP_ROUTER_BASE, address(this));
         aerodromeRouter = IRouter(AERODROME_SWAP_ROUTER_BASE);
 
         //route DAI_BASE ---> USDC_BASE
@@ -58,7 +58,7 @@ contract AerodromeSwapTest is Test {
 
         route = ISwapRouter.SwapData({
             token: USDC_BASE,
-            pool: daiUsdcPool,
+            pool: address(aerodromeRouter),
             swapper: adapter,
             data: abi.encode(aerodromeRoutes)
         });
@@ -73,6 +73,45 @@ contract AerodromeSwapTest is Test {
         vm.expectRevert(abi.encodeWithSelector(ISyncSwapper.DataMismatch.selector, "toToken"));
         route.token = RANDOM;
         adapter.validate(DAI_BASE, route);
+    }
+
+    function test_validate_Revert_IfRouterAddressMismatch() public {
+        vm.expectRevert(abi.encodeWithSelector(ISyncSwapper.DataMismatch.selector, "router"));
+        route.pool = RANDOM;
+        adapter.validate(DAI_BASE, route);
+    }
+
+    function test_validate() public view {
+        adapter.validate(DAI_BASE, route);
+    }
+
+    function test_validate_ManyRoutes() public {
+        IRouter.Route[] memory aerodromeRoutes = new IRouter.Route[](2);
+
+        aerodromeRoutes[0] =
+            IRouter.Route({ from: WETH9_BASE, to: USDC_BASE, stable: false, factory: aerodromeRouter.defaultFactory() });
+
+        aerodromeRoutes[1] =
+            IRouter.Route({ from: USDBC_BASE, to: AERO_BASE, stable: false, factory: aerodromeRouter.defaultFactory() });
+
+        route.token = AERO_BASE;
+        route.data = abi.encode(aerodromeRoutes);
+        vm.expectRevert(abi.encodeWithSelector(ISyncSwapper.DataMismatch.selector, "internalRoute"));
+        adapter.validate(WETH9_BASE, route);
+    }
+
+    function test_validate_Revert_IfWrongInternaRoute() public {
+        IRouter.Route[] memory aerodromeRoutes = new IRouter.Route[](2);
+
+        aerodromeRoutes[0] =
+            IRouter.Route({ from: WETH9_BASE, to: USDC_BASE, stable: false, factory: aerodromeRouter.defaultFactory() });
+
+        aerodromeRoutes[1] =
+            IRouter.Route({ from: USDC_BASE, to: AERO_BASE, stable: false, factory: aerodromeRouter.defaultFactory() });
+
+        route.token = AERO_BASE;
+        route.data = abi.encode(aerodromeRoutes);
+        adapter.validate(WETH9_BASE, route);
     }
 
     function test_swap_Works() public {
@@ -109,13 +148,6 @@ contract AerodromeSwapTest is Test {
     }
 
     function test_swap_SingleWorks() public {
-        // ISwapRouter.SwapData memory singleroute = ISwapRouter.SwapData({
-        //     token: WETH9_ADDRESS,
-        //     pool: UNIV3_SWAP_ROUTER_MAINNET, // router
-        //     swapper: adapter,
-        //     data: abi.encodePacked(DAI_MAINNET, poolFee, WETH9_ADDRESS)
-        // });
-
         uint256 sellAmount = 1e18;
 
         deal(DAI_BASE, address(this), 10 * sellAmount);
@@ -123,9 +155,6 @@ contract AerodromeSwapTest is Test {
 
         // get balance of WETH_MAINNET before swap
         uint256 usdcBalanceBefore = IERC20(USDC_BASE).balanceOf(address(this));
-
-        // IRouter.Route[] memory routes = new IRouter.Route[](1);
-        // routes[0] = route;
 
         bytes memory data = address(adapter).functionDelegateCall(
             abi.encodeCall(

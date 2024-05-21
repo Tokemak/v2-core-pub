@@ -72,5 +72,7 @@ library Roles {
 
     // Cross chain communications roles
     bytes32 public constant MESSAGE_PROXY_MANAGER = keccak256("MESSAGE_PROXY_MANAGER");
+    bytes32 public constant MESSAGE_PROXY_EXECUTOR = keccak256("MESSAGE_PROXY_EXECUTOR");
     bytes32 public constant RECEIVING_ROUTER_MANAGER = keccak256("RECEIVING_ROUTER_MANAGER");
+    bytes32 public constant RECEIVING_ROUTER_EXECUTOR = keccak256("RECEIVING_ROUTER_EXECUTOR");
 }

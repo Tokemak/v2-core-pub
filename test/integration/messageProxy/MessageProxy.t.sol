@@ -284,6 +284,9 @@ contract ResendLastMessageIntegTests is MessageProxyIntegTests {
     function setUp() public virtual override {
         super.setUp();
 
+        // Set up executor role.
+        accessController.setupRole(Roles.MESSAGE_PROXY_EXECUTOR, address(this));
+
         // Snapshot timestamp for original message send.
         message1Type1SendTimestamp = block.timestamp;
 

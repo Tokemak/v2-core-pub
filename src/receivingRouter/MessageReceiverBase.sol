@@ -12,7 +12,7 @@ abstract contract MessageReceiverBase is SystemComponent, IMessageReceiverBase {
 
     constructor(ISystemRegistry _systemRegistry) SystemComponent(_systemRegistry) { }
 
-    /// @notice Ensure that receiving router registered on regsitry is only contract to call
+    /// @notice Ensure that receiving router registered on registry is only contract to call
     modifier onlyReceivingRouter() {
         if (msg.sender != address(systemRegistry.receivingRouter())) revert NotReceivingRouter();
         _;

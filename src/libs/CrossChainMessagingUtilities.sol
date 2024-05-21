@@ -55,7 +55,7 @@ library CrossChainMessagingUtilities {
         uint256 messageTimestamp,
         bytes32 messageType,
         bytes memory message
-    ) external pure returns (bytes memory) {
+    ) internal pure returns (bytes memory) {
         return abi.encode(
             Message({
                 messageOrigin: sender,
@@ -68,7 +68,7 @@ library CrossChainMessagingUtilities {
     }
 
     /// @notice Validates the chain selector with the ccip router
-    function _validateChain(IRouterClient routerClient, uint64 chain) public view {
+    function validateChain(IRouterClient routerClient, uint64 chain) internal view {
         if (!routerClient.isChainSupported(chain)) {
             revert ChainNotSupported(chain);
         }

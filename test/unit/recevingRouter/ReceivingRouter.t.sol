@@ -47,9 +47,9 @@ contract ReceivingRouterTests is Test, SystemRegistryMocks, AccessControllerMock
         bytes message
     );
     event NoMessageReceiversRegistered(address messageOrigin, bytes32 messageType, uint64 sourceChainSelector);
-    event MessageReceived(address messageReceiver);
-    event MessageFailed(address messageReceiver);
-    event MessageReceivedOnResend(address currentReceiver, bytes message);
+    event MessageReceived(address messageReceiver, bytes32 messageHash);
+    event MessageFailed(address messageReceiver, bytes32 messageHash);
+    event MessageReceivedOnResend(address currentReceiver, bytes32 messageHash);
 
     constructor() SystemRegistryMocks(vm) AccessControllerMocks(vm) { }
 
@@ -79,6 +79,10 @@ contract ReceivingRouterTests is Test, SystemRegistryMocks, AccessControllerMock
 
     function _mockIsRouterManager(address user, bool isAdmin) internal {
         _mockAccessControllerHasRole(_accessController, user, Roles.RECEIVING_ROUTER_MANAGER, isAdmin);
+    }
+
+    function _mockIsRouterExecutor(address user, bool isExecutor) internal {
+        _mockAccessControllerHasRole(_accessController, user, Roles.RECEIVING_ROUTER_EXECUTOR, isExecutor);
     }
 
     function _getMessageReceiversKey(
@@ -726,11 +730,11 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         vm.expectEmit(true, true, true, true);
         emit MessageData(messageHash, block.timestamp, origin, messageType, messageId, chainId, message);
         vm.expectEmit(true, true, true, true);
-        emit MessageReceived(receiver1);
+        emit MessageReceived(receiver1, messageHash);
         vm.prank(address(_routerClient));
         _router.ccipReceive(ccipMessage);
 
-        assertEq(_router.lastMessageSent(_getMessageReceiversKey(origin, chainId, messageType)), messageHash);
+        assertEq(_router.lastMessageReceived(_getMessageReceiversKey(origin, chainId, messageType)), messageHash);
     }
 
     function test_SendToMultipleMessageReceivers() public {
@@ -761,13 +765,13 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         vm.expectEmit(true, true, true, true);
         emit MessageData(messageHash, block.timestamp, origin, messageType, messageId, chainId, message);
         vm.expectEmit(true, true, true, true);
-        emit MessageReceived(receiver1);
+        emit MessageReceived(receiver1, messageHash);
         vm.expectEmit(true, true, true, true);
-        emit MessageReceived(receiver2);
+        emit MessageReceived(receiver2, messageHash);
         vm.prank(address(_routerClient));
         _router.ccipReceive(ccipMessage);
 
-        assertEq(_router.lastMessageSent(_getMessageReceiversKey(origin, chainId, messageType)), messageHash);
+        assertEq(_router.lastMessageReceived(_getMessageReceiversKey(origin, chainId, messageType)), messageHash);
     }
 
     function test_SendsFailureEvent_WhenFailureAtMessageReceiver() public {
@@ -798,11 +802,11 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         vm.expectEmit(true, true, true, true);
         emit MessageData(messageHash, block.timestamp, origin, messageType, messageId, chainId, message);
         vm.expectEmit(true, true, true, true);
-        emit MessageFailed(receiver1);
+        emit MessageFailed(receiver1, messageHash);
         vm.prank(address(_routerClient));
         _router.ccipReceive(ccipMessage);
 
-        assertEq(_router.lastMessageSent(_getMessageReceiversKey(origin, chainId, messageType)), messageHash);
+        assertEq(_router.lastMessageReceived(_getMessageReceiversKey(origin, chainId, messageType)), messageHash);
     }
 
     function test_RevertIf_NoMessageReceiversRegistered() external {
@@ -860,7 +864,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         vm.prank(address(_routerClient));
         _router.ccipReceive(ccipMessage);
 
-        assertEq(_router.lastMessageSent(_getMessageReceiversKey(origin, chainId, messageType)), bytes32(0));
+        assertEq(_router.lastMessageReceived(_getMessageReceiversKey(origin, chainId, messageType)), bytes32(0));
     }
 
     function test_EmitsFailureEvent_SourceChainSenderNotSet() public {
@@ -900,6 +904,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
 contract ResendLastMessageTests is ReceivingRouterTests {
     function test_MultipleResends_MultipleReceivers() public {
         _mockIsRouterManager(address(this), true);
+        _mockIsRouterExecutor(address(this), true);
 
         address proxySender = makeAddr("proxySender");
         address receiver1 = address(new MockMessageReceiver(_systemRegistry));
@@ -959,20 +964,21 @@ contract ResendLastMessageTests is ReceivingRouterTests {
         });
 
         vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver1, messageToReceiverFirstMessage);
+        emit MessageReceivedOnResend(receiver1, keccak256(encodedFirstMessage));
         vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver3, messageToReceiverFirstMessage);
+        emit MessageReceivedOnResend(receiver3, keccak256(encodedFirstMessage));
         vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver2, messageToReceiverFirstMessage);
+        emit MessageReceivedOnResend(receiver2, keccak256(encodedFirstMessage));
         vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver4, messageToReceiverSecondMessage);
+        emit MessageReceivedOnResend(receiver4, keccak256(encodedSecondMessage));
         vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver1, messageToReceiverSecondMessage);
+        emit MessageReceivedOnResend(receiver1, keccak256(encodedSecondMessage));
         _router.resendLastMessage(args);
     }
 
     function test_SingleResend_MultipleReceivers() public {
         _mockIsRouterManager(address(this), true);
+        _mockIsRouterExecutor(address(this), true);
 
         address origin = makeAddr("origin");
         address proxySender = makeAddr("proxySender");
@@ -983,8 +989,8 @@ contract ResendLastMessageTests is ReceivingRouterTests {
         bytes32 messageType = keccak256("messageType");
         uint64 chainId = 12;
         bytes memory messageToReceiver = abi.encode(1);
-
         bytes memory encodedMessage = CCUtils.encodeMessage(origin, block.timestamp, messageType, messageToReceiver);
+        bytes32 messageHash = keccak256(encodedMessage);
 
         Client.Any2EVMMessage memory ccip =
             _buildChainlinkCCIPMessage(ccipMessageId, chainId, proxySender, encodedMessage);
@@ -1013,16 +1019,17 @@ contract ResendLastMessageTests is ReceivingRouterTests {
         });
 
         vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver1, messageToReceiver);
+        emit MessageReceivedOnResend(receiver1, messageHash);
         vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver3, messageToReceiver);
+        emit MessageReceivedOnResend(receiver3, messageHash);
         vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver2, messageToReceiver);
+        emit MessageReceivedOnResend(receiver2, messageHash);
         _router.resendLastMessage(args);
     }
 
     function test_SingleResend_SingleReceiver_MultipleStorage_OnlySendsTo_RequestedReceivers() public {
         _mockIsRouterManager(address(this), true);
+        _mockIsRouterExecutor(address(this), true);
 
         address origin = makeAddr("origin");
         address proxySender = makeAddr("proxySender");
@@ -1073,6 +1080,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
 
     function test_SingleResend_SingleReceiver() public {
         _mockIsRouterManager(address(this), true);
+        _mockIsRouterExecutor(address(this), true);
 
         address origin = makeAddr("origin");
         address proxySender = makeAddr("proxySender");
@@ -1081,8 +1089,8 @@ contract ResendLastMessageTests is ReceivingRouterTests {
         bytes32 messageType = keccak256("messageType");
         uint64 chainId = 12;
         bytes memory messageToReceiver = abi.encode(1);
-
         bytes memory encodedMessage = CCUtils.encodeMessage(origin, block.timestamp, messageType, messageToReceiver);
+        bytes32 messageHash = keccak256(encodedMessage);
 
         Client.Any2EVMMessage memory ccip =
             _buildChainlinkCCIPMessage(ccipMessageId, chainId, proxySender, encodedMessage);
@@ -1109,12 +1117,13 @@ contract ResendLastMessageTests is ReceivingRouterTests {
         });
 
         vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver1, messageToReceiver);
+        emit MessageReceivedOnResend(receiver1, messageHash);
         _router.resendLastMessage(args);
     }
 
     function test_RevertIf_ReceiverDoesNotExistInStorage_LastOfMultipleInStorage() public {
         _mockIsRouterManager(address(this), true);
+        _mockIsRouterExecutor(address(this), true);
 
         address origin = makeAddr("origin");
         address proxySender = makeAddr("proxySender");
@@ -1162,6 +1171,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
 
     function test_RevertIf_ReceiverDoesNotExistInStorage_FirstOfMultipleInStorage() public {
         _mockIsRouterManager(address(this), true);
+        _mockIsRouterExecutor(address(this), true);
 
         address origin = makeAddr("origin");
         address proxySender = makeAddr("proxySender");
@@ -1209,6 +1219,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
 
     function test_RevertIf_ReceiverDoesNotExistInStorage_SingleStorage() public {
         _mockIsRouterManager(address(this), true);
+        _mockIsRouterExecutor(address(this), true);
 
         address origin = makeAddr("origin");
         address proxySender = makeAddr("proxySender");
@@ -1252,6 +1263,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
 
     function test_RevertIf_CurrrentReceiver_ZeroAddress_Multiple() public {
         _mockIsRouterManager(address(this), true);
+        _mockIsRouterExecutor(address(this), true);
 
         address origin = makeAddr("origin");
         address proxySender = makeAddr("proxySender");
@@ -1297,6 +1309,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
 
     function test_RevertIf_CurrrentReceiver_ZeroAddress_Single() public {
         _mockIsRouterManager(address(this), true);
+        _mockIsRouterExecutor(address(this), true);
 
         address origin = makeAddr("origin");
         address proxySender = makeAddr("proxySender");
@@ -1340,6 +1353,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
 
     function test_RevertIf_NoReceviersStored() public {
         _mockIsRouterManager(address(this), true);
+        _mockIsRouterExecutor(address(this), true);
 
         address origin = makeAddr("origin");
         address proxySender = makeAddr("proxySender");
@@ -1383,6 +1397,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
 
     function test_RevertIf_HashMismatch() public {
         _mockIsRouterManager(address(this), true);
+        _mockIsRouterExecutor(address(this), true);
 
         address origin = makeAddr("origin");
         address proxySender = makeAddr("proxySender");
@@ -1418,7 +1433,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
             messageReceivers: receivers
         });
 
-        bytes32 storedHash = _router.lastMessageSent(_getMessageReceiversKey(origin, chainId, messageType));
+        bytes32 storedHash = _router.lastMessageReceived(_getMessageReceiversKey(origin, chainId, messageType));
         bytes32 submittedHash = keccak256(CCUtils.encodeMessage(origin, block.timestamp, messageType, abi.encode(2)));
 
         vm.expectRevert(abi.encodeWithSelector(CCUtils.MismatchMessageHash.selector, storedHash, submittedHash));
@@ -1426,7 +1441,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
     }
 
     function test_RevertIf_MessageReceiversNoMembers() public {
-        _mockIsRouterManager(address(this), true);
+        _mockIsRouterExecutor(address(this), true);
 
         address origin = makeAddr("origin");
         bytes32 messageType = keccak256("messageType");
@@ -1449,7 +1464,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
     }
 
     function test_RevertIf_NotRouterManager() public {
-        _mockIsRouterManager(address(this), false);
+        _mockIsRouterExecutor(address(this), false);
 
         address origin = makeAddr("origin");
         bytes32 messageType = keccak256("messageType");

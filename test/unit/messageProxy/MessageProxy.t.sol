@@ -154,6 +154,10 @@ contract MessageProxyTests is Test, SystemRegistryMocks, AccessControllerMocks {
     function _mockIsProxyAdmin(address user, bool isAdmin) internal {
         _mockAccessControllerHasRole(_accessController, user, Roles.MESSAGE_PROXY_MANAGER, isAdmin);
     }
+
+    function _mockIsProxyExecutor(address user, bool isAdmin) internal {
+        _mockAccessControllerHasRole(_accessController, user, Roles.MESSAGE_PROXY_EXECUTOR, isAdmin);
+    }
 }
 
 contract SetDestinationChainReceiver is MessageProxyTests {
@@ -1305,6 +1309,7 @@ contract SendMessage is MessageProxyTests {
 contract ResendLastMessage is MessageProxyTests {
     function test_EmitsMessageSentEventForDestinationChain() public {
         _mockIsProxyAdmin(address(this), true);
+        _mockIsProxyExecutor(address(this), true);
 
         address sender = makeAddr("sender");
         bytes32 messageType = keccak256("message");
@@ -1355,6 +1360,7 @@ contract ResendLastMessage is MessageProxyTests {
 
     function test_RevertIf_SenderDoesntPayForCCIPFees() public {
         _mockIsProxyAdmin(address(this), true);
+        _mockIsProxyExecutor(address(this), true);
 
         address sender = makeAddr("sender");
         bytes32 messageType = keccak256("message");

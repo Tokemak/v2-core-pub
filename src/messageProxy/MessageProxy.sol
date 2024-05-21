@@ -204,7 +204,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     function resendLastMessage(ResendArgsSendingChain[] memory args)
         external
         payable
-        hasRole(Roles.MESSAGE_PROXY_MANAGER)
+        hasRole(Roles.MESSAGE_PROXY_EXECUTOR)
     {
         // Tracking for fee
         uint256 feeLeft = msg.value;
@@ -270,7 +270,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     ) external hasRole(Roles.MESSAGE_PROXY_MANAGER) {
         // Check that we aren't doing cleanup if a chain is deprecated
         if (destinationChainReceiver != address(0)) {
-            CCUtils._validateChain(routerClient, destinationChainSelector);
+            CCUtils.validateChain(routerClient, destinationChainSelector);
         }
 
         emit ReceiverSet(destinationChainSelector, destinationChainReceiver);
@@ -296,7 +296,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
         for (uint256 i = 0; i < routesLength; ++i) {
             uint64 currentDestChainSelector = routes[i].destinationChainSelector;
 
-            CCUtils._validateChain(routerClient, currentDestChainSelector);
+            CCUtils.validateChain(routerClient, currentDestChainSelector);
 
             Errors.verifyNotZero(uint256(routes[i].gas), "gas");
 

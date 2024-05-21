@@ -21,14 +21,14 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     /// Public vars
     /// =====================================================
 
-    /// @notice keccack256(address origin, uint256 sourceChainSelector, bytes32 messageType) => address[]
+    /// @notice keccak256(address origin, uint256 sourceChainSelector, bytes32 messageType) => address[]
     mapping(bytes32 => address[]) public messageReceivers;
 
     /// @notice uint64 sourceChainSelector => address sender, contract that sends message across chain (MessageProxy)
     mapping(uint64 => address) public sourceChainSenders;
 
-    /// @notice keccack256(address origin, uint256 sourceChainSelector, bytes32 messageType) => bytes32 hash
-    mapping(bytes32 => bytes32) public lastMessageSent;
+    /// @notice keccak256(address origin, uint256 sourceChainSelector, bytes32 messageType) => bytes32 hash
+    mapping(bytes32 => bytes32) public lastMessageReceived;
 
     /// =====================================================
     /// Structs
@@ -73,10 +73,10 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     event SourceChainSenderDeleted(uint64 sourceChainSelector);
 
     /// @notice Emitted when a message is successfully sent to a message receiver contract.
-    event MessageReceived(address messageReceiver);
+    event MessageReceived(address messageReceiver, bytes32 messageHash);
 
     /// @notice Emitted when a message is successfully sent to a message receiver contract on a resend.
-    event MessageReceivedOnResend(address currentReceiver, bytes message);
+    event MessageReceivedOnResend(address currentReceiver, bytes32 messageHash);
 
     /// @notice Emitted when a message receiver is added
     event MessageReceiverAdded(
@@ -104,7 +104,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     event MessageVersionMismatch(uint256 versionSource, uint256 versionReceiver);
 
     /// @notice Emitted when message send to a receiver fails
-    event MessageFailed(address messageReceiver);
+    event MessageFailed(address messageReceiver, bytes32 messageHash);
 
     /// =====================================================
     /// Functions - Constructor
@@ -170,7 +170,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
 
         // Set message hash for retries
         bytes32 messageHash = keccak256(messageData);
-        lastMessageSent[receiverKey] = messageHash;
+        lastMessageReceived[receiverKey] = messageHash;
 
         emit MessageData(
             messageHash,
@@ -188,9 +188,9 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
             // slither-disable-start reentrancy-events
             // Try to send message to receiver, catch any errors and emit event
             try IMessageReceiverBase(currentMessageReceiver).onMessageReceive(message) {
-                emit MessageReceived(currentMessageReceiver);
+                emit MessageReceived(currentMessageReceiver, messageHash);
             } catch {
-                emit MessageFailed(currentMessageReceiver);
+                emit MessageFailed(currentMessageReceiver, messageHash);
             }
             // slither-disable-end reentrancy-events
         }
@@ -201,7 +201,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     /// @param args Array of Resend structs with information for retries
     function resendLastMessage(ResendArgsReceivingChain[] memory args)
         external
-        hasRole(Roles.RECEIVING_ROUTER_MANAGER)
+        hasRole(Roles.RECEIVING_ROUTER_EXECUTOR)
     {
         // Loop through ResendArgsReceivingChain array.
         for (uint256 i = 0; i < args.length; ++i) {
@@ -225,7 +225,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
 
             // Check message hashes.  Acts as security for origin, timestamp, type, selector, message passed in
             {
-                bytes32 storedMessageHash = lastMessageSent[messageReceiverKey];
+                bytes32 storedMessageHash = lastMessageReceived[messageReceiverKey];
                 if (currentMessageHash != storedMessageHash) {
                     revert CCUtils.MismatchMessageHash(storedMessageHash, currentMessageHash);
                 }
@@ -255,7 +255,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
                 }
 
                 // slither-disable-start reentrancy-events
-                emit MessageReceivedOnResend(currentReceiver, message);
+                emit MessageReceivedOnResend(currentReceiver, currentMessageHash);
                 IMessageReceiverBase(currentReceiver).onMessageReceive(message);
                 // slither-disable-end reentrancy-events
             }
@@ -375,7 +375,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     ) external hasRole(Roles.RECEIVING_ROUTER_MANAGER) {
         // Check that source chain selector registered with Chainlink router.  Will differ by chain
         if (sourceChainSender != address(0)) {
-            CCUtils._validateChain(IRouterClient(i_ccipRouter), sourceChainSelector);
+            CCUtils.validateChain(IRouterClient(i_ccipRouter), sourceChainSelector);
         }
 
         emit SourceChainSenderSet(sourceChainSelector, sourceChainSender);

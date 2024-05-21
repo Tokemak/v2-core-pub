@@ -21,7 +21,6 @@ import { IAsyncSwapperRegistry } from "src/interfaces/liquidation/IAsyncSwapperR
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { IMessageProxy } from "src/interfaces/messageProxy/IMessageProxy.sol";
-import { IAny2EVMMessageReceiver } from "src/interfaces/external/chainlink/IAny2EVMMessageReceiver.sol";
 
 /// @notice Root most registry contract for the system
 interface ISystemRegistry {
@@ -100,5 +99,5 @@ interface ISystemRegistry {
 
     /// @notice Get the receiving router contract.
     /// @return Receiving router contract
-    function receivingRouter() external view returns (IAny2EVMMessageReceiver);
+    function receivingRouter() external view returns (address);
 }

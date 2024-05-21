@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 
 import { Test, Vm } from "forge-std/Test.sol";
 import { Roles } from "src/libs/Roles.sol";
+import { SystemComponent } from "src/SystemComponent.sol";
 import { Client } from "src/external/chainlink/ccip/Client.sol";
 import { IRouterClient } from "src/interfaces/external/chainlink/IRouterClient.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -1487,14 +1488,14 @@ contract ResendLastMessageTests is ReceivingRouterTests {
     }
 }
 
-contract MockMessageReceiver is MessageReceiverBase {
+contract MockMessageReceiver is MessageReceiverBase, SystemComponent {
     bool public receiveFail = false;
 
     error Fail();
 
-    constructor(ISystemRegistry _systemRegistry) MessageReceiverBase(_systemRegistry) { }
+    constructor(ISystemRegistry _systemRegistry) SystemComponent(_systemRegistry) { }
 
-    function _onMessageReceive(bytes memory) internal view override {
+    function _onMessageReceive(bytes32, bytes memory) internal view override {
         if (receiveFail) revert Fail();
     }
 

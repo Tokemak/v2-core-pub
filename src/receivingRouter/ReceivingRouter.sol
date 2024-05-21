@@ -187,7 +187,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
             address currentMessageReceiver = messageReceiversForRoute[i];
             // slither-disable-start reentrancy-events
             // Try to send message to receiver, catch any errors and emit event
-            try IMessageReceiverBase(currentMessageReceiver).onMessageReceive(message) {
+            try IMessageReceiverBase(currentMessageReceiver).onMessageReceive(messageType, message) {
                 emit MessageReceived(currentMessageReceiver, messageHash);
             } catch {
                 emit MessageFailed(currentMessageReceiver, messageHash);
@@ -256,7 +256,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
 
                 // slither-disable-start reentrancy-events
                 emit MessageReceivedOnResend(currentReceiver, currentMessageHash);
-                IMessageReceiverBase(currentReceiver).onMessageReceive(message);
+                IMessageReceiverBase(currentReceiver).onMessageReceive(messageType, message);
                 // slither-disable-end reentrancy-events
             }
         }

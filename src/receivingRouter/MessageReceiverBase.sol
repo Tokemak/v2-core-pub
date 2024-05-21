@@ -3,29 +3,28 @@
 pragma solidity 0.8.17;
 
 import { IMessageReceiverBase } from "src/interfaces/receivingRouter/IMessageReceiverBase.sol";
-import { SystemComponent, ISystemRegistry } from "src/SystemComponent.sol";
+import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
+import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
 /// @title Inherited by message receiver contracts for cross chain interactions.
-abstract contract MessageReceiverBase is SystemComponent, IMessageReceiverBase {
+abstract contract MessageReceiverBase is IMessageReceiverBase {
     /// @notice Thrown when message sender is not receiving router
     error NotReceivingRouter();
 
-    constructor(ISystemRegistry _systemRegistry) SystemComponent(_systemRegistry) { }
-
     /// @notice Ensure that receiving router registered on registry is only contract to call
     modifier onlyReceivingRouter() {
+        ISystemRegistry systemRegistry = ISystemRegistry(ISystemComponent(address(this)).getSystemRegistry());
         if (msg.sender != address(systemRegistry.receivingRouter())) revert NotReceivingRouter();
         _;
     }
 
-    /// @notice Called by ReceivingRouter.sol on message from ccipRouter that targets inheriting contract.
-    /// @param message Encoded message from origin contract and chain.
-    function onMessageReceive(bytes memory message) external override onlyReceivingRouter {
-        _onMessageReceive(message);
+    /// @inheritdoc IMessageReceiverBase
+    function onMessageReceive(bytes32 messageType, bytes memory message) external override onlyReceivingRouter {
+        _onMessageReceive(messageType, message);
     }
 
     /// @dev This function will decode the incoming message and perform any other actions needed.
     /// @param message Bytes message to decode.
     // slither-disable-next-line unimplemented-functions
-    function _onMessageReceive(bytes memory message) internal virtual;
+    function _onMessageReceive(bytes32 messageType, bytes memory message) internal virtual;
 }

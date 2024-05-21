@@ -3,6 +3,7 @@
 pragma solidity 0.8.17;
 
 import { Test } from "forge-std/Test.sol";
+import { SystemComponent } from "src/SystemComponent.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { MessageReceiverBase } from "src/receivingRouter/MessageReceiverBase.sol";
 import { SystemRegistryMocks } from "test/unit/mocks/SystemRegistryMocks.t.sol";
@@ -29,23 +30,23 @@ contract MessageReceiverTests is Test, SystemRegistryMocks {
     function test_RevertIf_NotReceivingRouter() public {
         _mockSysRegReceivingRouter(systemRegistry, receivingRouter);
         vm.expectRevert(MessageReceiverBase.NotReceivingRouter.selector);
-        receiverBase.onMessageReceive(abi.encode(1));
+        receiverBase.onMessageReceive(keccak256("messageType"), abi.encode(1));
     }
 
     function test_RunsWhenReceivingRouterCall() public {
         _mockSysRegReceivingRouter(systemRegistry, receivingRouter);
         vm.prank(receivingRouter);
-        receiverBase.onMessageReceive(abi.encode(1));
+        receiverBase.onMessageReceive(keccak256("messageType"), abi.encode(1));
         assertEq(receiverBase.check(), 1);
     }
 }
 
-contract MockMessageReceiverBase is MessageReceiverBase {
+contract MockMessageReceiverBase is MessageReceiverBase, SystemComponent {
     uint256 public check = 0;
 
-    constructor(ISystemRegistry _systemRegistry) MessageReceiverBase(_systemRegistry) { }
+    constructor(ISystemRegistry _systemRegistry) SystemComponent(_systemRegistry) { }
 
-    function _onMessageReceive(bytes memory) internal override {
+    function _onMessageReceive(bytes32, bytes memory) internal override {
         check++;
     }
 }

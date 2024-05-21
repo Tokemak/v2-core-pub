@@ -35,7 +35,10 @@ contract ReceivingRouterTests is Test, SystemRegistryMocks, AccessControllerMock
         address messageOrigin, uint64 sourceChainSelector, bytes32 messageType, address messageReceiverToRemove
     );
     event InvalidSenderFromSource(
-        uint256 sourceChainSelector, address sourceChainSender, address sourceChainSenderRegistered
+        uint256 sourceChainSelector,
+        address sourceChainSender,
+        address sourceChainSenderRegistered1,
+        address sourceChainSenderRegistered2
     );
     event MessageVersionMismatch(uint256 sourceVersion, uint256 receiverVersion);
     event MessageData(
@@ -118,9 +121,10 @@ contract SetSourceChainSendersTest is ReceivingRouterTests {
         _mockIsRouterManager(address(this), true);
         _mockRouterIsChainSupported(chainId, true);
 
-        _router.setSourceChainSenders(chainId, sender);
-
-        assertEq(_router.sourceChainSenders(chainId), sender, "setSender");
+        _router.setSourceChainSenders(chainId, sender, 0);
+        address[] memory senders = _router.getSourceChainSenders(chainId);
+        assertEq(senders[0], sender);
+        assertEq(senders[1], address(0));
     }
 
     function test_EmitsEvent() public {
@@ -131,7 +135,7 @@ contract SetSourceChainSendersTest is ReceivingRouterTests {
 
         vm.expectEmit(true, true, true, true);
         emit SourceChainSenderSet(chainId, sender);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
     }
 
     function test_AllowsZeroAddressReceiverToBeSet() public {
@@ -140,11 +144,29 @@ contract SetSourceChainSendersTest is ReceivingRouterTests {
         _mockIsRouterManager(address(this), true);
         _mockRouterIsChainSupported(chainId, true);
 
-        _router.setSourceChainSenders(chainId, sender);
-        assertEq(_router.sourceChainSenders(chainId), sender, "setSender");
+        _router.setSourceChainSenders(chainId, sender, 0);
+        assertEq(_router.sourceChainSenders(chainId, 0), sender, "senderIdx1");
+        assertEq(_router.sourceChainSenders(chainId, 1), address(0), "senderIdx2");
 
-        _router.setSourceChainSenders(chainId, address(0));
-        assertEq(_router.sourceChainSenders(chainId), address(0), "setSender");
+        _router.setSourceChainSenders(chainId, address(0), 0);
+        assertEq(_router.sourceChainSenders(chainId, 0), address(0), "senderIdx1");
+        assertEq(_router.sourceChainSenders(chainId, 1), address(0), "senderIdx2");
+    }
+
+    function test_AllowsSetAtBothIdxs() public {
+        uint64 chainId = 12;
+        address sender1 = address(1);
+        address sender2 = address(2);
+        _mockIsRouterManager(address(this), true);
+        _mockRouterIsChainSupported(chainId, true);
+
+        _router.setSourceChainSenders(chainId, sender1, 0);
+        assertEq(_router.sourceChainSenders(chainId, 0), sender1, "sender1");
+        assertEq(_router.sourceChainSenders(chainId, 1), address(0), "sender2");
+
+        _router.setSourceChainSenders(chainId, sender2, 1);
+        assertEq(_router.sourceChainSenders(chainId, 0), sender1, "sender1");
+        assertEq(_router.sourceChainSenders(chainId, 1), sender2, "sender2");
     }
 
     function test_RevertIf_ChainIsNotSupported() public {
@@ -153,7 +175,39 @@ contract SetSourceChainSendersTest is ReceivingRouterTests {
         _mockRouterIsChainSupported(chainId, false);
 
         vm.expectRevert(abi.encodeWithSelector(CCUtils.ChainNotSupported.selector, chainId));
-        _router.setSourceChainSenders(chainId, address(1));
+        _router.setSourceChainSenders(chainId, address(1), 0);
+    }
+
+    function test_RevertIf_DuplicateSender_OtherIdx() public {
+        uint64 chainId = 12;
+        address sender = address(1);
+        _mockIsRouterManager(address(this), true);
+        _mockRouterIsChainSupported(chainId, true);
+
+        _router.setSourceChainSenders(chainId, sender, 0);
+
+        vm.expectRevert(Errors.ItemExists.selector);
+        _router.setSourceChainSenders(chainId, sender, 1);
+    }
+
+    function test_RevertIf_DuplicateSender_SameIdx() public {
+        uint64 chainId = 12;
+        address sender = address(1);
+        _mockIsRouterManager(address(this), true);
+        _mockRouterIsChainSupported(chainId, true);
+
+        _router.setSourceChainSenders(chainId, sender, 0);
+
+        vm.expectRevert(Errors.ItemExists.selector);
+        _router.setSourceChainSenders(chainId, sender, 0);
+    }
+
+    function test_RevertIf_InvalidIdx() public {
+        uint64 chainId = 12;
+        _mockIsRouterManager(address(this), true);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "idx"));
+        _router.setSourceChainSenders(chainId, address(1), 2);
     }
 
     function test_RevertIf_CallerIsNotAdmin() public {
@@ -162,7 +216,7 @@ contract SetSourceChainSendersTest is ReceivingRouterTests {
         _mockRouterIsChainSupported(chainId, true);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        _router.setSourceChainSenders(chainId, address(1));
+        _router.setSourceChainSenders(chainId, address(1), 0);
     }
 }
 
@@ -177,12 +231,34 @@ contract SetMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver1;
 
         _router.setMessageReceivers(sender, messageType, chainId, receivers);
 
         address[] memory newValues = _router.getMessageReceivers(sender, chainId, messageType);
+        assertEq(newValues.length, 1, "len");
+        assertEq(newValues[0], receiver1, "receiver");
+    }
+
+    function test_PassesMultipleSourceChainSendersSet() public {
+        _mockIsRouterManager(address(this), true);
+
+        address sender1 = makeAddr("sender1");
+        address sender2 = makeAddr("sender2");
+        address receiver1 = makeAddr("receiver1");
+        bytes32 messageType = keccak256("message");
+        address[] memory receivers = new address[](1);
+
+        uint64 chainId = 12;
+        _mockRouterIsChainSupported(chainId, true);
+        _router.setSourceChainSenders(chainId, sender1, 0);
+        _router.setSourceChainSenders(chainId, sender2, 1);
+        receivers[0] = receiver1;
+
+        _router.setMessageReceivers(sender1, messageType, chainId, receivers);
+
+        address[] memory newValues = _router.getMessageReceivers(sender1, chainId, messageType);
         assertEq(newValues.length, 1, "len");
         assertEq(newValues[0], receiver1, "receiver");
     }
@@ -198,7 +274,7 @@ contract SetMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver1;
         receivers[1] = receiver2;
 
@@ -222,7 +298,7 @@ contract SetMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver1;
         _router.setMessageReceivers(sender, messageType, chainId, receivers);
 
@@ -248,7 +324,7 @@ contract SetMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver;
 
         vm.expectEmit(true, true, true, true);
@@ -266,7 +342,7 @@ contract SetMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver;
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "receiverToAdd"));
@@ -283,7 +359,7 @@ contract SetMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver1;
 
         _router.setMessageReceivers(sender, messageType, chainId, receivers);
@@ -302,7 +378,7 @@ contract SetMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver1;
         receivers[1] = receiver1;
 
@@ -321,7 +397,7 @@ contract SetMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver1;
         receivers[1] = receiver2;
         receivers[2] = receiver1;
@@ -341,6 +417,9 @@ contract SetMessageReceiversTest is ReceivingRouterTests {
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, false);
         receivers[0] = receiver1;
+
+        assertEq(_router.sourceChainSenders(chainId, 0), address(0));
+        assertEq(_router.sourceChainSenders(chainId, 1), address(0));
 
         vm.expectRevert(abi.encodeWithSelector(CCUtils.ChainNotSupported.selector, chainId));
         _router.setMessageReceivers(sender, messageType, chainId, receivers);
@@ -398,7 +477,7 @@ contract RemoveMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver1;
 
         _router.setMessageReceivers(sender, messageType, chainId, receivers);
@@ -423,7 +502,7 @@ contract RemoveMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver1;
         receivers[1] = receiver2;
         receivers[2] = receiver3;
@@ -453,7 +532,7 @@ contract RemoveMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver1;
         receivers[1] = receiver2;
         receivers[2] = receiver3;
@@ -482,7 +561,7 @@ contract RemoveMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver1;
         receivers[1] = receiver2;
         receivers[2] = receiver3;
@@ -511,7 +590,7 @@ contract RemoveMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver1;
         receivers[1] = receiver2;
         receivers[2] = receiver3;
@@ -540,7 +619,7 @@ contract RemoveMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver1;
         receivers[1] = receiver2;
         receivers[2] = receiver3;
@@ -569,7 +648,7 @@ contract RemoveMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver1;
         receivers[1] = receiver2;
         receivers[2] = receiver3;
@@ -612,7 +691,7 @@ contract RemoveMessageReceiversTest is ReceivingRouterTests {
 
         uint64 chainId = 12;
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         receivers[0] = receiver1;
 
         _router.setMessageReceivers(sender, messageType, chainId, receivers);
@@ -674,7 +753,7 @@ contract RemoveMessageReceiversTest is ReceivingRouterTests {
         uint64 chainId = 12;
         _mockIsRouterManager(address(this), true);
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
 
         _router.setMessageReceivers(sender, messageType, chainId, receivers);
 
@@ -725,7 +804,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
 
         _mockRouterIsChainSupported(chainId, true);
         _mockSysRegReceivingRouter(_systemRegistry, address(_router));
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.expectEmit(true, true, true, true);
@@ -760,7 +839,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
 
         _mockRouterIsChainSupported(chainId, true);
         _mockSysRegReceivingRouter(_systemRegistry, address(_router));
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.expectEmit(true, true, true, true);
@@ -769,6 +848,40 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         emit MessageReceived(receiver1, messageHash);
         vm.expectEmit(true, true, true, true);
         emit MessageReceived(receiver2, messageHash);
+        vm.prank(address(_routerClient));
+        _router.ccipReceive(ccipMessage);
+
+        assertEq(_router.lastMessageReceived(_getMessageReceiversKey(origin, chainId, messageType)), messageHash);
+    }
+
+    function test_SuccessfulSend_TwoSourceSendersSet() public {
+        _mockIsRouterManager(address(this), true);
+
+        address receiver1 = address(new MockMessageReceiver(_systemRegistry));
+        bytes32 messageId = keccak256("messageId");
+        address sender = makeAddr("sender");
+        uint64 chainId = 12;
+
+        address origin = makeAddr("origin");
+        bytes32 messageType = keccak256("messageType");
+        bytes memory message = abi.encode("message");
+        bytes memory data = CCUtils.encodeMessage(origin, block.timestamp, messageType, message);
+        bytes32 messageHash = keccak256(data);
+
+        Client.Any2EVMMessage memory ccipMessage = _buildChainlinkCCIPMessage(messageId, chainId, sender, data);
+        address[] memory receivers = new address[](1);
+        receivers[0] = receiver1;
+
+        _mockRouterIsChainSupported(chainId, true);
+        _mockSysRegReceivingRouter(_systemRegistry, address(_router));
+        _router.setSourceChainSenders(chainId, sender, 0);
+        _router.setSourceChainSenders(chainId, makeAddr("sender2"), 1);
+        _router.setMessageReceivers(origin, messageType, chainId, receivers);
+
+        vm.expectEmit(true, true, true, true);
+        emit MessageData(messageHash, block.timestamp, origin, messageType, messageId, chainId, message);
+        vm.expectEmit(true, true, true, true);
+        emit MessageReceived(receiver1, messageHash);
         vm.prank(address(_routerClient));
         _router.ccipReceive(ccipMessage);
 
@@ -795,7 +908,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
 
         _mockRouterIsChainSupported(chainId, true);
         _mockSysRegReceivingRouter(_systemRegistry, address(_router));
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         MockMessageReceiver(receiver1).setFailure(true);
@@ -825,7 +938,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         Client.Any2EVMMessage memory ccipMessage = _buildChainlinkCCIPMessage(messageId, chainId, sender, data);
 
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
 
         vm.expectEmit(true, true, true, true);
         emit NoMessageReceiversRegistered(origin, messageType, chainId);
@@ -858,7 +971,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         Client.Any2EVMMessage memory ccipMessage = _buildChainlinkCCIPMessage(messageId, chainId, sender, data);
 
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, sender);
+        _router.setSourceChainSenders(chainId, sender, 0);
 
         vm.expectEmit(true, true, true, true);
         emit MessageVersionMismatch(messageVersionSource, messageVersionReceiver);
@@ -881,10 +994,10 @@ contract _ccipReceiverTests is ReceivingRouterTests {
             _buildChainlinkCCIPMessage(messageId, chainId, senderSourceChain, data);
 
         _mockRouterIsChainSupported(chainId, true);
-        _router.setSourceChainSenders(chainId, senderSetReceivingChain);
+        _router.setSourceChainSenders(chainId, senderSetReceivingChain, 0);
 
         vm.expectEmit(true, true, true, true);
-        emit InvalidSenderFromSource(chainId, senderSourceChain, senderSetReceivingChain);
+        emit InvalidSenderFromSource(chainId, senderSourceChain, senderSetReceivingChain, address(0));
         vm.prank(address(_routerClient));
         _router.ccipReceive(ccipMessage);
     }
@@ -937,7 +1050,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
         receiversFirstMessage[2] = receiver2;
         receiversSecondMessage[0] = receiver4;
         receiversSecondMessage[1] = receiver1;
-        _router.setSourceChainSenders(12, proxySender);
+        _router.setSourceChainSenders(12, proxySender, 0);
         _router.setMessageReceivers(makeAddr("origin"), keccak256("messageType1"), 12, receiversFirstMessage);
         _router.setMessageReceivers(makeAddr("origin"), keccak256("messageType2"), 12, receiversSecondMessage);
 
@@ -1003,7 +1116,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
         receivers[0] = receiver1;
         receivers[1] = receiver3;
         receivers[2] = receiver2;
-        _router.setSourceChainSenders(chainId, proxySender);
+        _router.setSourceChainSenders(chainId, proxySender, 0);
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.prank(address(_routerClient));
@@ -1054,7 +1167,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
         receivers[0] = receiver1;
         receivers[1] = receiver2;
         receivers[2] = receiver3;
-        _router.setSourceChainSenders(chainId, proxySender);
+        _router.setSourceChainSenders(chainId, proxySender, 0);
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.prank(address(_routerClient));
@@ -1101,7 +1214,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
 
         address[] memory receivers = new address[](1);
         receivers[0] = receiver1;
-        _router.setSourceChainSenders(chainId, proxySender);
+        _router.setSourceChainSenders(chainId, proxySender, 0);
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.prank(address(_routerClient));
@@ -1149,7 +1262,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
         receivers[0] = receiver1;
         receivers[1] = receiver2;
         receivers[2] = receiver3;
-        _router.setSourceChainSenders(chainId, proxySender);
+        _router.setSourceChainSenders(chainId, proxySender, 0);
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.prank(address(_routerClient));
@@ -1197,7 +1310,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
         receivers[0] = receiver1;
         receivers[1] = receiver2;
         receivers[2] = receiver3;
-        _router.setSourceChainSenders(chainId, proxySender);
+        _router.setSourceChainSenders(chainId, proxySender, 0);
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.prank(address(_routerClient));
@@ -1241,7 +1354,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
 
         address[] memory receivers = new address[](1);
         receivers[0] = receiver1;
-        _router.setSourceChainSenders(chainId, proxySender);
+        _router.setSourceChainSenders(chainId, proxySender, 0);
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.prank(address(_routerClient));
@@ -1287,7 +1400,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
         address[] memory receivers = new address[](2);
         receivers[0] = receiver1;
         receivers[1] = receiver2;
-        _router.setSourceChainSenders(chainId, proxySender);
+        _router.setSourceChainSenders(chainId, proxySender, 0);
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.prank(address(_routerClient));
@@ -1331,7 +1444,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
 
         address[] memory receivers = new address[](1);
         receivers[0] = receiver;
-        _router.setSourceChainSenders(chainId, proxySender);
+        _router.setSourceChainSenders(chainId, proxySender, 0);
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.prank(address(_routerClient));
@@ -1374,7 +1487,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
 
         address[] memory receivers = new address[](1);
         receivers[0] = receiver;
-        _router.setSourceChainSenders(chainId, proxySender);
+        _router.setSourceChainSenders(chainId, proxySender, 0);
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.prank(address(_routerClient));
@@ -1418,7 +1531,7 @@ contract ResendLastMessageTests is ReceivingRouterTests {
 
         address[] memory receivers = new address[](1);
         receivers[0] = receiver;
-        _router.setSourceChainSenders(chainId, proxySender);
+        _router.setSourceChainSenders(chainId, proxySender, 0);
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.prank(address(_routerClient));

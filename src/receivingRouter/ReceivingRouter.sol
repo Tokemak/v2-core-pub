@@ -24,8 +24,9 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     /// @notice keccak256(address origin, uint256 sourceChainSelector, bytes32 messageType) => address[]
     mapping(bytes32 => address[]) public messageReceivers;
 
-    /// @notice uint64 sourceChainSelector => address sender, contract that sends message across chain (MessageProxy)
-    mapping(uint64 => address) public sourceChainSenders;
+    /// @notice uint64 sourceChainSelector => address[] senders, contract that sends message across chain
+    /// @dev Multiple to handle replacing MessageProxy on source chain.
+    mapping(uint64 => address[2]) public sourceChainSenders;
 
     /// @notice keccak256(address origin, uint256 sourceChainSelector, bytes32 messageType) => bytes32 hash
     mapping(bytes32 => bytes32) public lastMessageReceived;
@@ -94,7 +95,10 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
 
     /// @notice Emitted when an invalid address sends a message from the source chain
     event InvalidSenderFromSource(
-        uint256 sourceChainSelector, address sourceChainSender, address sourceChainSenderRegistered
+        uint256 sourceChainSelector,
+        address sourceChainSender,
+        address sourceChainSenderRegistered1,
+        address sourceChainSenderRegistered2
     );
 
     /// @notice Emitted when no message receivers are registered
@@ -134,9 +138,12 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
         {
             // Checking that sender in Any2EVMMessage struct is the same as the one we have registered for source
             address proxySender = abi.decode(ccipMessage.sender, (address));
-            address registeredSender = sourceChainSenders[sourceChainSelector];
-            if (registeredSender != proxySender) {
-                emit InvalidSenderFromSource(sourceChainSelector, proxySender, registeredSender);
+            // slither-disable-start similar-names
+            address registeredSender1 = sourceChainSenders[sourceChainSelector][0];
+            address registeredSender2 = sourceChainSenders[sourceChainSelector][1];
+            // slither-disable-end similar-names
+            if (proxySender != registeredSender1 && proxySender != registeredSender2) {
+                emit InvalidSenderFromSource(sourceChainSelector, proxySender, registeredSender1, registeredSender2);
                 return;
             }
         }
@@ -281,8 +288,11 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
         uint256 messageReceiversToSetLength = messageReceiversToSet.length;
         Errors.verifyNotZero(messageReceiversToSetLength, "messageReceiversToSetLength");
 
-        // Check to make sure that chain is valid and has a sender set
-        if (sourceChainSenders[sourceChainSelector] == address(0)) {
+        // Check to make sure that chain selector is valid and has at least one sender set
+        if (
+            sourceChainSenders[sourceChainSelector][0] == address(0)
+                && sourceChainSenders[sourceChainSelector][1] == address(0)
+        ) {
             revert CCUtils.ChainNotSupported(sourceChainSelector);
         }
 
@@ -369,18 +379,36 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     /// @dev Used to add and remove source chain senders
     /// @param sourceChainSelector Selector for source chain
     /// @param sourceChainSender Sender from the source chain, MessageProxy contract
+    /// @param idx Index of chain sender to set
     function setSourceChainSenders(
         uint64 sourceChainSelector,
-        address sourceChainSender
+        address sourceChainSender,
+        uint256 idx
     ) external hasRole(Roles.RECEIVING_ROUTER_MANAGER) {
-        // Check that source chain selector registered with Chainlink router.  Will differ by chain
+        if (idx != 0 && idx != 1) {
+            revert Errors.InvalidParam("idx");
+        }
+
         if (sourceChainSender != address(0)) {
+            // Check that source chain selector registered with Chainlink router.  Will differ by chain
             CCUtils.validateChain(IRouterClient(i_ccipRouter), sourceChainSelector);
+
+            // Check if sourceChainSender already exists
+            if (
+                sourceChainSenders[sourceChainSelector][0] == sourceChainSender
+                    || sourceChainSenders[sourceChainSelector][1] == sourceChainSender
+            ) {
+                revert Errors.ItemExists();
+            }
         }
 
         emit SourceChainSenderSet(sourceChainSelector, sourceChainSender);
-        sourceChainSenders[sourceChainSelector] = sourceChainSender;
+        sourceChainSenders[sourceChainSelector][idx] = sourceChainSender;
     }
+
+    /// =====================================================
+    /// Functions - Getters
+    /// =====================================================
 
     /// @notice Gets all message receivers for origin, source chain, message type
     /// @return receivers address array of the message receivers
@@ -391,6 +419,15 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     ) external view returns (address[] memory receivers) {
         bytes32 receiversKey = _getMessageReceiversKey(messageOrigin, sourceChainSelector, messageType);
         receivers = messageReceivers[receiversKey];
+    }
+
+    /// @notice Returns array of source chain senders
+    /// @param sourceChainSelector Selector of the source chain for a sender
+    function getSourceChainSenders(uint64 sourceChainSelector) external view returns (address[] memory senders) {
+        senders = new address[](2);
+        for (uint256 i = 0; i < 2; ++i) {
+            senders[i] = sourceChainSenders[sourceChainSelector][i];
+        }
     }
 
     /// =====================================================

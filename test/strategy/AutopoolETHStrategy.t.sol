@@ -1594,7 +1594,7 @@ contract AutopoolETHStrategyTest is Test {
         uint40[] memory periodFinishes = new uint40[](1);
         rewardTokens[0] = rewardToken;
         annualizedRewards[0] = 5e18;
-        periodFinishes[0] = 180 days - 2 days + 1; // reward can be at most 2 days expired
+        periodFinishes[0] = 180 days - 7 days + 1; // reward can be at most 7 days expired
 
         IDexLSTStats.StakingIncentiveStats memory stat;
         stat.rewardTokens = rewardTokens;
@@ -1613,7 +1613,7 @@ contract AutopoolETHStrategyTest is Test {
         );
         assertEq(actual, expected);
 
-        periodFinishes[0] = 180 days - 2 days; // make it so that even with the 2 day bump, still expired
+        periodFinishes[0] = 180 days - 7 days; // make it so that even with the 7 day bump, still expired
         assertEq(
             defaultStrat._calculateIncentiveApr(
                 stat, IAutopoolStrategy.RebalanceDirection.Out, lpToken, amount, lpPrice

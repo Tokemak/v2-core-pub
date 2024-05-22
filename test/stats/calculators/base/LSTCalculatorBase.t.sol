@@ -768,7 +768,10 @@ contract LSTCalculatorBaseTest is Test {
         systemRegistry.setMessageProxy(address(messageProxy));
 
         // Send funds to messageProxy
-        address(messageProxy).call{ value: 1 }("");
+        (bool success,) = address(messageProxy).call{ value: 1 }("");
+        if (!success) {
+            revert("Fund send to proxy failed");
+        }
 
         // Set to true
         testCalculator.setDestinationMessageSend();

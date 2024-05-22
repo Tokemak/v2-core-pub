@@ -49,6 +49,10 @@ library Errors {
 
     error SenderMismatch(address recipient, address sender);
 
+    error UnsupportedMessage(bytes32 messageType, bytes message);
+
+    error NotSupported();
+
     function verifyNotZero(address addr, string memory paramName) internal pure {
         if (addr == address(0)) {
             revert ZeroAddress(paramName);

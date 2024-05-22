@@ -71,10 +71,12 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
     /// @notice indicates if baseApr filter is initialized
     bool public baseAprFilterInitialized;
 
+    // slither-disable-start constable-states
     /// @notice Whether to send message to destination chain on _snapshot
     bool public destinationMessageSend = false;
+    // slither-disable-end constable-states
 
-    bytes32 private _aprId;
+    bytes32 internal _aprId;
 
     struct InitData {
         address lstTokenAddress;
@@ -129,7 +131,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
         return _aprId;
     }
 
-    function _snapshot() internal override {
+    function _snapshot() internal virtual override {
         uint256 currentEthPerToken = calculateEthPerToken();
         if (_timeForAprSnapshot()) {
             uint256 currentApr = Stats.calculateAnnualizedChangeMinZero(
@@ -203,14 +205,14 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
     }
 
     /// @inheritdoc IStatsCalculator
-    function shouldSnapshot() public view override returns (bool) {
+    function shouldSnapshot() public view virtual override returns (bool) {
         // slither-disable-start timestamp
         return _timeForAprSnapshot() || _timeForDiscountSnapshot() || _hasSlashingOccurred(calculateEthPerToken())
             || _timeForSlashingSnapshot();
         // slither-disable-end timestamp
     }
 
-    function _timeForAprSnapshot() private view returns (bool) {
+    function _timeForAprSnapshot() internal view virtual returns (bool) {
         if (baseAprFilterInitialized) {
             // slither-disable-next-line timestamp
             return block.timestamp >= lastBaseAprSnapshotTimestamp + APR_SNAPSHOT_INTERVAL_IN_SEC;
@@ -220,17 +222,17 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
         }
     }
 
-    function _timeForDiscountSnapshot() private view returns (bool) {
+    function _timeForDiscountSnapshot() internal view returns (bool) {
         // slither-disable-next-line timestamp
         return block.timestamp >= lastDiscountSnapshotTimestamp + DISCOUNT_SNAPSHOT_INTERVAL_IN_SEC;
     }
 
-    function _timeForSlashingSnapshot() private view returns (bool) {
+    function _timeForSlashingSnapshot() internal view returns (bool) {
         // slither-disable-next-line timestamp
         return block.timestamp >= lastSlashingSnapshotTimestamp + SLASHING_SNAPSHOT_INTERVAL_IN_SEC;
     }
 
-    function _hasSlashingOccurred(uint256 currentEthPerToken) private view returns (bool) {
+    function _hasSlashingOccurred(uint256 currentEthPerToken) internal view returns (bool) {
         return currentEthPerToken < lastSlashingEthPerToken;
     }
 
@@ -278,7 +280,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
         return 1e18 - int256(priceToBacking);
     }
 
-    function updateDiscountTimestampByPercent() private {
+    function updateDiscountTimestampByPercent() internal {
         uint256 discountHistoryLength = discountHistory.length;
         uint40 previousDiscount =
             discountHistory[(discountHistoryIndex + discountHistoryLength - 2) % discountHistoryLength];
@@ -312,7 +314,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
         }
     }
 
-    function updateDiscountHistory(uint256 backing) private {
+    function updateDiscountHistory(uint256 backing) internal {
         // reduce precision from 18 to 7 to reduce costs
         int256 discount = calculateDiscount(backing) / 1e11;
         uint24 trackedDiscount;
@@ -333,7 +335,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
     }
 
     /// @notice Switches flag for sending messages to other chains.
-    function setDestinationMessageSend() external hasRole(Roles.STATS_GENERAL_MANAGER) {
+    function setDestinationMessageSend() external virtual hasRole(Roles.STATS_GENERAL_MANAGER) {
         destinationMessageSend = !destinationMessageSend;
         emit DestinationMessageSendSet(destinationMessageSend);
     }

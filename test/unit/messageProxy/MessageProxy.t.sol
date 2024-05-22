@@ -102,7 +102,7 @@ contract MessageProxyTests is Test, SystemRegistryMocks, AccessControllerMocks {
         uint256 timestamp,
         bytes32 messageType,
         bytes memory message
-    ) internal view returns (bytes32) {
+    ) internal pure returns (bytes32) {
         bytes memory encodedMsg = CCUtils.encodeMessage(sender, timestamp, messageType, message);
         return keccak256(encodedMsg);
     }

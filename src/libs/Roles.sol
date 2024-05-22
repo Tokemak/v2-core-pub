@@ -48,6 +48,7 @@ library Roles {
     bytes32 public constant STATS_SNAPSHOT_EXECUTOR = keccak256("STATS_SNAPSHOT_ROLE");
     bytes32 public constant STATS_INCENTIVE_TOKEN_UPDATER = keccak256("STATS_INCENTIVE_TOKEN_UPDATER");
     bytes32 public constant STATS_GENERAL_MANAGER = keccak256("STATS_GENERAL_MANAGER");
+    bytes32 public constant STATS_LST_ETH_TOKEN_EXECUTOR = keccak256("STATS_LST_ETH_TOKEN_EXECUTOR");
 
     // Emergency Management
     bytes32 public constant EMERGENCY_PAUSER = keccak256("EMERGENCY_PAUSER");

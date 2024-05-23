@@ -9,6 +9,7 @@ import {
 } from "src/oracles/providers/base/BaseAggregatorV3OracleInformation.sol";
 import { IOffchainAggregator } from "src/interfaces/external/chainlink/IOffchainAggregator.sol";
 import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
+import { Errors } from "src/utils/Errors.sol";
 
 /**
  * @title Gets the value of tokens that Chainlink provides a feed for.
@@ -34,7 +35,7 @@ contract ChainlinkOracle is BaseAggregatorV3OracleInformation {
         IOffchainAggregator aggregator = IOffchainAggregator(oracleInfo.oracle.aggregator());
 
         if (roundId == 0 || price == (int256(aggregator.maxAnswer())) || price == (int256(aggregator.minAnswer()))) {
-            revert InvalidDataReturned();
+            revert Errors.InvalidDataReturned();
         }
     }
 

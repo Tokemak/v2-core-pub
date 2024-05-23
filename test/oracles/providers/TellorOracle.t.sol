@@ -153,7 +153,7 @@ contract TellorOracleTest is Test {
             abi.encodeWithSelector(UsingTellor.getDataBefore.selector),
             abi.encode(true, abi.encode(1), 0)
         );
-        vm.expectRevert(BaseOracleDenominations.InvalidDataReturned.selector);
+        vm.expectRevert(Errors.InvalidDataReturned.selector);
         _oracle.getPriceInEth(ETH);
 
         // Returns price of zero
@@ -162,7 +162,7 @@ contract TellorOracleTest is Test {
             abi.encodeWithSelector(UsingTellor.getDataBefore.selector),
             abi.encode(true, abi.encode(0), block.timestamp - 30 minutes)
         );
-        vm.expectRevert(BaseOracleDenominations.InvalidDataReturned.selector);
+        vm.expectRevert(Errors.InvalidDataReturned.selector);
         _oracle.getPriceInEth(ETH);
     }
 

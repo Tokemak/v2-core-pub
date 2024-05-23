@@ -8,15 +8,15 @@ import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { Test } from "forge-std/Test.sol";
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
+import { SystemSecurityL1, SystemSecurity } from "src/security/SystemSecurityL1.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
 
-contract SystemSecurityTests is Test {
+contract SystemSecurityL1Tests is Test {
     SystemRegistry private _systemRegistry;
     AccessController private _accessController;
-    SystemSecurity private _systemSecurity;
+    SystemSecurityL1 private _systemSecurity;
 
     IAutopoolRegistry private _autoPoolRegistry;
 
@@ -29,7 +29,7 @@ contract SystemSecurityTests is Test {
         _accessController = new AccessController(address(_systemRegistry));
         _systemRegistry.setAccessController(address(_accessController));
 
-        _systemSecurity = new SystemSecurity(_systemRegistry);
+        _systemSecurity = new SystemSecurityL1(_systemRegistry);
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
 
         _accessController.grantRole(Roles.EMERGENCY_PAUSER, address(this));

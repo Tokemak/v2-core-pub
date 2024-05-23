@@ -53,6 +53,7 @@ library Roles {
 
     // Emergency Management
     bytes32 public constant EMERGENCY_PAUSER = keccak256("EMERGENCY_PAUSER");
+    bytes32 public constant SEQUENCER_OVERRIDE_MANAGER = keccak256("SEQUENCER_OVERRIDE_MANAGER");
 
     // Miscellaneous Roles
     bytes32 public constant SOLVER = keccak256("SOLVER_ROLE");

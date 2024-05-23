@@ -11,7 +11,7 @@ import { console } from "forge-std/console.sol";
 // Contracts
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
+import { SystemSecurityL1 } from "src/security/SystemSecurityL1.sol";
 import { AutopoolRegistry } from "src/vault/AutopoolRegistry.sol";
 import { AutopilotRouter } from "src/vault/AutopilotRouter.sol";
 import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
@@ -89,7 +89,7 @@ contract DeploySystem is Script {
         console.log("Access Controller: ", address(accessController));
 
         // System security setup
-        systemSecurity = new SystemSecurity(systemRegistry);
+        systemSecurity = new SystemSecurityL1(systemRegistry);
         systemRegistry.setSystemSecurity(address(systemSecurity));
         console.log("System Security: ", address(systemSecurity));
 

@@ -14,8 +14,8 @@ import { ISystemSecurity } from "src/interfaces/security/ISystemSecurity.sol";
  * Allows us to pause all pausable contracts in the system
  * Ensures that operations that change NAV and those that don't are not mixed in the same transaction.
  */
-contract SystemSecurity is SystemComponent, SecurityBase, ISystemSecurity {
-    bool private _systemPaused = false;
+abstract contract SystemSecurity is SystemComponent, SecurityBase, ISystemSecurity {
+    bool internal _systemPaused = false;
 
     event SystemPaused(address account);
     event SystemUnpaused(address account);
@@ -40,9 +40,7 @@ contract SystemSecurity is SystemComponent, SecurityBase, ISystemSecurity {
 
     /// @inheritdoc ISystemSecurity
     /// @notice Returns true when the entire system is paused
-    function isSystemPaused() external view returns (bool) {
-        return _systemPaused;
-    }
+    function isSystemPaused() external virtual returns (bool);
 
     /// @inheritdoc ISystemSecurity
     /// @notice Enters a NAV/share changing operation from an Autopool

@@ -8,7 +8,7 @@ import { Test } from "forge-std/Test.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
+import { SystemSecurityL1 } from "src/security/SystemSecurityL1.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { StatsCalculatorRegistry } from "src/stats/StatsCalculatorRegistry.sol";
 import { StatsCalculatorFactory } from "src/stats/StatsCalculatorFactory.sol";
@@ -34,7 +34,7 @@ contract StatsSystemIntegrationTestBase is Test {
     SystemRegistry internal _systemRegistry;
     AccessController internal _accessController;
     RootPriceOracle internal _rootPriceOracle;
-    SystemSecurity internal _systemSecurity;
+    SystemSecurityL1 internal _systemSecurity;
     StatsCalculatorFactory internal _statsFactory;
     StatsCalculatorRegistry internal _statsRegistry;
     CurveResolverMainnet internal _curveResolver;
@@ -62,7 +62,7 @@ contract StatsSystemIntegrationTestBase is Test {
         _accessController.grantRole(Roles.STATS_INCENTIVE_TOKEN_UPDATER, address(this));
         _accessController.grantRole(Roles.ORACLE_MANAGER, address(this));
 
-        _systemSecurity = new SystemSecurity(_systemRegistry);
+        _systemSecurity = new SystemSecurityL1(_systemRegistry);
         vm.makePersistent(address(_systemSecurity));
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
 

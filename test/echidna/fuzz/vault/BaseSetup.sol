@@ -11,7 +11,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { WETH9 } from "test/echidna/fuzz/mocks/WETH9.sol";
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
+import { SystemSecurityL1 } from "src/security/SystemSecurityL1.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { MockRootOracle } from "test/echidna/fuzz/mocks/MockRootOracle.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
@@ -31,7 +31,7 @@ import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol"
 contract BasePoolSetup {
     TestingStrategy internal _strategy;
     SystemRegistry internal _systemRegistry;
-    SystemSecurity internal _systemSecurity;
+    SystemSecurityL1 internal _systemSecurity;
     TestingAccessController internal _accessController;
     MockRootOracle internal _rootPriceOracle;
 
@@ -85,7 +85,7 @@ contract BasePoolSetup {
 
         _systemRegistry.setAccessController(address(_accessController));
 
-        _systemSecurity = new SystemSecurity(_systemRegistry);
+        _systemSecurity = new SystemSecurityL1(_systemRegistry);
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
 
         TestAutopoolRegistry autoPoolRegistry = new TestAutopoolRegistry(_systemRegistry);

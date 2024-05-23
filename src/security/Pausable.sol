@@ -64,7 +64,7 @@ abstract contract Pausable {
     }
 
     /// @notice Returns true if the contract or system is paused, and false otherwise.
-    function paused() public view virtual returns (bool) {
+    function paused() public virtual returns (bool) {
         return _paused || _systemSecurity.isSystemPaused();
     }
 
@@ -93,14 +93,14 @@ abstract contract Pausable {
     }
 
     /// @dev Throws if the contract or system is paused.
-    function _requireNotPaused() internal view virtual {
+    function _requireNotPaused() internal virtual {
         if (paused()) {
             revert IsPaused();
         }
     }
 
     /// @dev Throws if the contract or system is not paused.
-    function _requirePaused() internal view virtual {
+    function _requirePaused() internal virtual {
         if (!paused()) {
             revert IsNotPaused();
         }

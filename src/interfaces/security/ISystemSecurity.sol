@@ -14,5 +14,5 @@ interface ISystemSecurity {
     function exitNavOperation() external;
 
     /// @notice Whether or not the system as a whole is paused
-    function isSystemPaused() external view returns (bool);
+    function isSystemPaused() external returns (bool);
 }

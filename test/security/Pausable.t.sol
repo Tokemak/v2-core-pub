@@ -9,14 +9,14 @@ import { Errors } from "src/utils/Errors.sol";
 import { Pausable } from "src/security/Pausable.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { Test } from "forge-std/Test.sol";
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
+import { SystemSecurityL1 } from "src/security/SystemSecurityL1.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 
 contract PausableTests is Test {
     SystemRegistry private _systemRegistry;
     AccessController private _accessController;
-    SystemSecurity private _systemSecurity;
+    SystemSecurityL1 private _systemSecurity;
 
     PausableMock private _pausable;
 
@@ -29,7 +29,7 @@ contract PausableTests is Test {
         _accessController = new AccessController(address(_systemRegistry));
         _systemRegistry.setAccessController(address(_accessController));
 
-        _systemSecurity = new SystemSecurity(_systemRegistry);
+        _systemSecurity = new SystemSecurityL1(_systemRegistry);
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
 
         _pausable = new PausableMock(_systemRegistry);

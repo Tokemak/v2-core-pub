@@ -21,7 +21,7 @@ import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
+import { SystemSecurityL1 } from "src/security/SystemSecurityL1.sol";
 import { AutopoolRegistry } from "src/vault/AutopoolRegistry.sol";
 import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { AutopoolFactory } from "src/vault/AutopoolFactory.sol";
@@ -177,7 +177,7 @@ abstract contract AutopoolFullDeployTests is Test {
 
     SystemRegistry internal _systemRegistry;
     AccessController internal _accessController;
-    SystemSecurity internal _systemSecurity;
+    SystemSecurityL1 internal _systemSecurity;
     AutopoolRegistry internal _autoPoolRegistry;
     DestinationRegistry internal _destinationTemplateRegistry;
     DestinationVaultRegistry internal _destinationVaultRegistry;
@@ -211,7 +211,7 @@ abstract contract AutopoolFullDeployTests is Test {
         _systemRegistry.setAccessController(address(_accessController));
 
         // System Security
-        _systemSecurity = new SystemSecurity(_systemRegistry);
+        _systemSecurity = new SystemSecurityL1(_systemRegistry);
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
 
         // Autopool Registry

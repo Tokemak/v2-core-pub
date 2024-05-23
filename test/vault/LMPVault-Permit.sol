@@ -12,7 +12,7 @@ import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { SystemRegistryBase } from "src/SystemRegistryBase.sol";
 import { AutopoolFactory } from "src/vault/AutopoolFactory.sol";
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
+import { SystemSecurityL1 } from "src/security/SystemSecurityL1.sol";
 import { AutopoolRegistry } from "src/vault/AutopoolRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { AutopoolETHStrategy } from "src/strategy/AutopoolETHStrategy.sol";
@@ -24,7 +24,7 @@ contract PermitTests is Test {
     AccessController private _accessController;
     AutopoolRegistry private _autoPoolRegistry;
     AutopoolFactory private _autoPoolFactory;
-    SystemSecurity private _systemSecurity;
+    SystemSecurityL1 private _systemSecurity;
 
     TestERC20 private _asset;
     TestERC20 private _toke;
@@ -50,7 +50,7 @@ contract PermitTests is Test {
         _autoPoolRegistry = new AutopoolRegistry(_systemRegistry);
         _systemRegistry.setAutopoolRegistry(address(_autoPoolRegistry));
 
-        _systemSecurity = new SystemSecurity(_systemRegistry);
+        _systemSecurity = new SystemSecurityL1(_systemRegistry);
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
 
         // Setup the Autopool Vault

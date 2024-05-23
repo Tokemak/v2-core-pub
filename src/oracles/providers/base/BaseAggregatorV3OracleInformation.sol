@@ -114,11 +114,11 @@ abstract contract BaseAggregatorV3OracleInformation is BaseOracleDenominations {
         uint256 oracleStoredTimeout = uint256(oracleInfo.pricingTimeout);
         uint256 tokenPricingTimeout = oracleStoredTimeout == 0 ? DEFAULT_PRICING_TIMEOUT : oracleStoredTimeout;
 
-        if (price <= 0) revert InvalidDataReturned(); // Check before conversion from int to uint.
+        if (price <= 0) revert Errors.InvalidDataReturned(); // Check before conversion from int to uint.
         uint256 priceUint = uint256(price);
 
         if (updatedAt == 0 || updatedAt > timestamp || updatedAt < timestamp - tokenPricingTimeout) {
-            revert InvalidDataReturned();
+            revert Errors.InvalidDataReturned();
         }
         uint256 decimals = oracleInfo.decimals;
         // Oracle feeds have certain decimal precisions, does not necessarily conform to underlying asset.

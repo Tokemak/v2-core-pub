@@ -165,7 +165,7 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
         // Pre caching checks, zero checks for timestamp and price.  If these are zero, something is wrong,
         //      want to revert.
         if (timestampRetrieved == 0 || price == 0) {
-            revert InvalidDataReturned();
+            revert Errors.InvalidDataReturned();
         }
 
         // Get Tellor cached pricing.

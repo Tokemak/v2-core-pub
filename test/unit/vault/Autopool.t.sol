@@ -111,7 +111,7 @@ contract AutopoolETHTests is
         _mockSysRegAccessController(systemRegistry, address(accessController));
 
         systemSecurity = ISystemSecurity(makeAddr("systemSecurity"));
-        _mockSysRegSystemSecurity(systemRegistry, address(systemSecurity));
+        _mockSysRegSystemSecurityL1(systemRegistry, address(systemSecurity));
         _mockSysSecurityInit(systemSecurity);
 
         vm.label(address(vaultAsset), "baseAsset");

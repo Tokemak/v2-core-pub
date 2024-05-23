@@ -17,7 +17,7 @@ import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
+import { SystemSecurityL1 } from "src/security/SystemSecurityL1.sol";
 import { AutopoolMainRewarder, MainRewarder } from "src/rewarders/AutopoolMainRewarder.sol";
 import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { AccToke } from "src/staking/AccToke.sol";
@@ -47,7 +47,7 @@ contract BaseTest is Test {
 
     IAccessController public accessController;
 
-    SystemSecurity public systemSecurity;
+    SystemSecurityL1 public systemSecurity;
 
     address public autoPoolTemplate;
 
@@ -110,7 +110,7 @@ contract BaseTest is Test {
         autoPoolRouter = new AutopilotRouter(systemRegistry);
         systemRegistry.setAutopilotRouter(address(autoPoolRouter));
 
-        systemSecurity = new SystemSecurity(systemRegistry);
+        systemSecurity = new SystemSecurityL1(systemRegistry);
         systemRegistry.setSystemSecurity(address(systemSecurity));
         vm.label(address(systemRegistry), "System Registry");
         vm.label(address(accessController), "Access Controller");

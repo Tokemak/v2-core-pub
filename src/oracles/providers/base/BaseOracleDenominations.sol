@@ -27,9 +27,6 @@ abstract contract BaseOracleDenominations is SystemComponent, IPriceOracle, Secu
      */
     address public constant ETH_IN_USD = address(bytes20("ETH_IN_USD"));
 
-    // Thrown in the event that parameter returned with data is invalid.  Timestamp, pricing, etc.
-    error InvalidDataReturned();
-
     constructor(ISystemRegistry _systemRegistry)
         SystemComponent(_systemRegistry)
         SecurityBase(address(_systemRegistry.accessController()))

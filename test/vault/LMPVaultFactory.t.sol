@@ -15,7 +15,7 @@ import { AutopoolRegistry } from "src/vault/AutopoolRegistry.sol";
 import { AutopoolFactory } from "src/vault/AutopoolFactory.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { AutopoolETHStrategy } from "src/strategy/AutopoolETHStrategy.sol";
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
+import { SystemSecurityL1 } from "src/security/SystemSecurityL1.sol";
 import { AutopoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutopoolETHStrategyTestHelpers.sol";
 import { WETH_MAINNET } from "test/utils/Addresses.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
@@ -28,7 +28,7 @@ contract AutopoolFactoryTest is Test {
     AccessController internal _accessController;
     AutopoolRegistry internal _autoPoolRegistry;
     AutopoolFactory internal _autoPoolFactory;
-    SystemSecurity internal _systemSecurity;
+    SystemSecurityL1 internal _systemSecurity;
 
     IWETH9 internal _asset;
     TestERC20 internal _toke;
@@ -60,7 +60,7 @@ contract AutopoolFactoryTest is Test {
         _autoPoolRegistry = new AutopoolRegistry(_systemRegistry);
         _systemRegistry.setAutopoolRegistry(address(_autoPoolRegistry));
 
-        _systemSecurity = new SystemSecurity(_systemRegistry);
+        _systemSecurity = new SystemSecurityL1(_systemRegistry);
         _systemRegistry.setSystemSecurity(address(_systemSecurity));
 
         // Setup the Autopool Vault

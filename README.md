@@ -61,3 +61,7 @@ forge test --match-path test/fuzz/vault/Autopool.t.sol --fuzz-runs 10000
 ```
 forge script script/01_SystemDeploy.s.sol --rpc-url mainnet --sender $V2DEPLOY2
 ```
+
+### Base
+
+forge script script/01_SystemDeploy.s.sol --rpc-url mainnet --sender $V2DEPLOY2 --account v2-base-guarded --sender $SENDER_BASE

@@ -26,9 +26,11 @@ import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 // TODO: Change placeholders when able; 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
 
 enum Systems {
-    NEW,
+    NEW_MAINNET,
+    NEW_BASE,
     LST_GEN1_MAINNET,
-    LST_GEN2_MAINNET
+    LST_GEN2_MAINNET,
+    LST_GEN1_BASE
 }
 
 library Constants {
@@ -50,6 +52,8 @@ library Constants {
         address sfrxEth;
         address aura;
         address osEth;
+        address aero;
+        address ezEth;
     }
 
     struct System {
@@ -108,15 +112,30 @@ library Constants {
             return getLstGen1Mainnet();
         } else if (system == Systems.LST_GEN2_MAINNET) {
             return getLstGen2Mainnet();
-        } else if (system == Systems.NEW) {
-            return getEmpty();
+        } else if (system == Systems.NEW_MAINNET) {
+            return getEmptyMainnet();
+        } else if (system == Systems.NEW_BASE) {
+            return getEmptyBase();
+        } else if (system == Systems.LST_GEN1_BASE) {
+            return getLstGen1Base();
         } else {
             revert("address not found");
         }
     }
 
-    function getEmpty() private pure returns (Values memory) {
+    function getEmptyMainnet() private pure returns (Values memory) {
         return Values({ tokens: getMainnetTokens(), sys: getEmptySystem(), ext: getMainnetExternal() });
+    }
+
+    function getEmptyBase() private pure returns (Values memory) {
+        return Values({ tokens: getBaseTokens(), sys: getEmptySystem(), ext: getBaseExternal() });
+    }
+
+    function getLstGen1Base() private view returns (Values memory) {
+        System memory sys =
+            getQueryableSystem(0xBa69A35D353Af239B12db3c5C90b1EB09F52e3dd, 0x1523738df2c6Cc303B6A919de69a976056848C80);
+
+        return Values({ tokens: getBaseTokens(), sys: sys, ext: getBaseExternal() });
     }
 
     function getLstGen2Mainnet() private view returns (Values memory) {
@@ -229,7 +248,45 @@ library Constants {
             rEth: 0xae78736Cd615f374D3085123A210448E74Fc6393,
             sfrxEth: 0xac3E018457B222d93114458476f3E3416Abbe38F,
             aura: 0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF,
-            osEth: 0xf1C9acDc66974dFB6dEcB12aA385b9cD01190E38
+            osEth: 0xf1C9acDc66974dFB6dEcB12aA385b9cD01190E38,
+            aero: address(0),
+            ezEth: 0xbf5495Efe5DB9ce00f80364C8B423567e58d2110
+        });
+    }
+
+    function getBaseTokens() private pure returns (Tokens memory) {
+        return Tokens({
+            toke: 0x000000000000000000000000000000000000F043,
+            weth: 0x4200000000000000000000000000000000000006,
+            bal: 0x4158734D47Fc9692176B5085E0F52ee0Da5d47F1,
+            cvx: address(0),
+            crv: address(0),
+            ldo: address(0),
+            rpl: address(0),
+            swise: address(0),
+            wstEth: 0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452,
+            curveEth: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
+            swEth: address(0),
+            stEth: address(0),
+            cbEth: 0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22,
+            rEth: 0xB6fe221Fe9EeF5aBa221c348bA20A1Bf5e73624c,
+            sfrxEth: address(0),
+            aura: 0x1509706a6c66CA549ff0cB464de88231DDBe213B,
+            osEth: address(0),
+            aero: 0x940181a94A35A4569E4529A3CDfB74e38FD98631,
+            ezEth: 0x2416092f143378750bb29b79eD961ab195CcEea5
+        });
+    }
+
+    function getBaseExternal() private pure returns (External memory) {
+        return External({
+            convexBooster: address(0),
+            auraBooster: 0x98Ef32edd24e2c92525E59afc4475C1242a30184,
+            curveMetaRegistry: address(0),
+            zeroExProxy: 0xDef1C0ded9bec7F1a1670819833240f027b25EfF,
+            balancerVault: IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8),
+            mavPoolFactory: 0xB2855783a346735e4AAe0c1eb894DEf861Fa9b45,
+            mavBoostedPositionFactory: address(0)
         });
     }
 }

@@ -7,41 +7,21 @@ pragma solidity >=0.8.7;
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
+import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { Test } from "forge-std/Test.sol";
-import { SystemSecurityL1, SystemSecurity } from "src/security/SystemSecurityL1.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
 
-contract SystemSecurityL1Tests is Test {
-    SystemRegistry private _systemRegistry;
-    AccessController private _accessController;
-    SystemSecurityL1 private _systemSecurity;
+abstract contract SystemSecurityBaseTests is Test {
+    SystemRegistry internal _systemRegistry;
+    AccessController internal _accessController;
+    SystemSecurity internal _systemSecurity;
 
-    IAutopoolRegistry private _autoPoolRegistry;
+    IAutopoolRegistry internal _autoPoolRegistry;
 
     event SystemPaused(address account);
     event SystemUnpaused(address account);
-
-    function setUp() public {
-        _systemRegistry = new SystemRegistry(vm.addr(100), vm.addr(101));
-
-        _accessController = new AccessController(address(_systemRegistry));
-        _systemRegistry.setAccessController(address(_accessController));
-
-        _systemSecurity = new SystemSecurityL1(_systemRegistry);
-        _systemRegistry.setSystemSecurity(address(_systemSecurity));
-
-        _accessController.grantRole(Roles.EMERGENCY_PAUSER, address(this));
-
-        // Set autoPool registry for permissions
-        _autoPoolRegistry = IAutopoolRegistry(vm.addr(237_894));
-        vm.label(address(_autoPoolRegistry), "autoPoolRegistry");
-        _mockSystemBound(address(_systemRegistry), address(_autoPoolRegistry));
-        _systemRegistry.setAutopoolRegistry(address(_autoPoolRegistry));
-
-        _mockIsVault(address(this), true);
-    }
 
     function test_isSystemPaused_IsFalseByDefault() public {
         assertEq(_systemSecurity.isSystemPaused(), false);

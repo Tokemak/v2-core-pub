@@ -3,8 +3,9 @@
 pragma solidity 0.8.17;
 
 import { Roles } from "src/libs/Roles.sol";
-import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { SystemSecurity, Errors } from "src/security/SystemSecurity.sol";
+import { ISequencerChecker } from "src/interfaces/security/ISequencerChecker.sol";
 
 contract SystemSecurityL2 is SystemSecurity {
     /// @notice Used in the case of an issue with sequencer uptime reports
@@ -20,16 +21,23 @@ contract SystemSecurityL2 is SystemSecurity {
 
     /// @inheritdoc SystemSecurity
     function isSystemPaused() external override returns (bool) {
+        // Check admin controlled system pause
         if (_systemPaused) {
             return true;
         }
 
-        if (!systemRegistry.sequencerChecker().checkSequencerUptimeFeed() && !overrideSequencerUptime) {
+        // Check sequencer controlled system pause, ensure that we are not overriding the sequencer return
+        ISequencerChecker checker = systemRegistry.sequencerChecker();
+        Errors.verifyNotZero(address(checker), "checker");
+        bool sequencerStatus = checker.checkSequencerUptimeFeed();
+
+        // Sequencer down, override false
+        if (!sequencerStatus && !overrideSequencerUptime) {
             return true;
         }
 
-        // If we get to here the system is not paused, and we want to undo any override that we may have.
-        if (overrideSequencerUptime == true) {
+        // Sequencer up, override true
+        if (sequencerStatus && overrideSequencerUptime) {
             emit SequencerOverrideSet(false);
             overrideSequencerUptime = false;
         }

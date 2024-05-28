@@ -390,7 +390,7 @@ contract MaverickCalculator is BaseStatsCalculator, IDexLSTStats {
         return Math.min(fastPrice, slowPrice);
     }
 
-    function resolveLpToken() public view returns (address) {
+    function lpToken() public view returns (address) {
         return address(boostedPosition);
     }
 }

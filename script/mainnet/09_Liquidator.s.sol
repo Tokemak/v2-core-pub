@@ -6,7 +6,7 @@ pragma solidity 0.8.17;
 
 import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
-import { Systems, Constants } from "./utils/Constants.sol";
+import { Systems, Constants } from "../utils/Constants.sol";
 
 import { Roles } from "src/libs/Roles.sol";
 import { LiquidationRow } from "src/liquidation/LiquidationRow.sol";

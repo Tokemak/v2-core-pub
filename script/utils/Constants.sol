@@ -97,6 +97,7 @@ library Constants {
         address auraBooster;
         address zeroExProxy;
         IBalancerVault balancerVault;
+        address mavRouter;
         address mavPoolFactory;
         address mavBoostedPositionFactory;
     }
@@ -225,6 +226,7 @@ library Constants {
             curveMetaRegistry: 0xF98B45FA17DE75FB1aD0e7aFD971b0ca00e379fC,
             zeroExProxy: 0xDef1C0ded9bec7F1a1670819833240f027b25EfF,
             balancerVault: IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8),
+            mavRouter: 0xbBF1EE38152E9D8e3470Dc47947eAa65DcA94913,
             mavPoolFactory: 0xEb6625D65a0553c9dBc64449e56abFe519bd9c9B,
             mavBoostedPositionFactory: 0x4F24D73773fCcE560f4fD641125c23A2B93Fcb05
         });
@@ -285,6 +287,7 @@ library Constants {
             curveMetaRegistry: address(0),
             zeroExProxy: 0xDef1C0ded9bec7F1a1670819833240f027b25EfF,
             balancerVault: IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8),
+            mavRouter: address(0),
             mavPoolFactory: 0xB2855783a346735e4AAe0c1eb894DEf861Fa9b45,
             mavBoostedPositionFactory: address(0)
         });

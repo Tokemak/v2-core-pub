@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 // solhint-disable no-console
 
 import { Script } from "forge-std/Script.sol";
-import { Systems, Constants } from "./utils/Constants.sol";
+import { Systems, Constants } from "../utils/Constants.sol";
 
 import { Roles } from "src/libs/Roles.sol";
 

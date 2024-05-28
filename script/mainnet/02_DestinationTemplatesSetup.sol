@@ -11,13 +11,13 @@ import { Roles } from "src/libs/Roles.sol";
 
 // Contracts
 import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
-import { Systems } from "./utils/Constants.sol";
+import { Systems } from "../utils/Constants.sol";
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
 import { CurveConvexDestinationVault } from "src/vault/CurveConvexDestinationVault.sol";
 import { CurveNGConvexDestinationVault } from "src/vault/CurveNGConvexDestinationVault.sol";
 import { MaverickDestinationVault } from "src/vault/MaverickDestinationVault.sol";
 
-import { Systems, Constants } from "./utils/Constants.sol";
+import { Systems, Constants } from "../utils/Constants.sol";
 
 contract DestinationTemplatesSetupScript is Script {
     function run() external {

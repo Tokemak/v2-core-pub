@@ -30,7 +30,7 @@ import { IncentivePricingStats } from "src/stats/calculators/IncentivePricingSta
 
 // Libraries
 import { Roles } from "src/libs/Roles.sol";
-import { Systems, Constants } from "./utils/Constants.sol";
+import { Systems, Constants } from "../utils/Constants.sol";
 
 // Interfaces
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";

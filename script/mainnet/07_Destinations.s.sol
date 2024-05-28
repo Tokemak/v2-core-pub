@@ -6,7 +6,7 @@ pragma solidity 0.8.17;
 
 import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
-import { Systems, Constants } from "./utils/Constants.sol";
+import { Systems, Constants } from "../utils/Constants.sol";
 
 import { Roles } from "src/libs/Roles.sol";
 
@@ -14,7 +14,6 @@ import { CurveConvexDestinationVault } from "src/vault/CurveConvexDestinationVau
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
 
 contract Destinations is Script {
-    bytes32 public balKey = keccak256(abi.encode());
     uint256 public saltIx;
     Constants.Values public constants;
 

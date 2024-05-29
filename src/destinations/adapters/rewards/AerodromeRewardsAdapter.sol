@@ -14,12 +14,9 @@ import { Errors } from "src/utils/Errors.sol";
 /**
  * @title AerodromeRewardsAdapter
  * @dev This contract implements an adapter for interacting with Aerodrome Finance's reward system.
- * The Aerodrome Finance platform offers four types of rewards:
+ * The Aerodrome Finance in comparison to Velodrome (where it forked from) offers the only one type of rewards:
  *  - Emissions:  rewards distributed to liquidity providers based on their share of the liquidity pool.
  *      - _claimEmissions() is used to claim these rewards.
- *  - Fees: rewards distributed to users who interact with the platform through trades or other actions.
- *      - _claimFees() is used to claim these rewards.
- *
  */
 library AerodromeRewardsAdapter {
     /**

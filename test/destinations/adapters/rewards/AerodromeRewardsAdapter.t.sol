@@ -10,7 +10,7 @@ import { Errors } from "src/utils/Errors.sol";
 import { IVoter } from "src/interfaces/external/velodrome/IVoter.sol";
 import { AerodromeRewardsAdapter } from "src/destinations/adapters/rewards/AerodromeRewardsAdapter.sol";
 
-import { AERO_BASE } from "test/utils/Addresses.sol";
+import { AERODROME_VOTER_BASE, AERO_BASE } from "test/utils/Addresses.sol";
 
 // solhint-disable func-name-mixedcase
 contract AerodromeRewardsAdapterTest is Test {
@@ -21,7 +21,7 @@ contract AerodromeRewardsAdapterTest is Test {
 
         vm.label(address(this), "AerodromeRewardsAdapterTest");
 
-        voter = IVoter(0x16613524e02ad97eDfeF371bC883F2F5d6C480A5);
+        voter = IVoter(AERODROME_VOTER_BASE);
     }
 
     function test_Revert_IfAddressZero() public {

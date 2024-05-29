@@ -890,7 +890,7 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
         IERC3156FlashBorrower receiver,
         RebalanceParams memory rebalanceParams,
         bytes calldata data
-    ) public whenNotPaused nonReentrant hasRole(Roles.SOLVER) trackNavOps {
+    ) public nonReentrant whenNotPaused hasRole(Roles.SOLVER) trackNavOps {
         AutopoolDebt.IdleDebtUpdates memory result = _processRebalance(receiver, rebalanceParams, data);
 
         uint256 idle = _assetBreakdown.totalIdle;

@@ -17,6 +17,7 @@ contract SystemSecurityL2 is SystemSecurity {
     /// @notice Emitted when sequencer override is set
     event SequencerOverrideSet(bool overrideStatus);
 
+    // slither-disable-next-line similar-names
     constructor(ISystemRegistry _systemRegsitry) SystemSecurity(_systemRegsitry) { }
 
     /// @inheritdoc SystemSecurity

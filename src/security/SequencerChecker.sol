@@ -24,6 +24,7 @@ contract SequencerChecker is ISequencerChecker, SystemComponent {
 
     /// @inheritdoc ISequencerChecker
     function checkSequencerUptimeFeed() external view returns (bool) {
+        // slither-disable-next-line unused-return
         (uint80 roundId, int256 answer, uint256 startedAt,,) = sequencerUptimeFeed.latestRoundData();
 
         if (answer > 1 || roundId == 0 || startedAt == 0) {
@@ -31,6 +32,7 @@ contract SequencerChecker is ISequencerChecker, SystemComponent {
         }
 
         // Check answer. If sequencer is up make sure for appropriate amount of time
+        // slither-disable-next-line timestamp
         if (answer == 1 || block.timestamp - startedAt < GRACE_PERIOD) {
             return false;
         }

@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
-interface IGauge is IERC20 {
+interface IAerodromeGauge is IERC20 {
     // function deposit(uint256 amount, uint256 tokenId) external;
     // function withdraw(uint256 amount) external;
     // function withdrawToken(uint256 amount, uint256 tokenId) external;

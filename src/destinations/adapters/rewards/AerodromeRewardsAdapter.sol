@@ -6,7 +6,7 @@ pragma solidity 0.8.17;
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { IVoter } from "src/interfaces/external/velodrome/IVoter.sol";
-import { IGauge } from "src/interfaces/external/aerodrome/IGauge.sol";
+import { IAerodromeGauge } from "src/interfaces/external/aerodrome/IAerodromeGauge.sol";
 
 import { RewardAdapter } from "src/destinations/adapters/rewards/RewardAdapter.sol";
 import { Errors } from "src/utils/Errors.sol";
@@ -48,7 +48,7 @@ library AerodromeRewardsAdapter {
         address gaugeAddress,
         address claimFor
     ) private returns (uint256[] memory amountsClaimed, IERC20[] memory rewards) {
-        IGauge gauge = IGauge(gaugeAddress);
+        IAerodromeGauge gauge = IAerodromeGauge(gaugeAddress);
 
         uint256[] memory balancesBefore = new uint256[](1);
         amountsClaimed = new uint256[](1);

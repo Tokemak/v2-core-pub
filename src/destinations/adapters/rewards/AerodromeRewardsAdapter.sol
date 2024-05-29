@@ -6,7 +6,7 @@ pragma solidity 0.8.17;
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { IVoter } from "src/interfaces/external/velodrome/IVoter.sol";
-import { IGauge } from "src/interfaces/external/velodrome/IGauge.sol";
+import { IGauge } from "src/interfaces/external/aerodrome/IGauge.sol";
 
 import { RewardAdapter } from "src/destinations/adapters/rewards/RewardAdapter.sol";
 import { Errors } from "src/utils/Errors.sol";
@@ -49,36 +49,19 @@ library AerodromeRewardsAdapter {
         address claimFor
     ) private returns (uint256[] memory amountsClaimed, IERC20[] memory rewards) {
         IGauge gauge = IGauge(gaugeAddress);
-        address[] memory gaugeRewards = _getGaugeRewards(gauge);
 
-        uint256 count = gaugeRewards.length;
-        uint256[] memory balancesBefore = new uint256[](count);
-        amountsClaimed = new uint256[](count);
-        rewards = new IERC20[](count);
+        uint256[] memory balancesBefore = new uint256[](1);
+        amountsClaimed = new uint256[](1);
+        rewards = new IERC20[](1);
 
-        for (uint256 i = 0; i < count; ++i) {
-            IERC20 reward = IERC20(gaugeRewards[i]);
-            rewards[i] = reward;
-            balancesBefore[i] = reward.balanceOf(claimFor);
-        }
+        IERC20 reward = IERC20(gauge.rewardToken());
+        rewards[0] = reward;
+        balancesBefore[0] = reward.balanceOf(claimFor);
 
-        gauge.getReward(claimFor, gaugeRewards);
+        gauge.getReward(claimFor);
 
-        for (uint256 i = 0; i < count; ++i) {
-            uint256 balanceAfter = rewards[i].balanceOf(claimFor);
-            amountsClaimed[i] = balanceAfter - balancesBefore[i];
-        }
-    }
-
-    function _getGaugeRewards(IGauge gauge) private view returns (address[] memory rewards) {
-        uint256 length = gauge.rewardsListLength();
-
-        rewards = new address[](length);
-
-        for (uint256 i = 0; i < length; ++i) {
-            address reward = gauge.rewards(i);
-            rewards[i] = reward;
-        }
+        uint256 balanceAfter = rewards[0].balanceOf(claimFor);
+        amountsClaimed[0] = balanceAfter - balancesBefore[0];
     }
 
     function _convertToAddresses(IERC20[] memory tokens) internal pure returns (address[] memory assets) {

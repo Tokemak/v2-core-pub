@@ -4,7 +4,6 @@ pragma solidity >=0.8.7;
 
 /* solhint-disable func-name-mixedcase */
 
-import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";

@@ -3,14 +3,12 @@
 pragma solidity 0.8.17;
 
 import { Roles } from "src/libs/Roles.sol";
-import { SequencerChecker } from "src/security/SequencerChecker.sol";
 import { SystemSecurityL2, ISystemRegistry, Errors } from "src/security/SystemSecurityL2.sol";
 import {
     SystemSecurityBaseTests,
     SystemSecurity,
     SystemRegistry,
     AccessController,
-    Roles,
     IAutopoolRegistry
 } from "test/security/SystemSecurityBase.t.sol";
 

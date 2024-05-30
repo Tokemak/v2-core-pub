@@ -52,6 +52,7 @@ contract EzethLSTCalculator is LSTCalculatorBase {
     /// @inheritdoc LSTCalculatorBase
     function calculateEthPerToken() public view override returns (uint256) {
         // Get the total TVL priced in ETH from restakeManager
+        // slither-disable-next-line unused-return
         (,, uint256 totalTVL) = renzoRestakeManger.calculateTVLs();
 
         uint256 totalSupply = IERC20(lstTokenAddress).totalSupply();

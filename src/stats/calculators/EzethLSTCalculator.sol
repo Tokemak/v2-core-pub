@@ -14,7 +14,7 @@ contract EzethLSTCalculator is LSTCalculatorBase {
     /// Public Vars
     /// =====================================================
 
-    /// @notice Restake Manager for ezEth token
+    /// @notice Restake Manager for ezEth token. Used to get TVL in Renzo system
     IRestakeManager public renzoRestakeManger;
 
     /// @notice Initialization params specific to this calculator

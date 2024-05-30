@@ -49,6 +49,7 @@ library AerodromeStakingAdapter {
         Errors.verifyNotZero(amount, "amount");
         Errors.verifyNotZero(minLpMintAmount, "minLpMintAmount");
         Errors.verifyNotZero(pool, "pool");
+        //slither-disable-start reentrancy-events
 
         address gaugeAddress = voter.gauges(pool);
         IAerodromeGauge gauge = IAerodromeGauge(gaugeAddress);
@@ -67,6 +68,7 @@ library AerodromeStakingAdapter {
         emit DeployLiquidity(
             amount, stakingToken, [lpTokenAmount, lpTokensAfter, gauge.totalSupply()], pool, address(gauge)
         );
+        //slither-disable-end reentrancy-events
     }
 
     /**
@@ -81,6 +83,7 @@ library AerodromeStakingAdapter {
         Errors.verifyNotZero(amount, "amount");
         Errors.verifyNotZero(maxLpBurnAmount, "maxLpBurnAmount");
         Errors.verifyNotZero(pool, "pool");
+        //slither-disable-start reentrancy-events
 
         address gaugeAddress = voter.gauges(pool);
         IAerodromeGauge gauge = IAerodromeGauge(gaugeAddress);
@@ -97,5 +100,6 @@ library AerodromeStakingAdapter {
         emit WithdrawLiquidity(
             amount, gauge.stakingToken(), [lpTokenAmount, lpTokensAfter, gauge.totalSupply()], pool, address(gauge)
         );
+        //slither-disable-end reentrancy-events
     }
 }

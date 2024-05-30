@@ -26,6 +26,7 @@ import { StrategyUtils } from "src/strategy/libs/StrategyUtils.sol";
 import { SubSaturateMath } from "src/strategy/libs/SubSaturateMath.sol";
 import { SummaryStats } from "src/strategy/libs/SummaryStats.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
+import { Incentives } from "src/strategy/libs/Incentives.sol";
 
 contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrategy, SecurityBase {
     using ViolationTracking for ViolationTracking.State;
@@ -430,6 +431,10 @@ contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrateg
         );
 
         return (true, "");
+    }
+
+    function expiredRewardTolerance() external pure returns (uint256) {
+        return Incentives.EXPIRED_REWARD_TOLERANCE;
     }
 
     /// @notice Returns stats for a given destination

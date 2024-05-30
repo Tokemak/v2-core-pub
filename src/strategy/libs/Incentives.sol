@@ -14,7 +14,7 @@ library Incentives {
     using Math for uint256;
 
     // when removing liquidity, rewards can be expired by this amount if the pool as incentive credits
-    uint256 private constant EXPIRED_REWARD_TOLERANCE = 7 days;
+    uint256 public constant EXPIRED_REWARD_TOLERANCE = 7 days;
 
     function calculateIncentiveApr(
         IIncentivesPricingStats pricing,

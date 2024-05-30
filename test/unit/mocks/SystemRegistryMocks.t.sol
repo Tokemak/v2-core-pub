@@ -22,6 +22,14 @@ contract SystemRegistryMocks {
         );
     }
 
+    function _mockSysRegStatCalcRegistry(ISystemRegistry systemRegistry, address statCalcRegistry) internal {
+        vm.mockCall(
+            address(systemRegistry),
+            abi.encodeWithSelector(ISystemRegistry.statsCalculatorRegistry.selector),
+            abi.encode(statCalcRegistry)
+        );
+    }
+
     function _mockSysRegSystemSecurity(ISystemRegistry systemRegistry, address systemSecurity) internal {
         vm.mockCall(
             address(systemRegistry),
@@ -35,6 +43,14 @@ contract SystemRegistryMocks {
             address(systemRegistry),
             abi.encodeWithSelector(ISystemRegistry.receivingRouter.selector),
             abi.encode(receivingRouter)
+        );
+    }
+
+    function _mockSysRegMessageProxy(ISystemRegistry systemRegistry, address messageProxy) internal {
+        vm.mockCall(
+            address(systemRegistry),
+            abi.encodeWithSelector(ISystemRegistry.messageProxy.selector),
+            abi.encode(messageProxy)
         );
     }
 }

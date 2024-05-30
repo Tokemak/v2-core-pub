@@ -40,6 +40,7 @@ contract EthPerTokenStore is SystemComponent, SecurityBase, MessageReceiverBase 
 
     error UnsupportedToken(address token);
     error ValueNotAvailable(address token);
+    error OnlyNewerValue(address token, uint256 currentSetTimestamp, uint256 newTimestamp);
 
     /// =====================================================
     /// Structs
@@ -58,7 +59,7 @@ contract EthPerTokenStore is SystemComponent, SecurityBase, MessageReceiverBase 
         SystemComponent(_systemRegistry)
         SecurityBase(address(_systemRegistry.accessController()))
     {
-        maxAgeSeconds = 2 days;
+        maxAgeSeconds = 3 days;
     }
 
     /// =====================================================
@@ -135,6 +136,12 @@ contract EthPerTokenStore is SystemComponent, SecurityBase, MessageReceiverBase 
     function _trackPerTokenOnMessageReceive(address token, uint208 amount, uint48 timestamp) internal {
         if (!registered[token]) {
             revert UnsupportedToken(token);
+        }
+
+        // Message may be retried but if the message is older than one we've already
+        // processed we don't want to accept it
+        if (trackedTokens[token].lastSetTimestamp >= timestamp) {
+            revert OnlyNewerValue(token, trackedTokens[token].lastSetTimestamp, timestamp);
         }
 
         emit EthPerTokenUpdated(token, amount, timestamp);

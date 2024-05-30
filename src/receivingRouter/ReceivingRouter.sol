@@ -165,8 +165,8 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
         bytes32 messageType = messageFromProxy.messageType;
         bytes memory message = messageFromProxy.message;
 
-        bytes32 receiverKey = _getMessageReceiversKey(origin, sourceChainSelector, messageType);
-        address[] memory messageReceiversForRoute = messageReceivers[receiverKey];
+        bytes32 senderKey = _getMessageReceiversKey(origin, sourceChainSelector, messageType);
+        address[] memory messageReceiversForRoute = messageReceivers[senderKey];
         uint256 messageReceiversForRouteLength = messageReceiversForRoute.length;
 
         // Receivers registration act as security, this accounts for zero checks for type, origin, selector.
@@ -177,7 +177,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
 
         // Set message hash for retries
         bytes32 messageHash = keccak256(messageData);
-        lastMessageReceived[receiverKey] = messageHash;
+        lastMessageReceived[senderKey] = messageHash;
 
         emit MessageData(
             messageHash,

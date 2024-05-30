@@ -19,7 +19,7 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     /// =====================================================
 
     /// @notice Whether `lstTokenAddress` is a rebasing token
-    bool private _isRebasing;
+    bool internal _isRebasing;
 
     /// =====================================================
     /// Public Vars
@@ -38,24 +38,26 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     event EthPerTokenStoreSet(address store);
 
     /// =====================================================
+    /// Errors
+    /// =====================================================
+
+    error OnlyNewerValue(uint256 currentSetTimestamp, uint256 newTimestamp);
+
+    /// =====================================================
     /// Structs
     /// =====================================================
 
     struct L2InitData {
         address lstTokenAddress;
         bool isRebasing;
+        address ethPerTokenStore;
     }
 
     /// =====================================================
     /// Functions - Constructor/Initializer
     /// =====================================================
 
-    constructor(
-        ISystemRegistry _systemRegistry,
-        EthPerTokenStore _ethPerTokenStore
-    ) LSTCalculatorBase(_systemRegistry) {
-        _setEthPerTokenStore(_ethPerTokenStore);
-    }
+    constructor(ISystemRegistry _systemRegistry) LSTCalculatorBase(_systemRegistry) { }
 
     /// @inheritdoc IStatsCalculator
     function initialize(bytes32[] calldata, bytes memory initData) public virtual override initializer {
@@ -63,6 +65,8 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
         lstTokenAddress = decodedInitData.lstTokenAddress;
         _aprId = Stats.generateRawTokenIdentifier(decodedInitData.lstTokenAddress);
         _isRebasing = decodedInitData.isRebasing;
+
+        _setEthPerTokenStore(EthPerTokenStore(decodedInitData.ethPerTokenStore));
     }
 
     /// =====================================================
@@ -95,7 +99,7 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     }
 
     /// @inheritdoc LSTCalculatorBase
-    function calculateEthPerToken() public view override returns (uint256) {
+    function calculateEthPerToken() public view virtual override returns (uint256) {
         // Get the backing number we track separate from the LST Base APR numbers we get
         (uint256 storedValue, uint256 storedTimestamp) = ethPerTokenStore.getEthPerToken(lstTokenAddress);
 
@@ -111,7 +115,7 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     }
 
     /// @inheritdoc LSTCalculatorBase
-    function isRebasing() public view override returns (bool) {
+    function isRebasing() public view virtual override returns (bool) {
         return _isRebasing;
     }
 
@@ -137,6 +141,13 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
         uint256 snapshotTimestamp,
         uint256 newBaseApr
     ) internal {
+        // Message may be retried but if the message is older than one we've already
+        // processed we don't want to accept it. The send in the same block on the source chain
+        // slither-disable-next-line timestamp
+        if (lastBaseAprSnapshotTimestamp >= snapshotTimestamp) {
+            revert OnlyNewerValue(lastBaseAprSnapshotTimestamp, snapshotTimestamp);
+        }
+
         emit BaseAprSnapshotTaken(
             lastBaseAprEthPerToken,
             lastBaseAprSnapshotTimestamp,

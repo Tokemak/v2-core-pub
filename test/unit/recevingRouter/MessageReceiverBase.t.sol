@@ -3,6 +3,7 @@
 pragma solidity 0.8.17;
 
 import { Test } from "forge-std/Test.sol";
+import { Errors } from "src/utils/Errors.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { MessageReceiverBase } from "src/receivingRouter/MessageReceiverBase.sol";
@@ -29,7 +30,7 @@ contract MessageReceiverTests is Test, SystemRegistryMocks {
 
     function test_RevertIf_NotReceivingRouter() public {
         _mockSysRegReceivingRouter(systemRegistry, receivingRouter);
-        vm.expectRevert(MessageReceiverBase.NotReceivingRouter.selector);
+        vm.expectRevert(Errors.AccessDenied.selector);
         receiverBase.onMessageReceive(keccak256("messageType"), abi.encode(1));
     }
 

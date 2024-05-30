@@ -366,7 +366,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     /// @param messageSender Message sender for route to be updated
     /// @param messageType Message type for route to be updated
     /// @param chainId chainId for route to be updated
-    /// @param gas Gas to update route receving chain to
+    /// @param gas Gas to update route receiving chain to
     function setGasForRoute(
         address messageSender,
         bytes32 messageType,

@@ -2,19 +2,18 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { SystemComponent } from "src/SystemComponent.sol";
 import { Roles } from "src/libs/Roles.sol";
-import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
-import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IMessageProxy } from "src/interfaces/messageProxy/IMessageProxy.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { MessageTypes } from "src/libs/MessageTypes.sol";
+import { SystemComponent } from "src/SystemComponent.sol";
+import { SecurityBase } from "src/security/SecurityBase.sol";
+import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { SafeCast } from "openzeppelin-contracts/utils/math/SafeCast.sol";
+import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
+import { IMessageProxy } from "src/interfaces/messageProxy/IMessageProxy.sol";
 import { LSTCalculatorBase } from "src/stats/calculators/base/LSTCalculatorBase.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
-import { SecurityBase } from "src/security/SecurityBase.sol";
-import { MessageTypes } from "src/libs/MessageTypes.sol";
-import { SafeCast } from "openzeppelin-contracts/utils/math/SafeCast.sol";
 import { IStatsCalculatorRegistry } from "src/interfaces/stats/IStatsCalculatorRegistry.sol";
-import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 
 /// @notice Sends the result of `calculateEthPerToken()` for each registered LST calculator to other chains
 contract EthPerTokenSender is SystemComponent, SecurityBase {
@@ -33,8 +32,11 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
     /// =====================================================
 
     /// @notice Last sent value for a calculator
-    /// @dev calculator -> ethPerToken
-    mapping(address => uint256) public lastValue;
+    /// @dev calculator -> (ethPerToken, lastSentTimestamp)
+    mapping(address => TokenTrack) public lastValue;
+
+    /// @notice Max elapsed seconds before we'll send a value even if unchanged
+    uint256 public heartbeat;
 
     /// =====================================================
     /// Events
@@ -42,6 +44,7 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
 
     event CalculatorsRegistered(bytes32[] calculators);
     event CalculatorsUnregistered(address[] calculators);
+    event HeartbeatSet(uint256 newHeartbeat);
 
     /// =====================================================
     /// Errors
@@ -50,13 +53,24 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
     error InvalidCalculator(address calculator);
 
     /// =====================================================
+    /// Structs
+    /// =====================================================
+
+    struct TokenTrack {
+        uint208 ethPerToken;
+        uint48 lastSentTimestamp;
+    }
+
+    /// =====================================================
     /// Functions - Constructor
     /// =====================================================
 
     constructor(ISystemRegistry _systemRegistry)
         SystemComponent(_systemRegistry)
         SecurityBase(address(_systemRegistry.accessController()))
-    { }
+    {
+        _setHeartbeat(2 days);
+    }
 
     /// =====================================================
     /// Functions - External
@@ -65,7 +79,7 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
     /// @notice Get the latest ethPerToken for the specified calculators and send to other chains
     /// @dev Does not validate if the send is necessary. Use `shouldSend()` to filter first
     /// @param calculators Calculators to query
-    function send(address[] memory calculators) external hasRole(Roles.STATS_LST_ETH_TOKEN_EXECUTOR) {
+    function execute(address[] memory calculators) external hasRole(Roles.STATS_LST_ETH_TOKEN_EXECUTOR) {
         uint256 len = calculators.length;
         Errors.verifyNotZero(len, "len");
 
@@ -77,17 +91,15 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
             if (!_calculators.contains(calculator)) {
                 revert InvalidCalculator(calculator);
             }
-            uint256 currentValue = LSTCalculatorBase(calculator).calculateEthPerToken();
-            lastValue[calculator] = currentValue;
+
+            TokenTrack memory newValues = TokenTrack({
+                ethPerToken: SafeCast.toUint208(LSTCalculatorBase(calculator).calculateEthPerToken()),
+                lastSentTimestamp: uint48(block.timestamp)
+            });
+            lastValue[calculator] = newValues;
             address lst = LSTCalculatorBase(calculator).lstTokenAddress();
 
-            bytes memory message = abi.encode(
-                MessageTypes.LstBackingMessage({
-                    token: lst,
-                    ethPerToken: SafeCast.toUint208(currentValue),
-                    timestamp: uint48(block.timestamp)
-                })
-            );
+            bytes memory message = encodeMessage(lst, newValues.ethPerToken, newValues.lastSentTimestamp);
 
             // slither-disable-next-line reentrancy-benign
             messageProxy.sendMessage(MessageTypes.LST_BACKING_MESSAGE_TYPE, message);
@@ -99,6 +111,7 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
     }
 
     /// @notice Checks latest ethPerToken against last sent value to determine if a message should be sent
+    /// @dev Meant to be called off-chain
     /// @param skip Number of calculators to skip when iterating the list
     /// @param take Number of calculators to evaluate when iterating the list. Pass uint256.max for all
     /// @return data Address of calculators to send
@@ -106,11 +119,15 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
         take = _validateSkipTake(skip, take);
 
         address[] memory results = new address[](take);
+        uint256 maxTime = heartbeat;
         uint256 r = 0;
         for (uint256 i = 0; i < take; ++i) {
             address calculator = _calculators.at(skip + i);
             uint256 currentValue = LSTCalculatorBase(calculator).calculateEthPerToken();
-            if (currentValue != lastValue[calculator]) {
+            TokenTrack memory lastValues = lastValue[calculator];
+
+            // slither-disable-next-line timestamp
+            if (currentValue != lastValues.ethPerToken || lastValues.lastSentTimestamp + maxTime < block.timestamp) {
                 results[r] = calculator;
                 ++r;
             }
@@ -120,6 +137,12 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
         for (uint256 i = 0; i < r; ++i) {
             data[i] = results[i];
         }
+    }
+
+    /// @notice Set the max elapsed seconds before we'll send a value even if unchanged
+    /// @param newHeartbeat New value to set
+    function setHeartbeat(uint256 newHeartbeat) external hasRole(Roles.STATS_GENERAL_MANAGER) {
+        _setHeartbeat(newHeartbeat);
     }
 
     /// @notice Add calculators that should send their data to other chains
@@ -174,6 +197,24 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
     }
 
     /// =====================================================
+    /// Functions - Public
+    /// =====================================================
+
+    /// @notice Encode the message to be sent
+    /// @param lst Address of the LST token the message represents
+    /// @param ethPerToken Current value of the `calculateEthPerToken()` call
+    /// @param lastSentTimestamp Timestamp of call
+    function encodeMessage(
+        address lst,
+        uint208 ethPerToken,
+        uint48 lastSentTimestamp
+    ) public pure returns (bytes memory) {
+        return abi.encode(
+            MessageTypes.LstBackingMessage({ token: lst, ethPerToken: ethPerToken, timestamp: lastSentTimestamp })
+        );
+    }
+
+    /// =====================================================
     /// Functions - Internal
     /// =====================================================
 
@@ -191,5 +232,18 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
         } else {
             takeRet = take;
         }
+    }
+
+    function _setHeartbeat(uint256 newHeartbeat) internal {
+        Errors.verifyNotZero(newHeartbeat, "newHeartbeat");
+
+        // Sanity Check
+        if (newHeartbeat > 30 days) {
+            revert Errors.InvalidParam("newHeartbeat");
+        }
+
+        heartbeat = newHeartbeat;
+
+        emit HeartbeatSet(newHeartbeat);
     }
 }

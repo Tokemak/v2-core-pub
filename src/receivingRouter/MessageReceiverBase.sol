@@ -2,19 +2,17 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+import { Errors } from "src/utils/Errors.sol";
 import { IMessageReceiverBase } from "src/interfaces/receivingRouter/IMessageReceiverBase.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
 /// @title Inherited by message receiver contracts for cross chain interactions.
 abstract contract MessageReceiverBase is IMessageReceiverBase {
-    /// @notice Thrown when message sender is not receiving router
-    error NotReceivingRouter();
-
     /// @notice Ensure that receiving router registered on registry is only contract to call
     modifier onlyReceivingRouter() {
         ISystemRegistry systemRegistry = ISystemRegistry(ISystemComponent(address(this)).getSystemRegistry());
-        if (msg.sender != address(systemRegistry.receivingRouter())) revert NotReceivingRouter();
+        if (msg.sender != address(systemRegistry.receivingRouter())) revert Errors.AccessDenied();
         _;
     }
 

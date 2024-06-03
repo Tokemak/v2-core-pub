@@ -64,4 +64,8 @@ forge script script/01_SystemDeploy.s.sol --rpc-url mainnet --sender $V2DEPLOY2
 
 ### Base
 
-forge script script/01_SystemDeploy.s.sol --rpc-url mainnet --sender $V2DEPLOY2 --account v2-base-guarded --sender $SENDER_BASE
+forge script script/01_SystemDeploy.s.sol --rpc-url mainnet --sender $V2DEPLOY2 --account v2-base-guarded
+
+### Sepolia
+
+forge script script/sepolia/01_InitToke.s.sol --rpc-url sepolia --sender $SENDER_SEPOLIA --account v2-sepolia

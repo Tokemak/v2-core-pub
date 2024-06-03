@@ -28,9 +28,11 @@ import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 enum Systems {
     NEW_MAINNET,
     NEW_BASE,
+    NEW_SEPOLIA,
     LST_GEN1_MAINNET,
     LST_GEN2_MAINNET,
-    LST_GEN1_BASE
+    LST_GEN1_BASE,
+    LST_GEN1_SEPOLIA
 }
 
 library Constants {
@@ -119,9 +121,17 @@ library Constants {
             return getEmptyBase();
         } else if (system == Systems.LST_GEN1_BASE) {
             return getLstGen1Base();
+        } else if (system == Systems.NEW_SEPOLIA) {
+            return getEmptySepolia();
+        } else if (system == Systems.LST_GEN1_SEPOLIA) {
+            return getLstGen1Sepolia();
         } else {
             revert("address not found");
         }
+    }
+
+    function getEmptySepolia() private pure returns (Values memory) {
+        return Values({ tokens: getSepoliaTokens(), sys: getEmptySystem(), ext: getSepoliaExternal() });
     }
 
     function getEmptyMainnet() private pure returns (Values memory) {
@@ -137,6 +147,19 @@ library Constants {
             getQueryableSystem(0xBa69A35D353Af239B12db3c5C90b1EB09F52e3dd, 0x1523738df2c6Cc303B6A919de69a976056848C80);
 
         return Values({ tokens: getBaseTokens(), sys: sys, ext: getBaseExternal() });
+    }
+
+    function getLstGen1Sepolia() private view returns (Values memory) {
+        System memory sys =
+            getQueryableSystem(0x25F603C1a0Ce130c7F25321A7116379d3c270c23, 0xAfB384E53F891BA020524E13a7c4DE4E0898Dcf8);
+
+        sys.asyncSwappers = AsyncSwappers({
+            zeroEx: 0x266882e796dA0aFD36392036F9eC11Fa32e36a62,
+            propellerHead: address(0),
+            liFi: address(0)
+        });
+
+        return Values({ tokens: getSepoliaTokens(), sys: sys, ext: getSepoliaExternal() });
     }
 
     function getLstGen2Mainnet() private view returns (Values memory) {
@@ -290,6 +313,43 @@ library Constants {
             mavRouter: address(0),
             mavPoolFactory: 0xB2855783a346735e4AAe0c1eb894DEf861Fa9b45,
             mavBoostedPositionFactory: address(0)
+        });
+    }
+
+    function getSepoliaExternal() private pure returns (External memory) {
+        return External({
+            convexBooster: address(0),
+            auraBooster: address(0),
+            curveMetaRegistry: address(0),
+            zeroExProxy: 0xDef1C0ded9bec7F1a1670819833240f027b25EfF,
+            balancerVault: IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8),
+            mavRouter: address(0),
+            mavPoolFactory: address(0),
+            mavBoostedPositionFactory: address(0)
+        });
+    }
+
+    function getSepoliaTokens() private pure returns (Tokens memory) {
+        return Tokens({
+            toke: 0xEec5970a763C0ae3Eb2a612721bD675DdE2561C2,
+            weth: 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14,
+            bal: address(0),
+            cvx: address(0),
+            crv: address(0),
+            ldo: address(0),
+            rpl: address(0),
+            swise: address(0),
+            wstEth: address(0),
+            curveEth: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
+            swEth: address(0),
+            stEth: address(0),
+            cbEth: address(0),
+            rEth: address(0),
+            sfrxEth: address(0),
+            aura: address(0),
+            osEth: address(0),
+            aero: address(0),
+            ezEth: address(0)
         });
     }
 }

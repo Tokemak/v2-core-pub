@@ -22,7 +22,6 @@ library AerodromeRewardsAdapter {
     // slither-disable-start dead-code
     /**
      * @param voter Aerodrome's Voter contract
-     *
      * @param pool The pool to claim rewards from
      * @param claimFor The account to check & claim rewards for (should be a caller)
      */
@@ -52,9 +51,12 @@ library AerodromeRewardsAdapter {
         amountsClaimed = new uint256[](1);
         rewards = new IERC20[](1);
 
-        IERC20 reward = IERC20(gauge.rewardToken());
-        rewards[0] = reward;
-        balancesBefore[0] = reward.balanceOf(claimFor);
+        address rewardToken = gauge.rewardToken();
+        Errors.verifyNotZero(rewardToken, "rewardToken");
+        IERC20 rewardErc = IERC20(rewardToken);
+
+        rewards[0] = rewardErc;
+        balancesBefore[0] = rewardErc.balanceOf(msg.sender);
 
         gauge.getReward(claimFor);
 

@@ -52,10 +52,13 @@ library AerodromeStakingAdapter {
         //slither-disable-start reentrancy-events
 
         address gaugeAddress = voter.gauges(pool);
+        Errors.verifyNotZero(gaugeAddress, "gaugeAddress");
         IAerodromeGauge gauge = IAerodromeGauge(gaugeAddress);
 
         uint256 lpTokensBefore = gauge.balanceOf(address(this));
+
         address stakingToken = gauge.stakingToken();
+        Errors.verifyNotZero(stakingToken, "stakingToken");
 
         LibAdapter._approve(IERC20(stakingToken), address(gauge), amount);
 
@@ -86,7 +89,11 @@ library AerodromeStakingAdapter {
         //slither-disable-start reentrancy-events
 
         address gaugeAddress = voter.gauges(pool);
+        Errors.verifyNotZero(gaugeAddress, "gaugeAddress");
         IAerodromeGauge gauge = IAerodromeGauge(gaugeAddress);
+
+        address stakingToken = gauge.stakingToken();
+        Errors.verifyNotZero(stakingToken, "stakingToken");
 
         uint256 lpTokensBefore = gauge.balanceOf(address(this));
 
@@ -98,7 +105,7 @@ library AerodromeStakingAdapter {
         if (lpTokenAmount > maxLpBurnAmount) revert LpTokenAmountMismatch();
 
         emit WithdrawLiquidity(
-            amount, gauge.stakingToken(), [lpTokenAmount, lpTokensAfter, gauge.totalSupply()], pool, address(gauge)
+            amount, stakingToken, [lpTokenAmount, lpTokensAfter, gauge.totalSupply()], pool, address(gauge)
         );
         //slither-disable-end reentrancy-events
     }

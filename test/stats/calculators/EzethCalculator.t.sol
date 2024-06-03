@@ -9,7 +9,7 @@ import { EzethLSTCalculator } from "src/stats/calculators/EzethLSTCalculator.sol
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { LSTCalculatorBase } from "src/stats/calculators/base/LSTCalculatorBase.sol";
-import { EZETH_MAINNET, TOKE_MAINNET, WETH_MAINNET, RENZO_RESTAKE_MANAGER } from "test/utils/Addresses.sol";
+import { EZETH_MAINNET, TOKE_MAINNET, WETH_MAINNET, RENZO_RESTAKE_MANAGER_MAINNET } from "test/utils/Addresses.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
@@ -43,7 +43,9 @@ contract EzethLSTCalculatorTests is Test {
         uint256[][] memory retArr1 = new uint256[][](0);
         uint256[] memory retArr2 = new uint256[](0);
 
-        vm.mockCall(RENZO_RESTAKE_MANAGER, abi.encodeWithSignature("calculateTVLs()"), abi.encode(retArr1, retArr2, 0));
+        vm.mockCall(
+            RENZO_RESTAKE_MANAGER_MAINNET, abi.encodeWithSignature("calculateTVLs()"), abi.encode(retArr1, retArr2, 0)
+        );
 
         uint256 ret = _calculator.calculateEthPerToken();
         assertEq(ret, 0);
@@ -55,7 +57,9 @@ contract EzethLSTCalculatorTests is Test {
         uint256[][] memory retArr1 = new uint256[][](0);
         uint256[] memory retArr2 = new uint256[](0);
 
-        vm.mockCall(RENZO_RESTAKE_MANAGER, abi.encodeWithSignature("calculateTVLs()"), abi.encode(retArr1, retArr2, 0));
+        vm.mockCall(
+            RENZO_RESTAKE_MANAGER_MAINNET, abi.encodeWithSignature("calculateTVLs()"), abi.encode(retArr1, retArr2, 0)
+        );
 
         uint256 ret = _calculator.calculateEthPerToken();
         assertEq(ret, 1e18);
@@ -118,11 +122,11 @@ contract EzethLSTCalculatorTests is Test {
         bytes32[] memory dependantAprs = new bytes32[](0);
 
         LSTCalculatorBase.InitData memory initData = LSTCalculatorBase.InitData({ lstTokenAddress: EZETH_MAINNET });
-        EzethLSTCalculator.EzEthInitData memory osEthInitData = EzethLSTCalculator.EzEthInitData({
-            restakeManager: RENZO_RESTAKE_MANAGER,
+        EzethLSTCalculator.EzEthInitData memory ezEthInitData = EzethLSTCalculator.EzEthInitData({
+            restakeManager: RENZO_RESTAKE_MANAGER_MAINNET,
             baseInitData: abi.encode(initData)
         });
-        _calculator.initialize(dependantAprs, abi.encode(osEthInitData));
+        _calculator.initialize(dependantAprs, abi.encode(ezEthInitData));
 
         return _calculator;
     }

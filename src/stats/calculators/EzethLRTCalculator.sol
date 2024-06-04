@@ -9,7 +9,7 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IRestakeManager } from "src/interfaces/external/renzo/IRestakeManager.sol";
 import { LSTCalculatorBase } from "src/stats/calculators/base/LSTCalculatorBase.sol";
 
-contract EzethLSTCalculator is LSTCalculatorBase {
+contract EzethLRTCalculator is LSTCalculatorBase {
     /// =====================================================
     /// Public Vars
     /// =====================================================

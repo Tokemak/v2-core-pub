@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 /* solhint-disable func-name-mixedcase */
 
 import { Test } from "forge-std/Test.sol";
-import { EzethLSTCalculator } from "src/stats/calculators/EzethLSTCalculator.sol";
+import { EzethLRTCalculator } from "src/stats/calculators/EzethLRTCalculator.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { LSTCalculatorBase } from "src/stats/calculators/base/LSTCalculatorBase.sol";
@@ -16,9 +16,9 @@ import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 
-contract EzethLSTCalculatorTests is Test {
+contract EzethLRTCalculatorTests is Test {
     AccessController private _accessController;
-    EzethLSTCalculator private _calculator;
+    EzethLRTCalculator private _calculator;
 
     event RenzoRestakeManagerSet(address newOracle);
 
@@ -100,7 +100,7 @@ contract EzethLSTCalculatorTests is Test {
         _calculator.setRenzoRestakeManager(address(1));
     }
 
-    function _setUp(uint256 targetBlock) private returns (EzethLSTCalculator) {
+    function _setUp(uint256 targetBlock) private returns (EzethLRTCalculator) {
         uint256 mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), targetBlock);
         vm.selectFork(mainnetFork);
 
@@ -118,11 +118,11 @@ contract EzethLSTCalculatorTests is Test {
             abi.encode(1e18)
         );
 
-        _calculator = EzethLSTCalculator(Clones.clone(address(new EzethLSTCalculator(systemRegistry))));
+        _calculator = EzethLRTCalculator(Clones.clone(address(new EzethLRTCalculator(systemRegistry))));
         bytes32[] memory dependantAprs = new bytes32[](0);
 
         LSTCalculatorBase.InitData memory initData = LSTCalculatorBase.InitData({ lstTokenAddress: EZETH_MAINNET });
-        EzethLSTCalculator.EzEthInitData memory ezEthInitData = EzethLSTCalculator.EzEthInitData({
+        EzethLRTCalculator.EzEthInitData memory ezEthInitData = EzethLRTCalculator.EzEthInitData({
             restakeManager: RENZO_RESTAKE_MANAGER_MAINNET,
             baseInitData: abi.encode(initData)
         });

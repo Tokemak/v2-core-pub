@@ -14,7 +14,7 @@ contract ChainlinkStatsUpkeepV3 {
         address[] memory found = new address[](addrs.length);
         uint256 count = 0;
 
-        for (uint256 i = 0; i < addrs.length; i++) {
+        for (uint256 i = 0; i < addrs.length; ++i) {
             IStatsCalculator calc = IStatsCalculator(addrs[i]);
 
             try calc.shouldSnapshot() returns (bool shouldSnapshot) {
@@ -27,10 +27,10 @@ contract ChainlinkStatsUpkeepV3 {
 
         address[] memory trimmed = new address[](count);
         uint256 ix = 0;
-        for (uint256 i = 0; i < addrs.length; i++) {
+        for (uint256 i = 0; i < addrs.length; ++i) {
             if (found[i] != address(0)) {
                 trimmed[ix] = found[i];
-                ix++;
+                ++ix;
             }
         }
         upkeepNeeded = count > 0;
@@ -39,9 +39,13 @@ contract ChainlinkStatsUpkeepV3 {
 
     function performUpkeep(bytes calldata performData) external {
         (address[] memory addrs) = abi.decode(performData, (address[]));
-        for (uint256 i = 0; i < addrs.length; i++) {
+        for (uint256 i = 0; i < addrs.length;) {
             IStatsCalculator calc = IStatsCalculator(addrs[i]);
             calc.snapshot();
+
+            unchecked {
+                ++i;
+            }
         }
     }
 }

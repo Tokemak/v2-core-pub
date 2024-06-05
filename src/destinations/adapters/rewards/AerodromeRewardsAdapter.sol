@@ -34,6 +34,7 @@ library AerodromeRewardsAdapter {
         Errors.verifyNotZero(claimFor, "claimFor");
 
         address gaugeAddress = voter.gauges(pool);
+        Errors.verifyNotZero(gaugeAddress, "gaugeAddress");
 
         (amountsClaimed, rewardTokens) = _claimEmissions(gaugeAddress, claimFor);
 

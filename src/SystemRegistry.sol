@@ -424,7 +424,7 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
 
     /// @notice Set Receiving Router instance for this system
     /// @dev Value can be replaced
-    /// @dev This is expected to be the zero address on a chain that is not receving messages from other chains
+    /// @dev This is expected to be the zero address on a chain that is not receiving messages from other chains
     /// @param router Address of the Receiving Router
     function setReceivingRouter(address router) external onlyOwner {
         Errors.verifyNotZero(router, "receivingRouter");

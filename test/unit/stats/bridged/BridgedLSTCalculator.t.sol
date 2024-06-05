@@ -21,6 +21,7 @@ import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { MessageProxy, IRouterClient } from "src/messageProxy/MessageProxy.sol";
 import { EthPerTokenStore } from "src/stats/calculators/bridged/EthPerTokenStore.sol";
+import { MessageTypes } from "src/libs/MessageTypes.sol";
 
 contract BridgedLSTCalculatorTests is Test {
     SystemRegistry private systemRegistry;
@@ -144,7 +145,7 @@ contract BridgedLSTCalculatorTests is Test {
         // via a message
         //testCalculator.snapshot();
         bytes memory message = abi.encode(
-            ILSTStats.LSTDestinationInfo({
+            MessageTypes.LSTDestinationInfo({
                 snapshotTimestamp: block.timestamp,
                 newBaseApr: annualizedApr,
                 currentEthPerToken: endingEthPerShare
@@ -197,7 +198,7 @@ contract BridgedLSTCalculatorTests is Test {
         );
 
         message = abi.encode(
-            ILSTStats.LSTDestinationInfo({
+            MessageTypes.LSTDestinationInfo({
                 snapshotTimestamp: block.timestamp,
                 newBaseApr: expectedBaseApr,
                 currentEthPerToken: endingEthPerShare
@@ -261,7 +262,7 @@ contract BridgedLSTCalculatorTests is Test {
         // via a message
         //testCalculator.snapshot();
         bytes memory message = abi.encode(
-            ILSTStats.LSTDestinationInfo({
+            MessageTypes.LSTDestinationInfo({
                 snapshotTimestamp: block.timestamp,
                 newBaseApr: annualizedApr,
                 currentEthPerToken: endingEthPerShare
@@ -316,7 +317,7 @@ contract BridgedLSTCalculatorTests is Test {
 
         // testCalculator.snapshot();
         message = abi.encode(
-            ILSTStats.LSTDestinationInfo({
+            MessageTypes.LSTDestinationInfo({
                 snapshotTimestamp: block.timestamp,
                 newBaseApr: expectedBaseApr,
                 currentEthPerToken: endingEthPerShare
@@ -647,7 +648,7 @@ contract BridgedLSTCalculatorTests is Test {
         setBlockAndTimestamp(0);
         testCalculator.initialize(dependantAprs, abi.encode(initData));
         bytes memory message = abi.encode(
-            ILSTStats.LSTDestinationInfo({
+            MessageTypes.LSTDestinationInfo({
                 snapshotTimestamp: block.timestamp,
                 newBaseApr: 0,
                 currentEthPerToken: 100e16
@@ -831,7 +832,7 @@ contract BridgedLSTCalculatorTests is Test {
         assertEq(testCalculator.shouldSnapshot(), false, "false");
 
         bytes memory message = abi.encode(
-            ILSTStats.LSTDestinationInfo({ snapshotTimestamp: block.timestamp, newBaseApr: 1, currentEthPerToken: 1 })
+            MessageTypes.LSTDestinationInfo({ snapshotTimestamp: block.timestamp, newBaseApr: 1, currentEthPerToken: 1 })
         );
         vm.startPrank(receivingRouter);
         bytes32 msgId = keccak256("LST_SNAPSHOT");
@@ -861,7 +862,7 @@ contract BridgedLSTCalculatorTests is Test {
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), 0, "beginTimestamp");
 
         bytes memory message = abi.encode(
-            ILSTStats.LSTDestinationInfo({
+            MessageTypes.LSTDestinationInfo({
                 snapshotTimestamp: block.timestamp + 77,
                 newBaseApr: 9,
                 currentEthPerToken: 10
@@ -896,7 +897,7 @@ contract BridgedLSTCalculatorTests is Test {
         );
 
         bytes memory message = abi.encode(
-            ILSTStats.LSTDestinationInfo({
+            MessageTypes.LSTDestinationInfo({
                 snapshotTimestamp: block.timestamp - 1 days + 1,
                 newBaseApr: 9,
                 currentEthPerToken: storeValue - 1
@@ -929,7 +930,7 @@ contract BridgedLSTCalculatorTests is Test {
         );
 
         bytes memory message = abi.encode(
-            ILSTStats.LSTDestinationInfo({
+            MessageTypes.LSTDestinationInfo({
                 snapshotTimestamp: block.timestamp - 1 days,
                 newBaseApr: 9,
                 currentEthPerToken: storeValue - 1
@@ -945,7 +946,7 @@ contract BridgedLSTCalculatorTests is Test {
 
     function test_RevertIf_UnsupportedMessageReceived() public {
         bytes memory message = abi.encode(
-            ILSTStats.LSTDestinationInfo({ snapshotTimestamp: block.timestamp, newBaseApr: 1, currentEthPerToken: 1 })
+            MessageTypes.LSTDestinationInfo({ snapshotTimestamp: block.timestamp, newBaseApr: 1, currentEthPerToken: 1 })
         );
         vm.startPrank(receivingRouter);
         bytes32 msgId = keccak256("xxxxxx");
@@ -956,7 +957,7 @@ contract BridgedLSTCalculatorTests is Test {
 
     function test_RevertIf_ReceivedMessageNotFromRouter() public {
         bytes memory message = abi.encode(
-            ILSTStats.LSTDestinationInfo({ snapshotTimestamp: block.timestamp, newBaseApr: 1, currentEthPerToken: 1 })
+            MessageTypes.LSTDestinationInfo({ snapshotTimestamp: block.timestamp, newBaseApr: 1, currentEthPerToken: 1 })
         );
         vm.startPrank(makeAddr("X"));
         bytes32 msgId = keccak256("LST_SNAPSHOT");
@@ -1022,7 +1023,7 @@ contract BridgedLSTCalculatorTests is Test {
         // Which was on init it would have initial ethPerToken values
         // Ensure we have those
         bytes memory message = abi.encode(
-            ILSTStats.LSTDestinationInfo({
+            MessageTypes.LSTDestinationInfo({
                 snapshotTimestamp: block.timestamp,
                 newBaseApr: 0,
                 currentEthPerToken: initialEthPerShare

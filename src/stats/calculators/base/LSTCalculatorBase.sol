@@ -11,6 +11,7 @@ import { Stats } from "src/stats/Stats.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { IMessageProxy } from "src/interfaces/messageProxy/IMessageProxy.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { MessageTypes } from "src/libs/MessageTypes.sol";
 
 abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
     /// @notice time in seconds between apr snapshots
@@ -24,9 +25,6 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
 
     /// @notice time in seconds between discount snapshots
     uint256 public constant DISCOUNT_SNAPSHOT_INTERVAL_IN_SEC = 24 * 60 * 60; // 1 day
-
-    /// @notice message type hash for sending snapshots to other chains
-    bytes32 public constant LST_SNAPSHOT_MESSAGE_TYPE = keccak256("LST_SNAPSHOT");
 
     /// @notice alpha for filter
     uint256 public constant ALPHA = 1e17; // 0.1; must be 0 < x <= 1e18
@@ -158,7 +156,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
             // Send data to other chain if necessary.
             if (destinationMessageSend) {
                 bytes memory message = abi.encode(
-                    LSTDestinationInfo({
+                    MessageTypes.LSTDestinationInfo({
                         snapshotTimestamp: block.timestamp,
                         newBaseApr: newBaseApr,
                         currentEthPerToken: currentEthPerToken
@@ -168,7 +166,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
                 Errors.verifyNotZero(address(messageProxy), "messageProxy");
 
                 // slither-disable-start reentrancy-no-eth
-                messageProxy.sendMessage(LST_SNAPSHOT_MESSAGE_TYPE, message);
+                messageProxy.sendMessage(MessageTypes.LST_SNAPSHOT_MESSAGE_TYPE, message);
                 // slither-disable-end reentrancy-no-eth
             }
 

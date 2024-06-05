@@ -20,6 +20,7 @@ import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { MessageProxy, IRouterClient } from "src/messageProxy/MessageProxy.sol";
 import { CrossChainMessagingUtilities as CCUtils } from "src/libs/CrossChainMessagingUtilities.sol";
+import { MessageTypes } from "src/libs/MessageTypes.sol";
 
 contract LSTCalculatorBaseTest is Test {
     SystemRegistry private systemRegistry;
@@ -782,7 +783,7 @@ contract LSTCalculatorBaseTest is Test {
 
         // Set required info in MessageProxy
         messageProxy.setDestinationChainReceiver(destChainId, destChainReceiver);
-        messageProxy.addMessageRoutes(address(testCalculator), testCalculator.LST_SNAPSHOT_MESSAGE_TYPE(), configs);
+        messageProxy.addMessageRoutes(address(testCalculator), MessageTypes.LST_SNAPSHOT_MESSAGE_TYPE, configs);
 
         // Building message hash to compare to one emitted in event from MessageProxy
         // Values used for `newBaseApr` and `currentEthPerToken` fields console logged from contract
@@ -790,9 +791,13 @@ contract LSTCalculatorBaseTest is Test {
             CCUtils.encodeMessage(
                 address(testCalculator),
                 timestamp,
-                testCalculator.LST_SNAPSHOT_MESSAGE_TYPE(),
+                MessageTypes.LST_SNAPSHOT_MESSAGE_TYPE,
                 abi.encode(
-                    ILSTStats.LSTDestinationInfo({ snapshotTimestamp: timestamp, newBaseApr: 0, currentEthPerToken: 1 })
+                    MessageTypes.LSTDestinationInfo({
+                        snapshotTimestamp: timestamp,
+                        newBaseApr: 0,
+                        currentEthPerToken: 1
+                    })
                 )
             )
         );

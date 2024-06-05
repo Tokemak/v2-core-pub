@@ -14,13 +14,6 @@ interface ILSTStats {
         uint256[] slashingTimestamps;
     }
 
-    /// @notice Used to transfer LST snapshot data to other chain.
-    struct LSTDestinationInfo {
-        uint256 snapshotTimestamp;
-        uint256 newBaseApr;
-        uint256 currentEthPerToken;
-    }
-
     /// @notice Get the current stats for the LST
     /// @dev Returned data is a combination of current data and filtered snapshots
     /// @return lstStatsData current data on the LST

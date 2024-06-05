@@ -10,6 +10,7 @@ import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { MessageReceiverBase } from "src/receivingRouter/MessageReceiverBase.sol";
 import { LSTCalculatorBase } from "src/stats/calculators/base/LSTCalculatorBase.sol";
 import { EthPerTokenStore } from "src/stats/calculators/bridged/EthPerTokenStore.sol";
+import { MessageTypes } from "src/libs/MessageTypes.sol";
 
 /// @notice Tracks LSTs that are bridged from another chain
 /// @dev Snapshot still required
@@ -125,8 +126,8 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
 
     /// @inheritdoc MessageReceiverBase
     function _onMessageReceive(bytes32 messageType, bytes memory message) internal virtual override {
-        if (messageType == LST_SNAPSHOT_MESSAGE_TYPE) {
-            LSTDestinationInfo memory info = abi.decode(message, (LSTDestinationInfo));
+        if (messageType == MessageTypes.LST_SNAPSHOT_MESSAGE_TYPE) {
+            MessageTypes.LSTDestinationInfo memory info = abi.decode(message, (MessageTypes.LSTDestinationInfo));
             _snapshotOnMessageReceive(info.currentEthPerToken, info.snapshotTimestamp, info.newBaseApr);
         } else {
             revert Errors.UnsupportedMessage(messageType, message);

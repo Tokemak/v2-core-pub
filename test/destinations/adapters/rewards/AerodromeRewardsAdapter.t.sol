@@ -8,6 +8,7 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { Errors } from "src/utils/Errors.sol";
 import { IVoter } from "src/interfaces/external/velodrome/IVoter.sol";
+import { AerodromeStakingAdapter } from "src/destinations/adapters/staking/AerodromeStakingAdapter.sol";
 import { AerodromeRewardsAdapter } from "src/destinations/adapters/rewards/AerodromeRewardsAdapter.sol";
 
 import { AERODROME_VOTER_BASE, AERO_BASE } from "test/utils/Addresses.sol";
@@ -25,114 +26,53 @@ contract AerodromeRewardsAdapterTest is Test {
     }
 
     function test_Revert_IfAddressZero() public {
-        address whale = 0xb312665792d45A3884e605e8B7626aD5b09D66a1;
         address pool = 0x497139e8435E01555AC1e3740fccab7AFf149e02;
 
-        vm.startPrank(whale);
-
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "voter"));
-        AerodromeRewardsAdapter.claimRewards(IVoter(address(0)), pool, whale);
+        AerodromeRewardsAdapter.claimRewards(IVoter(address(0)), pool, address(this));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "pool"));
-        AerodromeRewardsAdapter.claimRewards(voter, address(0), whale);
+        AerodromeRewardsAdapter.claimRewards(voter, address(0), address(this));
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "whale"));
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "claimFor"));
         AerodromeRewardsAdapter.claimRewards(voter, pool, address(0));
-
-        vm.stopPrank();
     }
 
     // ezETH/WETH (stable pool)
     function test_claimRewards_Pool_sEzETHwETH() public {
-        address whale = 0xb312665792d45A3884e605e8B7626aD5b09D66a1;
-        address pool = 0x497139e8435E01555AC1e3740fccab7AFf149e02;
-
-        vm.startPrank(whale);
-
-        (uint256[] memory amountsClaimed, IERC20[] memory rewardsToken) =
-            AerodromeRewardsAdapter.claimRewards(voter, pool, whale);
-
-        vm.stopPrank();
-
-        assertEq(amountsClaimed.length, rewardsToken.length);
-        assertEq(rewardsToken.length, 1);
-
-        assertEq(address(rewardsToken[0]), AERO_BASE);
-
-        assertTrue(amountsClaimed[0] > 0);
+        _verifyPool(0x497139e8435E01555AC1e3740fccab7AFf149e02);
     }
 
     // ezETH/WETH (volatile pool)
     function test_claimRewards_Pool_vEzETHwETH() public {
-        address whale = 0x96219Af7616187Af0Bab5e22a5D2503efc6D2904;
-        address pool = 0x0C8bF3cb3E1f951B284EF14aa95444be86a33E2f;
-
-        vm.startPrank(whale);
-
-        (uint256[] memory amountsClaimed, IERC20[] memory rewardsToken) =
-            AerodromeRewardsAdapter.claimRewards(voter, pool, whale);
-
-        vm.stopPrank();
-
-        assertEq(amountsClaimed.length, rewardsToken.length);
-        assertEq(rewardsToken.length, 1);
-
-        assertEq(address(rewardsToken[0]), AERO_BASE);
-
-        assertTrue(amountsClaimed[0] > 0);
+        _verifyPool(0x0C8bF3cb3E1f951B284EF14aa95444be86a33E2f);
     }
 
     // weETH/WETH (volatile pool)
     function test_claimRewards_Pool_vWeETHwETH() public {
-        address whale = 0x7c12CD5b7Db841f7Ba9B3fd1B7a6D02C1304386d;
-        address pool = 0x91F0f34916Ca4E2cCe120116774b0e4fA0cdcaA8;
-
-        vm.startPrank(whale);
-
-        (uint256[] memory amountsClaimed, IERC20[] memory rewardsToken) =
-            AerodromeRewardsAdapter.claimRewards(voter, pool, whale);
-
-        vm.stopPrank();
-
-        assertEq(amountsClaimed.length, rewardsToken.length);
-        assertEq(rewardsToken.length, 1);
-
-        assertEq(address(rewardsToken[0]), AERO_BASE);
-
-        assertTrue(amountsClaimed[0] > 0);
+        _verifyPool(0x91F0f34916Ca4E2cCe120116774b0e4fA0cdcaA8);
     }
 
     // cbETH/WETH (volatile pool)
     function test_claimRewards_Pool_vCbETHwETH() public {
-        address whale = 0x402bb6A5ed277E2b4B394b37f5d6692B24C9720f;
-        address pool = 0x44Ecc644449fC3a9858d2007CaA8CFAa4C561f91;
-
-        vm.startPrank(whale);
-
-        (uint256[] memory amountsClaimed, IERC20[] memory rewardsToken) =
-            AerodromeRewardsAdapter.claimRewards(voter, pool, whale);
-
-        vm.stopPrank();
-
-        assertEq(amountsClaimed.length, rewardsToken.length);
-        assertEq(rewardsToken.length, 1);
-
-        assertEq(address(rewardsToken[0]), AERO_BASE);
-
-        assertTrue(amountsClaimed[0] > 0);
+        _verifyPool(0x44Ecc644449fC3a9858d2007CaA8CFAa4C561f91);
     }
 
     // WETH/rETH (volatile pool)
     function test_claimRewards_Pool_vWethReth() public {
-        address whale = 0x90F2cd3fdc5Ad13Fd4347Bc342A236F7c40b0Dc2;
-        address pool = 0xA6F8A6bc3deA678d5bA786f2Ad2f5F93d1c87c18;
+        _verifyPool(0xA6F8A6bc3deA678d5bA786f2Ad2f5F93d1c87c18);
+    }
 
-        vm.startPrank(whale);
+    // WETH/wstETH (volatile pool)
+    function test_claimRewards_Pool_vWethWstEth() public {
+        _verifyPool(0xA6385c73961dd9C58db2EF0c4EB98cE4B60651e8);
+    }
+
+    function _verifyPool(address pool) private {
+        _stakeForRewards(pool);
 
         (uint256[] memory amountsClaimed, IERC20[] memory rewardsToken) =
-            AerodromeRewardsAdapter.claimRewards(voter, pool, whale);
-
-        vm.stopPrank();
+            AerodromeRewardsAdapter.claimRewards(voter, pool, address(this));
 
         assertEq(amountsClaimed.length, rewardsToken.length);
         assertEq(rewardsToken.length, 1);
@@ -142,23 +82,18 @@ contract AerodromeRewardsAdapterTest is Test {
         assertTrue(amountsClaimed[0] > 0);
     }
 
-    // WETH/wstETH (volatile pool)
-    function test_claimRewards_Pool_vWethWstEth() public {
-        address whale = 0x3c74c735b5863C0baF52598d8Fd2D59611c8320F;
-        address pool = 0xA6385c73961dd9C58db2EF0c4EB98cE4B60651e8;
+    function _stakeForRewards(address pool) private {
+        IERC20 lpToken = IERC20(pool);
+        deal(address(lpToken), address(this), 10 * 1e18);
 
-        vm.startPrank(whale);
+        // Stake LPs
+        uint256 minLpMintAmount = 1;
+        uint256 stakeAmount = lpToken.balanceOf(address(this));
+        AerodromeStakingAdapter.stakeLPs(voter, stakeAmount, minLpMintAmount, pool);
 
-        (uint256[] memory amountsClaimed, IERC20[] memory rewardsToken) =
-            AerodromeRewardsAdapter.claimRewards(voter, pool, whale);
-
-        vm.stopPrank();
-
-        assertEq(amountsClaimed.length, rewardsToken.length);
-        assertEq(rewardsToken.length, 1);
-
-        assertEq(address(rewardsToken[0]), AERO_BASE);
-
-        assertTrue(amountsClaimed[0] > 0);
+        // Move 7 days later
+        vm.roll(block.number + 7200 * 7);
+        // solhint-disable-next-line not-rely-on-time
+        vm.warp(block.timestamp + 7 days);
     }
 }

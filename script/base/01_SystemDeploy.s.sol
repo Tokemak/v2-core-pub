@@ -50,7 +50,7 @@ contract DeploySystem is Script {
 
     SystemRegistry public systemRegistry;
     AccessController public accessController;
-    SystemSecurity public systemSecurity;
+    SystemSecurityL1 public systemSecurity;
     AutopoolRegistry public autoPoolRegistry;
     AutopilotRouter public autoPoolRouter;
     DestinationRegistry public destRegistry;

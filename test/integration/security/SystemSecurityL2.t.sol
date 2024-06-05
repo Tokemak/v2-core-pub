@@ -63,7 +63,7 @@ contract SystemSecurityL2IntegrationTest is Test {
 
         // Deploy autopool
         address autopoolStrategy = makeAddr("autopoolStrategy");
-        address template = address(new AutopoolETH(systemRegistry, address(weth)));
+        address template = address(new AutopoolETH(systemRegistry, address(weth), false));
         autopool = AutopoolETH(Clones.cloneDeterministic(template, keccak256("1")));
         weth.mint(address(this), 100_000);
         weth.approve(address(autopool), 100_000);

@@ -468,6 +468,35 @@ contract Send is EthPerTokenSenderTests {
         sender.execute(toSend);
     }
 
+    function test_RevertIf_SendNotRequired() public {
+        _setupThree();
+        _mockAccessControllerHasRole(accessController, address(this), Roles.STATS_LST_ETH_TOKEN_EXECUTOR, true);
+        _mockMessageProxySendMessageAcceptAll();
+
+        address[] memory toSend = new address[](2);
+        toSend[0] = calc1Addr;
+        toSend[1] = calc2Addr;
+
+        uint256 timestamp = block.timestamp + 3;
+        vm.warp(timestamp);
+
+        // Set the most recent value and timestamp
+        sender.execute(toSend);
+
+        // Only number 2 has a new value and timestamps are the same
+        _mockCalcEthPerToken(calc1Addr, 1);
+        _mockCalcEthPerToken(calc2Addr, 2);
+
+        vm.expectRevert(abi.encodeWithSelector(EthPerTokenSender.SendNotRequired.selector, calc1Addr));
+        sender.execute(toSend);
+
+        toSend = new address[](1);
+        toSend[0] = calc2Addr;
+
+        // Still sends if we just give it the one that has an updated value
+        sender.execute(toSend);
+    }
+
     function test_TracksMostRecentValues() public {
         _setupThree();
         _mockAccessControllerHasRole(accessController, address(this), Roles.STATS_LST_ETH_TOKEN_EXECUTOR, true);

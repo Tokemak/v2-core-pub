@@ -51,6 +51,7 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
     /// =====================================================
 
     error InvalidCalculator(address calculator);
+    error SendNotRequired(address calculator);
 
     /// =====================================================
     /// Structs
@@ -77,7 +78,6 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
     /// =====================================================
 
     /// @notice Get the latest ethPerToken for the specified calculators and send to other chains
-    /// @dev Does not validate if the send is necessary. Use `shouldSend()` to filter first
     /// @param calculators Calculators to query
     function execute(address[] memory calculators) external hasRole(Roles.STATS_LST_ETH_TOKEN_EXECUTOR) {
         uint256 len = calculators.length;
@@ -85,6 +85,7 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
 
         IMessageProxy messageProxy = systemRegistry.messageProxy();
         Errors.verifyNotZero(address(messageProxy), "messageProxy");
+        uint256 maxTime = heartbeat;
 
         for (uint256 i = 0; i < len;) {
             address calculator = calculators[i];
@@ -92,8 +93,14 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
                 revert InvalidCalculator(calculator);
             }
 
+            uint256 currentEthPerToken = LSTCalculatorBase(calculator).calculateEthPerToken();
+
+            if (!_shouldSend(currentEthPerToken, maxTime, lastValue[calculator])) {
+                revert SendNotRequired(calculator);
+            }
+
             TokenTrack memory newValues = TokenTrack({
-                ethPerToken: SafeCast.toUint208(LSTCalculatorBase(calculator).calculateEthPerToken()),
+                ethPerToken: SafeCast.toUint208(currentEthPerToken),
                 lastSentTimestamp: uint48(block.timestamp)
             });
             lastValue[calculator] = newValues;
@@ -127,7 +134,7 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
             TokenTrack memory lastValues = lastValue[calculator];
 
             // slither-disable-next-line timestamp
-            if (currentValue != lastValues.ethPerToken || lastValues.lastSentTimestamp + maxTime < block.timestamp) {
+            if (_shouldSend(currentValue, maxTime, lastValues)) {
                 results[r] = calculator;
                 ++r;
             }
@@ -217,6 +224,15 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
     /// =====================================================
     /// Functions - Internal
     /// =====================================================
+
+    function _shouldSend(
+        uint256 currentEthPerToken,
+        uint256 maxTime,
+        TokenTrack memory oldValues
+    ) internal view returns (bool) {
+        // slither-disable-next-line timestamp
+        return currentEthPerToken != oldValues.ethPerToken || oldValues.lastSentTimestamp + maxTime < block.timestamp;
+    }
 
     /// @dev Sanitize skip and take parameters for the calculator list
     function _validateSkipTake(uint256 skip, uint256 take) internal view returns (uint256 takeRet) {

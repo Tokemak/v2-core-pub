@@ -19,6 +19,7 @@ contract RsethLRTCalculator is LSTCalculatorBase {
     }
 
     /// @inheritdoc LSTCalculatorBase
+    /// @dev If rsEth totalSupply is 0, returns 1e18
     function calculateEthPerToken() public view override returns (uint256) {
         return ILRTOracle(IRSETH(lstTokenAddress).lrtConfig().getContract(LRT_ORACLE)).rsETHPrice();
     }

@@ -28,7 +28,7 @@ library AerodromeRewardsAdapter {
         IVoter voter,
         address pool,
         address claimFor
-    ) public returns (uint256[] memory amountsClaimed, IERC20[] memory rewardTokens) {
+    ) internal returns (uint256[] memory amountsClaimed, IERC20[] memory rewardTokens) {
         Errors.verifyNotZero(address(voter), "voter");
         Errors.verifyNotZero(pool, "pool");
         Errors.verifyNotZero(claimFor, "claimFor");
@@ -55,7 +55,7 @@ library AerodromeRewardsAdapter {
         IERC20 rewardErc = IERC20(rewardToken);
 
         rewards[0] = rewardErc;
-        balancesBefore[0] = rewardErc.balanceOf(msg.sender);
+        balancesBefore[0] = rewardErc.balanceOf(claimFor);
 
         gauge.getReward(claimFor);
 

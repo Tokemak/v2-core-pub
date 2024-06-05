@@ -19,7 +19,6 @@ import { Errors } from "src/utils/Errors.sol";
  *      - _claimEmissions() is used to claim these rewards.
  */
 library AerodromeRewardsAdapter {
-    // slither-disable-start dead-code
     /**
      * @param voter Aerodrome's Voter contract
      * @param pool The pool to claim rewards from
@@ -72,5 +71,4 @@ library AerodromeRewardsAdapter {
         }
         //slither-disable-end assembly
     }
-    // slither-disable-end dead-code
 }

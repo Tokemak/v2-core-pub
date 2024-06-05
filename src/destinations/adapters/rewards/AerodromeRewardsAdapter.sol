@@ -29,7 +29,7 @@ library AerodromeRewardsAdapter {
         IVoter voter,
         address pool,
         address claimFor
-    ) internal returns (uint256[] memory amountsClaimed, IERC20[] memory rewardTokens) {
+    ) public returns (uint256[] memory amountsClaimed, IERC20[] memory rewardTokens) {
         Errors.verifyNotZero(address(voter), "voter");
         Errors.verifyNotZero(pool, "pool");
         Errors.verifyNotZero(claimFor, "claimFor");

@@ -20,6 +20,7 @@ import { CurveV1StableEthOracle } from "src/oracles/providers/CurveV1StableEthOr
 import { RedstoneOracle } from "src/oracles/providers/RedstoneOracle.sol";
 import { CustomSetOracle } from "src/oracles/providers/CustomSetOracle.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
+import { IRouterClient } from "src/interfaces/external/chainlink/IRouterClient.sol";
 
 /* solhint-disable gas-custom-errors */
 
@@ -102,6 +103,7 @@ library Constants {
         address mavRouter;
         address mavPoolFactory;
         address mavBoostedPositionFactory;
+        IRouterClient ccipRouter;
     }
 
     struct Values {
@@ -251,7 +253,8 @@ library Constants {
             balancerVault: IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8),
             mavRouter: 0xbBF1EE38152E9D8e3470Dc47947eAa65DcA94913,
             mavPoolFactory: 0xEb6625D65a0553c9dBc64449e56abFe519bd9c9B,
-            mavBoostedPositionFactory: 0x4F24D73773fCcE560f4fD641125c23A2B93Fcb05
+            mavBoostedPositionFactory: 0x4F24D73773fCcE560f4fD641125c23A2B93Fcb05,
+            ccipRouter: IRouterClient(0x80226fc0Ee2b096224EeAc085Bb9a8cba1146f7D)
         });
     }
 
@@ -312,7 +315,8 @@ library Constants {
             balancerVault: IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8),
             mavRouter: address(0),
             mavPoolFactory: 0xB2855783a346735e4AAe0c1eb894DEf861Fa9b45,
-            mavBoostedPositionFactory: address(0)
+            mavBoostedPositionFactory: address(0),
+            ccipRouter: IRouterClient(0x881e3A65B4d4a04dD529061dd0071cf975F58bCD)
         });
     }
 
@@ -325,7 +329,8 @@ library Constants {
             balancerVault: IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8),
             mavRouter: address(0),
             mavPoolFactory: address(0),
-            mavBoostedPositionFactory: address(0)
+            mavBoostedPositionFactory: address(0),
+            ccipRouter: IRouterClient(0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59)
         });
     }
 

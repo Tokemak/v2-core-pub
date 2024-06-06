@@ -32,6 +32,9 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     /// @notice Lookup of current eth/token values
     EthPerTokenStore public ethPerTokenStore;
 
+    /// @notice Address of corresponding token on source chain
+    address public sourceTokenAddress;
+
     /// =====================================================
     /// Events
     /// =====================================================
@@ -50,6 +53,7 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
 
     struct L2InitData {
         address lstTokenAddress;
+        address sourceTokenAddress;
         bool isRebasing;
         address ethPerTokenStore;
     }
@@ -63,9 +67,14 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     /// @inheritdoc IStatsCalculator
     function initialize(bytes32[] calldata, bytes memory initData) public virtual override initializer {
         L2InitData memory decodedInitData = abi.decode(initData, (L2InitData));
+
+        Errors.verifyNotZero(decodedInitData.lstTokenAddress, "lstTokenAddress");
+        Errors.verifyNotZero(decodedInitData.sourceTokenAddress, "sourceTokenAddress");
+
         lstTokenAddress = decodedInitData.lstTokenAddress;
         _aprId = Stats.generateRawTokenIdentifier(decodedInitData.lstTokenAddress);
         _isRebasing = decodedInitData.isRebasing;
+        sourceTokenAddress = decodedInitData.sourceTokenAddress;
 
         _setEthPerTokenStore(EthPerTokenStore(decodedInitData.ethPerTokenStore));
     }
@@ -102,7 +111,7 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     /// @inheritdoc LSTCalculatorBase
     function calculateEthPerToken() public view virtual override returns (uint256) {
         // Get the backing number we track separate from the LST Base APR numbers we get
-        (uint256 storedValue, uint256 storedTimestamp) = ethPerTokenStore.getEthPerToken(lstTokenAddress);
+        (uint256 storedValue, uint256 storedTimestamp) = ethPerTokenStore.getEthPerToken(sourceTokenAddress);
 
         // If the value we received from the LST Base APR message is newer than
         // the one we track globally, then use it

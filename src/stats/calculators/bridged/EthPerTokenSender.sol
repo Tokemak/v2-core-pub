@@ -103,6 +103,8 @@ contract EthPerTokenSender is SystemComponent, SecurityBase {
                 ethPerToken: SafeCast.toUint208(currentEthPerToken),
                 lastSentTimestamp: uint48(block.timestamp)
             });
+
+            // slither-disable-next-line reentrancy-no-eth
             lastValue[calculator] = newValues;
             address lst = LSTCalculatorBase(calculator).lstTokenAddress();
 

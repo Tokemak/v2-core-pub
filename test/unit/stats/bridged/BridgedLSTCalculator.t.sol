@@ -641,6 +641,7 @@ contract BridgedLSTCalculatorTests is Test {
         bytes32[] memory dependantAprs = new bytes32[](0);
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
+            sourceTokenAddress: mockToken,
             isRebasing: false,
             ethPerTokenStore: ethPerTokenStore
         });
@@ -794,6 +795,7 @@ contract BridgedLSTCalculatorTests is Test {
         bytes32[] memory dependantAprs = new bytes32[](0);
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
+            sourceTokenAddress: mockToken,
             isRebasing: true,
             ethPerTokenStore: ethPerTokenStore
         });
@@ -807,6 +809,7 @@ contract BridgedLSTCalculatorTests is Test {
         dependantAprs = new bytes32[](0);
         initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
+            sourceTokenAddress: mockToken,
             isRebasing: false,
             ethPerTokenStore: ethPerTokenStore
         });
@@ -821,6 +824,7 @@ contract BridgedLSTCalculatorTests is Test {
         bytes32[] memory dependantAprs = new bytes32[](0);
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
+            sourceTokenAddress: mockToken,
             isRebasing: false,
             ethPerTokenStore: ethPerTokenStore
         });
@@ -851,6 +855,7 @@ contract BridgedLSTCalculatorTests is Test {
         bytes32[] memory dependantAprs = new bytes32[](0);
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
+            sourceTokenAddress: mockToken,
             isRebasing: false,
             ethPerTokenStore: ethPerTokenStore
         });
@@ -883,6 +888,7 @@ contract BridgedLSTCalculatorTests is Test {
         bytes32[] memory dependantAprs = new bytes32[](0);
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
+            sourceTokenAddress: mockToken,
             isRebasing: false,
             ethPerTokenStore: ethPerTokenStore
         });
@@ -916,6 +922,7 @@ contract BridgedLSTCalculatorTests is Test {
         bytes32[] memory dependantAprs = new bytes32[](0);
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
+            sourceTokenAddress: mockToken,
             isRebasing: false,
             ethPerTokenStore: ethPerTokenStore
         });
@@ -926,6 +933,41 @@ contract BridgedLSTCalculatorTests is Test {
         vm.mockCall(
             ethPerTokenStore,
             abi.encodeWithSelector(EthPerTokenStore.getEthPerToken.selector),
+            abi.encode(storeValue, block.timestamp - 1 days + 1)
+        );
+
+        bytes memory message = abi.encode(
+            MessageTypes.LSTDestinationInfo({
+                snapshotTimestamp: block.timestamp - 1 days,
+                newBaseApr: 9,
+                currentEthPerToken: storeValue - 1
+            })
+        );
+        vm.startPrank(receivingRouter);
+        bytes32 msgId = keccak256("LST_SNAPSHOT");
+        testCalculator.onMessageReceive(msgId, message);
+        vm.stopPrank();
+
+        assertEq(testCalculator.calculateEthPerToken(), storeValue, "val");
+    }
+
+    function test_EthPerTokenLookupUsesSourceTokenAddress() public {
+        mockCalculateEthPerToken(1);
+        address sourceToken = makeAddr("sourceToken");
+        bytes32[] memory dependantAprs = new bytes32[](0);
+        BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
+            lstTokenAddress: mockToken,
+            sourceTokenAddress: sourceToken,
+            isRebasing: false,
+            ethPerTokenStore: ethPerTokenStore
+        });
+        mockTokenPrice(1e18);
+        testCalculator.initialize(dependantAprs, abi.encode(initData));
+
+        uint256 storeValue = 1_000_000;
+        vm.mockCall(
+            ethPerTokenStore,
+            abi.encodeWithSelector(EthPerTokenStore.getEthPerToken.selector, sourceToken),
             abi.encode(storeValue, block.timestamp - 1 days + 1)
         );
 
@@ -1013,6 +1055,7 @@ contract BridgedLSTCalculatorTests is Test {
         bytes32[] memory dependantAprs = new bytes32[](0);
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
+            sourceTokenAddress: mockToken,
             isRebasing: isRebasing,
             ethPerTokenStore: ethPerTokenStore
         });

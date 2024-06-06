@@ -21,6 +21,7 @@ import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { SwapRouter } from "src/swapper/SwapRouter.sol";
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
+import { BalancerGyroscopeDestinationVault } from "src/vault/BalancerGyroscopeDestinationVault.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
@@ -37,7 +38,7 @@ import {
 } from "test/utils/Addresses.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 
-contract BalancerAuraDestinationVaultTests is Test {
+contract BalancerGyroscopeDestinationVaultTests is Test {
     address private constant LP_TOKEN_WHALE = GYRO_WSTETH_WETH_WHALE; //~21
     address private constant AURA_STAKING = 0x35113146E7f2dF77Fb40606774e0a3F402035Ffb;
 
@@ -58,7 +59,7 @@ contract BalancerAuraDestinationVaultTests is Test {
 
     TestIncentiveCalculator private _testIncentiveCalculator;
 
-    BalancerAuraDestinationVault private _destVault;
+    BalancerGyroscopeDestinationVault private _destVault;
 
     SwapRouter private swapRouter;
     BalancerV2Swap private balSwapper;
@@ -68,7 +69,7 @@ contract BalancerAuraDestinationVaultTests is Test {
     event UnderlyerRecovered(address destination, uint256 amount);
 
     function setUp() public {
-        _mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), 19_661_436);
+        _mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), 20_034_555);
         vm.selectFork(_mainnetFork);
 
         additionalTrackedTokens = new address[](0);
@@ -118,8 +119,8 @@ contract BalancerAuraDestinationVaultTests is Test {
         _underlyer = IERC20(WSTETH_WETH_GYRO_POOL);
         vm.label(address(_underlyer), "underlyer");
 
-        BalancerAuraDestinationVault dvTemplate =
-            new BalancerAuraDestinationVault(_systemRegistry, BAL_VAULT, AURA_MAINNET);
+        BalancerGyroscopeDestinationVault dvTemplate =
+            new BalancerGyroscopeDestinationVault(_systemRegistry, BAL_VAULT, AURA_MAINNET);
         bytes32 dvType = keccak256(abi.encode("template"));
         bytes32[] memory dvTypes = new bytes32[](1);
         dvTypes[0] = dvType;
@@ -132,8 +133,7 @@ contract BalancerAuraDestinationVaultTests is Test {
             balancerPool: WSTETH_WETH_GYRO_POOL,
             auraStaking: AURA_STAKING,
             auraBooster: AURA_BOOSTER,
-            auraPoolId: 162,
-            poolType: "balMetaStable"
+            auraPoolId: 162
         });
         bytes memory initParamBytes = abi.encode(initParams);
         _testIncentiveCalculator = new TestIncentiveCalculator();
@@ -153,7 +153,7 @@ contract BalancerAuraDestinationVaultTests is Test {
         );
         vm.label(newVault, "destVault");
 
-        _destVault = BalancerAuraDestinationVault(newVault);
+        _destVault = BalancerGyroscopeDestinationVault(newVault);
 
         _rootPriceOracle = IRootPriceOracle(vm.addr(34_399));
         vm.label(address(_rootPriceOracle), "rootPriceOracle");
@@ -173,8 +173,7 @@ contract BalancerAuraDestinationVaultTests is Test {
             balancerPool: WSTETH_WETH_GYRO_POOL,
             auraStaking: AURA_STAKING,
             auraBooster: AURA_BOOSTER,
-            auraPoolId: 162,
-            poolType: "balMetaStable"
+            auraPoolId: 162
         });
         bytes memory initParamBytes = abi.encode(initParams);
 
@@ -375,7 +374,7 @@ contract BalancerAuraDestinationVaultTests is Test {
         // Eth Price: $1855
         // PPS: 1.035208869 w/10 shares ~= 10.35208869
 
-        assertEq(_asset.balanceOf(receiver) - startingBalance, 10_356_898_854_512_073_834);
+        assertEq(_asset.balanceOf(receiver) - startingBalance, 10_167_536_848_304_340_295);
         assertEq(received, _asset.balanceOf(receiver) - startingBalance);
     }
 
@@ -614,8 +613,7 @@ contract BalancerAuraDestinationVaultTests is Test {
             balancerPool: WSTETH_WETH_GYRO_POOL,
             auraStaking: AURA_STAKING,
             auraBooster: AURA_BOOSTER,
-            auraPoolId: 162,
-            poolType: "balMetaStable"
+            auraPoolId: 162
         });
         bytes memory initParamBytes = abi.encode(initParams);
         _testIncentiveCalculator = new TestIncentiveCalculator();
@@ -649,8 +647,7 @@ contract BalancerAuraDestinationVaultTests is Test {
             balancerPool: badPool,
             auraStaking: AURA_STAKING,
             auraBooster: AURA_BOOSTER,
-            auraPoolId: 999,
-            poolType: "balMetaStable"
+            auraPoolId: 999
         });
         bytes memory initParamBytes = abi.encode(initParams);
         _testIncentiveCalculator = new TestIncentiveCalculator();

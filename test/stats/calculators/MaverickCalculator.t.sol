@@ -713,4 +713,54 @@ contract Current is MaverickCalculatorTest {
         cur = calculator.current();
         assertEq(cur.stakingIncentiveStats.safeTotalSupply, TOTAL_SUPPLY);
     }
+
+    function test_NoStateChange() public {
+        successfulInitialize();
+
+        // Set up mocks for rewardInfo() call
+        uint256[] memory finishAts = new uint256[](2);
+        uint256[] memory rewardRates = new uint256[](2);
+        uint256[] memory rewardPerTokenStored = new uint256[](2);
+        IERC20[] memory rewardTokens = new IERC20[](2);
+
+        finishAts[1] = START_TIMESTAMP + 7 days;
+        rewardRates[1] = REWARD_RATE;
+        rewardPerTokenStored[1] = REWARD_PER_TOKEN;
+        rewardTokens[1] = IERC20(incentiveToken0);
+
+        mockRewardInfo(finishAts, rewardRates, rewardPerTokenStored, rewardTokens);
+
+        IReward.RewardInfo[] memory rewardInfo = calculator.boostedRewarder().rewardInfo();
+        address rewardToken = address(rewardInfo[1].rewardToken);
+
+        // Snapshot to update values, otherwise would all just be zero
+        calculator.snapshot();
+
+        // Save values before `current()` call
+        uint256 safeTotalSuppliesBefore = calculator.safeTotalSupplies(rewardToken);
+        uint256 lastSnapshotRewardPerTokensBefore = calculator.lastSnapshotRewardPerTokens(rewardToken);
+        uint256 lastSnapshotRewardRatesBefore = calculator.lastSnapshotRewardRates(rewardToken);
+        uint256 lastSnapshotTimestampBefore = calculator.lastSnapshotTimestamps(rewardToken);
+
+        // Just snapshotted, warp timestamp to get in state for another snapshot
+        vm.warp(block.timestamp + 2 days);
+
+        // Update values so snapshot would change values in storage
+        finishAts[1] = START_TIMESTAMP + 21 days;
+        rewardRates[1] = REWARD_RATE * 2;
+        rewardPerTokenStored[1] = REWARD_PER_TOKEN + 100;
+        mockRewardInfo(finishAts, rewardRates, rewardPerTokenStored, rewardTokens);
+
+        // Make sure that should snapshot will pass, ensures that if `performSnapshot` is true state will change
+        assertEq(calculator.shouldSnapshot(), true);
+
+        // Hits path that would have changed state before
+        calculator.current();
+
+        // Check that all state is the same as it was before call.
+        assertEq(safeTotalSuppliesBefore, calculator.safeTotalSupplies(rewardToken));
+        assertEq(lastSnapshotRewardPerTokensBefore, calculator.lastSnapshotRewardPerTokens(rewardToken));
+        assertEq(lastSnapshotRewardRatesBefore, calculator.lastSnapshotRewardRates(rewardToken));
+        assertEq(lastSnapshotTimestampBefore, calculator.lastSnapshotTimestamps(rewardToken));
+    }
 }

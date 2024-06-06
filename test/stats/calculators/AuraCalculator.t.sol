@@ -568,6 +568,54 @@ contract Current is AuraCalculatorTest {
         // Credits should go from 144 to 120 due to decay
         assertTrue(res.stakingIncentiveStats.incentiveCredits == 120);
     }
+
+    function test_NoStateChange_MainOrExtraRewarders() public {
+        // Mock rewarders for first snapshot
+        mockSimpleMainRewarder();
+        addMockExtraRewarder();
+
+        // Snapshot to get storage values to not be zero
+        calculator.snapshot();
+
+        // Get values before calling `current()`
+        uint256 mainRewardSafeTotalSupplyBefore = calculator.safeTotalSupplies(mainRewarder);
+        uint256 mainRewardLastSnapshotTimeBefore = calculator.lastSnapshotTimestamps(mainRewarder);
+        uint256 mainRewardLastSnapshotRewardPerTokenBefore = calculator.lastSnapshotRewardPerToken(mainRewarder);
+        uint256 mainRewarderLastSnapshotRewardRateBefore = calculator.lastSnapshotRewardRate(mainRewarder);
+
+        uint256 extraRewardSafeTotalSupplyBefore = calculator.safeTotalSupplies(extraRewarder1);
+        uint256 extraRewardLastSnapshotTimeBefore = calculator.lastSnapshotTimestamps(extraRewarder1);
+        uint256 extraRewardLastSnapshotRewardPerTokenBefore = calculator.lastSnapshotRewardPerToken(extraRewarder1);
+        uint256 extraRewarderLastSnapshotRewardRateBefore = calculator.lastSnapshotRewardRate(extraRewarder1);
+
+        // Mock parts of both rewarders again to check that values do not change in `current()` call
+        mockRewardPerToken(mainRewarder, REWARD_PER_TOKEN * 2);
+        mockRewardRate(mainRewarder, REWARD_RATE * 2);
+        mockPeriodFinish(mainRewarder, block.timestamp + (PERIOD_FINISH_IN * 2));
+
+        mockRewardPerToken(extraRewarder1, REWARD_PER_TOKEN * 2);
+        mockRewardRate(extraRewarder1, REWARD_RATE * 2);
+        mockPeriodFinish(extraRewarder1, block.timestamp + (PERIOD_FINISH_IN * 2));
+
+        vm.warp(block.timestamp + 2 days);
+
+        // Make sure that snapshot will happen, isolates `performSnapshot` variable
+        assertEq(calculator.shouldSnapshot(), true);
+
+        // Call current, will hit state change path
+        calculator.current();
+
+        // Assert values are the same before and after
+        assertEq(mainRewardSafeTotalSupplyBefore, calculator.safeTotalSupplies(mainRewarder));
+        assertEq(mainRewardLastSnapshotTimeBefore, calculator.lastSnapshotTimestamps(mainRewarder));
+        assertEq(mainRewardLastSnapshotRewardPerTokenBefore, calculator.lastSnapshotRewardPerToken(mainRewarder));
+        assertEq(mainRewarderLastSnapshotRewardRateBefore, calculator.lastSnapshotRewardRate(mainRewarder));
+
+        assertEq(extraRewardSafeTotalSupplyBefore, calculator.safeTotalSupplies(extraRewarder1));
+        assertEq(extraRewardLastSnapshotTimeBefore, calculator.lastSnapshotTimestamps(extraRewarder1));
+        assertEq(extraRewardLastSnapshotRewardPerTokenBefore, calculator.lastSnapshotRewardPerToken(extraRewarder1));
+        assertEq(extraRewarderLastSnapshotRewardRateBefore, calculator.lastSnapshotRewardRate(extraRewarder1));
+    }
 }
 
 contract ResolveRewardToken is AuraCalculatorTest {

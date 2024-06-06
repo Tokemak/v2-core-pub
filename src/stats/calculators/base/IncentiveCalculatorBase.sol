@@ -517,7 +517,7 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
             (rewardRate, totalSupply, periodFinish) = _getRewardPoolMetrics(extraRewarder);
 
             // Take a snapshot for the extra rewarder if necessary
-            if (_shouldSnapshot(extraRewarder, rewardRate, periodFinish, totalSupply)) {
+            if (performSnapshot && _shouldSnapshot(extraRewarder, rewardRate, periodFinish, totalSupply)) {
                 _snapshotRewarder(extraRewarder, totalSupply, rewardRate);
             }
             rewardToken = resolveRewardToken(extraRewarder);

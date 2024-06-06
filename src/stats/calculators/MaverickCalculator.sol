@@ -117,7 +117,7 @@ contract MaverickCalculator is BaseStatsCalculator, IDexLSTStats {
 
         if (decayState) {
             // take required snaps as needed.
-            uint256 totalAPR = _computeTotalAPR(rewardInfo);
+            uint256 totalAPR = _computeTotalAPR(rewardInfo, false);
 
             // Apply additional decay if APR is within tolerance
             // slither-disable-next-line incorrect-equality
@@ -189,7 +189,7 @@ contract MaverickCalculator is BaseStatsCalculator, IDexLSTStats {
         // Record a new snapshot of total APR across all rewarders
         // Also, triggers a new snapshot or finalize snapshot for total supply across all the rewarders
         // slither-disable-next-line reentrancy-no-eth,reentrancy-benign, reentrancy-eth
-        lastSnapshotTotalAPR = _computeTotalAPR(rewardInfo);
+        lastSnapshotTotalAPR = _computeTotalAPR(rewardInfo, true);
         uint8 currentCredits = incentiveCredits;
         uint256 elapsedTime = block.timestamp - lastIncentiveTimestamp;
 
@@ -362,7 +362,10 @@ contract MaverickCalculator is BaseStatsCalculator, IDexLSTStats {
         return denominator == 0 ? 0 : numerator / denominator;
     }
 
-    function _computeTotalAPR(IReward.RewardInfo[] memory rewardInfo) internal returns (uint256 totalApr) {
+    function _computeTotalAPR(
+        IReward.RewardInfo[] memory rewardInfo,
+        bool performSnapshot
+    ) internal returns (uint256 totalApr) {
         IRootPriceOracle pricer = systemRegistry.rootPriceOracle();
         // slither-disable-next-line reentrancy-benign,unused-return
         (, uint256 lpSafePriceInQuote, bool isSpotSafe) =
@@ -376,7 +379,7 @@ contract MaverickCalculator is BaseStatsCalculator, IDexLSTStats {
         IReward.RewardInfo memory info;
         for (uint256 index = 0; index < rewardInfo.length; ++index) {
             info = rewardInfo[index];
-            if (_shouldSnapshot(info, totalSupply)) {
+            if (performSnapshot && _shouldSnapshot(info, totalSupply)) {
                 _snapshotRewarder(info, totalSupply);
             }
 

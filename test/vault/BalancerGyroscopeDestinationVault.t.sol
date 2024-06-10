@@ -71,11 +71,12 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
     event UnderlyerRecovered(address destination, uint256 amount);
 
     function setUp() public {
-        _mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), 20_034_555);
+        _mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), 19_661_436);
         vm.selectFork(_mainnetFork);
+        runSetUp();
+    }
 
-        additionalTrackedTokens = new address[](0);
-
+    function runSetUp() public {
         vm.label(address(this), "testContract");
 
         _systemRegistry = new SystemRegistry(vm.addr(100), WETH_MAINNET);
@@ -141,6 +142,8 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
         _testIncentiveCalculator = new TestIncentiveCalculator();
         _testIncentiveCalculator.setLpToken(address(_underlyer));
         _testIncentiveCalculator.setPoolAddress(address(_underlyer));
+
+        additionalTrackedTokens = new address[](0);
 
         address payable newVault = payable(
             _destinationVaultFactory.create(
@@ -359,7 +362,37 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
         assertEq(_destVault.externalDebtBalance(), 0e18);
     }
 
+    /**
+     * @notice This test is to ensure that the `withdrawUnderlying` function reverts when the pool is skewed.
+     *         We observed this behavior in the at block 19_661_436 and we want to ensure we revert in that case.
+     */
+    function test_withdrawBaseAsset_Reverts_On_Skewed_Pool() public {
+        // Get some tokens to play with
+        deal(address(_underlyer), address(this), 10e18);
+
+        // Give us deposit rights
+        _mockIsVault(address(this), true);
+
+        // Deposit
+        _underlyer.approve(address(_destVault), 10e18);
+        _destVault.depositUnderlying(10e18);
+
+        address receiver = vm.addr(555);
+
+        vm.expectRevert("GYR#357");
+        _destVault.withdrawBaseAsset(10e18, receiver);
+    }
+
+    /**
+     * @notice This test is to ensure that the `withdrawBaseAsset` function returns the appropriate amount when the pool
+     * is not skewed.
+     */
     function test_withdrawBaseAsset_ReturnsAppropriateAmount() public {
+        uint256 localFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), 20_034_555);
+        vm.selectFork(localFork);
+
+        runSetUp();
+
         // Get some tokens to play with
         deal(address(_underlyer), address(this), 10e18);
 
@@ -374,11 +407,6 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
         uint256 startingBalance = _asset.balanceOf(receiver);
 
         uint256 received = _destVault.withdrawBaseAsset(10e18, receiver);
-
-        // Bal pool has a rough pool value of $96,362,068
-        // Total Supply of 50180.410952857663703844
-        // Eth Price: $1855
-        // PPS: 1.035208869 w/10 shares ~= 10.35208869
 
         assertEq(_asset.balanceOf(receiver) - startingBalance, 10_167_536_848_304_340_295);
         assertEq(received, _asset.balanceOf(receiver) - startingBalance);

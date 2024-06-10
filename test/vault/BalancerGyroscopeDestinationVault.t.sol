@@ -5,27 +5,12 @@ pragma solidity 0.8.17;
 // solhint-disable func-name-mixedcase
 // solhint-disable avoid-low-level-calls
 
-import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
-import { Test } from "forge-std/Test.sol";
-import { DestinationVault, IDestinationVault } from "src/vault/DestinationVault.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { SystemRegistry } from "src/SystemRegistry.sol";
-import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
-import { AccessController } from "src/security/AccessController.sol";
-import { Roles } from "src/libs/Roles.sol";
-import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
-import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
-import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
-import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
-import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
-import { SwapRouter } from "src/swapper/SwapRouter.sol";
-import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
-import { BalancerGyroscopeDestinationVault } from "src/vault/BalancerGyroscopeDestinationVault.sol";
-import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
+
+import { Test } from "forge-std/Test.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
-import { IVault } from "src/interfaces/external/balancer/IVault.sol";
-import { BalancerV2Swap } from "src/swapper/adapters/BalancerV2Swap.sol";
+import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import {
     WETH_MAINNET,
     WSTETH_WETH_GYRO_POOL,
@@ -36,7 +21,24 @@ import {
     AURA_MAINNET,
     GYRO_WSTETH_WETH_WHALE
 } from "test/utils/Addresses.sol";
-import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
+
+import { Roles } from "src/libs/Roles.sol";
+import { SystemRegistry } from "src/SystemRegistry.sol";
+import { SwapRouter } from "src/swapper/SwapRouter.sol";
+import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
+import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
+import { AccessController } from "src/security/AccessController.sol";
+import { IVault } from "src/interfaces/external/balancer/IVault.sol";
+import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
+import { BalancerV2Swap } from "src/swapper/adapters/BalancerV2Swap.sol";
+import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
+import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
+import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
+import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
+import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
+import { DestinationVault, IDestinationVault } from "src/vault/DestinationVault.sol";
+import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
+import { BalancerGyroscopeDestinationVault } from "src/vault/BalancerGyroscopeDestinationVault.sol";
 
 contract BalancerGyroscopeDestinationVaultTests is Test {
     address private constant LP_TOKEN_WHALE = GYRO_WSTETH_WETH_WHALE; //~21
@@ -194,6 +196,10 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
 
     function test_exchangeName_Returns() public {
         assertEq(_destVault.exchangeName(), "balancer");
+    }
+
+    function test_PoolType_Returns() public {
+        assertEq(_destVault.poolType(), "balGyro");
     }
 
     function test_underlyingTokens_ReturnsForMetastable() public {

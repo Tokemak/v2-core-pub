@@ -33,6 +33,7 @@ contract BalancerGyroscopeEthOracleTests is Test {
     function testConstruction() public {
         assertEq(address(systemRegistry), address(oracle.getSystemRegistry()));
         assertEq(address(VAULT), address(oracle.balancerVault()));
+        assertEq("balGyro", oracle.getDescription());
     }
 
     function generateSystemRegistry(address rootOracle) internal returns (ISystemRegistry) {
@@ -43,7 +44,7 @@ contract BalancerGyroscopeEthOracleTests is Test {
 }
 
 contract GetSpotPrice is BalancerGyroscopeEthOracleTests {
-    /// @dev wETH -> wstETH at block 17_378_951 is 1.161996335017793779.
+    /// @dev wETH -> wstETH at block 19_661_436 is 1.161996335017793779.
     function test_getSpotPrice_withWETHQuote() public {
         (uint256 price, address quoteToken) = oracle.getSpotPrice(WSTETH_MAINNET, WSTETH_WETH_GYRO_POOL, WETH_MAINNET);
 
@@ -51,7 +52,7 @@ contract GetSpotPrice is BalancerGyroscopeEthOracleTests {
         assertEq(price, 1_161_996_335_017_793_779);
     }
 
-    /// @dev wstETH -> wETH at block 17_378_951 is 0.860587854455742574.
+    /// @dev wstETH -> wETH at block 19_661_436 is 0.860587854455742574.
     function test_getSpotPrice_withoutWETHQuote() public {
         (uint256 price, address quoteToken) = oracle.getSpotPrice(WETH_MAINNET, WSTETH_WETH_GYRO_POOL, WSTETH_MAINNET);
 

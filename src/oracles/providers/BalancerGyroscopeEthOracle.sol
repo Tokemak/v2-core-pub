@@ -3,12 +3,13 @@
 
 pragma solidity 0.8.17;
 
+import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+
 import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IVault } from "src/interfaces/external/balancer/IVault.sol";
-import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 import { BalancerBaseOracle, ISpotPriceOracle } from "src/oracles/providers/base/BalancerBaseOracle.sol";
+import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 
 /// @title Price oracle for Gyroscope pools with Balancer interface
 contract BalancerGyroscopeEthOracle is BalancerBaseOracle {
@@ -19,7 +20,7 @@ contract BalancerGyroscopeEthOracle is BalancerBaseOracle {
 
     /// @inheritdoc ISpotPriceOracle
     function getDescription() external pure override returns (string memory) {
-        return "balGyroscope";
+        return "balGyro";
     }
 
     function getTotalSupply_(address lpToken) internal virtual override returns (uint256 totalSupply) {

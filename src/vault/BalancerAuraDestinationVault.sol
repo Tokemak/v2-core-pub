@@ -140,7 +140,7 @@ contract BalancerAuraDestinationVault is DestinationVault {
     }
 
     /// @inheritdoc IDestinationVault
-    function poolType() external view override returns (string memory) {
+    function poolType() external view virtual override returns (string memory) {
         return isComposable ? "balCompStable" : "balMetaStable";
     }
 
@@ -151,7 +151,7 @@ contract BalancerAuraDestinationVault is DestinationVault {
     }
 
     /// @inheritdoc IDestinationVault
-    function underlyingTokens() external view override returns (address[] memory ret) {
+    function underlyingTokens() external view virtual override returns (address[] memory ret) {
         if (isComposable) {
             uint256 len = poolTokens.length;
             ret = new address[](len - 1);

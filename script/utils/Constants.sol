@@ -21,6 +21,7 @@ import { RedstoneOracle } from "src/oracles/providers/RedstoneOracle.sol";
 import { CustomSetOracle } from "src/oracles/providers/CustomSetOracle.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { IRouterClient } from "src/interfaces/external/chainlink/IRouterClient.sol";
+import { MessageProxy } from "src/messageProxy/MessageProxy.sol";
 
 /* solhint-disable gas-custom-errors */
 
@@ -74,6 +75,7 @@ library Constants {
         SystemOracles subOracles;
         IncentivePricingStats incentivePricing;
         AsyncSwappers asyncSwappers;
+        MessageProxy messageProxy;
     }
 
     struct SystemOracles {
@@ -205,6 +207,7 @@ library Constants {
                 curveResolver: ICurveResolver(0x118871DA329cFC4b45219BE37dFc2a5C27e469DF),
                 rootPriceOracle: RootPriceOracle(0x3b3188c10cb9E2d3A331a4EfAD05B70bdEA1b08e),
                 incentivePricing: IncentivePricingStats(0xD2F09D4e3110F397c2a536081f13Fe08D9868c82),
+                messageProxy: MessageProxy(payable(address(0))),
                 subOracles: SystemOracles({
                     chainlink: ChainlinkOracle(0x70975337525D8D4Cae2deb3Ec896e7f4b9fAaB72),
                     ethPegged: EthPeggedOracle(0x58374B8fF79f4C40Fb66e7ca8B13A08992125821),
@@ -242,6 +245,7 @@ library Constants {
         sys.curveResolver = systemRegistry.curveResolver();
         sys.rootPriceOracle = RootPriceOracle(address(systemRegistry.rootPriceOracle()));
         sys.incentivePricing = IncentivePricingStats(address(systemRegistry.incentivePricing()));
+        sys.messageProxy = MessageProxy(payable(address(systemRegistry.messageProxy())));
     }
 
     function getMainnetExternal() private pure returns (External memory) {
@@ -258,7 +262,7 @@ library Constants {
         });
     }
 
-    function getMainnetTokens() private pure returns (Tokens memory) {
+    function getMainnetTokens() public pure returns (Tokens memory) {
         return Tokens({
             toke: 0x2e9d63788249371f1DFC918a52f8d799F4a38C94,
             weth: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,

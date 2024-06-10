@@ -30,6 +30,7 @@ paths = [
     '''solver/README.md''',
     '''test/echidna/fuzz/vault/BaseSetup.sol''',
     '''script/mainnet/10_Maverick.sol''',
+    '''script/utils/ResendReceivingRouter.s.sol''',
 ]
 
 regexTarget = "match"

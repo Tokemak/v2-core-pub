@@ -64,7 +64,6 @@ contract AerodromeRewardsAdapterTest is Test {
     }
 
     function _verifyPool(address pool) private {
-        
         address gauge = _getGaugeForPool(pool);
         _stakeForRewards(pool, gauge);
 
@@ -94,6 +93,6 @@ contract AerodromeRewardsAdapterTest is Test {
     }
 
     function _getGaugeForPool(address pool) private view returns (address) {
-      return voter.gauges(pool);
+        return voter.gauges(pool);
     }
 }

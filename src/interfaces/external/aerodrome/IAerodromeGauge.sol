@@ -2,7 +2,6 @@
 pragma solidity 0.8.17;
 
 interface IAerodromeGauge {
-    
     /// @notice Deposit LP tokens into gauge for any user
     /// @param _amount .
     function deposit(uint256 _amount) external;
@@ -10,7 +9,7 @@ interface IAerodromeGauge {
     /// @notice Withdraw LP tokens for user
     /// @param _amount .
     function withdraw(uint256 _amount) external;
-    
+
     /// @notice Address of the pool LP token which is deposited (staked) for rewards
     function stakingToken() external view returns (address);
 

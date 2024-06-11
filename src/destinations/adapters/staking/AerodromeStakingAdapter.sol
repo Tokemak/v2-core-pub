@@ -78,7 +78,7 @@ library AerodromeStakingAdapter {
         Errors.verifyNotZero(gaugeAddress, "gaugeAddress");
         Errors.verifyNotZero(amount, "amount");
         //slither-disable-start reentrancy-events
-        
+
         IAerodromeGauge gauge = IAerodromeGauge(gaugeAddress);
 
         address stakingToken = gauge.stakingToken();

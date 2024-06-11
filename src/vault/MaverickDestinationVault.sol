@@ -52,8 +52,6 @@ contract MaverickDestinationVault is DestinationVault {
     /// @notice Address Mavericks Position NFT
     IPosition public positionNft;
 
-    error InvalidConfiguration();
-
     constructor(ISystemRegistry sysRegistry) DestinationVault(sysRegistry) { }
 
     /// @inheritdoc DestinationVault
@@ -87,7 +85,7 @@ contract MaverickDestinationVault is DestinationVault {
         address stakingToken = IReward(initParams.maverickRewarder).stakingToken();
 
         if (address(stakingToken) != address(_underlying)) {
-            revert InvalidConfiguration();
+            revert Errors.InvalidConfiguration();
         }
 
         address tokenA = address(IPool(initParams.maverickPool).tokenA());

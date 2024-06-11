@@ -26,16 +26,11 @@ contract AerodromeRewardsAdapterTest is Test {
     }
 
     function test_Revert_IfAddressZero() public {
-        address pool = 0x497139e8435E01555AC1e3740fccab7AFf149e02;
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "voter"));
-        AerodromeRewardsAdapter.claimRewards(IVoter(address(0)), pool, address(this));
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "pool"));
-        AerodromeRewardsAdapter.claimRewards(voter, address(0), address(this));
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "gauge"));
+        AerodromeRewardsAdapter.claimRewards(address(0), address(this));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "claimFor"));
-        AerodromeRewardsAdapter.claimRewards(voter, pool, address(0));
+        AerodromeRewardsAdapter.claimRewards(address(this), address(0));
     }
 
     // ezETH/WETH (stable pool)
@@ -69,10 +64,12 @@ contract AerodromeRewardsAdapterTest is Test {
     }
 
     function _verifyPool(address pool) private {
-        _stakeForRewards(pool);
+        
+        address gauge = _getGaugeForPool(pool);
+        _stakeForRewards(pool, gauge);
 
-        (uint256[] memory amountsClaimed, IERC20[] memory rewardsToken) =
-            AerodromeRewardsAdapter.claimRewards(voter, pool, address(this));
+        (uint256[] memory amountsClaimed, address[] memory rewardsToken) =
+            AerodromeRewardsAdapter.claimRewards(gauge, address(this));
 
         assertEq(amountsClaimed.length, rewardsToken.length);
         assertEq(rewardsToken.length, 1);
@@ -82,18 +79,21 @@ contract AerodromeRewardsAdapterTest is Test {
         assertTrue(amountsClaimed[0] > 0);
     }
 
-    function _stakeForRewards(address pool) private {
+    function _stakeForRewards(address pool, address gauge) private {
         IERC20 lpToken = IERC20(pool);
         deal(address(lpToken), address(this), 10 * 1e18);
 
         // Stake LPs
-        uint256 minLpMintAmount = 1;
         uint256 stakeAmount = lpToken.balanceOf(address(this));
-        AerodromeStakingAdapter.stakeLPs(voter, stakeAmount, minLpMintAmount, pool);
+        AerodromeStakingAdapter.stakeLPs(gauge, stakeAmount);
 
         // Move 7 days later
         vm.roll(block.number + 7200 * 7);
         // solhint-disable-next-line not-rely-on-time
         vm.warp(block.timestamp + 7 days);
+    }
+
+    function _getGaugeForPool(address pool) private view returns (address) {
+      return voter.gauges(pool);
     }
 }

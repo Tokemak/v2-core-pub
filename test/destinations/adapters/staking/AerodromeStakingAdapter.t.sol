@@ -24,41 +24,27 @@ contract AerodromeStakingAdapterTest is Test {
 
     function test_Revert_On_Zero_Addresses() public {
         address pool = 0x497139e8435E01555AC1e3740fccab7AFf149e02;
+        address gauge = voter.gauges(pool);
 
         IERC20 lpToken = IERC20(pool);
         deal(address(lpToken), address(this), 10 * 1e18);
 
         uint256 stakeAmount = lpToken.balanceOf(address(this));
-        uint256 lpBalance = 1;
-        uint256 minLpMintAmount = 1;
 
         // Stake LPs
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "voter"));
-        AerodromeStakingAdapter.stakeLPs(IVoter(address(0)), stakeAmount, minLpMintAmount, pool);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "gaugeAddress"));
+        AerodromeStakingAdapter.stakeLPs(address(0), stakeAmount);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "amount"));
-        AerodromeStakingAdapter.stakeLPs(voter, 0, minLpMintAmount, pool);
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "minLpMintAmount"));
-        AerodromeStakingAdapter.stakeLPs(voter, stakeAmount, 0, pool);
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "pool"));
-        AerodromeStakingAdapter.stakeLPs(voter, stakeAmount, minLpMintAmount, address(0));
+        AerodromeStakingAdapter.stakeLPs(gauge, 0);
 
         // Unstake LPs
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "voter"));
-        AerodromeStakingAdapter.unstakeLPs(IVoter(address(0)), stakeAmount, lpBalance, pool);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "gaugeAddress"));
+        AerodromeStakingAdapter.unstakeLPs(address(0), stakeAmount);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "amount"));
-        AerodromeStakingAdapter.unstakeLPs(voter, 0, lpBalance, pool);
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "maxLpBurnAmount"));
-        AerodromeStakingAdapter.unstakeLPs(voter, stakeAmount, 0, pool);
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "pool"));
-        AerodromeStakingAdapter.unstakeLPs(voter, stakeAmount, lpBalance, address(0));
+        AerodromeStakingAdapter.unstakeLPs(gauge, 0);
     }
 
     function test_Staking_Unstaking_On_Pools() public {
@@ -86,20 +72,18 @@ contract AerodromeStakingAdapterTest is Test {
         deal(address(lpToken), address(this), 10 * 1e18);
 
         // Stake LPs
-        uint256 minLpMintAmount = 1;
-
         IAerodromeGauge gauge = IAerodromeGauge(voter.gauges(pool));
         uint256 preStakeLpBalance = gauge.balanceOf(address(this));
 
         uint256 stakeAmount = lpToken.balanceOf(address(this));
-        AerodromeStakingAdapter.stakeLPs(voter, stakeAmount, minLpMintAmount, pool);
+        AerodromeStakingAdapter.stakeLPs(address(gauge), stakeAmount);
 
         uint256 afterStakeLpBalance = gauge.balanceOf(address(this));
 
         assertTrue(afterStakeLpBalance > 0 && afterStakeLpBalance > preStakeLpBalance);
 
         // Unstake LPs
-        AerodromeStakingAdapter.unstakeLPs(voter, stakeAmount, afterStakeLpBalance, pool);
+        AerodromeStakingAdapter.unstakeLPs(address(gauge), stakeAmount);
 
         uint256 afterUnstakeLpBalance = gauge.balanceOf(address(this));
 

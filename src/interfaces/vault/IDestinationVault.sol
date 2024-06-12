@@ -193,4 +193,9 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @param hash bytes32 hash of a payload
     /// @param flag boolean flag to indicate a validity of hash
     function setMessage(bytes32 hash, bool flag) external;
+
+    /// @notice Allows to change the incentive calculator of destination vault
+    /// @dev Only works when vault is shutdown, also validates the calculator before updating
+    /// @param incentiveCalculator address of the new incentive calculator
+    function setIncentiveCalculator(address incentiveCalculator) external;
 }

@@ -46,6 +46,7 @@ contract DestinationVaultBaseTests is Test {
 
     event Shutdown(IDestinationVault.VaultShutdownStatus reason);
     event UnderlyerRecovered(address destination, uint256 amount);
+    event IncentiveCalculatorUpdated(address calculator);
 
     function setUp() public {
         testUser1 = vm.addr(1);
@@ -430,6 +431,60 @@ contract DestinationVaultBaseTests is Test {
         testVault.setMessage(testHash, false);
         returnedValue = testVault.isValidSignature(testHash, bytes(""));
         assertEq(returnedValue, bytes4(0xFFFFFFFF));
+    }
+
+    function test_setIncentiveCalculatorRevertVaultNotShutdown() public {
+        TestIncentiveCalculator newIncentiveCalculator = new TestIncentiveCalculator();
+        newIncentiveCalculator.setLpToken(address(underlyer));
+
+        accessController.grantRole(Roles.AUTO_POOL_DESTINATION_UPDATER, address(this));
+
+        vm.expectRevert(abi.encodeWithSelector(DestinationVault.VaultNotShutdown.selector));
+        testVault.setIncentiveCalculator(address(newIncentiveCalculator));
+    }
+
+    function test_setIncentiveCalculatorRevertInvalidRole() public {
+        TestIncentiveCalculator newIncentiveCalculator = new TestIncentiveCalculator();
+        newIncentiveCalculator.setLpToken(address(underlyer));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        testVault.setIncentiveCalculator(address(newIncentiveCalculator));
+    }
+
+    function test_setIncentiveCalculatorRevertWrongUnderlyer() public {
+        TestIncentiveCalculator newIncentiveCalculator = new TestIncentiveCalculator();
+        TestERC20 wrongUnderlyer = new TestERC20("GHI", "GHI");
+        wrongUnderlyer.setDecimals(6);
+        newIncentiveCalculator.setLpToken(address(wrongUnderlyer));
+
+        accessController.grantRole(Roles.DESTINATION_VAULT_MANAGER, address(this));
+        testVault.shutdown(IDestinationVault.VaultShutdownStatus.Deprecated);
+
+        accessController.grantRole(Roles.AUTO_POOL_DESTINATION_UPDATER, address(this));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DestinationVault.InvalidIncentiveCalculator.selector, address(wrongUnderlyer), address(underlyer), "lp"
+            )
+        );
+        testVault.setIncentiveCalculator(address(newIncentiveCalculator));
+    }
+
+    function test_setIncentiveCalculator() public {
+        TestIncentiveCalculator newIncentiveCalculator = new TestIncentiveCalculator();
+        newIncentiveCalculator.setLpToken(address(underlyer));
+
+        accessController.grantRole(Roles.DESTINATION_VAULT_MANAGER, address(this));
+        testVault.shutdown(IDestinationVault.VaultShutdownStatus.Deprecated);
+
+        accessController.grantRole(Roles.AUTO_POOL_DESTINATION_UPDATER, address(this));
+
+        vm.expectEmit();
+        emit IncentiveCalculatorUpdated(address(newIncentiveCalculator));
+
+        testVault.setIncentiveCalculator(address(newIncentiveCalculator));
+
+        assertEq(address(testVault.getStats()), address(newIncentiveCalculator));
     }
 
     function mockSystemBound(address addr, address systemRegistry_) internal {

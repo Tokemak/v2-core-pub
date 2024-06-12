@@ -36,6 +36,7 @@ abstract contract DestinationVault is
     event BaseAssetWithdraw(uint256 amount, address owner, address to);
     event UnderlyingDeposited(uint256 amount, address sender);
     event Shutdown(VaultShutdownStatus reason);
+    event IncentiveCalculatorUpdated(address calculator);
 
     error ArrayLengthMismatch();
     error PullingNonTrackedToken(address token);
@@ -44,6 +45,7 @@ abstract contract DestinationVault is
     error NothingToRecover();
     error DuplicateToken(address token);
     error VaultShutdown();
+    error VaultNotShutdown();
     error InvalidIncentiveCalculator(address calc, address local, string param);
     error PricesOutOfRange(uint256 spot, uint256 safe);
 
@@ -459,6 +461,20 @@ abstract contract DestinationVault is
     /// @inheritdoc IDestinationVault
     function getStats() external view virtual returns (IDexLSTStats) {
         return IDexLSTStats(_incentiveCalculator);
+    }
+
+    /// @inheritdoc IDestinationVault
+    function setIncentiveCalculator(address incentiveCalculator_)
+        external
+        hasRole(Roles.AUTO_POOL_DESTINATION_UPDATER)
+    {
+        if (!_shutdown) revert VaultNotShutdown();
+        _validateCalculator(incentiveCalculator_);
+
+        emit IncentiveCalculatorUpdated(incentiveCalculator_);
+
+        // slither-disable-next-line missing-zero-check
+        _incentiveCalculator = incentiveCalculator_;
     }
 
     /// @inheritdoc IDestinationVault

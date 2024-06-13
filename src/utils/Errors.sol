@@ -52,7 +52,7 @@ library Errors {
     error UnsupportedMessage(bytes32 messageType, bytes message);
 
     error NotSupported();
-    
+
     error InvalidConfiguration();
 
     function verifyNotZero(address addr, string memory paramName) internal pure {

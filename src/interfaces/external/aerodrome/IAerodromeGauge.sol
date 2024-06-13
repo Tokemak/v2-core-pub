@@ -6,6 +6,9 @@ interface IAerodromeGauge {
     /// @param _amount .
     function deposit(uint256 _amount) external;
 
+    /// @notice Deposit LPs into gauge
+    function deposit(uint256 _amount, address _recipient) external;
+
     /// @notice Withdraw LP tokens for user
     /// @param _amount .
     function withdraw(uint256 _amount) external;
@@ -26,4 +29,7 @@ interface IAerodromeGauge {
 
     /// @notice Amount of stakingToken deposited for rewards
     function totalSupply() external view returns (uint256);
+
+    /// @notice Returns accrued balance to date from last claim / first deposit.
+    function earned(address _account) external view returns (uint256 _earned);
 }

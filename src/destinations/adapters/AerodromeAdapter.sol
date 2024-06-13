@@ -59,7 +59,7 @@ library AerodromeAdapter {
 
         if (params.tokens.length != 2) revert Errors.InvalidParam("tokens.length");
         if (params.amounts.length != 2) revert Errors.InvalidParam("amounts.length");
-        if (params.amounts[0] == 0 && params.amounts[1] == 0) revert LibAdapter.NoNonZeroAmountProvided();
+        // if (params.amounts[0] == 0 && params.amounts[1] == 0) revert LibAdapter.NoNonZeroAmountProvided();
 
         LibAdapter._approve(IERC20(params.pool), address(params.router), params.maxLpBurnAmount);
 

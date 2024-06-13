@@ -109,6 +109,8 @@ contract AerodromeDestinationVault is DestinationVault {
     /// @notice Returns two pools in Aerodrome Pool. Tokens returns in order lower address value -> higher
     /// @inheritdoc IDestinationVault
     function underlyingTokens() external view override returns (address[] memory _underlyingTokens) {
+        _underlyingTokens = new address[](2);
+
         _underlyingTokens[0] = constituentTokens[0];
         _underlyingTokens[1] = constituentTokens[1];
     }
@@ -125,7 +127,7 @@ contract AerodromeDestinationVault is DestinationVault {
 
     /// @inheritdoc DestinationVault
     function _collectRewards() internal virtual override returns (uint256[] memory amounts, address[] memory tokens) {
-        (amounts, tokens) = AerodromeRewardsAdapter.claimRewards(aerodromeGauge, msg.sender);
+        (amounts, tokens) = AerodromeRewardsAdapter.claimRewards(aerodromeGauge, address(this));
     }
 
     /// @inheritdoc DestinationVault
@@ -135,6 +137,7 @@ contract AerodromeDestinationVault is DestinationVault {
         override
         returns (address[] memory tokens, uint256[] memory amounts)
     {
+        tokens = new address[](2);
         tokens[0] = constituentTokens[0];
         tokens[1] = constituentTokens[1];
 

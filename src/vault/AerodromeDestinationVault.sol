@@ -15,12 +15,13 @@ import { AerodromeStakingAdapter } from "src/destinations/adapters/staking/Aerod
 import { AerodromeAdapter } from "src/destinations/adapters/AerodromeAdapter.sol";
 
 contract AerodromeDestinationVault is DestinationVault {
+    /// @notice Address of the aerodrome router
+    address public immutable aerodromeRouter;
+
     /// @notice Only used to initialize the vault
     struct InitParams {
         /// @notice Gauge that this vault interacts with
         address aerodromeGauge;
-        /// @notice Router for Aerodrome
-        address aerodromeRouter;
     }
 
     string private constant EXCHANGE_NAME = "aerodrome";
@@ -28,16 +29,17 @@ contract AerodromeDestinationVault is DestinationVault {
     /// @notice Address of the gauge that this contract interacts with
     address public aerodromeGauge;
 
-    /// @notice Address of the aerodrom router
-    address public aerodromeRouter;
-
     /// @notice Tokens of the pool
     address[] public constituentTokens;
 
     /// @notice If pool being proxied is stable or not.
     bool public isStable;
 
-    constructor(ISystemRegistry _systemRegistry) DestinationVault(_systemRegistry) { }
+    constructor(ISystemRegistry _systemRegistry, address _aerodromeRouter) DestinationVault(_systemRegistry) {
+        Errors.verifyNotZero(_aerodromeRouter, "aerodromeRouter");
+
+        aerodromeRouter = _aerodromeRouter;
+    }
 
     function initialize(
         IERC20 baseAsset_,
@@ -50,7 +52,6 @@ contract AerodromeDestinationVault is DestinationVault {
         InitParams memory initParams = abi.decode(params_, (InitParams));
 
         Errors.verifyNotZero(initParams.aerodromeGauge, "initParams.aerodromeGauge");
-        Errors.verifyNotZero(initParams.aerodromeRouter, "initParams.aerodromeRouter");
 
         super.initialize(baseAsset_, underlyer_, rewarder_, incentiveCalculator_, additionalTrackedTokens_, params_);
 
@@ -59,7 +60,6 @@ contract AerodromeDestinationVault is DestinationVault {
         }
 
         aerodromeGauge = initParams.aerodromeGauge;
-        aerodromeRouter = initParams.aerodromeRouter;
 
         IPool localPool = IPool(address(underlyer_));
         isStable = localPool.stable();
@@ -165,12 +165,13 @@ contract AerodromeDestinationVault is DestinationVault {
     function _validateCalculator(address incentiveCalculator) internal view override {
         address calcLp = IncentiveCalculatorBase(incentiveCalculator).lpToken();
         address calcPool = IncentiveCalculatorBase(incentiveCalculator).pool();
+        address poolAndLp = _underlying;
 
-        if (calcLp != _underlying) {
-            revert InvalidIncentiveCalculator(calcLp, _underlying, "lp");
+        if (calcLp != poolAndLp) {
+            revert InvalidIncentiveCalculator(calcLp, poolAndLp, "lp");
         }
-        if (calcPool != _underlying) {
-            revert InvalidIncentiveCalculator(calcPool, _underlying, "pool");
+        if (calcPool != poolAndLp) {
+            revert InvalidIncentiveCalculator(calcPool, poolAndLp, "pool");
         }
     }
 }

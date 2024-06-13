@@ -108,7 +108,8 @@ contract AerodromeDestinationVaultBaseTest is Test {
 
         _underlyer = IERC20(WSTETH_WETH_AERO_BASE);
 
-        AerodromeDestinationVaultWrapper dvTemplate = new AerodromeDestinationVaultWrapper(_systemRegistry);
+        AerodromeDestinationVaultWrapper dvTemplate =
+            new AerodromeDestinationVaultWrapper(_systemRegistry, AERODROME_SWAP_ROUTER_BASE);
         bytes32 dvType = keccak256(abi.encode("template"));
         bytes32[] memory dvTypes = new bytes32[](1);
         dvTypes[0] = dvType;
@@ -117,10 +118,8 @@ contract AerodromeDestinationVaultBaseTest is Test {
         dvAddresses[0] = address(dvTemplate);
         _destTempRegistry.register(dvTypes, dvAddresses);
 
-        AerodromeDestinationVault.InitParams memory initParams = AerodromeDestinationVault.InitParams({
-            aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE,
-            aerodromeRouter: AERODROME_SWAP_ROUTER_BASE
-        });
+        AerodromeDestinationVault.InitParams memory initParams =
+            AerodromeDestinationVault.InitParams({ aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE });
         bytes memory initParamBytes = abi.encode(initParams);
         _testIncentiveCalculator = new TestIncentiveCalculator();
         _testIncentiveCalculator.setLpToken(address(_underlyer));
@@ -223,6 +222,13 @@ contract AerodromeDVViewFunctions is AerodromeDestinationVaultBaseTest {
     }
 }
 
+contract Constructor is AerodromeDestinationVaultBaseTest {
+    function test_RevertIf_RouterZero() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "aerodromeRouter"));
+        new AerodromeDestinationVault(_systemRegistry, address(0));
+    }
+}
+
 contract Initialize is AerodromeDestinationVaultBaseTest {
     function test_StateSetDuringInit() public {
         assertEq(_dv.aerodromeGauge(), WSTETH_WETH_AERO_BASE_GAUGE);
@@ -233,10 +239,8 @@ contract Initialize is AerodromeDestinationVaultBaseTest {
     }
 
     function test_RevertIf_GaugeZero() public {
-        AerodromeDestinationVault.InitParams memory params = AerodromeDestinationVault.InitParams({
-            aerodromeGauge: address(0),
-            aerodromeRouter: AERODROME_SWAP_ROUTER_BASE
-        });
+        AerodromeDestinationVault.InitParams memory params =
+            AerodromeDestinationVault.InitParams({ aerodromeGauge: address(0) });
 
         _accessController.setupRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
 
@@ -252,31 +256,9 @@ contract Initialize is AerodromeDestinationVaultBaseTest {
         );
     }
 
-    function test_RevertIf_RouterZero() public {
-        AerodromeDestinationVault.InitParams memory params = AerodromeDestinationVault.InitParams({
-            aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE,
-            aerodromeRouter: address(0)
-        });
-
-        _accessController.setupRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "initParams.aerodromeRouter"));
-        _dvFactory.create(
-            "template",
-            address(_asset),
-            address(_underlyer),
-            address(_testIncentiveCalculator),
-            additionalTrackedTokens,
-            keccak256("salt"),
-            abi.encode(params)
-        );
-    }
-
     function test_RevertIf_LPOnCalc_AndUnderlying_DoNotMatch() public {
-        AerodromeDestinationVault.InitParams memory params = AerodromeDestinationVault.InitParams({
-            aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE,
-            aerodromeRouter: AERODROME_SWAP_ROUTER_BASE
-        });
+        AerodromeDestinationVault.InitParams memory params =
+            AerodromeDestinationVault.InitParams({ aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE });
 
         _accessController.setupRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
 
@@ -305,10 +287,8 @@ contract Initialize is AerodromeDestinationVaultBaseTest {
     }
 
     function test_RevertIf_PoolOnCalc_AndUnderlying_DoNotMatch() public {
-        AerodromeDestinationVault.InitParams memory params = AerodromeDestinationVault.InitParams({
-            aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE,
-            aerodromeRouter: AERODROME_SWAP_ROUTER_BASE
-        });
+        AerodromeDestinationVault.InitParams memory params =
+            AerodromeDestinationVault.InitParams({ aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE });
 
         _accessController.setupRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
 
@@ -337,10 +317,8 @@ contract Initialize is AerodromeDestinationVaultBaseTest {
     }
 
     function test_RevertIf_UnderlyerAndStakedDoNotMatch() public {
-        AerodromeDestinationVault.InitParams memory params = AerodromeDestinationVault.InitParams({
-            aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE,
-            aerodromeRouter: AERODROME_SWAP_ROUTER_BASE
-        });
+        AerodromeDestinationVault.InitParams memory params =
+            AerodromeDestinationVault.InitParams({ aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE });
 
         _accessController.setupRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
 
@@ -584,7 +562,10 @@ contract AerodromeWithdrawBaseAsset is AerodromeDestinationVaultBaseTest {
 /// @title Expose external interactions for direct testing.
 /// @dev '_collectRewards()' is exposed directly via `collecRewards()` in DestinationVault.sol
 contract AerodromeDestinationVaultWrapper is AerodromeDestinationVault {
-    constructor(ISystemRegistry _systemRegistry) AerodromeDestinationVault(_systemRegistry) { }
+    constructor(
+        ISystemRegistry _systemRegistry,
+        address aerodromeRouter
+    ) AerodromeDestinationVault(_systemRegistry, aerodromeRouter) { }
 
     function onDeposit(uint256 amount) public {
         _onDeposit(amount);

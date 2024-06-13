@@ -476,7 +476,7 @@ contract AerodromeCollectRewards is AerodromeDestinationVaultBaseTest {
 
     function test_collectRewards_Aerodrome() public {
         _accessController.setupRole(Roles.LIQUIDATOR_MANAGER, address(this));
-        uint256 aeroTokenBalanceBefore = rewardToken.balanceOf(address(_dv));
+        uint256 aeroTokenBalanceBefore = rewardToken.balanceOf(address(this));
 
         assertEq(aeroTokenBalanceBefore, 0);
         assertEq(_aeroGauge.earned(address(_dv)), 0);
@@ -489,7 +489,7 @@ contract AerodromeCollectRewards is AerodromeDestinationVaultBaseTest {
 
         (uint256[] memory amounts, address[] memory tokens) = _dv.collectRewards();
 
-        uint256 aeroTokenBalanceAfter = rewardToken.balanceOf(address(_dv));
+        uint256 aeroTokenBalanceAfter = rewardToken.balanceOf(address(this));
 
         assertEq(amounts[0], earnedAfterWarp);
         assertEq(tokens[0], address(rewardToken));

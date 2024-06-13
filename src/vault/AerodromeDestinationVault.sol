@@ -127,7 +127,7 @@ contract AerodromeDestinationVault is DestinationVault {
 
     /// @inheritdoc DestinationVault
     function _collectRewards() internal virtual override returns (uint256[] memory amounts, address[] memory tokens) {
-        (amounts, tokens) = AerodromeRewardsAdapter.claimRewards(aerodromeGauge, address(this));
+        (amounts, tokens) = AerodromeRewardsAdapter.claimRewards(aerodromeGauge, msg.sender);
     }
 
     /// @inheritdoc DestinationVault

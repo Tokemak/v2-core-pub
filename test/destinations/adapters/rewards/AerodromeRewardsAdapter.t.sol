@@ -29,7 +29,7 @@ contract AerodromeRewardsAdapterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "gauge"));
         AerodromeRewardsAdapter.claimRewards(address(0), address(this));
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "claimFor"));
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "sendTo"));
         AerodromeRewardsAdapter.claimRewards(address(this), address(0));
     }
 

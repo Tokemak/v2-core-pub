@@ -4,6 +4,7 @@
 pragma solidity 0.8.17;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IAerodromeGauge } from "src/interfaces/external/aerodrome/IAerodromeGauge.sol";
 
@@ -18,25 +19,27 @@ import { Errors } from "src/utils/Errors.sol";
  *      - _claimEmissions() is used to claim these rewards.
  */
 library AerodromeRewardsAdapter {
+    using SafeERC20 for IERC20;
+
     /**
      * @param gauge Address of the Aerodrome gauge to be claimed from
-     * @param claimFor The account to check & claim rewards for (should be a caller)
+     * @param sendTo Account to send rewards to
      */
     function claimRewards(
         address gauge,
-        address claimFor
+        address sendTo
     ) public returns (uint256[] memory amountsClaimed, address[] memory rewardTokens) {
         Errors.verifyNotZero(gauge, "gauge");
-        Errors.verifyNotZero(claimFor, "claimFor");
+        Errors.verifyNotZero(sendTo, "sendTo");
 
-        (amountsClaimed, rewardTokens) = _claimEmissions(gauge, claimFor);
+        (amountsClaimed, rewardTokens) = _claimEmissions(gauge, sendTo);
 
         RewardAdapter.emitRewardsClaimed(rewardTokens, amountsClaimed);
     }
 
     function _claimEmissions(
         address gaugeAddress,
-        address claimFor
+        address sendTo
     ) private returns (uint256[] memory amountsClaimed, address[] memory rewards) {
         IAerodromeGauge gauge = IAerodromeGauge(gaugeAddress);
 
@@ -49,11 +52,12 @@ library AerodromeRewardsAdapter {
         IERC20 rewardErc = IERC20(rewardToken);
 
         rewards[0] = address(rewardErc);
-        balancesBefore[0] = rewardErc.balanceOf(claimFor);
+        balancesBefore[0] = rewardErc.balanceOf(address(this));
 
-        gauge.getReward(claimFor);
+        gauge.getReward(address(this));
 
-        uint256 balanceAfter = rewardErc.balanceOf(claimFor);
+        uint256 balanceAfter = rewardErc.balanceOf(address(this));
         amountsClaimed[0] = balanceAfter - balancesBefore[0];
+        rewardErc.safeTransfer(sendTo, amountsClaimed[0]);
     }
 }

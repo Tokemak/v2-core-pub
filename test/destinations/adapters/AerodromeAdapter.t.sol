@@ -224,38 +224,6 @@ contract AerodromeAdapterTest is Test {
         actualAmounts = AerodromeAdapter.removeLiquidity(removeLiquidityParams);
     }
 
-    // function test_validate_RevertIfNoNonZeroAmount() public {
-    //     address[] memory tokens = new address[](2);
-
-    //     tokens[0] = DAI_BASE;
-    //     tokens[1] = USDC_BASE;
-
-    //     uint256[] memory amounts = new uint256[](2);
-    //     amounts[0] = 0;
-    //     amounts[0] = 0;
-
-    //     address router = AERODROME_SWAP_ROUTER_BASE;
-    //     uint256 maxLpBurnAmount = 100;
-    //     bool stable = true;
-    //     uint256 deadline = block.timestamp;
-    //     address pool = RANDOM;
-
-    //     AerodromeAdapter.AerodromeRemoveLiquidityParams memory removeLiquidityParams = AerodromeAdapter
-    //         .AerodromeRemoveLiquidityParams({
-    //         router: router,
-    //         tokens: tokens,
-    //         amounts: amounts,
-    //         pool: pool,
-    //         stable: stable,
-    //         maxLpBurnAmount: maxLpBurnAmount,
-    //         deadline: deadline
-    //     });
-
-    //     uint256[] memory actualAmounts = new uint256[](2);
-    //     vm.expectRevert(abi.encodeWithSelector(LibAdapter.NoNonZeroAmountProvided.selector));
-    //     actualAmounts = AerodromeAdapter.removeLiquidity(removeLiquidityParams);
-    // }
-
     function test_removeLiquidityStable() public {
         //Test with DAI , USDC
         address tokenA = DAI_BASE;

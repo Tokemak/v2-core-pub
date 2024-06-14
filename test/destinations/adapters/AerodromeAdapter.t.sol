@@ -72,7 +72,6 @@ contract AerodromeAdapterTest is Test {
 
         uint256 maxLpBurnAmount = 100;
         bool stable = true;
-        uint256 deadline = block.timestamp;
         address pool = RANDOM;
 
         AerodromeAdapter.AerodromeRemoveLiquidityParams memory removeLiquidityParams = AerodromeAdapter
@@ -82,8 +81,7 @@ contract AerodromeAdapterTest is Test {
             amounts: amounts,
             pool: pool,
             stable: stable,
-            maxLpBurnAmount: maxLpBurnAmount,
-            deadline: deadline
+            maxLpBurnAmount: maxLpBurnAmount
         });
 
         uint256[] memory actualAmounts = new uint256[](2);
@@ -104,7 +102,6 @@ contract AerodromeAdapterTest is Test {
 
         uint256 maxLpBurnAmount = 0;
         bool stable = true;
-        uint256 deadline = block.timestamp;
         address pool = RANDOM;
 
         AerodromeAdapter.AerodromeRemoveLiquidityParams memory removeLiquidityParams = AerodromeAdapter
@@ -114,8 +111,7 @@ contract AerodromeAdapterTest is Test {
             amounts: amounts,
             pool: pool,
             stable: stable,
-            maxLpBurnAmount: maxLpBurnAmount,
-            deadline: deadline
+            maxLpBurnAmount: maxLpBurnAmount
         });
 
         uint256[] memory actualAmounts = new uint256[](2);
@@ -135,7 +131,6 @@ contract AerodromeAdapterTest is Test {
         address router = AERODROME_SWAP_ROUTER_BASE;
         uint256 maxLpBurnAmount = 100;
         bool stable = true;
-        uint256 deadline = block.timestamp;
         address pool = RANDOM;
 
         AerodromeAdapter.AerodromeRemoveLiquidityParams memory removeLiquidityParams = AerodromeAdapter
@@ -145,8 +140,7 @@ contract AerodromeAdapterTest is Test {
             amounts: amounts,
             pool: pool,
             stable: stable,
-            maxLpBurnAmount: maxLpBurnAmount,
-            deadline: deadline
+            maxLpBurnAmount: maxLpBurnAmount
         });
 
         uint256[] memory actualAmounts = new uint256[](2);
@@ -162,38 +156,6 @@ contract AerodromeAdapterTest is Test {
         actualAmounts = AerodromeAdapter.removeLiquidity(removeLiquidityParams);
     }
 
-    function test_validate_RevertIfZeroDeadline() public {
-        address[] memory tokens = new address[](2);
-
-        tokens[0] = DAI_BASE;
-        tokens[1] = USDC_BASE;
-
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 1;
-        amounts[1] = 1;
-
-        address router = AERODROME_SWAP_ROUTER_BASE;
-        uint256 maxLpBurnAmount = 100;
-        bool stable = true;
-        uint256 deadline = 0;
-        address pool = RANDOM;
-
-        AerodromeAdapter.AerodromeRemoveLiquidityParams memory removeLiquidityParams = AerodromeAdapter
-            .AerodromeRemoveLiquidityParams({
-            router: router,
-            tokens: tokens,
-            amounts: amounts,
-            pool: pool,
-            stable: stable,
-            maxLpBurnAmount: maxLpBurnAmount,
-            deadline: deadline
-        });
-
-        uint256[] memory actualAmounts = new uint256[](2);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "deadline"));
-        actualAmounts = AerodromeAdapter.removeLiquidity(removeLiquidityParams);
-    }
-
     function test_validate_RevertIfIncorrectAmountsLength() public {
         address[] memory tokens = new address[](2);
 
@@ -205,7 +167,6 @@ contract AerodromeAdapterTest is Test {
         address router = AERODROME_SWAP_ROUTER_BASE;
         uint256 maxLpBurnAmount = 100;
         bool stable = true;
-        uint256 deadline = block.timestamp;
         address pool = RANDOM;
 
         AerodromeAdapter.AerodromeRemoveLiquidityParams memory removeLiquidityParams = AerodromeAdapter
@@ -215,8 +176,7 @@ contract AerodromeAdapterTest is Test {
             amounts: amounts,
             pool: pool,
             stable: stable,
-            maxLpBurnAmount: maxLpBurnAmount,
-            deadline: deadline
+            maxLpBurnAmount: maxLpBurnAmount
         });
 
         uint256[] memory actualAmounts = new uint256[](2);
@@ -254,7 +214,6 @@ contract AerodromeAdapterTest is Test {
         amounts[1] = 1;
         uint256 maxLpBurnAmount = liquidity;
         bool stable = true;
-        uint256 deadline = block.timestamp;
 
         AerodromeAdapter.AerodromeRemoveLiquidityParams memory removeLiquidityParams = AerodromeAdapter
             .AerodromeRemoveLiquidityParams({
@@ -263,8 +222,7 @@ contract AerodromeAdapterTest is Test {
             amounts: amounts,
             pool: pool,
             stable: stable,
-            maxLpBurnAmount: maxLpBurnAmount,
-            deadline: deadline
+            maxLpBurnAmount: maxLpBurnAmount
         });
 
         uint256[] memory actualAmounts = new uint256[](2);
@@ -308,7 +266,6 @@ contract AerodromeAdapterTest is Test {
         amounts[1] = 1;
         uint256 maxLpBurnAmount = liquidity;
         bool stable = false;
-        uint256 deadline = block.timestamp;
 
         AerodromeAdapter.AerodromeRemoveLiquidityParams memory removeLiquidityParams = AerodromeAdapter
             .AerodromeRemoveLiquidityParams({
@@ -317,8 +274,7 @@ contract AerodromeAdapterTest is Test {
             amounts: amounts,
             pool: pool,
             stable: stable,
-            maxLpBurnAmount: maxLpBurnAmount,
-            deadline: deadline
+            maxLpBurnAmount: maxLpBurnAmount
         });
 
         uint256[] memory actualAmounts = new uint256[](2);

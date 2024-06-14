@@ -24,6 +24,7 @@ contract AerodromeDestinationVault is DestinationVault {
         address aerodromeGauge;
     }
 
+    /// @notice Name of exhchange vault interacts with
     string private constant EXCHANGE_NAME = "aerodrome";
 
     /// @notice Address of the gauge that this contract interacts with
@@ -38,6 +39,7 @@ contract AerodromeDestinationVault is DestinationVault {
     constructor(ISystemRegistry _systemRegistry, address _aerodromeRouter) DestinationVault(_systemRegistry) {
         Errors.verifyNotZero(_aerodromeRouter, "aerodromeRouter");
 
+        // slither-disable-next-line missing-zero-check
         aerodromeRouter = _aerodromeRouter;
     }
 
@@ -55,6 +57,7 @@ contract AerodromeDestinationVault is DestinationVault {
 
         super.initialize(baseAsset_, underlyer_, rewarder_, incentiveCalculator_, additionalTrackedTokens_, params_);
 
+        // Underlyer and staking token will always be the same
         if (address(underlyer_) != IAerodromeGauge(initParams.aerodromeGauge).stakingToken()) {
             revert Errors.InvalidConfiguration();
         }
@@ -106,7 +109,7 @@ contract AerodromeDestinationVault is DestinationVault {
         return false;
     }
 
-    /// @notice Returns two pools in Aerodrome Pool. Tokens returns in order lower address value -> higher
+    /// @notice Returns two tokens in Aerodrome Pool. Tokens returns in order lower address value -> higher
     /// @inheritdoc IDestinationVault
     function underlyingTokens() external view override returns (address[] memory _underlyingTokens) {
         _underlyingTokens = new address[](2);
@@ -151,8 +154,7 @@ contract AerodromeDestinationVault is DestinationVault {
             amounts: amounts,
             pool: _underlying,
             stable: isStable,
-            maxLpBurnAmount: underlyerAmount,
-            deadline: block.timestamp
+            maxLpBurnAmount: underlyerAmount
         });
         amounts = AerodromeAdapter.removeLiquidity(params);
     }

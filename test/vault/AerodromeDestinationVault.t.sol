@@ -262,7 +262,6 @@ contract Initialize is AerodromeDestinationVaultBaseTest {
 
         _accessController.setupRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
 
-        // Mock incentive calculator calls to avoid failing in base DV init.
         address fakeLP = makeAddr("NOT_LP");
         vm.mockCall(
             address(_testIncentiveCalculator),
@@ -292,7 +291,6 @@ contract Initialize is AerodromeDestinationVaultBaseTest {
 
         _accessController.setupRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
 
-        // Mock incentive calculator calls to avoid failing in base DV init.
         address fakePool = makeAddr("NOT_POOL");
         vm.mockCall(
             address(_testIncentiveCalculator),
@@ -380,7 +378,6 @@ contract AerodromeOnDeposit is AerodromeDestinationVaultBaseTest {
 
         // DV mints 1:1
         assertEq(dvTokenBalanceAfter - dvTokenBalanceBefore, 1e18);
-
         assertEq(gaugeUnderlyerBalanceAfter - gaugeUnderlyerBalanceBefore, 1e18);
 
         // Gauge mints 1:1

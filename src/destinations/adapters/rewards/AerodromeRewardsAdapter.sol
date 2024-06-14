@@ -42,6 +42,7 @@ library AerodromeRewardsAdapter {
         address sendTo
     ) private returns (uint256[] memory amountsClaimed, address[] memory rewards) {
         IAerodromeGauge gauge = IAerodromeGauge(gaugeAddress);
+        address account = address(this);
 
         uint256[] memory balancesBefore = new uint256[](1);
         amountsClaimed = new uint256[](1);
@@ -52,11 +53,11 @@ library AerodromeRewardsAdapter {
         IERC20 rewardErc = IERC20(rewardToken);
 
         rewards[0] = address(rewardErc);
-        balancesBefore[0] = rewardErc.balanceOf(address(this));
+        balancesBefore[0] = rewardErc.balanceOf(account);
 
-        gauge.getReward(address(this));
+        gauge.getReward(account);
 
-        uint256 balanceAfter = rewardErc.balanceOf(address(this));
+        uint256 balanceAfter = rewardErc.balanceOf(account);
         amountsClaimed[0] = balanceAfter - balancesBefore[0];
         rewardErc.safeTransfer(sendTo, amountsClaimed[0]);
     }

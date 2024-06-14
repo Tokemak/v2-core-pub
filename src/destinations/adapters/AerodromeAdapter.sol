@@ -29,7 +29,6 @@ library AerodromeAdapter {
      * @param pool Aerodrome pool address
      * @param stable A flag that indicates pool type
      * @param maxLpBurnAmount max amount of LP tokens to burn for withdrawal
-     * @param deadline Execution deadline in timestamp format
      */
     struct AerodromeRemoveLiquidityParams {
         address router;
@@ -38,7 +37,6 @@ library AerodromeAdapter {
         address pool;
         bool stable;
         uint256 maxLpBurnAmount;
-        uint256 deadline;
     }
 
     /**
@@ -54,7 +52,6 @@ library AerodromeAdapter {
         Errors.verifyNotZero(params.maxLpBurnAmount, "maxLpBurnAmount");
         Errors.verifyNotZero(params.tokens[0], "tokens[0]");
         Errors.verifyNotZero(params.tokens[1], "tokens[1]");
-        Errors.verifyNotZero(params.deadline, "deadline");
         Errors.verifyNotZero(params.pool, "pool");
 
         if (params.tokens.length != 2) revert Errors.InvalidParam("tokens.length");
@@ -96,7 +93,7 @@ library AerodromeAdapter {
             _params.amounts[0],
             _params.amounts[1],
             address(this),
-            _params.deadline
+            block.timestamp
         );
 
         uint256 lpTokensAfter = IERC20(_params.pool).balanceOf(address(this));

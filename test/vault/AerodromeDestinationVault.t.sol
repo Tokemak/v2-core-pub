@@ -11,7 +11,8 @@ import {
     AERODROME_SWAP_ROUTER_BASE,
     WSTETH_WETH_AERO_BASE,
     WSTETH_WETH_AERO_BASE_GAUGE,
-    AERO_BASE
+    AERO_BASE,
+    AERODROME_VOTER_BASE
 } from "test/utils/Addresses.sol";
 import { ISystemRegistry, SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController, IAccessController } from "src/security/AccessController.sol";
@@ -30,6 +31,7 @@ import { IRouter } from "src/interfaces/external/aerodrome/IRouter.sol";
 import { IPool } from "src/interfaces/external/aerodrome/IPool.sol";
 import { IAerodromeGauge } from "src/interfaces/external/aerodrome/IAerodromeGauge.sol";
 import { Errors } from "src/utils/Errors.sol";
+import { IVoter } from "src/interfaces/external/velodrome/IVoter.sol";
 
 // solhint-disable func-name-mixedcase,max-states-count,const-name-snakecase
 
@@ -118,8 +120,10 @@ contract AerodromeDestinationVaultBaseTest is Test {
         dvAddresses[0] = address(dvTemplate);
         _destTempRegistry.register(dvTypes, dvAddresses);
 
-        AerodromeDestinationVault.InitParams memory initParams =
-            AerodromeDestinationVault.InitParams({ aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE });
+        AerodromeDestinationVault.InitParams memory initParams = AerodromeDestinationVault.InitParams({
+            aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE,
+            aerodromeVoter: AERODROME_VOTER_BASE
+        });
         bytes memory initParamBytes = abi.encode(initParams);
         _testIncentiveCalculator = new TestIncentiveCalculator();
         _testIncentiveCalculator.setLpToken(address(_underlyer));
@@ -240,11 +244,82 @@ contract Initialize is AerodromeDestinationVaultBaseTest {
 
     function test_RevertIf_GaugeZero() public {
         AerodromeDestinationVault.InitParams memory params =
-            AerodromeDestinationVault.InitParams({ aerodromeGauge: address(0) });
+            AerodromeDestinationVault.InitParams({ aerodromeGauge: address(0), aerodromeVoter: AERODROME_VOTER_BASE });
 
         _accessController.setupRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "initParams.aerodromeGauge"));
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "localGauge"));
+        _dvFactory.create(
+            "template",
+            address(_asset),
+            address(_underlyer),
+            address(_testIncentiveCalculator),
+            additionalTrackedTokens,
+            keccak256("salt"),
+            abi.encode(params)
+        );
+    }
+
+    function test_RevertIf_VoterZero() public {
+        AerodromeDestinationVault.InitParams memory params =
+            AerodromeDestinationVault.InitParams({ aerodromeGauge: address(_aeroGauge), aerodromeVoter: address(0) });
+
+        _accessController.setupRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "initParams.aerodromeVoter"));
+        _dvFactory.create(
+            "template",
+            address(_asset),
+            address(_underlyer),
+            address(_testIncentiveCalculator),
+            additionalTrackedTokens,
+            keccak256("salt"),
+            abi.encode(params)
+        );
+    }
+
+    function test_RevertIf_VoterGauge_AndLocalGuage_DoNotMatch() public {
+        AerodromeDestinationVault.InitParams memory params = AerodromeDestinationVault.InitParams({
+            aerodromeGauge: address(_aeroGauge),
+            aerodromeVoter: AERODROME_VOTER_BASE
+        });
+
+        _accessController.setupRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
+
+        address fakeGauge = makeAddr("FAKE_GAUGE");
+        vm.mockCall(
+            AERODROME_VOTER_BASE,
+            abi.encodeWithSelector(IVoter.gauges.selector, address(_aeroPool)),
+            abi.encode(fakeGauge)
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "localGauge"));
+        _dvFactory.create(
+            "template",
+            address(_asset),
+            address(_underlyer),
+            address(_testIncentiveCalculator),
+            additionalTrackedTokens,
+            keccak256("salt"),
+            abi.encode(params)
+        );
+    }
+
+    function test_RevertIf_GaugeNotAlive() public {
+        AerodromeDestinationVault.InitParams memory params = AerodromeDestinationVault.InitParams({
+            aerodromeGauge: address(_aeroGauge),
+            aerodromeVoter: AERODROME_VOTER_BASE
+        });
+
+        _accessController.setupRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
+
+        vm.mockCall(
+            AERODROME_VOTER_BASE,
+            abi.encodeWithSelector(IVoter.isAlive.selector, address(_aeroGauge)),
+            abi.encode(false)
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(IVoter.GaugeNotAlive.selector, address(_aeroGauge)));
         _dvFactory.create(
             "template",
             address(_asset),
@@ -257,8 +332,10 @@ contract Initialize is AerodromeDestinationVaultBaseTest {
     }
 
     function test_RevertIf_LPOnCalc_AndUnderlying_DoNotMatch() public {
-        AerodromeDestinationVault.InitParams memory params =
-            AerodromeDestinationVault.InitParams({ aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE });
+        AerodromeDestinationVault.InitParams memory params = AerodromeDestinationVault.InitParams({
+            aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE,
+            aerodromeVoter: AERODROME_VOTER_BASE
+        });
 
         _accessController.setupRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
 
@@ -286,8 +363,10 @@ contract Initialize is AerodromeDestinationVaultBaseTest {
     }
 
     function test_RevertIf_PoolOnCalc_AndUnderlying_DoNotMatch() public {
-        AerodromeDestinationVault.InitParams memory params =
-            AerodromeDestinationVault.InitParams({ aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE });
+        AerodromeDestinationVault.InitParams memory params = AerodromeDestinationVault.InitParams({
+            aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE,
+            aerodromeVoter: AERODROME_VOTER_BASE
+        });
 
         _accessController.setupRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
 
@@ -315,28 +394,25 @@ contract Initialize is AerodromeDestinationVaultBaseTest {
     }
 
     function test_RevertIf_UnderlyerAndStakedDoNotMatch() public {
-        AerodromeDestinationVault.InitParams memory params =
-            AerodromeDestinationVault.InitParams({ aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE });
+        AerodromeDestinationVault.InitParams memory params = AerodromeDestinationVault.InitParams({
+            aerodromeGauge: WSTETH_WETH_AERO_BASE_GAUGE,
+            aerodromeVoter: AERODROME_VOTER_BASE
+        });
 
         _accessController.setupRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
 
-        // Mock incentive calculator calls to avoid failing in base DV init.
+        address fakeStakingToken = makeAddr("FAKE_STAKING");
         vm.mockCall(
-            address(_testIncentiveCalculator),
-            abi.encodeWithSelector(TestIncentiveCalculator.lpToken.selector),
-            abi.encode(address(_asset))
-        );
-        vm.mockCall(
-            address(_testIncentiveCalculator),
-            abi.encodeWithSelector(TestIncentiveCalculator.pool.selector),
-            abi.encode(address(_asset))
+            address(_aeroGauge),
+            abi.encodeWithSelector(IAerodromeGauge.stakingToken.selector),
+            abi.encode(fakeStakingToken)
         );
 
         vm.expectRevert(Errors.InvalidConfiguration.selector);
         _dvFactory.create(
             "template",
             address(_asset),
-            address(_asset),
+            address(_underlyer),
             address(_testIncentiveCalculator),
             additionalTrackedTokens,
             keccak256("salt"),

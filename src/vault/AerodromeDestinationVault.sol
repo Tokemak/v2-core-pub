@@ -13,6 +13,7 @@ import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCal
 import { AerodromeRewardsAdapter } from "src/destinations/adapters/rewards/AerodromeRewardsAdapter.sol";
 import { AerodromeStakingAdapter } from "src/destinations/adapters/staking/AerodromeStakingAdapter.sol";
 import { AerodromeAdapter } from "src/destinations/adapters/AerodromeAdapter.sol";
+import { IVoter } from "src/interfaces/external/velodrome/IVoter.sol";
 
 contract AerodromeDestinationVault is DestinationVault {
     /// @notice Address of the aerodrome router
@@ -22,6 +23,8 @@ contract AerodromeDestinationVault is DestinationVault {
     struct InitParams {
         /// @notice Gauge that this vault interacts with
         address aerodromeGauge;
+        ///@notice Aerodrome voter. Used to check gauge status
+        address aerodromeVoter;
     }
 
     /// @notice Name of exhchange vault interacts with
@@ -53,16 +56,22 @@ contract AerodromeDestinationVault is DestinationVault {
     ) public virtual override {
         InitParams memory initParams = abi.decode(params_, (InitParams));
 
-        Errors.verifyNotZero(initParams.aerodromeGauge, "initParams.aerodromeGauge");
+        address localGauge = initParams.aerodromeGauge;
+
+        Errors.verifyNotZero(localGauge, "localGauge");
+        Errors.verifyNotZero(initParams.aerodromeVoter, "initParams.aerodromeVoter");
 
         super.initialize(baseAsset_, underlyer_, rewarder_, incentiveCalculator_, additionalTrackedTokens_, params_);
 
-        // Underlyer and staking token will always be the same
-        if (address(underlyer_) != IAerodromeGauge(initParams.aerodromeGauge).stakingToken()) {
+        // Gauge, pool checks
+        IVoter localVoter = IVoter(initParams.aerodromeVoter);
+        if (localVoter.gauges(address(underlyer_)) != localGauge) revert Errors.InvalidParam("localGauge");
+        if (!localVoter.isAlive(localGauge)) revert IVoter.GaugeNotAlive(localGauge);
+        if (address(underlyer_) != IAerodromeGauge(localGauge).stakingToken()) {
             revert Errors.InvalidConfiguration();
         }
 
-        aerodromeGauge = initParams.aerodromeGauge;
+        aerodromeGauge = localGauge;
 
         IPool localPool = IPool(address(underlyer_));
         isStable = localPool.stable();

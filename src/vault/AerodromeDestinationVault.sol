@@ -15,6 +15,7 @@ import { AerodromeStakingAdapter } from "src/destinations/adapters/staking/Aerod
 import { AerodromeAdapter } from "src/destinations/adapters/AerodromeAdapter.sol";
 import { IVoter } from "src/interfaces/external/velodrome/IVoter.sol";
 
+/// @title Used to interact with Aerodrome pools and exchanges
 contract AerodromeDestinationVault is DestinationVault {
     /// @notice Address of the aerodrome router
     address public immutable aerodromeRouter;
@@ -27,7 +28,7 @@ contract AerodromeDestinationVault is DestinationVault {
         address aerodromeVoter;
     }
 
-    /// @notice Name of exhchange vault interacts with
+    /// @notice Name of exchange vault interacts with
     string private constant EXCHANGE_NAME = "aerodrome";
 
     /// @notice Address of the gauge that this contract interacts with

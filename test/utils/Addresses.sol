@@ -62,6 +62,7 @@ address constant CCIP_ROUTER_MAINNET = 0x80226fc0Ee2b096224EeAc085Bb9a8cba1146f7
 address constant SWISE_MAINNET = 0x48C3399719B582dD63eB5AADf12A40B4C3f52FA2;
 address constant RPL_MAINNET = 0xD33526068D116cE69F19A9ee46F0bd304F21A51f;
 address constant RENZO_RESTAKE_MANAGER_MAINNET = 0x74a09653A083691711cF8215a6ab074BB4e99ef5;
+address constant PUFFER_VAULT_MAINNET = 0xD9A442856C234a39a81a089C06451EBAa4306a72;
 
 // This is a Balancer's GnosisSafe proxy – found it through
 // Authorizer(0xA331D84eC860Bf466b4CdCcFb4aC09a1B43F3aE6)#hasRole by the needed actionId found from

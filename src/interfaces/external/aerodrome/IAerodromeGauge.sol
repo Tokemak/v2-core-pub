@@ -27,9 +27,21 @@ interface IAerodromeGauge {
     /// @notice Get the amount of stakingToken deposited by an account
     function balanceOf(address) external view returns (uint256);
 
-    /// @notice Amount of stakingToken deposited for rewards
-    function totalSupply() external view returns (uint256);
-
     /// @notice Returns accrued balance to date from last claim / first deposit.
     function earned(address _account) external view returns (uint256 _earned);
+
+    /// @notice Returns if gauge is linked to a legitimate Protocol pool
+    function isPool() external view returns (bool);
+
+    /// @notice Current reward rate of rewardToken to distribute per second
+    function rewardRate() external view returns (uint256);
+
+    /// @notice Timestamp end of current rewards period
+    function periodFinish() external view returns (uint256);
+
+    /// @notice Most recent stored value of rewardPerToken
+    function rewardPerToken() external view returns (uint256);
+
+    /// @notice Get the total amount of stakingToken staked for rewards
+    function totalSupply() external view returns (uint256);
 }

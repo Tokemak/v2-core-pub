@@ -113,4 +113,16 @@ interface IAutopilotRouter is IAutopilotRouterBase {
         bytes32 r,
         bytes32 s
     ) external returns (uint256);
+
+    /**
+     * @notice swaps Exact token balance in the contract
+     * @param swapper Address of the swapper to use
+     * @param swapParams  Parameters for the swap
+     * @return amountReceived Swap output amount
+     * @dev sets the sellAmount to the balance of the contract
+     */
+    function swapTokenBalance(
+        address swapper,
+        SwapParams memory swapParams
+    ) external returns (uint256 amountReceived);
 }

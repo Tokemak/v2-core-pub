@@ -64,6 +64,23 @@ contract AutopilotRouter is IAutopilotRouter, AutopilotRouterBase, ReentrancyGua
     }
 
     /// @inheritdoc IAutopilotRouter
+    function swapTokenBalance(
+        address swapper,
+        SwapParams memory swapParams
+    ) external nonReentrant returns (uint256 amountReceived) {
+        systemRegistry.asyncSwapperRegistry().verifyIsRegistered(swapper);
+
+        IERC20 sellToken = IERC20(swapParams.sellTokenAddress);
+        swapParams.sellAmount = sellToken.balanceOf(address(this));
+
+        bytes memory data = swapper.functionDelegateCall(
+            abi.encodeWithSignature("swap((address,uint256,address,uint256,bytes,bytes))", swapParams), "SwapFailed"
+        );
+
+        amountReceived = abi.decode(data, (uint256));
+    }
+
+    /// @inheritdoc IAutopilotRouter
     function depositBalance(
         IAutopool vault,
         address to,

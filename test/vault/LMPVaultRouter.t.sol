@@ -37,6 +37,7 @@ import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { ERC2612 } from "test/utils/ERC2612.sol";
 import { AutopoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutopoolETHStrategyTestHelpers.sol";
 import { AutopoolETHStrategy } from "src/strategy/AutopoolETHStrategy.sol";
+import { TestERC20 } from "test/mocks/TestERC20.sol";
 
 import { Vm } from "forge-std/Vm.sol";
 
@@ -69,6 +70,17 @@ contract SwapperMock is BaseAsyncSwapper, BaseTest {
         (bool success,) = payable(WETH9_ADDRESS).call{ value: params.buyAmount }("");
         if (!success) revert ETHSwapFailed();
         IERC20(WETH9_ADDRESS).transfer(msg.sender, params.buyAmount);
+        return params.buyAmount;
+    }
+}
+
+/// @dev Custom mocked swapper for testing to represent a 1:1 swap
+contract TestTokenSwapperMock is BaseAsyncSwapper, BaseTest {
+    constructor(address _aggregator) BaseAsyncSwapper(_aggregator) { }
+
+    function swap(SwapParams memory params) public override returns (uint256 buyTokenAmountReceived) {
+        // Mock 1:1 swap
+        TestERC20(params.buyTokenAddress).mint(address(this), params.sellAmount);
         return params.buyAmount;
     }
 }
@@ -588,6 +600,53 @@ contract AutopilotRouterTest is BaseTest {
         uint256 wethBalanceAfter = IERC20(WETH9_ADDRESS).balanceOf(address(this));
 
         assertGt(wethBalanceAfter, wethBalanceBefore);
+    }
+
+    function test_swapTokenBalance_on_withdraw() public {
+        AsyncSwapperRegistry asyncSwapperRegistry = new AsyncSwapperRegistry(systemRegistry);
+        TestERC20 testToken = new TestERC20("TestToken", "TKK");
+        IAsyncSwapper swapperMock = new TestTokenSwapperMock(address(123));
+        systemRegistry.setAsyncSwapperRegistry(address(asyncSwapperRegistry));
+
+        accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(this));
+        asyncSwapperRegistry.register(address(swapperMock));
+        uint256 amount = depositAmount;
+
+        // deposit first
+        baseAsset.approve(address(autoPoolRouter), amount);
+        _deposit(autoPool, amount);
+
+        SwapParams memory swapParams = SwapParams({
+            sellTokenAddress: address(baseAsset),
+            sellAmount: amount,
+            buyTokenAddress: address(testToken),
+            buyAmount: amount,
+            data: "", // no real payload since the swap is mocked
+            extraData: ""
+        });
+
+        uint256 testTokenBalanceBefore = testToken.balanceOf(address(this));
+
+        uint256 extraAmountDealt = 2e18;
+
+        // simulate extra base asset received in router during withdraw
+        deal(address(baseAsset), address(autoPoolRouter), extraAmountDealt);
+
+        bytes[] memory calls = new bytes[](3);
+
+        autoPool.approve(address(autoPoolRouter), type(uint256).max);
+        calls[0] =
+            abi.encodeCall(autoPoolRouter.withdraw, (autoPool, address(autoPoolRouter), amount, type(uint256).max));
+        calls[1] = abi.encodeCall(autoPoolRouter.swapTokenBalance, (address(swapperMock), swapParams));
+        calls[2] = abi.encodeCall(autoPoolRouter.sweepToken, (testToken, 1, address(this)));
+
+        autoPoolRouter.multicall(calls);
+
+        uint256 testTokenBalanceAfter = testToken.balanceOf(address(this));
+
+        uint256 testTokensReceived = testTokenBalanceAfter - testTokenBalanceBefore;
+
+        assertEq(testTokensReceived, amount + extraAmountDealt);
     }
 
     function test_redeem() public {

@@ -154,8 +154,6 @@ contract MaverickDexCalculatorTest is Test {
     }
 
     function mockLSTData(address lstCalc, uint256 baseApr) internal {
-        uint256[] memory slashingCosts;
-        uint256[] memory slashingTimestamps;
         uint24[10] memory discountHistory;
         uint40[5] memory discountTimestampByPercent;
         ILSTStats.LSTStatsData memory res = ILSTStats.LSTStatsData({
@@ -163,9 +161,7 @@ contract MaverickDexCalculatorTest is Test {
             baseApr: baseApr,
             discount: 0,
             discountHistory: discountHistory,
-            discountTimestampByPercent: discountTimestampByPercent,
-            slashingCosts: slashingCosts,
-            slashingTimestamps: slashingTimestamps
+            discountTimestampByPercent: discountTimestampByPercent
         });
         vm.mockCall(lstCalc, abi.encodeWithSelector(ILSTStats.current.selector), abi.encode(res));
     }

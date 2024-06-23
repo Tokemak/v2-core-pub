@@ -20,9 +20,6 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
     /// @notice time in seconds for the initialization period
     uint256 public constant APR_FILTER_INIT_INTERVAL_IN_SEC = 9 * 24 * 60 * 60; // 9 days
 
-    /// @notice time in seconds between slashing snapshots
-    uint256 public constant SLASHING_SNAPSHOT_INTERVAL_IN_SEC = 24 * 60 * 60; // 1 day
-
     /// @notice time in seconds between discount snapshots
     uint256 public constant DISCOUNT_SNAPSHOT_INTERVAL_IN_SEC = 24 * 60 * 60; // 1 day
 
@@ -41,20 +38,8 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
     /// @notice timestamp of the last discount snapshot
     uint256 public lastDiscountSnapshotTimestamp;
 
-    /// @notice ethPerToken at the last snapshot for slashing events
-    uint256 public lastSlashingEthPerToken;
-
-    /// @notice timestamp of the last snapshot for base apr
-    uint256 public lastSlashingSnapshotTimestamp;
-
     /// @notice filtered base apr
     uint256 public baseApr;
-
-    /// @notice list of slashing costs (slashing / value at the time)
-    uint256[] public slashingCosts;
-
-    /// @notice list of timestamps associated with slashing events
-    uint256[] public slashingTimestamps;
 
     /// @notice the last 10 daily discount/premium values for the token
     uint24[10] public discountHistory;
@@ -89,13 +74,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
         uint256 currentBaseApr
     );
 
-    event SlashingSnapshotTaken(
-        uint256 priorEthPerToken, uint256 priorTimestamp, uint256 currentEthPerToken, uint256 currentTimestamp
-    );
-
     event DiscountSnapshotTaken(uint256 priorTimestamp, uint24 discount, uint256 currentTimestamp);
-
-    event SlashingEventRecorded(uint256 slashingCost, uint256 slashingTimestamp);
 
     event DestinationMessageSendSet(bool destinationMessageSend);
 
@@ -111,8 +90,6 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
         lastBaseAprEthPerToken = currentEthPerToken;
         lastBaseAprSnapshotTimestamp = block.timestamp;
         baseAprFilterInitialized = false;
-        lastSlashingEthPerToken = currentEthPerToken;
-        lastSlashingSnapshotTimestamp = block.timestamp;
 
         // slither-disable-next-line reentrancy-benign
         updateDiscountHistory(currentEthPerToken);
@@ -180,33 +157,12 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
             updateDiscountHistory(currentEthPerToken);
             updateDiscountTimestampByPercent();
         }
-
-        if (_hasSlashingOccurred(currentEthPerToken)) {
-            uint256 cost = Stats.calculateUnannualizedNegativeChange(lastSlashingEthPerToken, currentEthPerToken);
-            slashingCosts.push(cost);
-            slashingTimestamps.push(block.timestamp);
-
-            emit SlashingEventRecorded(cost, block.timestamp);
-            emit SlashingSnapshotTaken(
-                lastSlashingEthPerToken, lastSlashingSnapshotTimestamp, currentEthPerToken, block.timestamp
-            );
-
-            lastSlashingEthPerToken = currentEthPerToken;
-            lastSlashingSnapshotTimestamp = block.timestamp;
-        } else if (_timeForSlashingSnapshot()) {
-            emit SlashingSnapshotTaken(
-                lastSlashingEthPerToken, lastSlashingSnapshotTimestamp, currentEthPerToken, block.timestamp
-            );
-            lastSlashingEthPerToken = currentEthPerToken;
-            lastSlashingSnapshotTimestamp = block.timestamp;
-        }
     }
 
     /// @inheritdoc IStatsCalculator
     function shouldSnapshot() public view virtual override returns (bool) {
         // slither-disable-start timestamp
-        return _timeForAprSnapshot() || _timeForDiscountSnapshot() || _hasSlashingOccurred(calculateEthPerToken())
-            || _timeForSlashingSnapshot();
+        return _timeForAprSnapshot() || _timeForDiscountSnapshot();
         // slither-disable-end timestamp
     }
 
@@ -225,37 +181,18 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
         return block.timestamp >= lastDiscountSnapshotTimestamp + DISCOUNT_SNAPSHOT_INTERVAL_IN_SEC;
     }
 
-    function _timeForSlashingSnapshot() internal view returns (bool) {
-        // slither-disable-next-line timestamp
-        return block.timestamp >= lastSlashingSnapshotTimestamp + SLASHING_SNAPSHOT_INTERVAL_IN_SEC;
-    }
-
-    function _hasSlashingOccurred(uint256 currentEthPerToken) internal view returns (bool) {
-        return currentEthPerToken < lastSlashingEthPerToken;
-    }
-
     /// @inheritdoc ILSTStats
     function current() external returns (LSTStatsData memory) {
-        uint256 lastSnapshotTimestamp;
-
         // return the most recent snapshot timestamp
-        // the timestamp is used by the Autopool to ensure that snapshots are occurring
-        // so it is indifferent to which snapshot has occurred
         // slither-disable-next-line timestamp
-        if (lastBaseAprSnapshotTimestamp < lastSlashingSnapshotTimestamp) {
-            lastSnapshotTimestamp = lastSlashingSnapshotTimestamp;
-        } else {
-            lastSnapshotTimestamp = lastBaseAprSnapshotTimestamp;
-        }
+        uint256 lastSnapshotTimestamp = lastBaseAprSnapshotTimestamp;
 
         return LSTStatsData({
             lastSnapshotTimestamp: lastSnapshotTimestamp,
             baseApr: baseApr,
             discount: calculateDiscount(calculateEthPerToken()),
             discountHistory: discountHistory,
-            discountTimestampByPercent: discountTimestampByPercent,
-            slashingCosts: slashingCosts,
-            slashingTimestamps: slashingTimestamps
+            discountTimestampByPercent: discountTimestampByPercent
         });
     }
 

@@ -82,12 +82,6 @@ contract LSTCalculatorBaseTest is Test {
         uint256 currentBaseApr
     );
 
-    event SlashingSnapshotTaken(
-        uint256 priorEthPerToken, uint256 priorTimestamp, uint256 currentEthPerToken, uint256 currentTimestamp
-    );
-
-    event SlashingEventRecorded(uint256 slashingCost, uint256 slashingTimestamp);
-
     event DestinationMessageSendSet(bool destinationMessageSend);
 
     // From MessageProxy
@@ -120,8 +114,6 @@ contract LSTCalculatorBaseTest is Test {
 
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), START_TIMESTAMP);
         assertEq(testCalculator.lastBaseAprEthPerToken(), startingEthPerShare);
-        assertEq(testCalculator.lastSlashingSnapshotTimestamp(), START_TIMESTAMP);
-        assertEq(testCalculator.lastSlashingEthPerToken(), startingEthPerShare);
 
         uint256 endingEthPerShare = 1_126_897_087_511_522_171;
         uint256 endingTimestamp = START_TIMESTAMP + testCalculator.APR_FILTER_INIT_INTERVAL_IN_SEC();
@@ -144,16 +136,12 @@ contract LSTCalculatorBaseTest is Test {
 
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), endingTimestamp);
         assertEq(testCalculator.lastBaseAprEthPerToken(), endingEthPerShare);
-        assertEq(testCalculator.lastSlashingSnapshotTimestamp(), endingTimestamp);
-        assertEq(testCalculator.lastSlashingEthPerToken(), endingEthPerShare);
 
         mockCalculateEthPerToken(1e18);
         mockTokenPrice(1e18);
 
         stats = testCalculator.current();
         assertEq(stats.baseApr, expectedBaseApr);
-        assertEq(stats.slashingCosts.length, 0);
-        assertEq(stats.slashingTimestamps.length, 0);
         assertEq(stats.discount, 0);
 
         // APR Increase
@@ -162,8 +150,6 @@ contract LSTCalculatorBaseTest is Test {
         uint256 postInitTimestamp = START_TIMESTAMP + testCalculator.APR_FILTER_INIT_INTERVAL_IN_SEC();
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), postInitTimestamp);
         assertEq(testCalculator.lastBaseAprEthPerToken(), startingEthPerShare);
-        assertEq(testCalculator.lastSlashingSnapshotTimestamp(), postInitTimestamp);
-        assertEq(testCalculator.lastSlashingEthPerToken(), startingEthPerShare);
 
         vm.warp(END_TIMESTAMP);
         endingEthPerShare = 1_127_097_087_511_522_171;
@@ -193,22 +179,18 @@ contract LSTCalculatorBaseTest is Test {
 
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), END_TIMESTAMP);
         assertEq(testCalculator.lastBaseAprEthPerToken(), endingEthPerShare);
-        assertEq(testCalculator.lastSlashingSnapshotTimestamp(), END_TIMESTAMP);
-        assertEq(testCalculator.lastSlashingEthPerToken(), endingEthPerShare);
 
         mockCalculateEthPerToken(1e18);
         mockTokenPrice(1e18);
 
         stats = testCalculator.current();
         assertEq(stats.baseApr, expectedBaseApr);
-        assertEq(stats.slashingCosts.length, 0);
-        assertEq(stats.slashingTimestamps.length, 0);
         assertEq(stats.discount, 0);
     }
 
     function testAprInitDecreaseSnapshot() public {
         // Test initializes the baseApr filter and processes the next snapshot
-        // where eth backing decreases. Slashing event list should be updated
+        // where eth backing decreases.
         uint256 startingEthPerShare = 1_126_467_900_855_209_627;
         mockCalculateEthPerToken(startingEthPerShare);
         mockIsRebasing(false);
@@ -216,8 +198,6 @@ contract LSTCalculatorBaseTest is Test {
 
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), START_TIMESTAMP);
         assertEq(testCalculator.lastBaseAprEthPerToken(), startingEthPerShare);
-        assertEq(testCalculator.lastSlashingSnapshotTimestamp(), START_TIMESTAMP);
-        assertEq(testCalculator.lastSlashingEthPerToken(), startingEthPerShare);
 
         uint256 endingEthPerShare = 1_126_897_087_511_522_171;
         uint256 endingTimestamp = START_TIMESTAMP + testCalculator.APR_FILTER_INIT_INTERVAL_IN_SEC();
@@ -240,16 +220,12 @@ contract LSTCalculatorBaseTest is Test {
 
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), endingTimestamp);
         assertEq(testCalculator.lastBaseAprEthPerToken(), endingEthPerShare);
-        assertEq(testCalculator.lastSlashingSnapshotTimestamp(), endingTimestamp);
-        assertEq(testCalculator.lastSlashingEthPerToken(), endingEthPerShare);
 
         mockCalculateEthPerToken(1e18);
         mockTokenPrice(1e18);
 
         stats = testCalculator.current();
         assertEq(stats.baseApr, expectedBaseApr);
-        assertEq(stats.slashingCosts.length, 0);
-        assertEq(stats.slashingTimestamps.length, 0);
         assertEq(stats.discount, 0);
 
         // APR Decrease
@@ -258,8 +234,6 @@ contract LSTCalculatorBaseTest is Test {
         uint256 postInitTimestamp = START_TIMESTAMP + testCalculator.APR_FILTER_INIT_INTERVAL_IN_SEC();
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), postInitTimestamp);
         assertEq(testCalculator.lastBaseAprEthPerToken(), startingEthPerShare);
-        assertEq(testCalculator.lastSlashingSnapshotTimestamp(), postInitTimestamp);
-        assertEq(testCalculator.lastSlashingEthPerToken(), startingEthPerShare);
 
         vm.warp(END_TIMESTAMP);
         endingEthPerShare = startingEthPerShare - 1e17;
@@ -273,26 +247,17 @@ contract LSTCalculatorBaseTest is Test {
         // Current value is 0 since current interval ETH backing decreased
         expectedBaseApr =
             (((testCalculator.baseApr() * (1e18 - testCalculator.ALPHA())) + 0 * testCalculator.ALPHA()) / 1e18);
-        // Determine slashing cost
-        uint256 slashingCost = Stats.calculateUnannualizedNegativeChange(startingEthPerShare, endingEthPerShare);
 
         testCalculator.snapshot();
 
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), END_TIMESTAMP);
         assertEq(testCalculator.lastBaseAprEthPerToken(), endingEthPerShare);
-        assertEq(testCalculator.lastSlashingSnapshotTimestamp(), END_TIMESTAMP);
-        assertEq(testCalculator.lastSlashingEthPerToken(), endingEthPerShare);
 
         mockCalculateEthPerToken(1e18);
         mockTokenPrice(1e18);
 
         stats = testCalculator.current();
         assertEq(stats.baseApr, expectedBaseApr);
-        assertEq(stats.slashingCosts.length, 1);
-        assertEq(stats.slashingTimestamps.length, 1);
-        assertEq(stats.slashingTimestamps[0], END_TIMESTAMP);
-        assertEq(stats.slashingCosts[0], slashingCost);
-        assertEq(stats.lastSnapshotTimestamp, END_TIMESTAMP);
         assertEq(stats.discount, 0);
     }
 
@@ -303,92 +268,13 @@ contract LSTCalculatorBaseTest is Test {
         initCalculator(1e18);
 
         // move each value forward so we can verify that a snapshot was not taken
-        uint256 endingEthPerShare = startingEthPerShare + 1; // do not trigger slashing
+        uint256 endingEthPerShare = startingEthPerShare + 1;
         vm.warp(START_TIMESTAMP + 1);
         mockCalculateEthPerToken(endingEthPerShare);
         assertFalse(testCalculator.shouldSnapshot());
 
         vm.expectRevert(abi.encodeWithSelector(IStatsCalculator.NoSnapshotTaken.selector));
         testCalculator.snapshot();
-    }
-
-    function testSlashingTimeExpire() public {
-        uint256 startingEthPerShare = 1e18;
-        mockCalculateEthPerToken(startingEthPerShare);
-        mockIsRebasing(false);
-        initCalculator(1e18);
-
-        uint256 endingEthPerShare = startingEthPerShare + 1; // do not trigger slashing event
-        uint256 endingTimestamp = START_TIMESTAMP + testCalculator.SLASHING_SNAPSHOT_INTERVAL_IN_SEC();
-        vm.warp(endingTimestamp);
-
-        mockCalculateEthPerToken(endingEthPerShare);
-        assertTrue(testCalculator.shouldSnapshot());
-
-        mockCalculateEthPerToken(endingEthPerShare);
-
-        vm.expectEmit(true, true, true, true);
-        emit SlashingSnapshotTaken(startingEthPerShare, START_TIMESTAMP, endingEthPerShare, endingTimestamp);
-        testCalculator.snapshot();
-
-        assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), START_TIMESTAMP);
-        assertEq(testCalculator.lastBaseAprEthPerToken(), startingEthPerShare);
-        assertEq(testCalculator.lastSlashingSnapshotTimestamp(), endingTimestamp);
-        assertEq(testCalculator.lastSlashingEthPerToken(), endingEthPerShare);
-
-        mockCalculateEthPerToken(1e18);
-        mockTokenPrice(1e18);
-
-        stats = testCalculator.current();
-        assertEq(stats.baseApr, 0);
-        assertEq(stats.slashingCosts.length, 0);
-        assertEq(stats.slashingTimestamps.length, 0);
-        assertEq(stats.discount, 0);
-    }
-
-    function testSlashingEventOccurred() public {
-        uint256 startingEthPerShare = 1e18;
-        mockCalculateEthPerToken(startingEthPerShare);
-        mockIsRebasing(false);
-        initCalculator(1e18);
-
-        uint256 endingEthPerShare = startingEthPerShare - 1e17; // trigger slashing event
-        uint256 endingTimestamp = START_TIMESTAMP + 1;
-        vm.warp(endingTimestamp);
-
-        mockCalculateEthPerToken(endingEthPerShare);
-        assertTrue(testCalculator.shouldSnapshot());
-
-        mockCalculateEthPerToken(endingEthPerShare);
-
-        uint256 expectedSlashingCost = 1e17;
-
-        vm.expectEmit(true, true, true, true);
-        emit SlashingEventRecorded(expectedSlashingCost, endingTimestamp);
-
-        vm.expectEmit(true, true, true, true);
-        emit SlashingSnapshotTaken(startingEthPerShare, START_TIMESTAMP, endingEthPerShare, endingTimestamp);
-
-        testCalculator.snapshot();
-
-        assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), START_TIMESTAMP);
-        assertEq(testCalculator.lastBaseAprEthPerToken(), startingEthPerShare);
-        assertEq(testCalculator.lastSlashingSnapshotTimestamp(), endingTimestamp);
-        assertEq(testCalculator.lastSlashingEthPerToken(), endingEthPerShare);
-
-        mockCalculateEthPerToken(1e18);
-        mockTokenPrice(1e18);
-
-        stats = testCalculator.current();
-        assertEq(stats.baseApr, 0);
-        assertEq(stats.slashingCosts.length, 1);
-        assertEq(stats.slashingTimestamps.length, 1);
-        assertEq(stats.slashingTimestamps[0], endingTimestamp);
-        assertEq(stats.slashingCosts[0], expectedSlashingCost);
-        assertEq(stats.discount, 0);
-
-        // should use the maximum between slashing and baseApr
-        assertEq(stats.lastSnapshotTimestamp, endingTimestamp);
     }
 
     function testDiscountShouldCalculateCorrectly() public {

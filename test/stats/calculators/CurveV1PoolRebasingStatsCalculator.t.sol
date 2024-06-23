@@ -362,8 +362,7 @@ contract CurveV1PoolRebasingStatsCalculatorTest is Test {
         mockVirtualPrice(TARGET_BLOCK_VIRTUAL_PRICE + 1e12);
         mockStatsEthPerToken(mockStethStats, 1);
 
-        uint256[] memory noSlashing = new uint256[](0);
-        mockLSTData(mockStethStats, 10, noSlashing, noSlashing);
+        mockLSTData(mockStethStats, 10);
 
         mockTokenPrice(Stats.CURVE_ETH, 1e18);
         mockTokenPrice(STETH_MAINNET, 1e18);
@@ -380,8 +379,7 @@ contract CurveV1PoolRebasingStatsCalculatorTest is Test {
     function testCurrent() public {
         initializeSuccessfully(1);
 
-        uint256[] memory noSlashing = new uint256[](0);
-        mockLSTData(mockStethStats, 10, noSlashing, noSlashing);
+        mockLSTData(mockStethStats, 10);
 
         uint256 stethPrice = 5e17; // cut price of steth by 50% to test reserve calcs
         mockTokenPrice(Stats.CURVE_ETH, 1e18);
@@ -396,12 +394,8 @@ contract CurveV1PoolRebasingStatsCalculatorTest is Test {
 
         assertEq(current.lstStatsData.length, 2);
         assertEq(current.lstStatsData[0].baseApr, 0);
-        assertEq(current.lstStatsData[0].slashingCosts.length, 0);
-        assertEq(current.lstStatsData[0].slashingTimestamps.length, 0);
 
         assertEq(current.lstStatsData[1].baseApr, 10);
-        assertEq(current.lstStatsData[1].slashingCosts.length, 0);
-        assertEq(current.lstStatsData[1].slashingTimestamps.length, 0);
 
         assertEq(current.lastSnapshotTimestamp, TARGET_BLOCK_TIMESTAMP);
     }
@@ -496,12 +490,7 @@ contract CurveV1PoolRebasingStatsCalculatorTest is Test {
         );
     }
 
-    function mockLSTData(
-        address stats,
-        uint256 baseApr,
-        uint256[] memory slashingCosts,
-        uint256[] memory slashingTimestamps
-    ) internal {
+    function mockLSTData(address stats, uint256 baseApr) internal {
         uint24[10] memory discountHistory;
         uint40[5] memory discountTimestampByPercent;
         ILSTStats.LSTStatsData memory res = ILSTStats.LSTStatsData({
@@ -509,9 +498,7 @@ contract CurveV1PoolRebasingStatsCalculatorTest is Test {
             baseApr: baseApr,
             discount: 0,
             discountHistory: discountHistory,
-            discountTimestampByPercent: discountTimestampByPercent,
-            slashingCosts: slashingCosts,
-            slashingTimestamps: slashingTimestamps
+            discountTimestampByPercent: discountTimestampByPercent
         });
         vm.mockCall(stats, abi.encodeWithSelector(ILSTStats.current.selector), abi.encode(res));
     }

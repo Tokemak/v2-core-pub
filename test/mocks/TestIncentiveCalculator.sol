@@ -84,20 +84,8 @@ contract TestIncentiveCalculator {
         ];
         uint40[5] memory discountTimestampByPercent = [uint40(5), uint40(5), uint40(5), uint40(5), uint40(5)];
 
-        uint256[] memory slashingCosts = new uint256[](1);
-        slashingCosts[0] = 6;
-
-        uint256[] memory slashingTimestamps = new uint256[](1);
-        slashingTimestamps[0] = 7;
-
         stats[0] = ILSTStats.LSTStatsData(
-            lastSnapshotTimestamp,
-            baseApr,
-            discount,
-            discountHistory,
-            discountTimestampByPercent,
-            slashingCosts,
-            slashingTimestamps
+            lastSnapshotTimestamp, baseApr, discount, discountHistory, discountTimestampByPercent
         );
     }
 }

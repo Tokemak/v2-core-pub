@@ -37,6 +37,11 @@ import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
 import { CurveResolverMainnet } from "src/utils/CurveResolverMainnet.sol";
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
 import { ConvexCalculator } from "src/stats/calculators/ConvexCalculator.sol";
+import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
+import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
+import { IPool } from "src/interfaces/external/curve/IPool.sol";
+import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
+import { CurvePoolRebasingCalculatorBase } from "src/stats/calculators/base/CurvePoolRebasingCalculatorBase.sol";
 
 contract AutopoolETHStrategyInt is Test {
     address constant V2_DEPLOYER = 0xA6364F394616DD9238B284CfF97Cd7146C57808D;
@@ -81,6 +86,18 @@ contract AutopoolETHStrategyInt is Test {
     ValueCheckingStrategy _strategy;
 
     uint256 minStakingDuration = 30 days;
+
+    // Used to get original LSTCalc data from calculators already deployed on mainnet.  Struct updated
+    //  to get rid of slashing information. See `_mockCalculatorHasUpdatedLSTStatsDataStruct()` for more information
+    struct OriginalLSTStatsData {
+        uint256 lastSnapshotTimestamp;
+        uint256 baseApr;
+        int256 discount;
+        uint24[10] discountHistory;
+        uint40[5] discountTimestampByPercent;
+        uint256[] slashingCosts;
+        uint256[] slashingTimestamps;
+    }
 
     function setUp() public {
         user1 = makeAddr("user1");
@@ -230,6 +247,8 @@ contract AutopoolETHStrategyInt is Test {
         uint256 inAmount = 400e18;
         deal(_stEthNgDv.underlying(), address(_tokenReturnSolver), inAmount);
 
+        _mockCalculatorHasUpdatedLSTStatsDataStruct(_stEthNgDv);
+
         IStrategy.RebalanceParams memory rebalanceParams = IStrategy.RebalanceParams({
             destinationIn: address(_stEthNgDv),
             tokenIn: _stEthNgDv.underlying(),
@@ -252,6 +271,8 @@ contract AutopoolETHStrategyInt is Test {
         uint256 inAmount = 400e18;
         deal(_stEthNgDv.underlying(), address(_tokenReturnSolver), inAmount);
 
+        _mockCalculatorHasUpdatedLSTStatsDataStruct(_stEthNgDv);
+
         IStrategy.RebalanceParams memory rebalanceParams = IStrategy.RebalanceParams({
             destinationIn: address(_stEthNgDv),
             tokenIn: _stEthNgDv.underlying(),
@@ -273,6 +294,8 @@ contract AutopoolETHStrategyInt is Test {
     function test_FullIdleToCurveStEthOrig() public {
         uint256 inAmount = 400e18;
         deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
+
+        _mockCalculatorHasUpdatedLSTStatsDataStruct(_stEthOriginalDv);
 
         address underlying = _stEthOriginalDv.underlying();
 
@@ -311,6 +334,8 @@ contract AutopoolETHStrategyInt is Test {
         uint256 inAmount = 400e18;
         deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
 
+        _mockCalculatorHasUpdatedLSTStatsDataStruct(_stEthOriginalDv);
+
         address underlying = _stEthOriginalDv.underlying();
 
         IStrategy.RebalanceParams memory rebalanceParams = IStrategy.RebalanceParams({
@@ -348,6 +373,8 @@ contract AutopoolETHStrategyInt is Test {
         uint256 inAmount = 400e18;
         deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
 
+        _mockCalculatorHasUpdatedLSTStatsDataStruct(_stEthOriginalDv);
+
         IStrategy.RebalanceParams memory rebalanceParams = IStrategy.RebalanceParams({
             destinationIn: address(_stEthOriginalDv),
             tokenIn: _stEthOriginalDv.underlying(),
@@ -373,6 +400,8 @@ contract AutopoolETHStrategyInt is Test {
         uint256 snapshotId = vm.snapshot();
 
         _strategy.setCheckOutLpPrice(outLpTokenPrice);
+
+        _mockCalculatorHasUpdatedLSTStatsDataStruct(_stEthNgDv);
 
         rebalanceParams = IStrategy.RebalanceParams({
             destinationIn: address(_stEthNgDv),
@@ -407,6 +436,8 @@ contract AutopoolETHStrategyInt is Test {
         uint256 inAmount = 400e18;
         deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
 
+        _mockCalculatorHasUpdatedLSTStatsDataStruct(_stEthOriginalDv);
+
         IStrategy.RebalanceParams memory rebalanceParams = IStrategy.RebalanceParams({
             destinationIn: address(_stEthOriginalDv),
             tokenIn: _stEthOriginalDv.underlying(),
@@ -431,6 +462,8 @@ contract AutopoolETHStrategyInt is Test {
 
         _strategy.setCheckOutLpPrice(outLpTokenPrice);
 
+        _mockCalculatorHasUpdatedLSTStatsDataStruct(_stEthNgDv);
+
         rebalanceParams = IStrategy.RebalanceParams({
             destinationIn: address(_stEthNgDv),
             tokenIn: _stEthNgDv.underlying(),
@@ -452,6 +485,8 @@ contract AutopoolETHStrategyInt is Test {
     function test_FullIdleToCurveFullExitToCurve() public {
         uint256 inAmount = 400e18;
         deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
+
+        _mockCalculatorHasUpdatedLSTStatsDataStruct(_stEthOriginalDv);
 
         IStrategy.RebalanceParams memory rebalanceParams = IStrategy.RebalanceParams({
             destinationIn: address(_stEthOriginalDv),
@@ -479,6 +514,8 @@ contract AutopoolETHStrategyInt is Test {
 
         _strategy.setCheckOutLpPrice(outLpTokenPrice);
 
+        _mockCalculatorHasUpdatedLSTStatsDataStruct(_stEthNgDv);
+
         rebalanceParams = IStrategy.RebalanceParams({
             destinationIn: address(_stEthNgDv),
             tokenIn: _stEthNgDv.underlying(),
@@ -500,6 +537,8 @@ contract AutopoolETHStrategyInt is Test {
     function test_FullIdleToCurvePartialExitToIdle() public {
         uint256 inAmount = 400e18;
         deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
+
+        _mockCalculatorHasUpdatedLSTStatsDataStruct(_stEthOriginalDv);
 
         IStrategy.RebalanceParams memory rebalanceParams = IStrategy.RebalanceParams({
             destinationIn: address(_stEthOriginalDv),
@@ -542,6 +581,8 @@ contract AutopoolETHStrategyInt is Test {
     function test_FullIdleToCurveFullExitToIdle() public {
         uint256 inAmount = 400e18;
         deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
+
+        // _mockCalculatorHasUpdatedLSTStatsDataStruct(_stEthOriginalDv);
 
         IStrategy.RebalanceParams memory rebalanceParams = IStrategy.RebalanceParams({
             destinationIn: address(_stEthOriginalDv),
@@ -591,6 +632,61 @@ contract AutopoolETHStrategyInt is Test {
 
     function test_RebalanceDoesNotClaimDestinationRewards() public {
         // TODO
+    }
+
+    /// @notice Used to mock updated ILSTStats.LSTStatsData struct.  Fixes evm reverts in tests
+    function _mockCalculatorHasUpdatedLSTStatsDataStruct(DestinationVault _destVault) internal {
+        address incentiveStats = address(_destVault.getStats());
+        address dexStats = address(IncentiveCalculatorBase(incentiveStats).underlyerStats());
+        address lstStats = 0x1177b0C6eC38b6A79C06A35321c59C99392FBf57; // stEth calc on mainnet
+        (, bytes memory retData) = dexStats.call(abi.encodeWithSignature("poolAddress()"));
+
+        // Get curve pool for balances later
+        address curvePool = abi.decode(retData, (address));
+
+        // Get LST data, returns original struct
+        (, retData) = lstStats.call(abi.encodeWithSignature("current()"));
+        OriginalLSTStatsData memory lstStatsOldFormat = abi.decode(retData, (OriginalLSTStatsData));
+
+        // Compute reserves in Eth.  Logic taken from Curve rebasing calc
+        uint256[] memory reservesInEth = new uint256[](2);
+        for (uint256 i = 0; i < 2; ++i) {
+            (, retData) = dexStats.call(abi.encodeWithSignature("reserveTokens(uint256)", i));
+            address token = abi.decode(retData, (address));
+
+            // All tokens e18 here
+            reservesInEth[i] = _rootPriceOracle.getPriceInEth(token) * IPool(curvePool).balances(i) / 10 ** 18;
+        }
+
+        // Set up new LSTStatsData struct
+        ILSTStats.LSTStatsData[] memory lstStatsNewFormat = new ILSTStats.LSTStatsData[](2);
+        // In both calcs on mainnet, first position empty
+        lstStatsNewFormat[1] = ILSTStats.LSTStatsData({
+            lastSnapshotTimestamp: lstStatsOldFormat.lastSnapshotTimestamp,
+            baseApr: lstStatsOldFormat.baseApr,
+            discount: lstStatsOldFormat.discount,
+            discountHistory: lstStatsOldFormat.discountHistory,
+            discountTimestampByPercent: lstStatsOldFormat.discountTimestampByPercent
+        });
+
+        // Stays zero, not needed for these tests
+        IDexLSTStats.StakingIncentiveStats memory stakingIncentiveStats;
+
+        // Get last snapshot and fee apr
+        uint256 lastSnap = CurvePoolRebasingCalculatorBase(dexStats).lastSnapshotTimestamp();
+        uint256 feeApr = CurvePoolRebasingCalculatorBase(dexStats).feeApr();
+
+        // Make DexLSTStatsData struct to mock return
+        IDexLSTStats.DexLSTStatsData memory mockedData = IDexLSTStats.DexLSTStatsData({
+            lastSnapshotTimestamp: lastSnap,
+            feeApr: feeApr,
+            reservesInEth: reservesInEth,
+            stakingIncentiveStats: stakingIncentiveStats,
+            lstStatsData: lstStatsNewFormat
+        });
+
+        // Mock call
+        vm.mockCall(incentiveStats, abi.encodeWithSignature("current()"), abi.encode(mockedData));
     }
 
     function _deployCurveDestinationVault(

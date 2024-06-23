@@ -54,9 +54,7 @@ contract ProxyLSTCalculatorTest is Test {
             baseApr: 10,
             discount: 0,
             discountHistory: discountHistory,
-            discountTimestampByPercent: discountTimestampByPercent,
-            slashingCosts: new uint256[](0),
-            slashingTimestamps: new uint256[](0)
+            discountTimestampByPercent: discountTimestampByPercent
         });
 
         vm.mockCall(address(_calculator), abi.encodeWithSelector(ILSTStats.current.selector), abi.encode(stats));

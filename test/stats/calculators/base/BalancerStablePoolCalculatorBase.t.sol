@@ -309,8 +309,7 @@ contract BalancerStablePoolCalculatorBaseTest is Test {
         mockTokenPrice(RETH_MAINNET, 55e16); // set to arbitrary price
         mockTokenPrice(WETH_MAINNET, 1e18); // set to 1:1
 
-        uint256[] memory emptyArr = new uint256[](0);
-        mockLSTData(address(rETHStats), 12, emptyArr, emptyArr);
+        mockLSTData(address(rETHStats), 12);
 
         IDexLSTStats.DexLSTStatsData memory current = calculator.current();
 
@@ -323,12 +322,8 @@ contract BalancerStablePoolCalculatorBaseTest is Test {
 
         assertEq(current.lstStatsData.length, 2);
         assertEq(current.lstStatsData[0].baseApr, 6); // reduced by bal admin fee
-        assertEq(current.lstStatsData[0].slashingCosts.length, 0);
-        assertEq(current.lstStatsData[0].slashingTimestamps.length, 0);
 
         assertEq(current.lstStatsData[1].baseApr, 0);
-        assertEq(current.lstStatsData[1].slashingCosts.length, 0);
-        assertEq(current.lstStatsData[1].slashingTimestamps.length, 0);
 
         assertEq(current.lastSnapshotTimestamp, TARGET_BLOCK_TIMESTAMP);
     }
@@ -388,12 +383,7 @@ contract BalancerStablePoolCalculatorBaseTest is Test {
         );
     }
 
-    function mockLSTData(
-        address stats,
-        uint256 baseApr,
-        uint256[] memory slashingCosts,
-        uint256[] memory slashingTimestamps
-    ) internal {
+    function mockLSTData(address stats, uint256 baseApr) internal {
         uint24[10] memory discountHistory;
         uint40[5] memory discountTimestampByPercent;
         ILSTStats.LSTStatsData memory res = ILSTStats.LSTStatsData({
@@ -401,9 +391,7 @@ contract BalancerStablePoolCalculatorBaseTest is Test {
             baseApr: baseApr,
             discount: 0,
             discountHistory: discountHistory,
-            discountTimestampByPercent: discountTimestampByPercent,
-            slashingCosts: slashingCosts,
-            slashingTimestamps: slashingTimestamps
+            discountTimestampByPercent: discountTimestampByPercent
         });
         vm.mockCall(stats, abi.encodeWithSelector(ILSTStats.current.selector), abi.encode(res));
     }

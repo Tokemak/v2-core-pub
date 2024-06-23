@@ -171,14 +171,12 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
         lastBaseAprEthPerToken = currentEthPerToken;
         lastBaseAprSnapshotTimestamp = snapshotTimestamp;
 
-        // Since discount and slashing information doesn't have any value when base apr is zero
+        // Since discount information doesn't have any value when base apr is zero
         // we're forcing ourselves to have received a base apr reading first before evaluating
         // the others. Simplifies the initialization of the calculator a bit
         if (firstBaseAprReceived) {
             _snapshot();
         } else {
-            lastSlashingEthPerToken = currentEthPerToken;
-            lastSlashingSnapshotTimestamp = block.timestamp;
             firstBaseAprReceived = true;
 
             updateDiscountHistory(currentEthPerToken);

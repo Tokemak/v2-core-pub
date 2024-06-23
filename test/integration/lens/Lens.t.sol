@@ -12,8 +12,10 @@ import { AccessController } from "src/security/AccessController.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
 
+import { IDexLSTStats, ILSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
+
 // solhint-disable func-name-mixedcase,max-states-count,state-visibility,max-line-length
-// solhint-disable avoid-low-level-calls,gas-custom-errors
+// solhint-disable avoid-low-level-calls,gas-custom-errors,custom-errors
 
 contract LensInt is Test {
     address public constant SYSTEM_REGISTRY = 0x0406d2D96871f798fcf54d5969F69F55F803eEA4;
@@ -21,6 +23,18 @@ contract LensInt is Test {
     Lens internal _lens;
 
     IAutopoolRegistry autoPoolRegistry;
+
+    // Used to get original LSTCalc data from calculators already deployed on mainnet.  Struct updated
+    //  to get rid of slashing information. See `_mockCurrent()` for more information
+    struct OriginalLSTStatsData {
+        uint256 lastSnapshotTimestamp;
+        uint256 baseApr;
+        int256 discount;
+        uint24[10] discountHistory;
+        uint40[5] discountTimestampByPercent;
+        uint256[] slashingCosts;
+        uint256[] slashingTimestamps;
+    }
 
     function _setUp(uint256 blockNumber) internal {
         uint256 forkId = vm.createFork(vm.envString("MAINNET_RPC_URL"), blockNumber);
@@ -81,6 +95,117 @@ contract LensInt is Test {
 
         return ix;
     }
+
+    // TODO: Remove mocks once prod system and local system match.
+    /// @dev This is being used to mock calls to current.  Changes in ILSTStats.LSTStatsData struct causing issues
+    function _mockCurrent(bool mockIncomplete) internal {
+        // Most calcs do not have interfaces useful for what is being done here, set this up for low level calls
+        bytes memory data;
+        bool success;
+
+        // Get destintation registry from system registry, get all registered autopools
+        address[] memory autopoolsRegistered = autoPoolRegistry.listVaults();
+
+        for (uint256 i; i < autopoolsRegistered.length; ++i) {
+            IAutopool currentPool = IAutopool(autopoolsRegistered[i]);
+            address[] memory destinationsRegisteredToPool = currentPool.getDestinations();
+
+            for (uint256 j = 0; j < destinationsRegisteredToPool.length; ++j) {
+                IDestinationVault currentDestVault = IDestinationVault(destinationsRegisteredToPool[j]);
+                address incentiveStats = address(currentDestVault.getStats());
+
+                // If we want to test incomplete stats, mock reverts for all incentive stats. Will get caught in
+                // `_safeDestinationGetStats`
+                if (mockIncomplete) {
+                    vm.mockCallRevert(incentiveStats, abi.encodeWithSignature("current()"), "REVERT");
+                    continue;
+                }
+
+                // Get dex stats via low level call
+                (success, data) = incentiveStats.call(abi.encodeWithSignature("underlyerStats()"));
+                // Below is taking care of failure case where BalancerDestinationVault has DexStats set as incentive
+                address dexStats;
+                if (success) {
+                    dexStats = abi.decode(data, (address));
+                } else {
+                    // Dex stats set as incentive on BalancerDV
+                    dexStats = incentiveStats;
+                }
+
+                // Set up array
+                ILSTStats.LSTStatsData[] memory lstStatsNewFormat = new ILSTStats.LSTStatsData[](2);
+
+                // All calculators for pools with two tokens at this point
+                for (uint256 k = 0; k < 2; ++k) {
+                    (, data) = dexStats.call(abi.encodeWithSignature("lstStats(uint256)", k));
+                    address currentLstStats = abi.decode(data, (address));
+
+                    // If lstStats contract exists, get information and reformat for mock call.
+                    if (currentLstStats != address(0)) {
+                        (, data) = currentLstStats.call(abi.encodeWithSignature("current()"));
+                        OriginalLSTStatsData memory lstStatsOldFormat = abi.decode(data, (OriginalLSTStatsData));
+
+                        lstStatsNewFormat[k] = ILSTStats.LSTStatsData({
+                            lastSnapshotTimestamp: lstStatsOldFormat.lastSnapshotTimestamp,
+                            baseApr: lstStatsOldFormat.baseApr,
+                            discount: lstStatsOldFormat.discount,
+                            discountHistory: lstStatsOldFormat.discountHistory,
+                            discountTimestampByPercent: lstStatsOldFormat.discountTimestampByPercent
+                        });
+                    }
+                }
+
+                // Get last snapshot and feeApr from
+                uint256 lastSnapshotDexStats;
+                uint256 feeAprDexStats;
+
+                (, data) = dexStats.call(abi.encodeWithSignature("lastSnapshotTimestamp()"));
+                lastSnapshotDexStats = abi.decode(data, (uint256));
+
+                (, data) = dexStats.call(abi.encodeWithSignature("feeApr()"));
+                feeAprDexStats = abi.decode(data, (uint256));
+
+                // Mock some information
+                uint256[] memory fakeReserves = new uint256[](2);
+                fakeReserves[0] = 1e18;
+                fakeReserves[1] = 2e18;
+
+                address[] memory rewardTokens = new address[](2);
+                rewardTokens[0] = 0xD533a949740bb3306d119CC777fa900bA034cd52;
+                rewardTokens[1] = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+
+                uint256[] memory annualizedRewardAmounts = new uint256[](2);
+                annualizedRewardAmounts[0] = 2_110_759_800_123_025_661_760_000;
+                annualizedRewardAmounts[1] = 10_553_799_000_615_128_308_800;
+
+                uint40[] memory periodFinishForRewards = new uint40[](2);
+                periodFinishForRewards[0] = 1_712_229_683;
+                periodFinishForRewards[1] = 1_712_229_683;
+
+                // Initializing this with arbitrary data
+                IDexLSTStats.StakingIncentiveStats memory stakingIncentiveStats;
+                stakingIncentiveStats.safeTotalSupply = 100e18;
+                stakingIncentiveStats.rewardTokens = rewardTokens;
+                stakingIncentiveStats.annualizedRewardAmounts = annualizedRewardAmounts;
+                stakingIncentiveStats.periodFinishForRewards = periodFinishForRewards;
+                stakingIncentiveStats.incentiveCredits = 40;
+
+                vm.mockCall(
+                    incentiveStats,
+                    abi.encodeWithSignature("current()"),
+                    abi.encode(
+                        IDexLSTStats.DexLSTStatsData({
+                            lastSnapshotTimestamp: lastSnapshotDexStats,
+                            feeApr: feeAprDexStats,
+                            reservesInEth: fakeReserves,
+                            stakingIncentiveStats: stakingIncentiveStats,
+                            lstStatsData: lstStatsNewFormat
+                        })
+                    )
+                );
+            }
+        }
+    }
 }
 
 contract LensIntTest1 is LensInt {
@@ -103,7 +228,9 @@ contract LensIntTest2 is LensInt {
         _setUp(19_322_937);
     }
 
-    function test_ReturnsDestinations() external {
+    function test_ReturnsDestinations1() external {
+        _mockCurrent(false);
+
         Lens.Autopools memory retValues = _lens.getPoolsAndDestinations();
 
         assertEq(retValues.autoPools.length, 1, "vaultLen");
@@ -192,6 +319,8 @@ contract LensIntTest4 is LensInt {
     // }
 
     function test_ReturnsDestinationsWhenPricingIsStale() external {
+        _mockCurrent(true);
+
         Lens.Autopools memory data = _lens.getPoolsAndDestinations();
         uint256 ix = _findIndexOfPool(data.autoPools, 0x57FA6bb127a428Fe268104AB4d170fe4a99B73B6);
 
@@ -206,6 +335,7 @@ contract LensIntTest4 is LensInt {
     }
 
     function test_ReturnsDestinationsQueuedForRemoval() external {
+        _mockCurrent(false);
         // We removed cbETH/ETH earlier this day
 
         Lens.Autopools memory data = _lens.getPoolsAndDestinations();
@@ -275,6 +405,8 @@ contract LensIntTest6 is LensInt {
     }
 
     function test_ReturnsDestinationVaultData() external {
+        _mockCurrent(false);
+
         address autoPool = 0x57FA6bb127a428Fe268104AB4d170fe4a99B73B6;
         // stETH/ETH ng
         address destVault = 0xba1a495630a948f0942081924a5682f4f55E3e82;
@@ -308,28 +440,22 @@ contract LensIntTest6 is LensInt {
         assertEq(dv.lpTokenAddress, 0x21E27a5E5513D6e65C4f830167390997aA84843a, "lpTokenAddress");
         assertEq(dv.lpTokenSymbol, "stETH-ng-f", "lpTokenSymbol");
         assertEq(dv.lpTokenName, "Curve.fi Factory Pool: stETH-ng", "lpTokenName");
-        assertEq(dv.statsSafeLPTotalSupply, 28_194_429_527_111_520_327_141, "statsSafeLPTotalSupply");
+        assertEq(dv.statsSafeLPTotalSupply, 100e18, "statsSafeLPTotalSupply");
         assertEq(dv.statsIncentiveCredits, 40, "statsIncentiveCredits");
         assertEq(dv.reservesInEth.length, 2, "reservesInEthLen");
-        assertEq(dv.reservesInEth[0], 4_753_387_733_997_902_472_990, "reservesInEth0");
-        assertEq(dv.reservesInEth[1], 25_103_131_256_061_390_868_175, "reservesInEth1");
-        assertEq(dv.statsPeriodFinishForRewards.length, 4, "statsPeriodFinishForRewardsLen");
+        assertEq(dv.reservesInEth[0], 1e18, "reservesInEth0");
+        assertEq(dv.reservesInEth[1], 2e18, "reservesInEth1");
+        assertEq(dv.statsPeriodFinishForRewards.length, 2, "statsPeriodFinishForRewardsLen");
         assertEq(dv.statsPeriodFinishForRewards[0], 1_712_229_683, "statsPeriodFinishForRewards[0]");
         assertEq(dv.statsPeriodFinishForRewards[1], 1_712_229_683, "statsPeriodFinishForRewards[1]");
-        assertEq(dv.statsPeriodFinishForRewards[2], 0, "statsPeriodFinishForRewards[2]");
-        assertEq(dv.statsPeriodFinishForRewards[3], 0, "statsPeriodFinishForRewards[3]");
-        assertEq(dv.statsAnnualizedRewardAmounts.length, 4, "statsAnnualizedRewardAmountsLen");
+        assertEq(dv.statsAnnualizedRewardAmounts.length, 2, "statsAnnualizedRewardAmountsLen");
         assertEq(
             dv.statsAnnualizedRewardAmounts[0], 2_110_759_800_123_025_661_760_000, "statsAnnualizedRewardAmounts[0]"
         );
         assertEq(dv.statsAnnualizedRewardAmounts[1], 10_553_799_000_615_128_308_800, "statsAnnualizedRewardAmounts[1]");
-        assertEq(dv.statsAnnualizedRewardAmounts[2], 0, "statsAnnualizedRewardAmounts[2]");
-        assertEq(dv.statsAnnualizedRewardAmounts[3], 0, "statsAnnualizedRewardAmounts[3]");
-        assertEq(dv.rewardsTokens.length, 4, "rewardTokenAddressLen");
+        assertEq(dv.rewardsTokens.length, 2, "rewardTokenAddressLen");
         assertEq(dv.rewardsTokens[0].tokenAddress, 0xD533a949740bb3306d119CC777fa900bA034cd52, "rewardTokenAddress0");
         assertEq(dv.rewardsTokens[1].tokenAddress, 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B, "rewardTokenAddress1");
-        assertEq(dv.rewardsTokens[2].tokenAddress, 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B, "rewardTokenAddress2");
-        assertEq(dv.rewardsTokens[3].tokenAddress, 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0, "rewardTokenAddress3");
         assertEq(dv.underlyingTokens.length, 2, "underlyingTokenAddressLen");
         assertEq(
             dv.underlyingTokens[0].tokenAddress, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, "underlyingTokenAddress[0]"
@@ -341,8 +467,8 @@ contract LensIntTest6 is LensInt {
         assertEq(dv.underlyingTokenSymbols[0].symbol, "WETH", "underlyingTokenSymbols[0]");
         assertEq(dv.underlyingTokenSymbols[1].symbol, "stETH", "underlyingTokenSymbols[1]");
         assertEq(dv.underlyingTokenValueHeld.length, 2, "underlyingTokenValueHeldLen");
-        assertEq(dv.underlyingTokenValueHeld[0].valueHeldInEth, 4.184637079206072398e18, "underlyingTokenValueHeld[0]");
-        assertEq(dv.underlyingTokenValueHeld[1].valueHeldInEth, 22.099500343082628172e18, "underlyingTokenValueHeld[0]");
+        assertEq(dv.underlyingTokenValueHeld[0].valueHeldInEth, 880_348_356_452_404, "underlyingTokenValueHeld[0]");
+        assertEq(dv.underlyingTokenValueHeld[1].valueHeldInEth, 1_760_696_712_904_808, "underlyingTokenValueHeld[0]");
         assertEq(dv.lstStatsData.length, 2, "lstStatsDataLen");
     }
 }

@@ -237,9 +237,8 @@ contract CurveV1PoolNoRebasingStatsCalculatorTest is Test {
         uint256 newTimestamp = TARGET_BLOCK_TIMESTAMP + Stats.DEX_FEE_APR_SNAPSHOT_INTERVAL;
         vm.warp(newTimestamp);
 
-        uint256[] memory noSlashing = new uint256[](0);
-        mockLSTData(mockRethStats, 10, noSlashing, noSlashing);
-        mockLSTData(mockWstethStats, 12, noSlashing, noSlashing);
+        mockLSTData(mockRethStats, 10);
+        mockLSTData(mockWstethStats, 12);
         mockTokenPrice(RETH_MAINNET, 1e18);
         mockTokenPrice(WSTETH_MAINNET, 1e18);
 
@@ -255,9 +254,8 @@ contract CurveV1PoolNoRebasingStatsCalculatorTest is Test {
     function testCurrent() public {
         initializeSuccessfully();
 
-        uint256[] memory noSlashing = new uint256[](0);
-        mockLSTData(mockRethStats, 10, noSlashing, noSlashing);
-        mockLSTData(mockWstethStats, 12, noSlashing, noSlashing);
+        mockLSTData(mockRethStats, 10);
+        mockLSTData(mockWstethStats, 12);
         mockTokenPrice(RETH_MAINNET, 1e18);
         mockTokenPrice(WSTETH_MAINNET, 1e18);
 
@@ -274,12 +272,8 @@ contract CurveV1PoolNoRebasingStatsCalculatorTest is Test {
 
         assertEq(current.lstStatsData.length, 2);
         assertEq(current.lstStatsData[0].baseApr, 10);
-        assertEq(current.lstStatsData[0].slashingCosts.length, 0);
-        assertEq(current.lstStatsData[0].slashingTimestamps.length, 0);
 
         assertEq(current.lstStatsData[1].baseApr, 12);
-        assertEq(current.lstStatsData[1].slashingCosts.length, 0);
-        assertEq(current.lstStatsData[1].slashingTimestamps.length, 0);
     }
 
     function testCurrentShouldHandleNoOpDependentApr() public {
@@ -294,8 +288,7 @@ contract CurveV1PoolNoRebasingStatsCalculatorTest is Test {
 
         calculator.initialize(depAprIds, initData);
 
-        uint256[] memory noSlashing = new uint256[](0);
-        mockLSTData(mockWstethStats, 12, noSlashing, noSlashing);
+        mockLSTData(mockWstethStats, 12);
 
         mockTokenPrice(RETH_MAINNET, 1e18);
         mockTokenPrice(WSTETH_MAINNET, 1e18);
@@ -304,11 +297,7 @@ contract CurveV1PoolNoRebasingStatsCalculatorTest is Test {
 
         assertEq(current.lstStatsData.length, 2);
         assertEq(current.lstStatsData[0].baseApr, 0);
-        assertEq(current.lstStatsData[0].slashingCosts.length, 0);
-        assertEq(current.lstStatsData[0].slashingTimestamps.length, 0);
         assertEq(current.lstStatsData[1].baseApr, 12);
-        assertEq(current.lstStatsData[1].slashingCosts.length, 0);
-        assertEq(current.lstStatsData[1].slashingTimestamps.length, 0);
         assertEq(current.lastSnapshotTimestamp, TARGET_BLOCK_TIMESTAMP);
     }
 
@@ -399,12 +388,7 @@ contract CurveV1PoolNoRebasingStatsCalculatorTest is Test {
         vm.mockCall(token, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(decimals));
     }
 
-    function mockLSTData(
-        address stats,
-        uint256 baseApr,
-        uint256[] memory slashingCosts,
-        uint256[] memory slashingTimestamps
-    ) internal {
+    function mockLSTData(address stats, uint256 baseApr) internal {
         uint24[10] memory discountHistory;
         uint40[5] memory discountTimestampByPercent;
         ILSTStats.LSTStatsData memory res = ILSTStats.LSTStatsData({
@@ -412,9 +396,7 @@ contract CurveV1PoolNoRebasingStatsCalculatorTest is Test {
             baseApr: baseApr,
             discount: 0,
             discountHistory: discountHistory,
-            discountTimestampByPercent: discountTimestampByPercent,
-            slashingCosts: slashingCosts,
-            slashingTimestamps: slashingTimestamps
+            discountTimestampByPercent: discountTimestampByPercent
         });
         vm.mockCall(stats, abi.encodeWithSelector(ILSTStats.current.selector), abi.encode(res));
     }

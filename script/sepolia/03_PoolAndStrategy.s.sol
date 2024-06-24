@@ -89,7 +89,6 @@ contract PoolAndStrategy is Script {
                 baseYield: 1e6,
                 feeYield: 1e6,
                 incentiveYield: 0.9e6,
-                slashing: 1e6,
                 priceDiscountExit: 0.75e6,
                 priceDiscountEnter: 0,
                 pricePremium: 1e6

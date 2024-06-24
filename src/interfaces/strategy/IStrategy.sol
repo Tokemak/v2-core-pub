@@ -56,7 +56,6 @@ interface IStrategy {
     /// @param ownedShares Shares owned for this destination
     /// @param compositeReturn Total return combined from the individual yield components
     /// @param pricePerShare Price per share
-    /// @param slashingCost The loss due to slashing of the backing
     struct SummaryStats {
         address destination;
         uint256 baseApr;
@@ -69,7 +68,6 @@ interface IStrategy {
         uint256 ownedShares;
         int256 compositeReturn;
         uint256 pricePerShare;
-        uint256 slashingCost;
     }
 
     /// @notice rebalance the Autopool from the tokenOut (decrease) to the tokenIn (increase)

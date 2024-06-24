@@ -113,9 +113,6 @@ contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrateg
     /// @notice model weight used for incentive yield
     uint256 public immutable weightIncentive;
 
-    /// @notice model weight used slashing costs
-    uint256 public immutable weightSlashing;
-
     /// @notice model weight applied to an LST discount when exiting the position
     int256 public immutable weightPriceDiscountExit;
 
@@ -289,7 +286,6 @@ contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrateg
         weightBase = conf.modelWeights.baseYield;
         weightFee = conf.modelWeights.feeYield;
         weightIncentive = conf.modelWeights.incentiveYield;
-        weightSlashing = conf.modelWeights.slashing;
         weightPriceDiscountExit = conf.modelWeights.priceDiscountExit;
         weightPriceDiscountEnter = conf.modelWeights.priceDiscountEnter;
         weightPricePremium = conf.modelWeights.pricePremium;

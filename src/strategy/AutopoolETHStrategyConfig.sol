@@ -78,7 +78,6 @@ library AutopoolETHStrategyConfig {
         uint256 baseYield;
         uint256 feeYield;
         uint256 incentiveYield;
-        uint256 slashing;
         int256 priceDiscountExit;
         int256 priceDiscountEnter;
         int256 pricePremium;
@@ -167,10 +166,6 @@ library AutopoolETHStrategyConfig {
 
         if (config.modelWeights.incentiveYield > WEIGHT_MAX) {
             revert InvalidConfig("modelWeights_incentiveYield");
-        }
-
-        if (config.modelWeights.slashing > WEIGHT_MAX) {
-            revert InvalidConfig("modelWeights_slashing");
         }
 
         if (config.modelWeights.priceDiscountExit > WEIGHT_MAX_I) {

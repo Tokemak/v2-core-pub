@@ -107,9 +107,6 @@ interface IAutopoolStrategy {
     /// @notice model weight used for incentive yield
     function weightIncentive() external view returns (uint256);
 
-    /// @notice model weight used slashing costs
-    function weightSlashing() external view returns (uint256);
-
     /// @notice model weight applied to an LST discount when exiting the position
     function weightPriceDiscountExit() external view returns (int256);
 

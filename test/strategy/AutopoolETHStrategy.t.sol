@@ -1263,7 +1263,6 @@ contract AutopoolETHStrategyTest is Test {
         assertEq(stats.maxDiscount, 0);
         assertEq(stats.maxPremium, 0);
         assertEq(stats.compositeReturn, 0);
-        assertEq(stats.slashingCost, 0);
     }
 
     function test_getRebalanceInSummaryStats_PricesIdleWithSafePrice() public {
@@ -1390,7 +1389,6 @@ contract AutopoolETHStrategyTest is Test {
         assertEq(summary.maxPremium, -0.012e18);
         // (4.6% * 1.0) + (1% * 1.0) + (8.68% * 0.9) + -0.42% = 12.992%
         assertApproxEqAbs(summary.compositeReturn, 85_890_909_090_909_090, 1e13 - 1);
-        assertEq(summary.slashingCost, 0);
 
         // test rebalance in
         summary = defaultStrat._getDestinationSummaryStats(
@@ -1412,7 +1410,6 @@ contract AutopoolETHStrategyTest is Test {
         assertEq(summary.maxPremium, -12e15);
         // (4.6% * 1.0) + (1% * 1.0) + (0% * 0.9) + -0.72% = 4.88% => 488e14
         assertEq(summary.compositeReturn, 488e14);
-        assertEq(summary.slashingCost, 0);
     }
 
     /* **************************************** */

@@ -112,6 +112,29 @@ contract StatsCalculatorRegistryTests is Test {
         assertEq(address(queried), calculator);
     }
 
+    function testCalcCorrectlyRegistersList() public {
+        bytes32 aprId1 = keccak256("x");
+        address calculator1 = generateCalculator(aprId1);
+
+        vm.prank(statsFactory);
+        statsRegistry.register(calculator1);
+
+        address[] memory calculators = statsRegistry.listCalculators();
+        assertEq(calculators.length, 1);
+        assertEq(calculators[0], calculator1);
+
+        bytes32 aprId2 = keccak256("y");
+        address calculator2 = generateCalculator(aprId2);
+
+        vm.prank(statsFactory);
+        statsRegistry.register(calculator2);
+
+        calculators = statsRegistry.listCalculators();
+        assertEq(calculators.length, 2);
+        assertEq(calculators[0], calculator1);
+        assertEq(calculators[1], calculator2);
+    }
+
     function testGetCalcRevertsOnEmpty() public {
         bytes32 aprId = keccak256("x");
 

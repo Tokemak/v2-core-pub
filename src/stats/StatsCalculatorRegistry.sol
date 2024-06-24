@@ -2,6 +2,8 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
+import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
+
 import { Errors } from "src/utils/Errors.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -12,12 +14,17 @@ import { SystemComponent } from "src/SystemComponent.sol";
 import { Roles } from "src/libs/Roles.sol";
 
 contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, SecurityBase {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     /// @notice Currently registered factory. Only thing can register new calculators
     IStatsCalculatorFactory public factory;
 
     /// slither-disable-start uninitialized-state
     /// @notice Calculators registered in this system by id
     mapping(bytes32 => address) public calculators;
+
+    /// @notice Calculator addresses from calculators mapping for list iteration
+    EnumerableSet.AddressSet private calculatorAddresses;
     /// slither-disable-end uninitialized-state
 
     modifier onlyFactory() {
@@ -47,6 +54,11 @@ contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, S
     }
 
     /// @inheritdoc IStatsCalculatorRegistry
+    function listCalculators() external view returns (address[] memory) {
+        return calculatorAddresses.values();
+    }
+
+    /// @inheritdoc IStatsCalculatorRegistry
     function register(address calculator) external onlyFactory {
         Errors.verifyNotZero(calculator, "calculator");
 
@@ -60,6 +72,7 @@ contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, S
         }
 
         calculators[aprId] = calculator;
+        calculatorAddresses.add(calculator);
 
         emit StatCalculatorRegistered(aprId, calculator, msg.sender);
     }

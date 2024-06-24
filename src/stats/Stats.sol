@@ -65,16 +65,6 @@ library Stats {
         return unannualized * SECONDS_IN_YEAR / timeDiff;
     }
 
-    function calculateUnannualizedNegativeChange(
-        uint256 startValue,
-        uint256 endValue
-    ) internal pure returns (uint256) {
-        if (startValue == 0) revert ZeroDivisor();
-        if (endValue >= startValue) revert NonNegativeChange();
-
-        return (startValue - endValue) * 1e18 / startValue;
-    }
-
     function getFilteredValue(
         uint256 alpha,
         uint256 priorValue,

@@ -20,12 +20,13 @@ contract AerodromeDestinationVault is DestinationVault {
     /// @notice Address of the aerodrome router
     address public immutable aerodromeRouter;
 
+    /// @notice Address of the aerodrome voter contract
+    IVoter public immutable aerodromeVoter;
+
     /// @notice Only used to initialize the vault
     struct InitParams {
         /// @notice Gauge that this vault interacts with
         address aerodromeGauge;
-        ///@notice Aerodrome voter. Used to check gauge status
-        address aerodromeVoter;
     }
 
     /// @notice Name of exchange vault interacts with
@@ -40,11 +41,17 @@ contract AerodromeDestinationVault is DestinationVault {
     /// @notice If pool being proxied is stable or not.
     bool public isStable;
 
-    constructor(ISystemRegistry _systemRegistry, address _aerodromeRouter) DestinationVault(_systemRegistry) {
-        Errors.verifyNotZero(_aerodromeRouter, "aerodromeRouter");
+    constructor(
+        ISystemRegistry _systemRegistry,
+        address _aerodromeRouter,
+        address _aerodromeVoter
+    ) DestinationVault(_systemRegistry) {
+        Errors.verifyNotZero(_aerodromeRouter, "_aerodromeRouter");
+        Errors.verifyNotZero(_aerodromeVoter, "_aerodromeVoter");
 
         // slither-disable-next-line missing-zero-check
         aerodromeRouter = _aerodromeRouter;
+        aerodromeVoter = IVoter(_aerodromeVoter);
     }
 
     function initialize(
@@ -58,16 +65,13 @@ contract AerodromeDestinationVault is DestinationVault {
         InitParams memory initParams = abi.decode(params_, (InitParams));
 
         address localGauge = initParams.aerodromeGauge;
-
         Errors.verifyNotZero(localGauge, "localGauge");
-        Errors.verifyNotZero(initParams.aerodromeVoter, "initParams.aerodromeVoter");
 
         super.initialize(baseAsset_, underlyer_, rewarder_, incentiveCalculator_, additionalTrackedTokens_, params_);
 
         // Gauge, pool checks
-        IVoter localVoter = IVoter(initParams.aerodromeVoter);
-        if (localVoter.gauges(address(underlyer_)) != localGauge) revert Errors.InvalidParam("localGauge");
-        if (!localVoter.isAlive(localGauge)) revert IVoter.GaugeNotAlive(localGauge);
+        if (aerodromeVoter.gauges(address(underlyer_)) != localGauge) revert Errors.InvalidParam("localGauge");
+        if (!aerodromeVoter.isAlive(localGauge)) revert IVoter.GaugeNotAlive(localGauge);
         if (address(underlyer_) != IAerodromeGauge(localGauge).stakingToken()) {
             revert Errors.InvalidConfiguration();
         }

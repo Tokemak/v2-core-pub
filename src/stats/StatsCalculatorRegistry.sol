@@ -72,6 +72,7 @@ contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, S
         }
 
         calculators[aprId] = calculator;
+        // slither-disable-next-line unused-return
         calculatorAddresses.add(calculator);
 
         emit StatCalculatorRegistered(aprId, calculator, msg.sender);

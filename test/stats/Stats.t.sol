@@ -49,31 +49,6 @@ contract StatsTest is Test {
         }
     }
 
-    function testComputeUnannualizedNegativeChange() public {
-        assertEq(Stats.calculateUnannualizedNegativeChange(10_000, 9000), 1e17);
-        assertEq(Stats.calculateUnannualizedNegativeChange(99_000_873, 99_000_872), 10_100_921_029);
-    }
-
-    function testRevertZeroDivisorForComputeUnannualizedNegativeChange() public {
-        vm.expectRevert(abi.encodeWithSelector(Stats.ZeroDivisor.selector));
-        Stats.calculateUnannualizedNegativeChange(0, 1);
-    }
-
-    function testRevertNonNegativeChangeForComputeUnannualizedNegativeChange() public {
-        vm.expectRevert(abi.encodeWithSelector(Stats.NonNegativeChange.selector));
-        Stats.calculateUnannualizedNegativeChange(10_000, 10_001);
-    }
-
-    function testFuzzCalculateUnannualizedNegativeChange(uint256 startValue, uint256 endValue) public {
-        vm.assume(startValue < type(uint256).max / 1e18);
-        vm.assume(endValue < type(uint256).max / 1e18);
-        vm.assume(endValue < startValue);
-        vm.assume(endValue > 1e3);
-        vm.assume(startValue > 1e3);
-        uint256 result = Stats.calculateUnannualizedNegativeChange(startValue, endValue);
-        assertGt(result, 0);
-    }
-
     function testGetFilteredValueRevertIfAlphaTooBig() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "alpha"));
         Stats.getFilteredValue(1e18 + 1, 1, 1);

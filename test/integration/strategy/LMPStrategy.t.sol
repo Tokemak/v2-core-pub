@@ -582,7 +582,7 @@ contract AutopoolETHStrategyInt is Test {
         uint256 inAmount = 400e18;
         deal(_stEthOriginalDv.underlying(), address(_tokenReturnSolver), inAmount);
 
-        // _mockCalculatorHasUpdatedLSTStatsDataStruct(_stEthOriginalDv);
+        _mockCalculatorHasUpdatedLSTStatsDataStruct(_stEthOriginalDv);
 
         IStrategy.RebalanceParams memory rebalanceParams = IStrategy.RebalanceParams({
             destinationIn: address(_stEthOriginalDv),

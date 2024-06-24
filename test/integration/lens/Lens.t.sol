@@ -228,7 +228,7 @@ contract LensIntTest2 is LensInt {
         _setUp(19_322_937);
     }
 
-    function test_ReturnsDestinations1() external {
+    function test_ReturnsDestinations() external {
         _mockCurrent(false);
 
         Lens.Autopools memory retValues = _lens.getPoolsAndDestinations();

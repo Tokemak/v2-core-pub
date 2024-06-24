@@ -26,6 +26,7 @@ contract PufEthLRTCalculator is LSTCalculatorBase {
     /// =====================================================
     /// Events
     /// =====================================================
+
     event PufEthVaultSet(address pufferVault);
 
     /// =====================================================
@@ -43,6 +44,17 @@ contract PufEthLRTCalculator is LSTCalculatorBase {
     }
 
     /// =====================================================
+    /// Functions - External
+    /// =====================================================
+
+    /// @notice Sets the new PufEthVault
+    /// @dev Requires STATS_GENERAL_MANAGER role
+    /// @param newPufferVault Address of the new Puffer Vault
+    function setPufEthVault(address newPufferVault) external hasRole(Roles.STATS_GENERAL_MANAGER) {
+        _setPufEthVault(newPufferVault);
+    }
+
+    /// =====================================================
     /// Functions - Public
     /// =====================================================
 
@@ -55,13 +67,6 @@ contract PufEthLRTCalculator is LSTCalculatorBase {
     /// @inheritdoc LSTCalculatorBase
     function isRebasing() public pure override returns (bool) {
         return false;
-    }
-
-    /// @notice Sets the new PufEthVault
-    /// @dev Requires STATS_GENERAL_MANAGER role
-    /// @param newPufferVault Address of the new Puffer Vault
-    function setPufEthVault(address newPufferVault) external hasRole(Roles.STATS_GENERAL_MANAGER) {
-        _setPufEthVault(newPufferVault);
     }
 
     /// =====================================================

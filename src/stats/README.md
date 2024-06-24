@@ -27,7 +27,7 @@ A `Convex Curve stETH/ETH` pool is used as an example, but the general logic app
 
 In this example, there are three stats calculators. Each adds additional stats relevant for the LMP to make rebalancing decisions.
 
-1. stETH LST Stats Calculator: provides stats on the base LST, such as base yield, slashing events, price-to-book value
+1. stETH LST Stats Calculator: provides stats on the base LST, such as base yield, price-to-book value
 2. Curve V1 stETH/ETH Stats Calculator: provides stats on the DEX, primarily trading fees
 3. Convex Curve V1 stETH/ETH Stats Calculator: provides additional incentive yields
 

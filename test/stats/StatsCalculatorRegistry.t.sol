@@ -119,7 +119,9 @@ contract StatsCalculatorRegistryTests is Test {
         vm.prank(statsFactory);
         statsRegistry.register(calculator1);
 
-        address[] memory calculators = statsRegistry.listCalculators();
+        (bytes32[] memory ids, address[] memory calculators) = statsRegistry.listCalculators();
+        assertEq(ids.length, 1);
+        assertEq(ids[0], keccak256("x"));
         assertEq(calculators.length, 1);
         assertEq(calculators[0], calculator1);
 
@@ -129,7 +131,10 @@ contract StatsCalculatorRegistryTests is Test {
         vm.prank(statsFactory);
         statsRegistry.register(calculator2);
 
-        calculators = statsRegistry.listCalculators();
+        (ids, calculators) = statsRegistry.listCalculators();
+        assertEq(ids.length, 2);
+        assertEq(ids[0], keccak256("x"));
+        assertEq(ids[1], keccak256("y"));
         assertEq(calculators.length, 2);
         assertEq(calculators[0], calculator1);
         assertEq(calculators[1], calculator2);

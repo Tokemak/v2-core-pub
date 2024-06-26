@@ -13,7 +13,7 @@ interface IStatsCalculatorRegistry {
     function getCalculator(bytes32 aprId) external view returns (IStatsCalculator calculator);
 
     /// @notice List all calculator addresses registered
-    function listCalculators() external view returns (address[] memory);
+    function listCalculators() external view returns (bytes32[] memory, address[] memory);
 
     /// @notice Register a new stats calculator
     /// @param calculator address of the calculator

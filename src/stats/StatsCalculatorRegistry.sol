@@ -14,7 +14,7 @@ import { SystemComponent } from "src/SystemComponent.sol";
 import { Roles } from "src/libs/Roles.sol";
 
 contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, SecurityBase {
-    using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableSet for EnumerableSet.Bytes32Set;
 
     /// @notice Currently registered factory. Only thing can register new calculators
     IStatsCalculatorFactory public factory;
@@ -24,7 +24,7 @@ contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, S
     mapping(bytes32 => address) public calculators;
 
     /// @notice Calculator addresses from calculators mapping for list iteration
-    EnumerableSet.AddressSet private calculatorAddresses;
+    EnumerableSet.Bytes32Set private calculatorIds;
     /// slither-disable-end uninitialized-state
 
     modifier onlyFactory() {
@@ -54,8 +54,12 @@ contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, S
     }
 
     /// @inheritdoc IStatsCalculatorRegistry
-    function listCalculators() external view returns (address[] memory) {
-        return calculatorAddresses.values();
+    function listCalculators() external view returns (bytes32[] memory ids, address[] memory addresses) {
+        ids = calculatorIds.values();
+        addresses = new address[](ids.length);
+        for (uint256 i = 0; i < ids.length; ++i) {
+            addresses[i] = calculators[ids[i]];
+        }
     }
 
     /// @inheritdoc IStatsCalculatorRegistry
@@ -73,7 +77,7 @@ contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, S
 
         calculators[aprId] = calculator;
         // slither-disable-next-line unused-return
-        calculatorAddresses.add(calculator);
+        calculatorIds.add(aprId);
 
         emit StatCalculatorRegistered(aprId, calculator, msg.sender);
     }

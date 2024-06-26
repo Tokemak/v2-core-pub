@@ -36,6 +36,7 @@ contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, S
 
     event FactorySet(address newFactory);
     event StatCalculatorRegistered(bytes32 aprId, address calculatorAddress, address caller);
+    event StatCalculatorRemoved(bytes32 aprId, address calculatorAddress, address caller);
 
     error OnlyFactory();
     error AlreadyRegistered(bytes32 aprId, address calculator);
@@ -80,6 +81,19 @@ contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, S
         calculatorIds.add(aprId);
 
         emit StatCalculatorRegistered(aprId, calculator, msg.sender);
+    }
+
+    /// @inheritdoc IStatsCalculatorRegistry
+    function removeCalculator(bytes32 aprId) external onlyFactory {
+        address calcAddress = calculators[aprId];
+        if (calcAddress == address(0)) {
+            revert Errors.NotRegistered();
+        }
+        delete calculators[aprId];
+        // slither-disable-next-line unused-return
+        calculatorIds.remove(aprId);
+
+        emit StatCalculatorRemoved(aprId, calcAddress, msg.sender);
     }
 
     /// @inheritdoc IStatsCalculatorRegistry

@@ -24,6 +24,7 @@ contract StatsCalculatorRegistryTests is Test {
 
     event FactorySet(address newFactory);
     event StatCalculatorRegistered(bytes32 aprId, address calculatorAddress, address caller);
+    event StatCalculatorRemoved(bytes32 aprId, address calculatorAddress, address caller);
 
     function setUp() public {
         testUser1 = vm.addr(1);
@@ -138,6 +139,33 @@ contract StatsCalculatorRegistryTests is Test {
         assertEq(calculators.length, 2);
         assertEq(calculators[0], calculator1);
         assertEq(calculators[1], calculator2);
+    }
+
+    function testCalcCorrectlyRegistersRemove() public {
+        bytes32 aprId = keccak256("x");
+        address calculator = generateCalculator(aprId);
+
+        vm.startPrank(statsFactory);
+        // Reverts if no calc added
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotRegistered.selector));
+        statsRegistry.removeCalculator(aprId);
+
+        // Adding calc
+        statsRegistry.register(calculator);
+
+        // Verifying it's registered
+        IStatsCalculator queried = statsRegistry.getCalculator(aprId);
+        assertEq(address(queried), calculator);
+
+        // Successful removing
+        vm.expectEmit(true, true, true, true);
+        emit StatCalculatorRemoved(aprId, calculator, statsFactory);
+        statsRegistry.removeCalculator(aprId);
+        vm.stopPrank();
+
+        // Reverting if calc was removed
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "calcAddress"));
+        statsRegistry.getCalculator(aprId);
     }
 
     function testGetCalcRevertsOnEmpty() public {

@@ -94,6 +94,14 @@ contract AerodromeStakingIncentiveCalculator is IDexLSTStats, BaseStatsCalculato
         uint256 decayInitTimestamp
     );
 
+    event RewarderSafeTotalSupplySnapshot(
+        address rewarder,
+        uint256 rewardRate,
+        uint256 timeBetweenSnapshots,
+        uint256 rewardsAccruedPerToken,
+        uint256 safeTotalSupply
+    );
+
     struct InitData {
         address poolAddress;
         address gaugeAddress;
@@ -342,7 +350,7 @@ contract AerodromeStakingIncentiveCalculator is IDexLSTStats, BaseStatsCalculato
             lastSnapshotTimestamp = block.timestamp;
 
             emit RewarderSafeTotalSupplySnapshot(
-                rewarder, rewardRate, timeBetweenSnapshots, rewardPerToken, safeTotalSupply
+                address(gauge), currentRewardRate, timeBetweenSnapshots, diff, safeTotalSupply
             );
             return;
         }

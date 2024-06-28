@@ -100,7 +100,7 @@ contract AerodromeStakingDexCalculatorTest is Test {
 
         IDexLSTStats.DexLSTStatsData memory data = calculator.current();
 
-        assertEq(data.lastSnapshotTimestamp, 0);
+        assertEq(data.lastSnapshotTimestamp, block.timestamp);
         assertEq(data.feeApr, 0);
         assertEq(data.reservesInEth[0], 100e18);
         assertEq(data.reservesInEth[1], 198e18);

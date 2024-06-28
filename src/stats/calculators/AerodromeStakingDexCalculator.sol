@@ -84,7 +84,7 @@ contract AerodromeStakingDexCalculator is IDexLSTStats, BaseStatsCalculator {
         return false;
     }
 
-    /// @inheritdoc IStatsCalculator
+    /// @inheritdoc BaseStatsCalculator
     /// @dev This calculator does not need to record anything so if it ever calls _snapshot() something went wrong.
     function _snapshot() internal pure override {
         revert ShouldNotSnapshot();

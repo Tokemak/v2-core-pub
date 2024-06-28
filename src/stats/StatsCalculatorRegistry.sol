@@ -84,7 +84,7 @@ contract StatsCalculatorRegistry is SystemComponent, IStatsCalculatorRegistry, S
     }
 
     /// @inheritdoc IStatsCalculatorRegistry
-    function removeCalculator(bytes32 aprId) external onlyFactory {
+    function removeCalculator(bytes32 aprId) external hasRole(Roles.STATS_CALC_REGISTRY_MANAGER) {
         address calcAddress = calculators[aprId];
         if (calcAddress == address(0)) {
             revert Errors.NotRegistered();

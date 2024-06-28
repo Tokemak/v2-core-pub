@@ -141,16 +141,36 @@ contract StatsCalculatorRegistryTests is Test {
         assertEq(calculators[1], calculator2);
     }
 
+    function testOnlyOwnerCanRemove() public {
+        bytes32 aprId = keccak256("x");
+        address calculator = generateCalculator(aprId);
+
+        // Adding calc
+        vm.prank(statsFactory);
+        statsRegistry.register(calculator);
+
+        // Reverting with the wrong role
+        vm.startPrank(testUser1);
+        vm.expectRevert();
+        statsRegistry.removeCalculator(aprId);
+        vm.stopPrank();
+
+        // Successful removing with the correct role: STATS_CALC_REGISTRY_MANAGER (owner)
+        vm.expectEmit(true, true, true, true);
+        emit StatCalculatorRemoved(aprId, calculator, address(this));
+        statsRegistry.removeCalculator(aprId);
+    }
+
     function testCalcCorrectlyRegistersRemove() public {
         bytes32 aprId = keccak256("x");
         address calculator = generateCalculator(aprId);
 
-        vm.startPrank(statsFactory);
         // Reverts if no calc added
         vm.expectRevert(abi.encodeWithSelector(Errors.NotRegistered.selector));
         statsRegistry.removeCalculator(aprId);
 
         // Adding calc
+        vm.prank(statsFactory);
         statsRegistry.register(calculator);
 
         // Verifying it's registered
@@ -159,9 +179,8 @@ contract StatsCalculatorRegistryTests is Test {
 
         // Successful removing
         vm.expectEmit(true, true, true, true);
-        emit StatCalculatorRemoved(aprId, calculator, statsFactory);
+        emit StatCalculatorRemoved(aprId, calculator, address(this));
         statsRegistry.removeCalculator(aprId);
-        vm.stopPrank();
 
         // Reverting if calc was removed
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "calcAddress"));

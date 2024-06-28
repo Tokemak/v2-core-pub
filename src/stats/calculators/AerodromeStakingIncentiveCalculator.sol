@@ -341,6 +341,9 @@ contract AerodromeStakingIncentiveCalculator is IDexLSTStats, BaseStatsCalculato
             lastSnapshotRewardPerToken = 0;
             lastSnapshotTimestamp = block.timestamp;
 
+            emit RewarderSafeTotalSupplySnapshot(
+                rewarder, rewardRate, timeBetweenSnapshots, rewardPerToken, safeTotalSupply
+            );
             return;
         }
 

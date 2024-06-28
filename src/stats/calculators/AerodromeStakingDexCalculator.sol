@@ -26,6 +26,7 @@ contract AerodromeStakingDexCalculator is IDexLSTStats, BaseStatsCalculator {
     }
 
     error ShouldNotSnapshot();
+    error DependentAprIdsNotLength2();
 
     constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
 
@@ -39,7 +40,11 @@ contract AerodromeStakingDexCalculator is IDexLSTStats, BaseStatsCalculator {
 
         IStatsCalculatorRegistry registry = systemRegistry.statsCalculatorRegistry();
 
-        _aprId = keccak256(abi.encode("aerodrome dex staking", decodedInitData.poolAddress));
+        _aprId = keccak256(abi.encode("aerodromeSVAmm", decodedInitData.poolAddress));
+
+        if (dependentAprIds.length != 2) {
+            revert DependentAprIdsNotLength2();
+        }
 
         for (uint256 i = 0; i < 2; i++) {
             bytes32 dependentAprId = dependentAprIds[i];
@@ -63,22 +68,29 @@ contract AerodromeStakingDexCalculator is IDexLSTStats, BaseStatsCalculator {
         }
     }
 
+    /// @inheritdoc IStatsCalculator
     function getAddressId() external view returns (address) {
         return poolAddress;
     }
 
+    /// @inheritdoc IStatsCalculator
     function getAprId() external view returns (bytes32) {
         return _aprId;
     }
 
+    /// @inheritdoc IStatsCalculator
+    /// @dev This calculator does not need to track any information over time so it does not need to snapshot.
     function shouldSnapshot() public pure override returns (bool) {
         return false;
     }
 
+    /// @inheritdoc IStatsCalculator
+    /// @dev This calculator does not need to record anything so if it ever calls _snapshot() something went wrong.
     function _snapshot() internal pure override {
         revert ShouldNotSnapshot();
     }
 
+    /// @inheritdoc IDexLSTStats
     function current() external returns (DexLSTStatsData memory) {
         ILSTStats.LSTStatsData[] memory lstStatsData = new ILSTStats.LSTStatsData[](2);
         // address(0) is for WETH
@@ -108,7 +120,7 @@ contract AerodromeStakingDexCalculator is IDexLSTStats, BaseStatsCalculator {
         StakingIncentiveStats memory stakingIncentiveStats;
 
         return DexLSTStatsData({
-            lastSnapshotTimestamp: 0,
+            lastSnapshotTimestamp: block.timestamp,
             feeApr: 0, // When staking LP on Aerodrome for AERO emissions LPs cannot earn swap fees
             lstStatsData: lstStatsData,
             reservesInEth: reservesInEthMemory,

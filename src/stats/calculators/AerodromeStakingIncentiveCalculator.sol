@@ -126,9 +126,7 @@ contract AerodromeStakingIncentiveCalculator is IDexLSTStats, BaseStatsCalculato
             revert GaugeNotForLegitimatePool();
         }
 
-        _aprId = keccak256(
-            abi.encode("aerodrome incentive staking", decodedInitData.poolAddress, decodedInitData.gaugeAddress)
-        );
+        _aprId = keccak256(abi.encode("aerodromeSVAmm", decodedInitData.poolAddress, decodedInitData.gaugeAddress));
 
         lastIncentiveTimestamp = block.timestamp;
         decayInitTimestamp = block.timestamp;
@@ -188,6 +186,7 @@ contract AerodromeStakingIncentiveCalculator is IDexLSTStats, BaseStatsCalculato
         return data;
     }
 
+    /// @inheritdoc IStatsCalculator
     function shouldSnapshot() public view override returns (bool) {
         uint256 currentRewardRate = gauge.rewardRate();
         uint256 periodFinish = gauge.periodFinish();
@@ -229,6 +228,7 @@ contract AerodromeStakingIncentiveCalculator is IDexLSTStats, BaseStatsCalculato
         return false;
     }
 
+    /// @inheritdoc BaseStatsCalculator
     function _snapshot() internal override {
         // slither-disable-start line reentrancy-no-eth
         lastSnapshotTotalAPR = _computeTotalAPR(true);

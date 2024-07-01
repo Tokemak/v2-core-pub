@@ -92,14 +92,14 @@ abstract contract BalancerBaseOracle is SystemComponent, ISpotPriceOracle {
         address pool,
         IERC20[] memory tokens,
         address requestedQuoteToken
-    ) private returns (uint256 price, address actualQuoteToken) {
+    ) internal virtual returns (uint256 price, address actualQuoteToken) {
+        // Scaling price down to minimize impacts on low liquidity pools.
+        (uint256 downScaledUint, uint256 padUnit) = Utilities.getScaleDownFactor(IERC20Metadata(token).decimals());
+
         bytes32 poolId = IBasePool(pool).getPoolId();
 
-        // Scaling price down to minimize impacts on low liquidity pools.
-        (uint256 downScaledUnit, uint256 padUnit) = Utilities.getScaleDownFactor(IERC20Metadata(token).decimals());
-
         IVault.BatchSwapStep[] memory steps = new IVault.BatchSwapStep[](1);
-        steps[0] = IVault.BatchSwapStep(poolId, 0, 1, downScaledUnit, "");
+        steps[0] = IVault.BatchSwapStep(poolId, 0, 1, downScaledUint, "");
 
         int256 tokenIndex = -1;
         int256 quoteTokenIndex = -1;

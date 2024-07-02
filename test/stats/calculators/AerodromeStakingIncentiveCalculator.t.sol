@@ -11,7 +11,7 @@ import { AerodromeStakingDexCalculator } from "src/stats/calculators/AerodromeSt
 import { AerodromeStakingIncentiveCalculator } from "src/stats/calculators/AerodromeStakingIncentiveCalculator.sol";
 import { IAerodromeGauge } from "src/interfaces/external/aerodrome/IAerodromeGauge.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
-
+import { IERC20 } from "lib/forge-std/src/interfaces/IERC20.sol";
 import { WETH9_BASE, RETH_BASE } from "test/utils/Addresses.sol";
 import { IPool } from "src/interfaces/external/aerodrome/IPool.sol";
 import { Roles } from "src/libs/Roles.sol";
@@ -138,6 +138,7 @@ contract AerodromeStakingIncentiveCalculatorTest is Test {
 
     function successfulInitalizeIncentiveCalculator() public {
         vm.mockCall(gauge, abi.encodeWithSelector(IAerodromeGauge.rewardToken.selector), abi.encode(AERO));
+        vm.mockCall(AERO, abi.encodeWithSelector(IERC20.decimals.selector), abi.encode(18));
         vm.mockCall(gauge, abi.encodeWithSelector(IAerodromeGauge.stakingToken.selector), abi.encode(pool));
         vm.mockCall(gauge, abi.encodeWithSelector(IAerodromeGauge.isPool.selector), abi.encode(true));
 
@@ -206,6 +207,8 @@ contract AerodromeStakingIncentiveCalculatorTest is Test {
 
     function test_RevertIf_InitalizePoolGaugeMismatch() public {
         successfulInitalizeDexCalculator();
+        vm.mockCall(AERO, abi.encodeWithSelector(IERC20.decimals.selector), abi.encode(18));
+
         vm.mockCall(gauge, abi.encodeWithSelector(IAerodromeGauge.rewardToken.selector), abi.encode(AERO));
         vm.mockCall(gauge, abi.encodeWithSelector(IAerodromeGauge.stakingToken.selector), abi.encode(address(1)));
         vm.mockCall(gauge, abi.encodeWithSelector(IAerodromeGauge.isPool.selector), abi.encode(true));
@@ -224,6 +227,8 @@ contract AerodromeStakingIncentiveCalculatorTest is Test {
 
     function test_RevertIf_InitalizeGaugeIsPoolIsFalse() public {
         successfulInitalizeDexCalculator();
+        vm.mockCall(AERO, abi.encodeWithSelector(IERC20.decimals.selector), abi.encode(18));
+
         vm.mockCall(gauge, abi.encodeWithSelector(IAerodromeGauge.rewardToken.selector), abi.encode(AERO));
         vm.mockCall(gauge, abi.encodeWithSelector(IAerodromeGauge.stakingToken.selector), abi.encode(pool));
         vm.mockCall(gauge, abi.encodeWithSelector(IAerodromeGauge.isPool.selector), abi.encode(false));
@@ -237,6 +242,26 @@ contract AerodromeStakingIncentiveCalculatorTest is Test {
             })
         );
         vm.expectRevert(AerodromeStakingIncentiveCalculator.GaugeNotForLegitimatePool.selector);
+        calculator.initialize(depAprIds, initData);
+    }
+
+    function test_RevertIf_InitalizeRewardTokenDoesNotHave18Decimals() public {
+        successfulInitalizeDexCalculator();
+        vm.mockCall(AERO, abi.encodeWithSelector(IERC20.decimals.selector), abi.encode(6));
+
+        vm.mockCall(gauge, abi.encodeWithSelector(IAerodromeGauge.rewardToken.selector), abi.encode(AERO));
+        vm.mockCall(gauge, abi.encodeWithSelector(IAerodromeGauge.stakingToken.selector), abi.encode(pool));
+        vm.mockCall(gauge, abi.encodeWithSelector(IAerodromeGauge.isPool.selector), abi.encode(true));
+
+        bytes32[] memory depAprIds = new bytes32[](0);
+        bytes memory initData = abi.encode(
+            AerodromeStakingIncentiveCalculator.InitData({
+                poolAddress: address(pool),
+                gaugeAddress: address(gauge),
+                underlyerStats: address(underlyerStats)
+            })
+        );
+        vm.expectRevert(AerodromeStakingIncentiveCalculator.RewardTokenNot18Decimals.selector);
         calculator.initialize(depAprIds, initData);
     }
 

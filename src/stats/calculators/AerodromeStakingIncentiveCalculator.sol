@@ -127,6 +127,7 @@ contract AerodromeStakingIncentiveCalculator is IDexLSTStats, BaseStatsCalculato
         rewardToken = gauge.rewardToken();
         reserveTokens[0] = pool.token0();
         reserveTokens[1] = pool.token1();
+        _aprId = keccak256(abi.encode("aerodromeSVAmm", decodedInitData.poolAddress, decodedInitData.gaugeAddress));
 
         if (IERC20(rewardToken).decimals() != 18) {
             // Incentive APR will not scale correctly unless the rewardToken has 18 decimals
@@ -140,8 +141,6 @@ contract AerodromeStakingIncentiveCalculator is IDexLSTStats, BaseStatsCalculato
         if (!gauge.isPool()) {
             revert GaugeNotForLegitimatePool();
         }
-
-        _aprId = keccak256(abi.encode("aerodromeSVAmm", decodedInitData.poolAddress, decodedInitData.gaugeAddress));
 
         lastIncentiveTimestamp = block.timestamp;
         decayInitTimestamp = block.timestamp;

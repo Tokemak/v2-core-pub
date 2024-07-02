@@ -36,7 +36,7 @@ contract AerodromeDestinationVault is DestinationVault {
     address public aerodromeGauge;
 
     /// @notice Tokens of the pool
-    address[] public constituentTokens;
+    address[] private constituentTokens;
 
     /// @notice If pool being proxied is stable or not.
     bool public isStable;

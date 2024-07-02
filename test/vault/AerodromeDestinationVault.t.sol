@@ -243,11 +243,13 @@ contract Constructor is AerodromeDestinationVaultBaseTest {
 
 contract Initialize is AerodromeDestinationVaultBaseTest {
     function test_StateSetDuringInit() public {
+        address[] memory underlyingTokens = _dv.underlyingTokens();
+
         assertEq(_dv.aerodromeGauge(), WSTETH_WETH_AERO_BASE_GAUGE);
         assertEq(_dv.aerodromeRouter(), AERODROME_SWAP_ROUTER_BASE);
         assertEq(_dv.isStable(), false);
-        assertEq(_dv.constituentTokens(0), _aeroPool.token0());
-        assertEq(_dv.constituentTokens(1), _aeroPool.token1());
+        assertEq(underlyingTokens[0], _aeroPool.token0());
+        assertEq(underlyingTokens[1], _aeroPool.token1());
     }
 
     function test_RevertIf_GaugeZero() public {

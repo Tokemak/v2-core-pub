@@ -304,6 +304,7 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
             revert SellAmountMismatch(totalBalanceToLiquidate, params.sellAmount);
         }
         // Ensure deadline is not exceeded
+        // slither-disable-next-line timestamp
         if (block.timestamp > params.deadline) {
             revert DeadlineExceeded(params.deadline, block.timestamp);
         }

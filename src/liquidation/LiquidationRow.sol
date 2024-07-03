@@ -303,6 +303,10 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
         if (params.sellAmount != totalBalanceToLiquidate) {
             revert SellAmountMismatch(totalBalanceToLiquidate, params.sellAmount);
         }
+        // Ensure deadline is not exceeded
+        if (block.timestamp > params.deadline) {
+            revert DeadlineExceeded(params.deadline, block.timestamp);
+        }
 
         uint256 amountReceived = params.buyAmount;
         uint256 length = vaultsToLiquidate.length;

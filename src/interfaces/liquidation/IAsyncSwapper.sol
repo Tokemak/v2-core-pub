@@ -16,6 +16,8 @@ struct SwapParams {
     /// @dev Extra data payload reserved for future development. This field allows for additional information
     /// or functionality to be added without changing the struct and interface.
     bytes extraData;
+    /// @dev Execution deadline in timestamp format
+    uint256 deadline;
 }
 
 interface IAsyncSwapper {

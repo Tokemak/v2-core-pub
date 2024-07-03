@@ -20,6 +20,7 @@ interface ILiquidationRow {
     error SellAmountMismatch(uint256 totalBalanceToLiquidate, uint256 buyAmount);
     error AmountsMismatch(uint256 sellAmount, uint256 buyAmount);
     error InsufficientAmountReceived(uint256 expectedAmount, uint256 amountReceived);
+    error DeadlineExceeded(uint256 deadline, uint256 currentTimestamp);
 
     /**
      * @param fromToken The address of the token to be liquidated

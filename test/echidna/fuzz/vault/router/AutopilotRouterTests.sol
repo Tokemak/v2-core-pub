@@ -403,7 +403,8 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
             buyTokenAddress: _pool.asset(),
             buyAmount: minSharesOut,
             data: "", // no real payload since the swap is mocked
-            extraData: ""
+            extraData: "",
+            deadline: block.timestamp
         });
 
         address to = _resolveUserFromSeed(toSeed);
@@ -433,7 +434,8 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
             buyTokenAddress: _pool.asset(),
             buyAmount: minSharesOut,
             data: "", // no real payload since the swap is mocked
-            extraData: ""
+            extraData: "",
+            deadline: block.timestamp
         });
 
         address to = _resolveUserFromSeed(toSeed);

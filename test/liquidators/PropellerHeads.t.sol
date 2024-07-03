@@ -23,22 +23,22 @@ contract PropellerHeadsTest is Test {
 
     function test_Revert_IfBuyTokenAddressIsZeroAddress() public {
         vm.expectRevert(IAsyncSwapper.TokenAddressZero.selector);
-        adapter.swap(SwapParams(PRANK_ADDRESS, 0, address(0), 0, new bytes(0), new bytes(0)));
+        adapter.swap(SwapParams(PRANK_ADDRESS, 0, address(0), 0, new bytes(0), new bytes(0), block.timestamp));
     }
 
     function test_Revert_IfSellTokenAddressIsZeroAddress() public {
         vm.expectRevert(IAsyncSwapper.TokenAddressZero.selector);
-        adapter.swap(SwapParams(address(0), 0, PRANK_ADDRESS, 0, new bytes(0), new bytes(0)));
+        adapter.swap(SwapParams(address(0), 0, PRANK_ADDRESS, 0, new bytes(0), new bytes(0), block.timestamp));
     }
 
     function test_Revert_IfSellAmountIsZero() public {
         vm.expectRevert(IAsyncSwapper.InsufficientSellAmount.selector);
-        adapter.swap(SwapParams(PRANK_ADDRESS, 0, PRANK_ADDRESS, 1, new bytes(0), new bytes(0)));
+        adapter.swap(SwapParams(PRANK_ADDRESS, 0, PRANK_ADDRESS, 1, new bytes(0), new bytes(0), block.timestamp));
     }
 
     function test_Revert_IfBuyAmountIsZero() public {
         vm.expectRevert(IAsyncSwapper.InsufficientBuyAmount.selector);
-        adapter.swap(SwapParams(PRANK_ADDRESS, 1, PRANK_ADDRESS, 0, new bytes(0), new bytes(0)));
+        adapter.swap(SwapParams(PRANK_ADDRESS, 1, PRANK_ADDRESS, 0, new bytes(0), new bytes(0), block.timestamp));
     }
 
     function test_swap() public {
@@ -50,7 +50,9 @@ contract PropellerHeadsTest is Test {
 
         uint256 balanceBefore = IERC20(WETH_MAINNET).balanceOf(address(adapter));
 
-        adapter.swap(SwapParams(CVX_MAINNET, 100e18, WETH_MAINNET, 80_719_887_656_811_836, data, new bytes(0)));
+        adapter.swap(
+            SwapParams(CVX_MAINNET, 100e18, WETH_MAINNET, 80_719_887_656_811_836, data, new bytes(0), block.timestamp)
+        );
 
         uint256 balanceAfter = IERC20(WETH_MAINNET).balanceOf(address(adapter));
         uint256 balanceDiff = balanceAfter - balanceBefore;

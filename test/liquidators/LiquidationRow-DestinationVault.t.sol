@@ -224,7 +224,13 @@ contract CurveIntegrationTest is LiquidationRowTest {
         assert(cvxBalanceAfter > cvxBalanceBefore);
 
         SwapParams memory swapParams = SwapParams(
-            CVX_MAINNET, poolInfo.sellAmount, WETH_MAINNET, poolInfo.buyAmount, poolInfo.swapperData, new bytes(0)
+            CVX_MAINNET,
+            poolInfo.sellAmount,
+            WETH_MAINNET,
+            poolInfo.buyAmount,
+            poolInfo.swapperData,
+            new bytes(0),
+            block.timestamp
         );
 
         // Set up the price oracles for the tokens being swapped
@@ -443,7 +449,13 @@ contract BalancerAuraDestinationVaultIntegrationTest is LiquidationRowTest {
         assert(balBalanceAfter > balBalanceBefore);
 
         SwapParams memory swapParams = SwapParams(
-            BAL_MAINNET, poolInfo.sellAmount, WETH_MAINNET, poolInfo.buyAmount, poolInfo.swapperData, new bytes(0)
+            BAL_MAINNET,
+            poolInfo.sellAmount,
+            WETH_MAINNET,
+            poolInfo.buyAmount,
+            poolInfo.swapperData,
+            new bytes(0),
+            block.timestamp
         );
 
         // Set up the price oracles for the tokens being swapped

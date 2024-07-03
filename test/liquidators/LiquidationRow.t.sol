@@ -674,8 +674,15 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
         IDestinationVault[] memory vaults = _initArrayOfOneTestVault();
         liquidationRow.claimsVaultRewards(vaults);
 
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken2),
+            sellAmount,
+            address(baseAsset),
+            buyAmount,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
+        );
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         vm.prank(RANDOM);
@@ -693,7 +700,7 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
     function test_RevertIf_AsyncSwapperIsNotWhitelisted() public {
         IDestinationVault[] memory vaults = new IDestinationVault[](1);
         SwapParams memory swapParams =
-            SwapParams(address(rewardToken), 200, address(baseAsset), 200, new bytes(0), new bytes(0));
+            SwapParams(address(rewardToken), 200, address(baseAsset), 200, new bytes(0), new bytes(0), block.timestamp);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
 
@@ -707,7 +714,7 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
 
         IDestinationVault[] memory vaults = new IDestinationVault[](1);
         SwapParams memory swapParams =
-            SwapParams(address(rewardToken), 200, address(baseAsset), 200, new bytes(0), new bytes(0));
+            SwapParams(address(rewardToken), 200, address(baseAsset), 200, new bytes(0), new bytes(0), block.timestamp);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ItemNotFound.selector));
 
@@ -723,8 +730,9 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
         IDestinationVault[] memory vaults = _initArrayOfOneTestVault();
         liquidationRow.claimsVaultRewards(vaults);
 
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0), block.timestamp
+        );
 
         // pretend that the rewarder is returning a different token than the one we are trying to liquidate
         vm.mockCall(
@@ -740,8 +748,15 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
 
     // solhint-disable max-line-length
     function test_RevertIf_VaultBalanceAndSellAmountMismatch() public {
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), sellAmount * 2, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken2),
+            sellAmount * 2,
+            address(baseAsset),
+            buyAmount,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
+        );
 
         _setWhitelistAndFee();
         _mockComplexScenario(address(testVault));
@@ -756,6 +771,31 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
     }
     // solhint-enable max-line-length
 
+    function test_RevertIf_DeadlineIsInThePast() public {
+        uint256 deadline = block.timestamp;
+
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0), deadline
+        );
+
+        _setWhitelistAndFee();
+        _mockComplexScenario(address(testVault));
+
+        IDestinationVault[] memory vaults = _initArrayOfOneTestVault();
+        liquidationRow.claimsVaultRewards(vaults);
+
+        // Outdate the deadline
+        vm.roll(block.number + 1);
+        vm.warp(deadline + 15 seconds);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ILiquidationRow.DeadlineExceeded.selector, deadline, deadline + 15 seconds)
+        );
+        liquidationRow.liquidateVaultsForToken(
+            ILiquidationRow.LiquidationParams(address(rewardToken2), address(asyncSwapper), vaults, swapParams)
+        );
+    }
+
     function test_OnlyLiquidateGivenTokenForGivenVaults() public {
         liquidationRow.addToWhitelist(address(asyncSwapper));
 
@@ -763,8 +803,15 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
         IDestinationVault[] memory vaults = _initArrayOfOneTestVault();
         liquidationRow.claimsVaultRewards(vaults);
 
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken2),
+            sellAmount,
+            address(baseAsset),
+            buyAmount,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
+        );
 
         liquidationRow.liquidateVaultsForToken(
             ILiquidationRow.LiquidationParams(address(rewardToken2), address(asyncSwapper), vaults, swapParams)
@@ -785,8 +832,9 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
 
     function test_AvoidSwapWhenRewardTokenMatchesBaseAsset() public {
         // Tokens are the same, so exchange rate is 1:1.
-        SwapParams memory swapParams =
-            SwapParams(address(baseAsset), sellAmount, address(baseAsset), sellAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(baseAsset), sellAmount, address(baseAsset), sellAmount, new bytes(0), new bytes(0), block.timestamp
+        );
 
         _setWhitelistAndFee();
 
@@ -808,8 +856,9 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
 
     function test_RevertIf_InvalidAmountsMismatch() public {
         // Tokens are the same, so exchange rate is 1:1.
-        SwapParams memory swapParams =
-            SwapParams(address(baseAsset), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(baseAsset), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0), block.timestamp
+        );
 
         _setWhitelistAndFee();
 
@@ -824,8 +873,15 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
     }
 
     function test_RevertIf_InsufficientAmountReceived() public {
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken2),
+            sellAmount,
+            address(baseAsset),
+            buyAmount,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
+        );
 
         _setWhitelistAndFee();
 
@@ -845,8 +901,15 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
     }
 
     function test_EmitFeesTransferredEventWhenFeesFeatureIsTurnedOn() public {
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken2),
+            sellAmount,
+            address(baseAsset),
+            buyAmount,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
+        );
 
         _setWhitelistAndFee();
 
@@ -864,8 +927,15 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
     }
 
     function test_TransferFeesToReceiver() public {
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken2),
+            sellAmount,
+            address(baseAsset),
+            buyAmount,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
+        );
 
         _setWhitelistAndFee();
 
@@ -885,8 +955,15 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
     }
 
     function test_TransferRewardsToMainRewarder() public {
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken2),
+            sellAmount,
+            address(baseAsset),
+            buyAmount,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
+        );
 
         _setWhitelistAndFee();
 
@@ -909,8 +986,15 @@ contract LiquidateVaultsForToken is LiquidationRowTest {
         uint256 priceMarginBps = 500; // 5%
         liquidationRow.setPriceMarginBps(priceMarginBps);
 
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken2),
+            sellAmount,
+            address(baseAsset),
+            buyAmount,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
+        );
 
         _setWhitelistAndFee();
 
@@ -963,8 +1047,15 @@ contract LiquidateVaultsForTokens is LiquidationRowTest {
         IDestinationVault[] memory vaults = _initArrayOfOneTestVault();
         liquidationRow.claimsVaultRewards(vaults);
 
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken2),
+            sellAmount,
+            address(baseAsset),
+            buyAmount,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
+        );
 
         ILiquidationRow.LiquidationParams[] memory liquidateParams = new ILiquidationRow.LiquidationParams[](1);
         liquidateParams[0] =
@@ -981,8 +1072,9 @@ contract LiquidateVaultsForTokens is LiquidationRowTest {
 
     function test_RevertIf_AsyncSwapperIsNotWhitelisted() public {
         IDestinationVault[] memory vaults = new IDestinationVault[](1);
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0), block.timestamp
+        );
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
 
@@ -996,8 +1088,9 @@ contract LiquidateVaultsForTokens is LiquidationRowTest {
         liquidationRow.addToWhitelist(address(asyncSwapper));
 
         IDestinationVault[] memory vaults = new IDestinationVault[](1);
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0), block.timestamp
+        );
 
         ILiquidationRow.LiquidationParams[] memory liquidateParams = new ILiquidationRow.LiquidationParams[](1);
         liquidateParams[0] =
@@ -1015,8 +1108,9 @@ contract LiquidateVaultsForTokens is LiquidationRowTest {
         IDestinationVault[] memory vaults = _initArrayOfOneTestVault();
         liquidationRow.claimsVaultRewards(vaults);
 
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0), block.timestamp
+        );
 
         // pretend that the rewarder is returning a different token than the one we are trying to liquidate
         vm.mockCall(
@@ -1033,8 +1127,9 @@ contract LiquidateVaultsForTokens is LiquidationRowTest {
     }
 
     function test_RevertIf_VaultBalanceAndSellAmountMismatch() public {
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), 500, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken2), 500, address(baseAsset), buyAmount, new bytes(0), new bytes(0), block.timestamp
+        );
 
         liquidationRow.addToWhitelist(address(asyncSwapper));
         liquidationRow.setFeeAndReceiver(feeReceiver, feeBps);
@@ -1062,10 +1157,22 @@ contract LiquidateVaultsForTokens is LiquidationRowTest {
         liquidationRow.claimsVaultRewards(vaults);
 
         SwapParams memory swapParams2 = SwapParams(
-            address(rewardToken2), sellAmount * 2, address(baseAsset), buyAmount * 2, new bytes(0), new bytes(0)
+            address(rewardToken2),
+            sellAmount * 2,
+            address(baseAsset),
+            buyAmount * 2,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
         );
         SwapParams memory swapParams3 = SwapParams(
-            address(rewardToken3), sellAmount * 2, address(baseAsset), buyAmount * 2, new bytes(0), new bytes(0)
+            address(rewardToken3),
+            sellAmount * 2,
+            address(baseAsset),
+            buyAmount * 2,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
         );
 
         ILiquidationRow.LiquidationParams[] memory liquidateParams = new ILiquidationRow.LiquidationParams[](2);
@@ -1102,8 +1209,15 @@ contract LiquidateVaultsForTokens is LiquidationRowTest {
         IDestinationVault[] memory vaults = _initArrayOfOneTestVault();
         liquidationRow.claimsVaultRewards(vaults);
 
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken2),
+            sellAmount,
+            address(baseAsset),
+            buyAmount,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
+        );
 
         ILiquidationRow.LiquidationParams[] memory liquidateParams = new ILiquidationRow.LiquidationParams[](1);
         liquidateParams[0] =
@@ -1126,8 +1240,9 @@ contract LiquidateVaultsForTokens is LiquidationRowTest {
 
     function test_AvoidSwapWhenRewardTokenMatchesBaseAsset() public {
         // Tokens are the same, so exchange rate is 1:1.
-        SwapParams memory swapParams =
-            SwapParams(address(baseAsset), sellAmount, address(baseAsset), sellAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(baseAsset), sellAmount, address(baseAsset), sellAmount, new bytes(0), new bytes(0), block.timestamp
+        );
 
         liquidationRow.addToWhitelist(address(asyncSwapper));
         liquidationRow.setFeeAndReceiver(feeReceiver, feeBps);
@@ -1150,8 +1265,15 @@ contract LiquidateVaultsForTokens is LiquidationRowTest {
 
     function test_RevertIf_InvalidSwapParameters() public {
         // Tokens are the same, so exchange rate is 1:1.
-        SwapParams memory swapParams =
-            SwapParams(address(baseAsset), sellAmount, address(baseAsset), 2 * sellAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(baseAsset),
+            sellAmount,
+            address(baseAsset),
+            2 * sellAmount,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
+        );
 
         liquidationRow.addToWhitelist(address(asyncSwapper));
         liquidationRow.setFeeAndReceiver(feeReceiver, feeBps);
@@ -1169,8 +1291,15 @@ contract LiquidateVaultsForTokens is LiquidationRowTest {
     }
 
     function test_EmitFeesTransferredEventWhenFeesFeatureIsTurnedOn() public {
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken2),
+            sellAmount,
+            address(baseAsset),
+            buyAmount,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
+        );
 
         liquidationRow.addToWhitelist(address(asyncSwapper));
         liquidationRow.setFeeAndReceiver(feeReceiver, feeBps);
@@ -1190,8 +1319,15 @@ contract LiquidateVaultsForTokens is LiquidationRowTest {
     }
 
     function test_TransferFeesToReceiver() public {
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken2),
+            sellAmount,
+            address(baseAsset),
+            buyAmount,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
+        );
 
         liquidationRow.addToWhitelist(address(asyncSwapper));
         liquidationRow.setFeeAndReceiver(feeReceiver, feeBps);
@@ -1214,8 +1350,15 @@ contract LiquidateVaultsForTokens is LiquidationRowTest {
     }
 
     function test_TransferRewardsToMainRewarder() public {
-        SwapParams memory swapParams =
-            SwapParams(address(rewardToken2), sellAmount, address(baseAsset), buyAmount, new bytes(0), new bytes(0));
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken2),
+            sellAmount,
+            address(baseAsset),
+            buyAmount,
+            new bytes(0),
+            new bytes(0),
+            block.timestamp
+        );
 
         liquidationRow.addToWhitelist(address(asyncSwapper));
         liquidationRow.setFeeAndReceiver(feeReceiver, feeBps);

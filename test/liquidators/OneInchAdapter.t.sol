@@ -25,22 +25,22 @@ contract OneInchAdapterTest is Test {
     function test_Revert_IfBuyTokenAddressIsZeroAddress() public {
         vm.expectRevert(IAsyncSwapper.TokenAddressZero.selector);
         // encode swap params
-        adapter.swap(SwapParams(PRANK_ADDRESS, 1, address(0), 0, new bytes(0), new bytes(0)));
+        adapter.swap(SwapParams(PRANK_ADDRESS, 1, address(0), 0, new bytes(0), new bytes(0), block.timestamp));
     }
 
     function test_Revert_IfSellTokenAddressIsZeroAddress() public {
         vm.expectRevert(IAsyncSwapper.TokenAddressZero.selector);
-        adapter.swap(SwapParams(address(0), 0, PRANK_ADDRESS, 0, new bytes(0), new bytes(0)));
+        adapter.swap(SwapParams(address(0), 0, PRANK_ADDRESS, 0, new bytes(0), new bytes(0), block.timestamp));
     }
 
     function test_Revert_IfSellAmountIsZero() public {
         vm.expectRevert(IAsyncSwapper.InsufficientSellAmount.selector);
-        adapter.swap(SwapParams(PRANK_ADDRESS, 0, PRANK_ADDRESS, 1, new bytes(0), new bytes(0)));
+        adapter.swap(SwapParams(PRANK_ADDRESS, 0, PRANK_ADDRESS, 1, new bytes(0), new bytes(0), block.timestamp));
     }
 
     function test_Revert_IfBuyAmountIsZero() public {
         vm.expectRevert(IAsyncSwapper.InsufficientBuyAmount.selector);
-        adapter.swap(SwapParams(PRANK_ADDRESS, 1, PRANK_ADDRESS, 0, new bytes(0), new bytes(0)));
+        adapter.swap(SwapParams(PRANK_ADDRESS, 1, PRANK_ADDRESS, 0, new bytes(0), new bytes(0), block.timestamp));
     }
 
     function test_swap() public {
@@ -62,7 +62,8 @@ contract OneInchAdapterTest is Test {
                 WETH_MAINNET,
                 356_292_255_653_182_345_276,
                 data,
-                new bytes(0)
+                new bytes(0),
+                block.timestamp
             )
         );
 

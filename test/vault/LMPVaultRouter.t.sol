@@ -629,7 +629,8 @@ contract AutopilotRouterTest is BaseTest {
             buyTokenAddress: address(testToken),
             buyAmount: amount,
             data: "", // no real payload since the swap is mocked
-            extraData: ""
+            extraData: "",
+            deadline: block.timestamp
         });
 
         uint256 testTokenBalanceBefore = testToken.balanceOf(address(this));

@@ -391,7 +391,12 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
      * @param totalSupply The total supply of tokens for the rewarder.
      * @param rewardRate The current reward rate for the rewarder.
      */
-    function _snapshotRewarder(address _rewarder, uint256 totalSupply, uint256 rewardRate) internal {
+    function _snapshotRewarder(
+        address _rewarder,
+        uint256 totalSupply,
+        uint256 rewardRate,
+        uint256 periodFinish
+    ) internal {
         if (totalSupply == 0) {
             safeTotalSupplies[_rewarder] = 0;
             lastSnapshotRewardPerToken[_rewarder] = 0;
@@ -415,20 +420,27 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
         // Finalization: If a snapshot exists, finalize by calculating the reward accrued
         // since initialization, then reset the snapshot state.
         if (status == SnapshotStatus.shouldFinalize) {
-            uint256 lastSnapshotTimestamp = lastSnapshotTimestamps[_rewarder];
-            uint256 lastRewardPerToken = lastSnapshotRewardPerToken[_rewarder];
-            // Subtract one, added during initialization, to ensure 0 is only used as an uninitialized value flag.
-            uint256 diff = rewardPerToken - (lastRewardPerToken - 1);
+            // scope to avoid stack too deep errors
+            uint256 lastSnapshotTimestamp;
+            uint256 timeBetweenSnapshots;
+            uint256 diff;
+            {
+                lastSnapshotTimestamp = lastSnapshotTimestamps[_rewarder];
+                uint256 lastRewardPerToken = lastSnapshotRewardPerToken[_rewarder];
+                // Subtract one, added during initialization, to ensure 0 is only used as an uninitialized value flag.
+                diff = rewardPerToken - (lastRewardPerToken - 1);
+                // slither-disable-start timestamp
 
-            uint256 timeBetweenSnapshots = block.timestamp - lastSnapshotTimestamp;
+                timeBetweenSnapshots = block.timestamp - lastSnapshotTimestamp;
 
-            // Set safe total supply only when we are able to calculate it
-            if (diff > 0) {
-                safeTotalSupplies[_rewarder] = rewardRate * timeBetweenSnapshots * 1e18 / diff;
+                // Set safe total supply only when we are able to calculate it
+                if ((diff > 0) && (periodFinish > block.timestamp)) {
+                    safeTotalSupplies[_rewarder] = rewardRate * timeBetweenSnapshots * 1e18 / diff;
+                }
+                lastSnapshotRewardPerToken[_rewarder] = 0;
+                lastSnapshotTimestamps[_rewarder] = block.timestamp;
+                // slither-disable-end timestamp
             }
-            lastSnapshotRewardPerToken[_rewarder] = 0;
-            lastSnapshotTimestamps[_rewarder] = block.timestamp;
-
             // slither-disable-next-line reentrancy-events
             emit RewarderSafeTotalSupplySnapshot(
                 _rewarder, rewardRate, timeBetweenSnapshots, diff, safeTotalSupplies[_rewarder]
@@ -509,7 +521,7 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
         // Get reward pool metrics for the main rewarder and take a snapshot if necessary
         (uint256 rewardRate, uint256 totalSupply, uint256 periodFinish) = _getRewardPoolMetrics(address(rewarder));
         if (performSnapshot && _shouldSnapshot(address(rewarder), rewardRate, periodFinish, totalSupply)) {
-            _snapshotRewarder(address(rewarder), totalSupply, rewardRate);
+            _snapshotRewarder(address(rewarder), totalSupply, rewardRate, periodFinish);
         }
 
         // slither-disable-next-line reentrancy-no-eth
@@ -532,7 +544,7 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
 
             // Take a snapshot for the extra rewarder if necessary
             if (performSnapshot && _shouldSnapshot(extraRewarder, rewardRate, periodFinish, totalSupply)) {
-                _snapshotRewarder(extraRewarder, totalSupply, rewardRate);
+                _snapshotRewarder(extraRewarder, totalSupply, rewardRate, periodFinish);
             }
             rewardToken = resolveRewardToken(extraRewarder);
 

@@ -623,6 +623,36 @@ contract Current is AuraCalculatorTest {
         assertEq(extraRewardLastSnapshotRewardPerTokenBefore, calculator.lastSnapshotRewardPerToken(extraRewarder1));
         assertEq(extraRewarderLastSnapshotRewardRateBefore, calculator.lastSnapshotRewardRate(extraRewarder1));
     }
+
+    function test_SafeTotalSupplies_UpdatedWhenPeriodFinishNotExpired() public {
+        mockSimpleMainRewarder();
+        calculator.snapshot();
+        // move forward in time
+        vm.warp(block.timestamp + 5 hours);
+        // some reward have accumulated
+        mockRewardPerToken(mainRewarder, REWARD_PER_TOKEN + 1);
+        mockPeriodFinish(mainRewarder, block.timestamp + 7 days);
+        mockRewardToken(mainRewarder, mainRewarderRewardToken);
+        calculator.snapshot();
+        IDexLSTStats.DexLSTStatsData memory res = calculator.current();
+        assertEq(calculator.safeTotalSupplies(mainRewarder), 18e25);
+        assertEq(res.stakingIncentiveStats.safeTotalSupply, 18e25);
+    }
+
+    function test_SafeTotalSupplies_NotUpdatedWhenPeriodFinishExpired() public {
+        mockSimpleMainRewarder();
+        calculator.snapshot();
+        // move forward in time
+        vm.warp(block.timestamp + 5 hours);
+        // some reward have accumulated
+        mockRewardPerToken(mainRewarder, REWARD_PER_TOKEN + 1);
+        mockPeriodFinish(mainRewarder, block.timestamp);
+        mockRewardToken(mainRewarder, mainRewarderRewardToken);
+        calculator.snapshot();
+        IDexLSTStats.DexLSTStatsData memory res = calculator.current();
+        assertEq(calculator.safeTotalSupplies(mainRewarder), 0);
+        assertEq(res.stakingIncentiveStats.safeTotalSupply, 0);
+    }
 }
 
 contract IncentiveAprScalingWithDecimals is AuraCalculatorTest {

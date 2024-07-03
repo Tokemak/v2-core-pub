@@ -17,7 +17,4 @@ interface IBalancerGyroPool {
      *  diluting LPers. Thus, this is the totalSupply() that the next join/exit operation will see.
      */
     function getActualSupply() external view returns (uint256);
-
-    // Returns swap fee for Gyro pool
-    function getSwapFeePercentage() external view returns (uint256);
 }

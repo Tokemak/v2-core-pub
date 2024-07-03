@@ -17,7 +17,7 @@ import {
 import { IBalancerGyroPool } from "src/interfaces/external/balancer/IBalancerGyroPool.sol";
 
 /// @title Price oracle for Gyroscope pools with Balancer interface
-contract BalancerGyroscopeEthOracle is BalancerBaseOracle {
+contract BalancerGyroscopeECLPEthOracle is BalancerBaseOracle {
     uint256 public constant POOL_TOKENS_CONSTANT = 2;
 
     constructor(
@@ -77,8 +77,5 @@ contract BalancerGyroscopeEthOracle is BalancerBaseOracle {
         if (quoteTokenDecimals < 18) {
             price = price / 10 ** (18 - quoteTokenDecimals);
         }
-
-        // Adjust for fees
-        price = (price * 1e18) / (1e18 - IBalancerGyroPool(pool).getSwapFeePercentage());
     }
 }

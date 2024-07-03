@@ -57,7 +57,8 @@ contract AutopilotRouter is IAutopilotRouter, AutopilotRouterBase, ReentrancyGua
         systemRegistry.asyncSwapperRegistry().verifyIsRegistered(swapper);
 
         bytes memory data = swapper.functionDelegateCall(
-            abi.encodeWithSignature("swap((address,uint256,address,uint256,bytes,bytes))", swapParams), "SwapFailed"
+            abi.encodeWithSignature("swap((address,uint256,address,uint256,bytes,bytes,uint256))", swapParams),
+            "SwapFailed"
         );
 
         amountReceived = abi.decode(data, (uint256));
@@ -74,7 +75,8 @@ contract AutopilotRouter is IAutopilotRouter, AutopilotRouterBase, ReentrancyGua
         swapParams.sellAmount = sellToken.balanceOf(address(this));
 
         bytes memory data = swapper.functionDelegateCall(
-            abi.encodeWithSignature("swap((address,uint256,address,uint256,bytes,bytes))", swapParams), "SwapFailed"
+            abi.encodeWithSignature("swap((address,uint256,address,uint256,bytes,bytes,uint256))", swapParams),
+            "SwapFailed"
         );
 
         amountReceived = abi.decode(data, (uint256));

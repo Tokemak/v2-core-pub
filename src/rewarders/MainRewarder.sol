@@ -28,6 +28,7 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
     /// @dev Destination Vaults should not allow extras. Autopool's should.
     bool public immutable allowExtraRewards;
 
+    uint256 public immutable maxExtraRewards;
     EnumerableSet.AddressSet private _extraRewards;
 
     uint256 private _totalSupply;
@@ -43,6 +44,7 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
     ) AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock, _rewardRole) {
         // slither-disable-next-line missing-zero-check
         allowExtraRewards = _allowExtraRewards;
+        maxExtraRewards = 15;
     }
 
     /// @inheritdoc IMainRewarder
@@ -54,6 +56,9 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
     function addExtraReward(address reward) external hasRole(rewardRole) {
         if (!allowExtraRewards) {
             revert ExtraRewardsNotAllowed();
+        }
+        if (_extraRewards.length() >= maxExtraRewards) {
+            revert MaxExtraRewardsReached();
         }
         Errors.verifyNotZero(reward, "reward");
 

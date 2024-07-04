@@ -7,6 +7,7 @@ import { IExtraRewarder } from "src/interfaces/rewarders/IExtraRewarder.sol";
 
 interface IMainRewarder is IBaseRewarder {
     error ExtraRewardsNotAllowed();
+    error MaxExtraRewardsReached();
 
     event ExtraRewardAdded(address reward);
     event ExtraRewardsCleared();

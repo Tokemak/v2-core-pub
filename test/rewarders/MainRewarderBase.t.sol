@@ -15,6 +15,7 @@ import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { RANDOM, WETH_MAINNET, TOKE_MAINNET } from "test/utils/Addresses.sol";
 import { MainRewarder } from "src/rewarders/MainRewarder.sol";
+import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 
 contract MainRewarderNotAbstract is MainRewarder {
     constructor(
@@ -100,6 +101,16 @@ contract AddExtraReward is MainRewarderTest {
         rewarder.addExtraReward(extraReward);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ItemExists.selector));
+        rewarder.addExtraReward(extraReward);
+    }
+
+    function test_RevertIf_MaxExtraRewardsReached() public {
+        for (uint256 i = 0; i < 15; i++) {
+            rewarder.addExtraReward(vm.addr(i + 1));
+        }
+
+        address extraReward = makeAddr("EXTRA_REWARD");
+        vm.expectRevert(abi.encodeWithSelector(IMainRewarder.MaxExtraRewardsReached.selector));
         rewarder.addExtraReward(extraReward);
     }
 

@@ -52,7 +52,6 @@ contract MainRewarderTest is Test {
 
     event ExtraRewardAdded(address reward);
     event ExtraRewardsCleared();
-    event ExtraRewardRemoved(address reward);
 
     function setUp() public virtual {
         systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
@@ -116,53 +115,6 @@ contract AddExtraReward is MainRewarderTest {
         assertEq(rewarder.extraRewardsLength(), 0, "extraRewardsLength before");
         rewarder.addExtraReward(makeAddr("EXTRA_REWARD"));
         assertEq(rewarder.extraRewardsLength(), 1, "extraRewardsLength after");
-    }
-}
-
-contract RemoveExtraRewards is MainRewarderTest {
-    function test_RevertIf_ImproperRole_removeExtraReward() external {
-        vm.prank(makeAddr("NO_ROLE"));
-        vm.expectRevert(Errors.AccessDenied.selector);
-
-        address[] memory removalRewards = new address[](1);
-        removalRewards[0] = makeAddr("EXTRA_REWARD");
-        rewarder.removeExtraRewards(removalRewards);
-    }
-
-    function test_RevertIf_ItemNotFound() public {
-        address[] memory rewardsToRemove = new address[](1);
-        rewardsToRemove[0] = makeAddr("NON_EXISTENT_REWARDER");
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.ItemNotFound.selector));
-        rewarder.removeExtraRewards(rewardsToRemove);
-    }
-
-    function test_EmitExtraRewardRemovedEvent() public {
-        address extraReward = makeAddr("EXTRA_REWARDER");
-        rewarder.addExtraReward(extraReward);
-
-        address[] memory rewardsToRemove = new address[](1);
-        rewardsToRemove[0] = extraReward;
-
-        vm.expectEmit(true, true, true, true);
-        emit ExtraRewardRemoved(extraReward);
-        rewarder.removeExtraRewards(rewardsToRemove);
-    }
-
-    function test_RemovedTheGivenRewards() public {
-        address extraReward1 = makeAddr("EXTRA_REWARDER1");
-        address extraReward2 = makeAddr("EXTRA_REWARDER2");
-        rewarder.addExtraReward(extraReward1);
-        rewarder.addExtraReward(extraReward2);
-
-        assertEq(rewarder.extraRewardsLength(), 2, "extraRewardsLength before removal");
-
-        address[] memory rewardsToRemove = new address[](2);
-        rewardsToRemove[0] = extraReward1;
-        rewardsToRemove[1] = extraReward2;
-
-        rewarder.removeExtraRewards(rewardsToRemove);
-        assertEq(rewarder.extraRewardsLength(), 0, "extraRewardsLength after removal");
     }
 }
 

@@ -70,17 +70,6 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
     }
 
     /// @inheritdoc IMainRewarder
-    function removeExtraRewards(address[] calldata _rewards) external hasRole(rewardRole) {
-        uint256 length = _rewards.length;
-        for (uint256 i = 0; i < length; ++i) {
-            if (!_extraRewards.remove(_rewards[i])) {
-                revert Errors.ItemNotFound();
-            }
-            emit ExtraRewardRemoved(_rewards[i]);
-        }
-    }
-
-    /// @inheritdoc IMainRewarder
     function clearExtraRewards() external hasRole(rewardRole) {
         while (_extraRewards.length() > 0) {
             if (!_extraRewards.remove(_extraRewards.at(_extraRewards.length() - 1))) {

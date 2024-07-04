@@ -10,18 +10,12 @@ interface IMainRewarder is IBaseRewarder {
 
     event ExtraRewardAdded(address reward);
     event ExtraRewardsCleared();
-    event ExtraRewardRemoved(address reward);
 
     /**
      * @notice Adds an ExtraRewarder contract address to the extraRewards array.
      * @param reward The address of the ExtraRewarder contract.
      */
     function addExtraReward(address reward) external;
-
-    /**
-     * @notice Removes a list of ExtraRewarder contract addresses from the extraRewards array.
-     */
-    function removeExtraRewards(address[] calldata _rewards) external;
 
     /**
      * @notice Withdraws the specified amount of tokens from the vault for the specified account, and transfers all

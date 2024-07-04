@@ -25,10 +25,6 @@ contract AutopoolMainRewarderTest is Test {
     uint256 public totalSupply = 100;
     uint256 public constant MAX_STAKE_AMOUNT = 100e6 * 1e18; // 100m
 
-    event ExtraRewardAdded(address reward);
-    event ExtraRewardsCleared();
-    event ExtraRewardRemoved(address reward);
-
     function setUp() public virtual {
         systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
         // We use mock since this function is called not from owner and

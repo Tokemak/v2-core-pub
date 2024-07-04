@@ -16,8 +16,12 @@ import {
 } from "src/oracles/providers/base/BalancerBaseOracle.sol";
 import { IBalancerGyroPool } from "src/interfaces/external/balancer/IBalancerGyroPool.sol";
 
-/// @title Price oracle for Gyroscope pools with Balancer interface
-contract BalancerGyroscopeECLPEthOracle is BalancerBaseOracle {
+/// @title Price oracle for Gyroscope ECLP and 2CLP pools
+/// @dev WARNING: Must validate that any rate providers on the pool are returning 18 decimal prices before
+///  using `getPrice` function on pool.  These rate providers are assumed to be 18 decimals but there is
+///  no check for this in the code.  A rate provider returning incorrect decimals can cause prices orders of
+///  magnitude off
+contract BalancerGyroscopeEthOracle is BalancerBaseOracle {
     uint256 public constant POOL_TOKENS_CONSTANT = 2;
 
     constructor(

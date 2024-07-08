@@ -115,6 +115,26 @@ contract GyroOracleTestsECLPPool is BalancerGyroscopeEthOracleTestsBase {
         assertEq("balGyro", oracle.getDescription());
     }
 
+    function test_RevertIf_PoolDoesNotHaveTwoTokens() public {
+        address[] memory poolTokens = new address[](3);
+        uint256[] memory balances = new uint256[](3);
+
+        poolTokens[0] = makeAddr("FAKE_TOKEN_1");
+        poolTokens[1] = makeAddr("FAKE_TOKEN_2");
+        poolTokens[2] = makeAddr("FAKE_TOKEN_3");
+
+        balances[0] = 1;
+        balances[1] = 2;
+        balances[2] = 3;
+
+        vm.mockCall(
+            BAL_VAULT, abi.encodeWithSignature("getPoolTokens(bytes32)"), abi.encode(poolTokens, balances, block.number)
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ArrayLengthMismatch.selector, 3, 2, "tokens"));
+        oracle.getSpotPrice(WETH_MAINNET, WSTETH_WETH_GYRO_POOL, address(1));
+    }
+
     function test_RevertsIf_TokenDNEInPool() public {
         address fakeToken = makeAddr("FAKE_TOKEN");
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidToken.selector, fakeToken));

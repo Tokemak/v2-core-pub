@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-/// @title Interface for eCLP and 2CLP pools
+/// @title Interface for ECLP and 2CLP pools
 interface IBalancerGyroPool {
     /// @notice Virtual Price equivalent for Gyro Pools
     function getInvariantDivActualSupply() external view returns (uint256);
 
-    /// @notice Returns price of token0 quote in terms of token1
+    /// @notice Returns price of token0 in terms of token1
     function getPrice() external view returns (uint256);
 
     /**

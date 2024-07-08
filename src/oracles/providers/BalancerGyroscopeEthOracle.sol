@@ -22,6 +22,7 @@ import { IBalancerGyroPool } from "src/interfaces/external/balancer/IBalancerGyr
 ///  no check for this in the code.  A rate provider returning incorrect decimals can cause prices orders of
 ///  magnitude off
 contract BalancerGyroscopeEthOracle is BalancerBaseOracle {
+    /// @notice This oracle only works for two token pools
     uint256 public constant POOL_TOKENS_CONSTANT = 2;
 
     constructor(
@@ -34,10 +35,12 @@ contract BalancerGyroscopeEthOracle is BalancerBaseOracle {
         return "balGyro";
     }
 
+    /// @inheritdoc BalancerBaseOracle
     function getTotalSupply_(address lpToken) internal virtual override returns (uint256 totalSupply) {
         totalSupply = IBalancerGyroPool(lpToken).getActualSupply();
     }
 
+    /// @inheritdoc BalancerBaseOracle
     function getPoolTokens_(address pool)
         internal
         virtual
@@ -47,6 +50,7 @@ contract BalancerGyroscopeEthOracle is BalancerBaseOracle {
         (tokens, balances) = BalancerUtilities._getPoolTokens(balancerVault, pool);
     }
 
+    /// @inheritdoc BalancerBaseOracle
     function _getSpotPrice(
         address token,
         address pool,
@@ -76,7 +80,7 @@ contract BalancerGyroscopeEthOracle is BalancerBaseOracle {
             actualQuoteToken = address(tokens[1]);
         }
 
-        // Spot in e18 right now, if quote token not e18 adjust by decimals
+        // Gyro pools return price in e18, adjust by decimals of quote if necessary
         uint256 quoteTokenDecimals = IERC20Metadata(actualQuoteToken).decimals();
         if (quoteTokenDecimals < 18) {
             price = price / 10 ** (18 - quoteTokenDecimals);

@@ -136,7 +136,10 @@ library AutopoolDestinations {
             } else {
                 // If we no longer have a balance we don't need to continue to report
                 // on it and we also have nothing to withdraw from it
-                debtReportQueue.popAddress(destination);
+
+                // Audit update: https://github.com/Tokemak/v2-core/issues/657
+                // We don't remove the destination from the debt queue here as it
+                // still might have unclaimed rewards.
                 withdrawalQueue.popAddress(destination);
 
                 if (removalQueue.remove(destination)) {

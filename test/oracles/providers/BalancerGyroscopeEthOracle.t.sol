@@ -168,9 +168,6 @@ contract GyroOracleTestsECLPPool is BalancerGyroscopeEthOracleTestsBase {
         // .1% tolerance, expect these to be close
         (uint256 upper, uint256 lower) = _getPriceBounds(expectedPriceToken0ToToken1, 10);
 
-        emit log_uint(expectedPriceToken0ToToken1);
-        emit log_uint(returnedPriceToken0ToToken1);
-
         assertEq(token1, actualQuote0);
         assertLt(returnedPriceToken0ToToken1, upper);
         assertGt(returnedPriceToken0ToToken1, lower);
@@ -181,9 +178,6 @@ contract GyroOracleTestsECLPPool is BalancerGyroscopeEthOracleTestsBase {
 
         // .1% tolerance, expect these to be close
         (upper, lower) = _getPriceBounds(expectedPriceToken1ToToken0, 10);
-
-        emit log_uint(expectedPriceToken1ToToken0);
-        emit log_uint(returnedPriceToken1ToToken0);
 
         assertEq(token0, actualQuote1);
         assertLt(returnedPriceToken1ToToken0, upper);
@@ -306,9 +300,6 @@ contract GyroOracleTests2CLPPool is BalancerGyroscopeEthOracleTestsBase {
 
         uint256 expectedPrice = _swapAmount(USDT_2CLP, token1, token0, 1e6, false);
         (uint256 returnedPrice, address actualQuote) = oracle.getSpotPrice(token1, USDT_2CLP, address(1));
-
-        emit log_uint(expectedPrice);
-        emit log_uint(returnedPrice);
 
         // .1% tolerance, expect these to be close
         (uint256 upper, uint256 lower) = _getPriceBounds(expectedPrice, 10);

@@ -703,6 +703,51 @@ contract IncentiveAprScalingWithDecimals is AuraCalculatorTest {
         assertEq(calculator.lastSnapshotTotalAPR(), 946_080_000_000_000_000); // less than 1e16 because of the rounding
             // when going from a reward rate of 31709791983 to a reward rate of 3
     }
+
+    function test_veryLargeRewardRate() public {
+        // assume each token is worth 1e18 (1 weth)
+        // how large can rewardRate be, before it fails
+
+        uint256 expectedSafeTotalSupply = 100e18;
+        uint256 startingRewardPerToken = 1e18;
+        // 432 over 4 hours implies safeTotalSupply == 100e18 if reward rate == 3
+        uint256 endingRewardPerToken = 1e18 + 432;
+        mockRewardPerToken(mainRewarder, 0);
+        mockRewardRate(mainRewarder, 0);
+        mockPeriodFinish(mainRewarder, block.timestamp);
+        mockTotalSupply(mainRewarder, expectedSafeTotalSupply);
+        mockRewardToken(mainRewarder, mainRewarderRewardToken);
+        mockDuration(mainRewarder, DURATION);
+        mockAsset(mainRewarder, vm.addr(1001));
+        mockBoosterRewardMultiplierDen(booster, 1000);
+        mockBoosterRewardMultiplier(booster, mainRewarder, 8000);
+        mockExtraRewardsLength(mainRewarder, 1);
+        mockExtraRewards(mainRewarder, 0, extraRewarder1);
+
+        mockPeriodFinish(extraRewarder1, block.timestamp + PERIOD_FINISH_IN);
+        mockTotalSupply(extraRewarder1, expectedSafeTotalSupply);
+        mockRewardToken(extraRewarder1, stashToken);
+        mockDuration(extraRewarder1, DURATION);
+        mockExtraRewardsLength(extraRewarder1, 0);
+        mockIsValid(stashToken, true);
+
+        mockBaseToken(stashToken, baseToken);
+        vm.mockCall(
+            pricingStats, abi.encodeWithSelector(IIncentivesPricingStats.getPrice.selector), abi.encode(1e18, 1e18)
+        );
+
+        vm.mockCall(baseToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
+
+        mockRewardPerToken(extraRewarder1, startingRewardPerToken);
+        uint256 largeRewardRate = 0.003671743e18;
+        mockRewardRate(extraRewarder1, largeRewardRate);
+        calculator.snapshot();
+        vm.warp(block.timestamp + 4 hours);
+        vm.expectRevert();
+        mockRewardRate(extraRewarder1, largeRewardRate + 1e14);
+        mockRewardPerToken(extraRewarder1, endingRewardPerToken);
+        calculator.snapshot();
+    }
 }
 
 contract ResolveRewardToken is AuraCalculatorTest {

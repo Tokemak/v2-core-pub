@@ -6,6 +6,7 @@ pragma solidity >=0.8.7;
 import { Test } from "forge-std/Test.sol";
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IAccessControl } from "openzeppelin-contracts/access/IAccessControl.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { AuraCalculator } from "src/stats/calculators/AuraCalculator.sol";
@@ -141,6 +142,11 @@ contract AuraCalculatorTest is Test {
         });
 
         vm.mockCall(underlyerStats, abi.encodeWithSelector(IDexLSTStats.current.selector), abi.encode(data));
+
+        vm.mockCall(lpToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
+        vm.mockCall(mainRewarderRewardToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
+        vm.mockCall(baseToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
+        vm.mockCall(platformRewarder, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
 
         address template = address(new AuraCalculator(ISystemRegistry(systemRegistry), booster));
         calculator = AuraCalculator(Clones.clone(template));
@@ -615,6 +621,87 @@ contract Current is AuraCalculatorTest {
         assertEq(extraRewardLastSnapshotTimeBefore, calculator.lastSnapshotTimestamps(extraRewarder1));
         assertEq(extraRewardLastSnapshotRewardPerTokenBefore, calculator.lastSnapshotRewardPerToken(extraRewarder1));
         assertEq(extraRewarderLastSnapshotRewardRateBefore, calculator.lastSnapshotRewardRate(extraRewarder1));
+    }
+}
+
+contract IncentiveAprScalingWithDecimals is AuraCalculatorTest {
+    function test_ExpectedIncentiveAprMainRewarder_18DecimalsExtraRewards() public {
+        uint256 rewardRate18Decimals = uint256(1e18) / 365 days; // 31709791983 ; //  1 WETH per year
+        uint256 expectedSafeTotalSupply = 100e18;
+        uint256 startingRewardPerToken = 1e18;
+        // 4566210045552 over 4 hours implies safeTotalSupply == 100e18 if reward rate == 31709791983
+        uint256 endingRewardPerToken = 1e18 + 4_566_210_045_552;
+        mockRewardPerToken(mainRewarder, 0);
+        mockRewardRate(mainRewarder, 0);
+        mockPeriodFinish(mainRewarder, block.timestamp);
+        mockTotalSupply(mainRewarder, expectedSafeTotalSupply);
+        mockRewardToken(mainRewarder, mainRewarderRewardToken);
+        mockDuration(mainRewarder, DURATION);
+        mockAsset(mainRewarder, vm.addr(1001));
+        mockBoosterRewardMultiplierDen(booster, 1000);
+        mockBoosterRewardMultiplier(booster, mainRewarder, 8000);
+        mockExtraRewardsLength(mainRewarder, 1);
+        mockExtraRewards(mainRewarder, 0, extraRewarder1);
+
+        mockPeriodFinish(extraRewarder1, block.timestamp + PERIOD_FINISH_IN);
+        mockTotalSupply(extraRewarder1, expectedSafeTotalSupply);
+        mockRewardToken(extraRewarder1, stashToken);
+        mockDuration(extraRewarder1, DURATION);
+        mockExtraRewardsLength(extraRewarder1, 0);
+        mockIsValid(stashToken, true);
+
+        mockBaseToken(stashToken, baseToken);
+        vm.mockCall(baseToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
+
+        mockRewardPerToken(extraRewarder1, startingRewardPerToken);
+        mockRewardRate(extraRewarder1, rewardRate18Decimals);
+
+        calculator.snapshot();
+        vm.warp(block.timestamp + 4 hours);
+        mockRewardPerToken(extraRewarder1, endingRewardPerToken);
+        calculator.snapshot();
+        assertEq(calculator.safeTotalSupplies(extraRewarder1), expectedSafeTotalSupply);
+        assertApproxEqAbs(calculator.lastSnapshotTotalAPR(), 1e16, 1e8); // 1e18 accounts for rounding
+    }
+
+    function test_ExpectedIncentiveAprMainRewarder_6DecimalsExtraRewards() public {
+        uint256 rewardRate6Decimals = uint256(100e6) / 365 days; //  3; //  ~100 USDC per year
+        uint256 expectedSafeTotalSupply = 100e18;
+        uint256 startingRewardPerToken = 1e18;
+        // 432 over 4 hours implies safeTotalSupply == 100e18 if reward rate == 3
+        uint256 endingRewardPerToken = 1e18 + 432;
+        mockRewardPerToken(mainRewarder, 0);
+        mockRewardRate(mainRewarder, 0);
+        mockPeriodFinish(mainRewarder, block.timestamp);
+        mockTotalSupply(mainRewarder, expectedSafeTotalSupply);
+        mockRewardToken(mainRewarder, mainRewarderRewardToken);
+        mockDuration(mainRewarder, DURATION);
+        mockAsset(mainRewarder, vm.addr(1001));
+        mockBoosterRewardMultiplierDen(booster, 1000);
+        mockBoosterRewardMultiplier(booster, mainRewarder, 8000);
+        mockExtraRewardsLength(mainRewarder, 1);
+        mockExtraRewards(mainRewarder, 0, extraRewarder1);
+
+        mockPeriodFinish(extraRewarder1, block.timestamp + PERIOD_FINISH_IN);
+        mockTotalSupply(extraRewarder1, expectedSafeTotalSupply);
+        mockRewardToken(extraRewarder1, stashToken);
+        mockDuration(extraRewarder1, DURATION);
+        mockExtraRewardsLength(extraRewarder1, 0);
+        mockIsValid(stashToken, true);
+
+        mockBaseToken(stashToken, baseToken);
+        vm.mockCall(baseToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(6));
+
+        mockRewardPerToken(extraRewarder1, startingRewardPerToken);
+        mockRewardRate(extraRewarder1, rewardRate6Decimals);
+
+        calculator.snapshot();
+        vm.warp(block.timestamp + 4 hours);
+        mockRewardPerToken(extraRewarder1, endingRewardPerToken);
+        calculator.snapshot();
+        assertEq(calculator.safeTotalSupplies(extraRewarder1), expectedSafeTotalSupply);
+        assertEq(calculator.lastSnapshotTotalAPR(), 946_080_000_000_000_000); // less than 1e16 because of the rounding
+            // when going from a reward rate of 31709791983 to a reward rate of 3
     }
 }
 

@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { IBaseRewardPool } from "src/interfaces/external/convex/IBaseRewardPool.sol";
+import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
@@ -536,18 +537,18 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
         address rewardToken,
         uint256 rewardRate,
         uint256 periodFinish
-    ) internal view returns (uint256 apr) {
-        // slither-disable-start incorrect-equality
-        // slither-disable-next-line timestamp
+    ) internal view returns (uint256) {
+        // based on the rewardToken scaling incentiveAPR scaling in src/strategy/libs/Incentives.sol
+        // slither-disable-next-line incorrect-equality,timestamp
         if (block.timestamp > periodFinish || rewardRate == 0) return 0;
-        // slither-disable-end incorrect-equality
 
-        uint256 price = _getIncentivePrice(rewardToken);
+        uint256 tokenPrice = _getIncentivePrice(rewardToken);
+        uint256 rewardDivisor = 10 ** IERC20Metadata(rewardToken).decimals();
+        uint256 lpTokenDivisor = 10 ** IERC20Metadata(lpToken).decimals();
+        uint256 totalRewards = rewardRate * Stats.SECONDS_IN_YEAR * tokenPrice * lpTokenDivisor;
+        uint256 totalSupplyInEth = safeTotalSupplies[_rewarder] * lpPrice * rewardDivisor;
 
-        uint256 numerator = rewardRate * Stats.SECONDS_IN_YEAR * price * 1e18;
-        uint256 denominator = safeTotalSupplies[_rewarder] * lpPrice;
-
-        return denominator == 0 ? 0 : numerator / denominator;
+        return totalSupplyInEth == 0 ? 0 : (totalRewards * 1e18) / totalSupplyInEth;
     }
 
     /// @notice returns the platform tokens earned given the amount of main rewarder tokens

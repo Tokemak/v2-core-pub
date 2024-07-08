@@ -7,6 +7,7 @@ pragma solidity >=0.8.7;
 import { Test } from "forge-std/Test.sol";
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IAccessControl } from "openzeppelin-contracts/access/IAccessControl.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { IConvexBooster } from "src/interfaces/external/convex/IConvexBooster.sol";
@@ -153,6 +154,11 @@ contract ConvexCalculatorTest is Test {
             pool: pool
         });
         bytes memory encodedInitData = abi.encode(initData);
+
+        vm.mockCall(lpToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
+        vm.mockCall(mainRewarderRewardToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
+        vm.mockCall(platformRewarder, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
+        vm.mockCall(extraRewarderRewardToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
 
         calculator.initialize(dependantAprs, encodedInitData);
     }
@@ -590,6 +596,8 @@ contract ResolveRewardToken is ConvexCalculatorTest {
 
         address rewardToken = vm.addr(152);
         vm.label(rewardToken, "rewardToken");
+        vm.mockCall(rewardToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
+
         mockIsInvalid(extraRewarderRewardToken, false);
         mockToken(extraRewarderRewardToken, rewardToken);
 
@@ -691,6 +699,62 @@ contract ResolveRewardToken is ConvexCalculatorTest {
 
         // Unwrap the reward token
         assertEq(rewardToken, address(0));
+    }
+}
+
+contract IncentiveAprScalingWithDecimals is ConvexCalculatorTest {
+    function test_ExpectedIncentiveAprMainRewarder_18DecimalsExtraRewards2() public {
+        mockSimpleMainRewarder();
+        addMockExtraRewarder();
+        address rewardToken = vm.addr(152);
+        vm.label(rewardToken, "rewardToken");
+        vm.mockCall(rewardToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
+        mockIsInvalid(extraRewarderRewardToken, false);
+        mockToken(extraRewarderRewardToken, rewardToken);
+
+        uint256 rewardRate18Decimals = uint256(1e18) / 365 days; // 31709791983 ; //  1 WETH per year
+        uint256 expectedSafeTotalSupply = 100e18;
+        uint256 startingRewardPerToken = 1e18;
+        // 4566210045552 over 4 hours implies safeTotalSupply == 100e18 if reward rate == 31709791983
+        uint256 endingRewardPerToken = 1e18 + 4_566_210_045_552;
+
+        mockRewardRate(mainRewarder, 0);
+        mockRewardPerToken(extraRewarder1, startingRewardPerToken);
+        mockRewardRate(extraRewarder1, rewardRate18Decimals);
+        calculator.snapshot();
+        vm.warp(block.timestamp + 4 hours);
+        mockRewardPerToken(extraRewarder1, endingRewardPerToken);
+        calculator.snapshot();
+        assertEq(calculator.safeTotalSupplies(extraRewarder1), expectedSafeTotalSupply);
+        assertApproxEqAbs(calculator.lastSnapshotTotalAPR(), 1e16, 1e8); // 1e8 accounts for rounding
+    }
+
+    function test_ExpectedIncentiveAprMainRewarder_6DecimalsExtraRewards2() public {
+        mockSimpleMainRewarder();
+        addMockExtraRewarder();
+        address rewardToken = vm.addr(152);
+        vm.label(rewardToken, "rewardToken");
+        vm.mockCall(rewardToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(6));
+        mockIsInvalid(extraRewarderRewardToken, false);
+        mockToken(extraRewarderRewardToken, rewardToken);
+
+        uint256 rewardRate6Decimals = uint256(100e6) / 365 days; // 3 ;  //  ~100 USDC per year
+        uint256 expectedSafeTotalSupply = 100e18;
+        uint256 startingRewardPerToken = 1e18;
+        // 432 over 4 hours implies safeTotalSupply == 100e18 if reward rate == 3
+        uint256 endingRewardPerToken = 1e18 + 432;
+
+        mockRewardRate(mainRewarder, 0);
+        mockRewardPerToken(extraRewarder1, startingRewardPerToken);
+        mockRewardRate(extraRewarder1, rewardRate6Decimals);
+        calculator.snapshot();
+        vm.warp(block.timestamp + 4 hours);
+        mockRewardPerToken(extraRewarder1, endingRewardPerToken);
+        calculator.snapshot();
+        assertEq(calculator.safeTotalSupplies(extraRewarder1), expectedSafeTotalSupply);
+        // 946_080_000_000_000_000 instead of 100e16 because of the resolution lost when going from
+        // 31709791983 -> 3
+        assertEq(calculator.lastSnapshotTotalAPR(), 946_080_000_000_000_000);
     }
 }
 

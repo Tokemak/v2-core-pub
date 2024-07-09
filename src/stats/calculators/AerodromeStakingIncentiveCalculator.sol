@@ -6,7 +6,7 @@ pragma solidity 0.8.17;
 
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IERC20 } from "lib/forge-std/src/interfaces/IERC20.sol";
+import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { BaseStatsCalculator } from "src/stats/calculators/base/BaseStatsCalculator.sol";
 import { IPool } from "src/interfaces/external/aerodrome/IPool.sol";
@@ -129,7 +129,7 @@ contract AerodromeStakingIncentiveCalculator is IDexLSTStats, BaseStatsCalculato
         reserveTokens[1] = pool.token1();
         _aprId = keccak256(abi.encode("aerodromeSVAmm", decodedInitData.poolAddress, decodedInitData.gaugeAddress));
 
-        if (IERC20(rewardToken).decimals() != 18) {
+        if (IERC20Metadata(rewardToken).decimals() != 18) {
             // Incentive APR will not scale correctly unless the rewardToken has 18 decimals
             revert RewardTokenNot18Decimals();
         }

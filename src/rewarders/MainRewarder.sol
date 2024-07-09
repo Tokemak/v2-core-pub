@@ -24,6 +24,9 @@ import { Errors } from "src/utils/Errors.sol";
 abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    /// @notice Maximum amount of extra rewards addresses that can be registered
+    uint256 public constant MAX_EXTRA_REWARDS = 15;
+
     /// @notice True if additional reward tokens/contracts are allowed to be added
     /// @dev Destination Vaults should not allow extras. Autopool's should.
     bool public immutable allowExtraRewards;
@@ -44,7 +47,6 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
     ) AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock, _rewardRole) {
         // slither-disable-next-line missing-zero-check
         allowExtraRewards = _allowExtraRewards;
-        maxExtraRewards = 15;
     }
 
     /// @inheritdoc IMainRewarder
@@ -57,7 +59,7 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         if (!allowExtraRewards) {
             revert ExtraRewardsNotAllowed();
         }
-        if (_extraRewards.length() >= maxExtraRewards) {
+        if (_extraRewards.length() >= MAX_EXTRA_REWARDS) {
             revert MaxExtraRewardsReached();
         }
         Errors.verifyNotZero(reward, "reward");

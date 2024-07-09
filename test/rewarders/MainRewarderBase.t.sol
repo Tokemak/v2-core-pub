@@ -52,7 +52,6 @@ contract MainRewarderTest is Test {
     uint256 public totalSupply = 100;
 
     event ExtraRewardAdded(address reward);
-    event ExtraRewardsCleared();
 
     function setUp() public virtual {
         systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
@@ -126,34 +125,6 @@ contract AddExtraReward is MainRewarderTest {
         assertEq(rewarder.extraRewardsLength(), 0, "extraRewardsLength before");
         rewarder.addExtraReward(makeAddr("EXTRA_REWARD"));
         assertEq(rewarder.extraRewardsLength(), 1, "extraRewardsLength after");
-    }
-}
-
-contract ClearExtraRewards is MainRewarderTest {
-    function test_RevertIf_ImproperRole_clearExtraReward() external {
-        vm.prank(makeAddr("NO_ROLE"));
-        vm.expectRevert(Errors.AccessDenied.selector);
-        rewarder.clearExtraRewards();
-    }
-
-    function test_EmitExtraRewardsClearedEvent() public {
-        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_1"));
-        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_2"));
-        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_3"));
-
-        vm.expectEmit(true, true, true, true);
-        emit ExtraRewardsCleared();
-        rewarder.clearExtraRewards();
-    }
-
-    function test_ClearAllExtraRewards() public {
-        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_1"));
-        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_2"));
-        rewarder.addExtraReward(makeAddr("EXTRA_REWARD_3"));
-
-        assertEq(rewarder.extraRewardsLength(), 3, "extraRewardsLength before");
-        rewarder.clearExtraRewards();
-        assertEq(rewarder.extraRewardsLength(), 0, "extraRewardsLength after");
     }
 }
 

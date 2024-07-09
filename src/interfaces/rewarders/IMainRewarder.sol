@@ -9,8 +9,8 @@ interface IMainRewarder is IBaseRewarder {
     error ExtraRewardsNotAllowed();
     error MaxExtraRewardsReached();
 
+    /// @notice Extra rewards can be added, but not removed, ref: https://github.com/Tokemak/v2-core/issues/659
     event ExtraRewardAdded(address reward);
-    event ExtraRewardsCleared();
 
     /**
      * @notice Adds an ExtraRewarder contract address to the extraRewards array.
@@ -27,11 +27,6 @@ interface IMainRewarder is IBaseRewarder {
      * contracts.
      */
     function withdraw(address account, uint256 amount, bool claim) external;
-
-    /**
-     * @notice Clears the extraRewards array.
-     */
-    function clearExtraRewards() external;
 
     /**
      * @notice Claims and transfers all rewards for the specified account from this contract and any linked extra reward

@@ -31,7 +31,7 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
     /// @dev Destination Vaults should not allow extras. Autopool's should.
     bool public immutable allowExtraRewards;
 
-    uint256 public immutable maxExtraRewards;
+    /// @notice Extra rewards can be added, but not removed, ref: https://github.com/Tokemak/v2-core/issues/659
     EnumerableSet.AddressSet private _extraRewards;
 
     uint256 private _totalSupply;
@@ -74,17 +74,6 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
     /// @inheritdoc IMainRewarder
     function getExtraRewarder(uint256 index) external view returns (IExtraRewarder rewarder) {
         return IExtraRewarder(_extraRewards.at(index));
-    }
-
-    /// @inheritdoc IMainRewarder
-    function clearExtraRewards() external hasRole(rewardRole) {
-        while (_extraRewards.length() > 0) {
-            if (!_extraRewards.remove(_extraRewards.at(_extraRewards.length() - 1))) {
-                revert Errors.ItemNotFound();
-            }
-        }
-
-        emit ExtraRewardsCleared();
     }
 
     /// @inheritdoc IMainRewarder

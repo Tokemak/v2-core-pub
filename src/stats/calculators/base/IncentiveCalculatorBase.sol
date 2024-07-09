@@ -545,10 +545,10 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
         uint256 tokenPrice = _getIncentivePrice(rewardToken);
         uint256 rewardDivisor = 10 ** IERC20Metadata(rewardToken).decimals();
         uint256 lpTokenDivisor = 10 ** IERC20Metadata(lpToken).decimals();
-        uint256 totalRewards = rewardRate * Stats.SECONDS_IN_YEAR * tokenPrice * lpTokenDivisor;
+        uint256 totalRewards = rewardRate * Stats.SECONDS_IN_YEAR * tokenPrice * lpTokenDivisor * 1e18;
         uint256 totalSupplyInEth = safeTotalSupplies[_rewarder] * lpPrice * rewardDivisor;
         // slither-disable-next-line incorrect-equality
-        return totalSupplyInEth == 0 ? 0 : (totalRewards * 1e18) / totalSupplyInEth;
+        return totalSupplyInEth == 0 ? 0 : totalRewards / totalSupplyInEth;
     }
 
     /// @notice returns the platform tokens earned given the amount of main rewarder tokens

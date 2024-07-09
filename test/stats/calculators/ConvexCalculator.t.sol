@@ -23,6 +23,7 @@ import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCal
 import { LDO_MAINNET, CNC_MAINNET } from "test/utils/Addresses.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { Roles } from "src/libs/Roles.sol";
+import { Stats } from "src/stats/Stats.sol";
 
 contract ConvexCalculatorTest is Test {
     address internal underlyerStats;
@@ -703,7 +704,7 @@ contract ResolveRewardToken is ConvexCalculatorTest {
 }
 
 contract IncentiveAprScalingWithDecimals is ConvexCalculatorTest {
-    function test_ExpectedIncentiveAprMainRewarder_18DecimalsExtraRewards2() public {
+    function test_ExpectedIncentiveAprMainRewarder_18DecimalsExtraRewards() public {
         mockSimpleMainRewarder();
         addMockExtraRewarder();
         address rewardToken = vm.addr(152);
@@ -729,7 +730,7 @@ contract IncentiveAprScalingWithDecimals is ConvexCalculatorTest {
         assertApproxEqAbs(calculator.lastSnapshotTotalAPR(), 1e16, 1e8); // 1e8 accounts for rounding
     }
 
-    function test_ExpectedIncentiveAprMainRewarder_6DecimalsExtraRewards2() public {
+    function test_ExpectedIncentiveAprMainRewarder_6DecimalsExtraRewards() public {
         mockSimpleMainRewarder();
         addMockExtraRewarder();
         address rewardToken = vm.addr(152);
@@ -755,6 +756,48 @@ contract IncentiveAprScalingWithDecimals is ConvexCalculatorTest {
         // 946_080_000_000_000_000 instead of 100e16 because of the resolution lost when going from
         // 31709791983 -> 3
         assertEq(calculator.lastSnapshotTotalAPR(), 946_080_000_000_000_000);
+    }
+
+    function test_RewardRateOverflow() public {
+        mockSimpleMainRewarder();
+        addMockExtraRewarder();
+        address rewardToken = vm.addr(152);
+        vm.label(rewardToken, "rewardToken");
+        vm.mockCall(rewardToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(6));
+        mockIsInvalid(extraRewarderRewardToken, false);
+        mockToken(extraRewarderRewardToken, rewardToken);
+
+        vm.mockCall(
+            pricingStats, abi.encodeWithSelector(IIncentivesPricingStats.getPrice.selector), abi.encode(1e18, 1e18)
+        );
+
+        vm.mockCall(rootPriceOracle, abi.encodeWithSelector(IRootPriceOracle.getPriceInEth.selector), abi.encode(1e18));
+        vm.mockCall(
+            rootPriceOracle,
+            abi.encodeWithSelector(IRootPriceOracle.getRangePricesLP.selector),
+            abi.encode(1e18, 1e18, true)
+        );
+
+        mockRewardRate(mainRewarder, 0);
+        mockRewardPerToken(extraRewarder1, 1e18);
+        uint256 largestRewardRateIfTokenPriceIs1e18 = (2 ** 256 - 1) / (1e54 * Stats.SECONDS_IN_YEAR);
+
+        assertEq(largestRewardRateIfTokenPriceIs1e18, 3_671_743_063_080_802);
+        mockRewardRate(extraRewarder1, largestRewardRateIfTokenPriceIs1e18);
+        calculator.snapshot();
+        // trigger another snapshot early because the rewardRate changes
+        mockRewardRate(extraRewarder1, largestRewardRateIfTokenPriceIs1e18 + 1);
+        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));
+        calculator.snapshot();
+
+        uint256 largestRewardRateIfTokenPriceIs1 = (2 ** 256 - 1) / (1e36 * Stats.SECONDS_IN_YEAR);
+        vm.mockCall(pricingStats, abi.encodeWithSelector(IIncentivesPricingStats.getPrice.selector), abi.encode(1, 1));
+        mockRewardRate(extraRewarder1, largestRewardRateIfTokenPriceIs1);
+        assertTrue(calculator.shouldSnapshot());
+        calculator.snapshot();
+        mockRewardRate(extraRewarder1, largestRewardRateIfTokenPriceIs1 + 1);
+        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));
+        calculator.snapshot();
     }
 }
 

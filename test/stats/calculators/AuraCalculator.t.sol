@@ -22,6 +22,7 @@ import { LDO_MAINNET } from "test/utils/Addresses.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { IBooster } from "src/interfaces/external/aura/IBooster.sol";
 import { Roles } from "src/libs/Roles.sol";
+import { Stats } from "src/stats/Stats.sol";
 
 contract AuraCalculatorTest is Test {
     address internal underlyerStats;
@@ -661,7 +662,7 @@ contract IncentiveAprScalingWithDecimals is AuraCalculatorTest {
         mockRewardPerToken(extraRewarder1, endingRewardPerToken);
         calculator.snapshot();
         assertEq(calculator.safeTotalSupplies(extraRewarder1), expectedSafeTotalSupply);
-        assertApproxEqAbs(calculator.lastSnapshotTotalAPR(), 1e16, 1e8); // 1e18 accounts for rounding
+        assertApproxEqAbs(calculator.lastSnapshotTotalAPR(), 1e16, 1e8); // 1e8 accounts for rounding
     }
 
     function test_ExpectedIncentiveAprMainRewarder_6DecimalsExtraRewards() public {
@@ -704,14 +705,10 @@ contract IncentiveAprScalingWithDecimals is AuraCalculatorTest {
             // when going from a reward rate of 31709791983 to a reward rate of 3
     }
 
-    function test_veryLargeRewardRate() public {
-        // assume each token is worth 1e18 (1 weth)
-        // how large can rewardRate be, before it fails
-
+    function test_RewardRateOverflow() public {
         uint256 expectedSafeTotalSupply = 100e18;
         uint256 startingRewardPerToken = 1e18;
-        // 432 over 4 hours implies safeTotalSupply == 100e18 if reward rate == 3
-        uint256 endingRewardPerToken = 1e18 + 432;
+
         mockRewardPerToken(mainRewarder, 0);
         mockRewardRate(mainRewarder, 0);
         mockPeriodFinish(mainRewarder, block.timestamp);
@@ -738,14 +735,30 @@ contract IncentiveAprScalingWithDecimals is AuraCalculatorTest {
 
         vm.mockCall(baseToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(18));
 
+        vm.mockCall(rootPriceOracle, abi.encodeWithSelector(IRootPriceOracle.getPriceInEth.selector), abi.encode(1e18));
+        vm.mockCall(
+            rootPriceOracle,
+            abi.encodeWithSelector(IRootPriceOracle.getRangePricesLP.selector),
+            abi.encode(1e18, 1e18, true)
+        );
+
         mockRewardPerToken(extraRewarder1, startingRewardPerToken);
-        uint256 largeRewardRate = 0.003671743e18;
-        mockRewardRate(extraRewarder1, largeRewardRate);
+        uint256 largestRewardRateIfTokenPriceIs1e18 = (2 ** 256 - 1) / (1e54 * Stats.SECONDS_IN_YEAR);
+        assertEq(largestRewardRateIfTokenPriceIs1e18, 3_671_743_063_080_802);
+        mockRewardRate(extraRewarder1, largestRewardRateIfTokenPriceIs1e18);
         calculator.snapshot();
-        vm.warp(block.timestamp + 4 hours);
-        vm.expectRevert();
-        mockRewardRate(extraRewarder1, largeRewardRate + 1e14);
-        mockRewardPerToken(extraRewarder1, endingRewardPerToken);
+        // trigger another snapshot early because the rewardRate changes
+        mockRewardRate(extraRewarder1, largestRewardRateIfTokenPriceIs1e18 + 1);
+        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));
+        calculator.snapshot();
+
+        uint256 largestRewardRateIfTokenPriceIs1 = (2 ** 256 - 1) / (1e36 * Stats.SECONDS_IN_YEAR);
+        vm.mockCall(pricingStats, abi.encodeWithSelector(IIncentivesPricingStats.getPrice.selector), abi.encode(1, 1));
+        mockRewardRate(extraRewarder1, largestRewardRateIfTokenPriceIs1);
+        assertTrue(calculator.shouldSnapshot());
+        calculator.snapshot();
+        mockRewardRate(extraRewarder1, largestRewardRateIfTokenPriceIs1 + 1);
+        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));
         calculator.snapshot();
     }
 }

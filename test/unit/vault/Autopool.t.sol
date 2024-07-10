@@ -5315,7 +5315,9 @@ contract FlashRebalance is FlashRebalanceSetup {
         );
 
         assertEq(_isInList(vault.getRemovalQueue(), address(dv1)), false, "r1");
-        assertEq(_isInList(vault.getDebtReportingQueue(), address(dv1)), false, "d2");
+        // note: Destination stays in the debt queue as it still might contain rewards:
+        // ref: https://github.com/Tokemak/v2-core/issues/657
+        assertEq(_isInList(vault.getDebtReportingQueue(), address(dv1)), true, "d2");
         assertEq(_isInList(vault.getWithdrawalQueue(), address(dv1)), false, "w2");
     }
 

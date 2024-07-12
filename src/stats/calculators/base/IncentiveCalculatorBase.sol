@@ -190,24 +190,18 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
             safeTotalSupply[i + 2] += safeSupply;
         }
 
-        // Select current value of safeTotalSupply
-        uint256 currentSafeTotalSupply = 0;
-        bool isSet = false;
+        uint256 highestPeriodFinish = 0;
+        uint256 safeTotalSupplyForMostRecentRewarder = 0;
+
         for (uint256 i = 0; i < totalRewardsLength; ++i) {
-            if ((annualizedRewardAmounts[i] > 0) && (block.timestamp < periodFinishForRewards[i])) {
-                currentSafeTotalSupply = safeTotalSupply[i];
-                isSet = true;
-                break;
+            if (periodFinishForRewards[i] > highestPeriodFinish) {
+                safeTotalSupplyForMostRecentRewarder = safeTotalSupply[i];
             }
-        }
-        // If value was not set, set to the safe supply of main rewarder
-        if (!isSet) {
-            currentSafeTotalSupply = safeTotalSupply[0];
         }
 
         // Compile aggregated data into the result struct
         data.stakingIncentiveStats = StakingIncentiveStats({
-            safeTotalSupply: currentSafeTotalSupply, // supply across all rewarders
+            safeTotalSupply: safeTotalSupplyForMostRecentRewarder, // supply across all rewarders
             rewardTokens: rewardTokens,
             annualizedRewardAmounts: annualizedRewardAmounts,
             periodFinishForRewards: periodFinishForRewards,

@@ -852,3 +852,50 @@ contract Initialize is AuraCalculatorTest {
         calc.initialize(dependantAprs, encodedInitData);
     }
 }
+
+contract SafeTotalSupplyTests is AuraCalculatorTest {
+    function testOnlyUseLatestTotalSupply() public {
+        mockSimpleMainRewarder();
+        mockPeriodFinish(mainRewarder, block.timestamp + 3 hours);
+        calculator.snapshot();
+
+        mockRewardPerToken(mainRewarder, REWARD_PER_TOKEN * 2);
+        vm.warp(block.timestamp + 3 hours);
+
+        calculator.snapshot();
+
+        assertEq(calculator.safeTotalSupplies(mainRewarder), 108_000_000_000_000_000_000_000);
+
+        IDexLSTStats.DexLSTStatsData memory res = calculator.current();
+
+        assertEq(res.stakingIncentiveStats.safeTotalSupply, 108_000_000_000_000_000_000_000);
+
+        vm.warp(block.timestamp + 24 hours);
+        assertFalse(calculator.shouldSnapshot());
+
+        addMockExtraRewarder();
+        mockPeriodFinish(extraRewarder1, block.timestamp + 3 hours);
+        mockRewardPerToken(extraRewarder1, REWARD_PER_TOKEN);
+        mockRewardRate(extraRewarder1, REWARD_RATE);
+
+        calculator.snapshot();
+        vm.warp(block.timestamp + 3 hours);
+        mockRewardPerToken(extraRewarder1, REWARD_PER_TOKEN * 4);
+        calculator.snapshot();
+
+        // mainRewarder safeTotalSupply should not change
+        assertEq(calculator.safeTotalSupplies(mainRewarder), 108_000_000_000_000_000_000_000);
+        uint256 extraRewarderExpectedSafeTotalSupply = 36_000_000_000_000_000_000_000;
+
+        assertEq(calculator.safeTotalSupplies(extraRewarder1), extraRewarderExpectedSafeTotalSupply);
+        res = calculator.current();
+        assertEq(res.stakingIncentiveStats.safeTotalSupply, extraRewarderExpectedSafeTotalSupply);
+
+        // if all the rewards are expired current should use the safeTotalSupply for the latest rewarder.
+
+        vm.warp(block.timestamp + 100 days);
+
+        res = calculator.current();
+        assertEq(res.stakingIncentiveStats.safeTotalSupply, extraRewarderExpectedSafeTotalSupply);
+    }
+}

@@ -4963,6 +4963,38 @@ contract FlashRebalanceSetup is AutopoolETHTests {
 
         solver = new TokenReturnSolver(vm);
     }
+
+    function _flashRebalance() internal {
+        address user = makeAddr("user");
+        uint256 depositAmount = 100e9;
+
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
+        _mockSuccessfulRebalance();
+
+        _depositFor(user, depositAmount);
+
+        vault.setProfitUnlockPeriod(0);
+
+        // Check that assets and shares 1:1
+        assertEq(vault.convertToShares(1e9), 1e9, "originalNavShare");
+
+        // We swap 50 idle for 150 assets at 1:1 value
+        bytes memory data = solver.buildDataForDvIn(address(dv1), 150e9);
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
+        vault.flashRebalance(
+            solver,
+            IStrategy.RebalanceParams({
+                destinationIn: address(dv1),
+                tokenIn: address(dv1.underlyer()),
+                amountIn: 150e9,
+                destinationOut: address(vault),
+                tokenOut: vault.asset(),
+                amountOut: 50e9
+            }),
+            data
+        );
+    }
 }
 
 contract FlashRebalance is FlashRebalanceSetup {
@@ -5322,10 +5354,16 @@ contract FlashRebalance is FlashRebalanceSetup {
     }
 
     function test_DestinationStaysInDebtQueueWhenBalanceEmptyAndRewardsNotEmpty() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
+
         // Rewarder created
         FakeDestinationRewarder dv1Rewarder = new FakeDestinationRewarder(vaultAsset);
         vm.mockCall(
             address(dv1), abi.encodeWithSelector(IDestinationVault.rewarder.selector), abi.encode(address(dv1Rewarder))
+        );
+        // Mock same rewarder for dv2
+        vm.mockCall(
+            address(dv2), abi.encodeWithSelector(IDestinationVault.rewarder.selector), abi.encode(address(dv1Rewarder))
         );
         // No initial rewards
         dv1Rewarder.claimAmountOnNextCall(0);
@@ -5338,10 +5376,23 @@ contract FlashRebalance is FlashRebalanceSetup {
         vm.prank(user);
         vault.withdraw(50e9, user, user);
 
+        // Idle is zero now
+        assertEq(vault.getAssetBreakdown().totalIdle, 0, "idle");
+
         // Let some time pass
         vm.warp(block.timestamp + 1 weeks);
         // And rewards occur
         dv1Rewarder.claimAmountOnNextCall(10);
+
+        _mockDestVaultRangePricesLP(address(dv1), 1.1e18, 1.1e18, true);
+        _mockDestVaultRangePricesLP(address(dv2), 1.1e18, 1.1e18, true);
+
+        // We only have 2 destinations, just checking for re-processing
+        vault.updateDebtReporting(4);
+
+        // Idle was zero before we debt reporting
+        // Dv1 gave us 10, Dv2 also gives 10 as we use the same rewarder, total 20
+        assertEq(vault.getAssetBreakdown().totalIdle, 20, "idle");
 
         // note: Destination stays in the debt queue as it still might contain rewards:
         // ref: https://github.com/Tokemak/v2-core/issues/657
@@ -7313,38 +7364,6 @@ contract PreviewTests is FlashRebalanceSetup {
 
         uint256 maxWithdrawableAssets = vault.maxWithdraw(user);
         assertEq(depositAmount, maxWithdrawableAssets);
-    }
-
-    function _flashRebalance() private {
-        address user = makeAddr("user");
-        uint256 depositAmount = 100e9;
-
-        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
-        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_MANAGER, true);
-        _mockSuccessfulRebalance();
-
-        _depositFor(user, depositAmount);
-
-        vault.setProfitUnlockPeriod(0);
-
-        // Check that assets and shares 1:1
-        assertEq(vault.convertToShares(1e9), 1e9, "originalNavShare");
-
-        // We swap 50 idle for 150 assets at 1:1 value
-        bytes memory data = solver.buildDataForDvIn(address(dv1), 150e9);
-        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
-        vault.flashRebalance(
-            solver,
-            IStrategy.RebalanceParams({
-                destinationIn: address(dv1),
-                tokenIn: address(dv1.underlyer()),
-                amountIn: 150e9,
-                destinationOut: address(vault),
-                tokenOut: vault.asset(),
-                amountOut: 50e9
-            }),
-            data
-        );
     }
 }
 

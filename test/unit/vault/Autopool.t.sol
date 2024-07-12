@@ -5321,6 +5321,33 @@ contract FlashRebalance is FlashRebalanceSetup {
         assertEq(_isInList(vault.getWithdrawalQueue(), address(dv1)), false, "w2");
     }
 
+    function test_DestinationStaysInDebtQueueWhenBalanceEmptyAndRewardsNotEmpty() public {
+        // Rewarder created
+        FakeDestinationRewarder dv1Rewarder = new FakeDestinationRewarder(vaultAsset);
+        vm.mockCall(
+            address(dv1), abi.encodeWithSelector(IDestinationVault.rewarder.selector), abi.encode(address(dv1Rewarder))
+        );
+        // No initial rewards
+        dv1Rewarder.claimAmountOnNextCall(0);
+
+        address user = makeAddr("user");
+        // Do deposit + flash rebalance
+        _flashRebalance();
+
+        // Make user withdraw all idle funds
+        vm.prank(user);
+        vault.withdraw(50e9, user, user);
+
+        // Let some time pass
+        vm.warp(block.timestamp + 1 weeks);
+        // And rewards occur
+        dv1Rewarder.claimAmountOnNextCall(10);
+
+        // note: Destination stays in the debt queue as it still might contain rewards:
+        // ref: https://github.com/Tokemak/v2-core/issues/657
+        assertEq(_isInList(vault.getDebtReportingQueue(), address(dv1)), true, "d2");
+    }
+
     function test_DestinationsAddedToEndOfDebtReportQueue() public {
         DestinationVaultFake[] memory dvs = _setupNDestinations(10);
 

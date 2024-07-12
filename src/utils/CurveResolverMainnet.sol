@@ -6,6 +6,7 @@ pragma solidity 0.8.17;
 import { Errors } from "src/utils/Errors.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
 import { ICurveMetaRegistry } from "src/interfaces/external/curve/ICurveMetaRegistry.sol";
+import { IPool } from "src/interfaces/external/curve/IPool.sol";
 
 contract CurveResolverMainnet is ICurveResolver {
     ICurveMetaRegistry public immutable curveMetaRegistry;
@@ -34,8 +35,7 @@ contract CurveResolverMainnet is ICurveResolver {
             // We have to try other means to get the information
             do {
                 //slither-disable-start low-level-calls,missing-zero-check
-                (bool success, bytes memory retData) =
-                    poolAddress.staticcall(abi.encodeWithSignature("coins(uint256)", numTokens));
+                (bool success, bytes memory retData) = poolAddress.staticcall(abi.encodeCall(IPool.coins, (numTokens)));
                 //slither-disable-end low-level-calls,missing-zero-check
                 if (!success) {
                     break;
@@ -77,18 +77,18 @@ contract CurveResolverMainnet is ICurveResolver {
         } catch {
             //slither-disable-start low-level-calls,missing-zero-check
             // We have to try other means to get the information
-            (bool success, bytes memory retData) = poolAddress.staticcall(abi.encodeWithSignature("totalSupply()"));
+            (bool success, bytes memory retData) = poolAddress.staticcall(abi.encodeCall(IPool.totalSupply, ()));
             if (success && retData.length > 0) {
                 // If the pool address has a totalSupply() call then pool is lpToken
                 return poolAddress;
             }
 
-            (success, retData) = poolAddress.staticcall(abi.encodeWithSignature("lp_token()"));
+            (success, retData) = poolAddress.staticcall(abi.encodeCall(IPool.lp_token, ()));
             if (success && retData.length > 0) {
                 return abi.decode(retData, (address));
             }
 
-            (success, retData) = poolAddress.staticcall(abi.encodeWithSignature("token()"));
+            (success, retData) = poolAddress.staticcall(abi.encodeCall(IPool.token, ()));
             if (success && retData.length > 0) {
                 return abi.decode(retData, (address));
             }
@@ -111,8 +111,7 @@ contract CurveResolverMainnet is ICurveResolver {
             do {
                 // No newer pools use the balances(int256) interface and we won't be targeting the older ones
                 //slither-disable-start low-level-calls,missing-zero-check
-                (bool success, bytes memory retData) =
-                    poolAddress.staticcall(abi.encodeWithSignature("balances(uint256)", i));
+                (bool success, bytes memory retData) = poolAddress.staticcall(abi.encodeCall(IPool.balances, i));
                 //slither-disable-end low-level-calls,missing-zero-check
                 if (success && retData.length > 0) {
                     ret[i] = abi.decode(retData, (uint256));

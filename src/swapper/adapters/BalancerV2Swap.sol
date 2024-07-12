@@ -30,13 +30,13 @@ contract BalancerV2Swap is BaseAdapter {
         // verify that the fromAddress and toAddress are in the pool. getPoolTokenInfo will revert if not
         // slither-disable-start low-level-calls,missing-zero-check,unchecked-lowlevel
 
-        string memory funcSelector = "getPoolTokenInfo(bytes32,address)";
-
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success,) = address(vault).staticcall(abi.encodeWithSignature(funcSelector, poolId, fromAddress));
+        (bool success,) =
+            address(vault).staticcall(abi.encodeCall(IVault.getPoolTokenInfo, (poolId, IERC20(fromAddress))));
         if (!success) revert DataMismatch("fromAddress");
 
-        (success,) = address(vault).staticcall(abi.encodeWithSignature(funcSelector, poolId, swapData.token));
+        (success,) =
+            address(vault).staticcall(abi.encodeCall(IVault.getPoolTokenInfo, (poolId, IERC20(swapData.token))));
         if (!success) revert DataMismatch("toAddress");
         // slither-disable-end low-level-calls,missing-zero-check,unchecked-lowlevel
     }

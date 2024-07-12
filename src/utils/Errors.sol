@@ -3,7 +3,9 @@
 pragma solidity 0.8.17;
 
 import { Address } from "openzeppelin-contracts/utils/Address.sol";
+import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 
+// solhint-disable max-line-length
 library Errors {
     using Address for address;
     ///////////////////////////////////////////////////////////////////
@@ -80,10 +82,10 @@ library Errors {
     }
 
     function verifySystemsMatch(address component1, address component2) internal view {
-        bytes memory call = abi.encodeWithSignature("getSystemRegistry()");
-
-        address registry1 = abi.decode(component1.functionStaticCall(call), (address));
-        address registry2 = abi.decode(component2.functionStaticCall(call), (address));
+        address registry1 =
+            abi.decode(component1.functionStaticCall(abi.encodeCall(ISystemComponent.getSystemRegistry, ())), (address));
+        address registry2 =
+            abi.decode(component2.functionStaticCall(abi.encodeCall(ISystemComponent.getSystemRegistry, ())), (address));
 
         if (registry1 != registry2) {
             revert SystemMismatch(component1, component2);

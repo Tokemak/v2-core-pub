@@ -12,4 +12,9 @@ interface IPool {
 
     // These method used for cases when Pool is a LP token at the same time
     function totalSupply() external returns (uint256);
+
+    // solhint-disable func-name-mixedcase
+    function lp_token() external returns (address);
+
+    function token() external returns (address);
 }

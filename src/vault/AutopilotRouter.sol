@@ -8,7 +8,7 @@ import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard
 import { Address } from "openzeppelin-contracts/utils/Address.sol";
 import { IAutopool, IAutopilotRouter } from "src/interfaces/vault/IAutopilotRouter.sol";
 import { IRewards } from "src/interfaces/rewarders/IRewards.sol";
-import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
+import { SwapParams, IAsyncSwapper } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 import { AutopilotRouterBase, ISystemRegistry } from "src/vault/AutopilotRouterBase.sol";
 import { Errors } from "src/utils/Errors.sol";
 
@@ -56,10 +56,7 @@ contract AutopilotRouter is IAutopilotRouter, AutopilotRouterBase, ReentrancyGua
     ) external nonReentrant returns (uint256 amountReceived) {
         systemRegistry.asyncSwapperRegistry().verifyIsRegistered(swapper);
 
-        bytes memory data = swapper.functionDelegateCall(
-            abi.encodeWithSignature("swap((address,uint256,address,uint256,bytes,bytes,uint256))", swapParams),
-            "SwapFailed"
-        );
+        bytes memory data = swapper.functionDelegateCall(abi.encodeCall(IAsyncSwapper.swap, swapParams), "SwapFailed");
 
         amountReceived = abi.decode(data, (uint256));
     }
@@ -74,10 +71,7 @@ contract AutopilotRouter is IAutopilotRouter, AutopilotRouterBase, ReentrancyGua
         IERC20 sellToken = IERC20(swapParams.sellTokenAddress);
         swapParams.sellAmount = sellToken.balanceOf(address(this));
 
-        bytes memory data = swapper.functionDelegateCall(
-            abi.encodeWithSignature("swap((address,uint256,address,uint256,bytes,bytes,uint256))", swapParams),
-            "SwapFailed"
-        );
+        bytes memory data = swapper.functionDelegateCall(abi.encodeCall(IAsyncSwapper.swap, swapParams), "SwapFailed");
 
         amountReceived = abi.decode(data, (uint256));
     }

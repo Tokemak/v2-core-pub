@@ -18,7 +18,8 @@ library BalancerUtilities {
     function isComposablePool(address pool) public view returns (bool) {
         // slither-disable-start low-level-calls
         // solhint-disable-next-line no-unused-vars
-        (bool success, bytes memory data) = pool.staticcall(abi.encodeWithSignature("getBptIndex()"));
+        (bool success, bytes memory data) =
+            pool.staticcall(abi.encodeCall(IBalancerComposableStablePool.getBptIndex, ()));
         if (success) {
             return data.length > 0;
         }

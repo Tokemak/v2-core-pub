@@ -23,6 +23,20 @@ contract PctFeeSplitterTest is BaseTest {
         pctFeeSplitter = new PctFeeSplitter(systemRegistry);
     }
 
+    function _setFeeRecipients() public {
+        PctFeeSplitter.FeeRecipient[] memory feeRecipients = new PctFeeSplitter.FeeRecipient[](3);
+        feeRecipients[0] = IPctFeeSplitter.FeeRecipient({ pct: 5000, recipient: address(0x1) });
+        feeRecipients[1] = IPctFeeSplitter.FeeRecipient({ pct: 4000, recipient: address(0x2) });
+        feeRecipients[2] = IPctFeeSplitter.FeeRecipient({ pct: 1000, recipient: address(0x3) });
+
+        //Grant Role
+        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
+
+        pctFeeSplitter.setFeeRecipients(feeRecipients);
+    }
+}
+
+contract SetFeeRecipients is PctFeeSplitterTest {
     function test_setFeeRecipients_RevertInvalidRole() public {
         PctFeeSplitter.FeeRecipient[] memory feeRecipients = new PctFeeSplitter.FeeRecipient[](2);
         feeRecipients[0] = IPctFeeSplitter.FeeRecipient({ pct: 5000, recipient: address(0x1) });
@@ -86,7 +100,9 @@ contract PctFeeSplitterTest is BaseTest {
         vm.expectRevert();
         (currentFeePercentage, currentFeeRecipient) = pctFeeSplitter.feeRecipients(2);
     }
+}
 
+contract ClaimFees is PctFeeSplitterTest {
     function test_claimFees_RevertInvalidRecipient() public {
         _setFeeRecipients();
         deal(WETH_MAINNET, address(pctFeeSplitter), 10 * 1e18);
@@ -117,17 +133,5 @@ contract PctFeeSplitterTest is BaseTest {
         assertEq(balAfter[0] - balBefore[0], 5 * 1e18);
         assertEq(balAfter[1] - balBefore[1], 4 * 1e18);
         assertEq(balAfter[2] - balBefore[2], 1 * 1e18);
-    }
-
-    function _setFeeRecipients() public {
-        PctFeeSplitter.FeeRecipient[] memory feeRecipients = new PctFeeSplitter.FeeRecipient[](3);
-        feeRecipients[0] = IPctFeeSplitter.FeeRecipient({ pct: 5000, recipient: address(0x1) });
-        feeRecipients[1] = IPctFeeSplitter.FeeRecipient({ pct: 4000, recipient: address(0x2) });
-        feeRecipients[2] = IPctFeeSplitter.FeeRecipient({ pct: 1000, recipient: address(0x3) });
-
-        //Grant Role
-        accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
-
-        pctFeeSplitter.setFeeRecipients(feeRecipients);
     }
 }

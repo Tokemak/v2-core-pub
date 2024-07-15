@@ -245,8 +245,8 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
 
         factory = msg.sender;
 
-        _symbol = string(abi.encodePacked(symbolSuffix));
-        _name = string(abi.encodePacked(descPrefix));
+        _symbol = symbolSuffix;
+        _name = descPrefix;
 
         AutopoolFees.initializeFeeSettings(_feeSettings);
 

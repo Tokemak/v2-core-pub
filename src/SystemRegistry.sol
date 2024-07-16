@@ -539,8 +539,7 @@ contract SystemRegistry is ISystemRegistry, Ownable2Step {
     function _verifySystemsAgree(address dep) private view {
         // slither-disable-start low-level-calls
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory data) =
-            dep.staticcall(abi.encodeWithSelector(ISystemComponent.getSystemRegistry.selector));
+        (bool success, bytes memory data) = dep.staticcall(abi.encodeCall(ISystemComponent.getSystemRegistry, ()));
         // slither-disable-end low-level-calls
         if (success && data.length > 0) {
             address depRegistry = abi.decode(data, (address));

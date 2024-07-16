@@ -95,14 +95,9 @@ contract SwapRouter is SystemComponent, ISwapRouter, SecurityBase, ReentrancyGua
             // slither-disable-start low-level-calls
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory data) = address(routes[hop].swapper).delegatecall(
-                abi.encodeWithSelector(
-                    ISyncSwapper.swap.selector,
-                    routes[hop].pool,
-                    currentToken,
-                    currentAmount,
-                    routes[hop].token,
-                    0,
-                    routes[hop].data
+                abi.encodeCall(
+                    ISyncSwapper.swap,
+                    (routes[hop].pool, currentToken, currentAmount, routes[hop].token, 0, routes[hop].data)
                 )
             );
             // slither-disable-end low-level-calls

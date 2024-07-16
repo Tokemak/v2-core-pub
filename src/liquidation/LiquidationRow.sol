@@ -321,9 +321,8 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
             uint256 buyTokenPrice = oracle.getPriceInEth(params.buyTokenAddress);
 
             // the swapper checks that the amount received is greater or equal than the params.buyAmount
-            bytes memory data = asyncSwapper.functionDelegateCall(
-                abi.encodeWithSelector(IAsyncSwapper.swap.selector, params), "SwapFailed"
-            );
+            bytes memory data =
+                asyncSwapper.functionDelegateCall(abi.encodeCall(IAsyncSwapper.swap, (params)), "SwapFailed");
 
             amountReceived = abi.decode(data, (uint256));
 

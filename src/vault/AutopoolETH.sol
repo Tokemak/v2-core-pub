@@ -711,7 +711,7 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
             true,
             convertedAssets,
             taChecked,
-            abi.encodeWithSelector(this.previewWithdraw.selector, convertedAssets),
+            abi.encodeCall(this.previewWithdraw, (convertedAssets)),
             _assetBreakdown,
             _withdrawalQueue,
             _destinationInfo
@@ -746,7 +746,7 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
             true,
             assets,
             _totalAssetsTimeChecked(TotalAssetPurpose.Withdraw),
-            abi.encodeWithSelector(this.previewWithdraw.selector, assets),
+            abi.encodeCall(this.previewWithdraw, (assets)),
             _assetBreakdown,
             _withdrawalQueue,
             _destinationInfo
@@ -768,7 +768,7 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
             false,
             convertedAssets,
             applicableTotalAssets,
-            abi.encodeWithSelector(this.previewRedeem.selector, shares),
+            abi.encodeCall(this.previewRedeem, (shares)),
             _assetBreakdown,
             _withdrawalQueue,
             _destinationInfo

@@ -145,14 +145,13 @@ library ConvexRewards {
         // slither-disable-next-line incorrect-equality
         if (resultAmount == 0) {
             // Try for Convex stash token
-            (bool successToken, bytes memory dataToken) =
-                token.staticcall(abi.encodeWithSelector(IConvexStashToken.token.selector));
+            (bool successToken, bytes memory dataToken) = token.staticcall(abi.encodeCall(IConvexStashToken.token, ()));
 
             if (successToken && dataToken.length > 0) {
                 address stashToken = abi.decode(dataToken, (address));
 
                 (bool isInvalidResult, bytes memory isInvalidData) =
-                    token.staticcall(abi.encodeWithSelector(IConvexStashToken.isInvalid.selector));
+                    token.staticcall(abi.encodeCall(IConvexStashToken.isInvalid, ()));
 
                 if (isInvalidResult && isInvalidData.length > 0 && !abi.decode(isInvalidData, (bool))) {
                     resultToken = stashToken;

@@ -204,6 +204,26 @@ contract GyroOracleTestsECLPPool is BalancerGyroscopeEthOracleTestsBase {
         assertGt(returnedPriceToken1ToToken0, lower);
     }
 
+    function test_ReturnsCorrectPrice_GreaterThan18Decimal_Quote() public {
+        (IERC20[] memory tokens,) = _getTokensAndBalances(WSTETH_WETH_GYRO_POOL);
+        address token0 = address(tokens[0]);
+        address token1 = address(tokens[1]);
+
+        // Use swap via vault to validate spot price returned.  Checked that pinned block is not in extreme state
+        uint256 expectedPrice = _swapAmount(WSTETH_WETH_GYRO_POOL, token0, token1, 1e18, false);
+
+        // Mock decimals call for quote token, 27 decimals
+        vm.mockCall(token1, abi.encodeWithSignature("decimals()"), abi.encode(27));
+        (uint256 returnedPrice, address actualQuote) = oracle.getSpotPrice(token0, WSTETH_WETH_GYRO_POOL, address(1));
+
+        // .1% tolerance, expect these to be close.  Scaling expected price up here
+        (uint256 upper, uint256 lower) = _getPriceBounds(expectedPrice * 10 ** 9, 10);
+
+        assertEq(token1, actualQuote);
+        assertLt(returnedPrice, upper);
+        assertGt(returnedPrice, lower);
+    }
+
     // The idea here is to get the pool to as close to 100% of one asset as we can and make sure that the price returns
     //  corresponds with the pool price bounds displayed on the Gyro UI.
     function test_PoolReturnsReasonablePrice_AtPoolBounds_ECLP() public {

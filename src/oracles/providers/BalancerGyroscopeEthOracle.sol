@@ -84,6 +84,8 @@ contract BalancerGyroscopeEthOracle is BalancerBaseOracle {
         uint256 quoteTokenDecimals = IERC20Metadata(actualQuoteToken).decimals();
         if (quoteTokenDecimals < 18) {
             price = price / 10 ** (18 - quoteTokenDecimals);
+        } else if (quoteTokenDecimals > 18) {
+            price = price * 10 ** (quoteTokenDecimals - 18);
         }
     }
 }

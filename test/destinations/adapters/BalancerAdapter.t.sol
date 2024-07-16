@@ -773,7 +773,7 @@ contract BalancerAdapterTest is Test {
                 IVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
                 amountsUser, //maxAmountsIn,
                 poolAmountOut
-                ),
+            ),
             fromInternalBalance: false
         });
     }

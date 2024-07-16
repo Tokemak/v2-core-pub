@@ -223,7 +223,7 @@ contract Lens is SystemComponent {
                         ? (vaultDestInfo.cachedMinDebtValue * vaultBalOfDest / vaultDestInfo.ownedShares)
                             + (vaultDestInfo.cachedMaxDebtValue * vaultBalOfDest / vaultDestInfo.ownedShares)
                         : 0
-                    ) / 2,
+                ) / 2,
                 queuedForRemoval: i >= poolDestinations.length,
                 isShutdown: IDestinationVault(destinationAddress).isShutdown(),
                 shutdownStatus: IDestinationVault(destinationAddress).shutdownStatus(),

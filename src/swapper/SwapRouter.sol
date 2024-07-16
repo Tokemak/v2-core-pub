@@ -54,6 +54,8 @@ contract SwapRouter is SystemComponent, ISwapRouter, SecurityBase, ReentrancyGua
             Errors.verifyNotZero(route.pool, "swap pool");
             Errors.verifyNotZero(address(route.swapper), "swap swapper");
 
+            if (address(route.swapper.router()) != address(this)) revert Errors.InvalidParams();
+
             route.swapper.validate(fromToken, route);
 
             swapRoute.push(route);

@@ -9,6 +9,11 @@ interface ISyncSwapper {
     error InvalidIndex();
 
     /**
+     * @notice Returns address of swap router that can access SyncSwapper contract
+     */
+    function router() external view returns (ISwapRouter);
+
+    /**
      * @notice Swaps sellToken for buyToken
      * @param pool The address of the pool for the swapper
      * @param sellTokenAddress The address of the token to sell

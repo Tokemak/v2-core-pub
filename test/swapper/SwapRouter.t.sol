@@ -182,6 +182,21 @@ contract SwapRouterTest is Test {
         swapRouter.setSwapRoute(WETH_MAINNET, swapRoute);
     }
 
+    function test_setSwapRoute_RevertsIf_AdapterRouterDNE_RouterAddress() public {
+        vm.mockCall(address(curveSwapper), abi.encodeWithSignature("router()"), abi.encode(address(1)));
+
+        ISwapRouter.SwapData[] memory swapRoute = new ISwapRouter.SwapData[](1);
+        swapRoute[0] = ISwapRouter.SwapData({
+            token: WSTETH_MAINNET,
+            pool: 0x32296969Ef14EB0c6d29669C550D4a0449130230,
+            swapper: curveSwapper,
+            data: abi.encode(0)
+        });
+
+        vm.expectRevert(Errors.InvalidParams.selector);
+        swapRouter.setSwapRoute(WETH_MAINNET, swapRoute);
+    }
+
     function test_swapForQuote_Revert_IfAccessDenied() public {
         uint256 sellAmount = 1e18;
         address asset = WETH_MAINNET;

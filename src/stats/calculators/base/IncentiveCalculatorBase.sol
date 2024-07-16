@@ -190,9 +190,9 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
             safeTotalSupply[i + 2] += safeSupply;
         }
 
-        /// @dev use the safeTotalSupply is infered from the rewardRate and the change in rewardPerToken
+        /// @dev use the safeTotalSupply is inferred from the rewardRate and the change in rewardPerToken
         /// by using the safeTotalSupply of the most recently emitting rewarder we get the most current
-        /// safeTotalSupply estimate. 
+        /// safeTotalSupply estimate.
 
         uint256 highestPeriodFinish = 0;
         uint256 currentSafeTotalSupply = 0;

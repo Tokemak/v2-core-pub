@@ -56,7 +56,7 @@ library Errors {
     error NotSupported();
 
     error InvalidConfiguration();
-    
+
     error InvalidDataReturned();
 
     function verifyNotZero(address addr, string memory paramName) internal pure {

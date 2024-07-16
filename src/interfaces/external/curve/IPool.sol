@@ -17,4 +17,6 @@ interface IPool {
     function lp_token() external returns (address);
 
     function token() external returns (address);
+
+    function gamma() external;
 }

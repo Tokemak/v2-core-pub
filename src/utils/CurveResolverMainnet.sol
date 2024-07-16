@@ -135,7 +135,7 @@ contract CurveResolverMainnet is ICurveResolver {
         // Zero check for the poolAddress is above
         // slither-disable-start low-level-calls,missing-zero-check,unchecked-lowlevel
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success,) = pool.staticcall(abi.encodeWithSignature("gamma()"));
+        (bool success,) = pool.staticcall(abi.encodeCall(IPool.gamma, ()));
         // slither-disable-end low-level-calls,missing-zero-check,unchecked-lowlevel
 
         return !success;

@@ -198,4 +198,14 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @dev Only works when vault is shutdown, also validates the calculator before updating
     /// @param incentiveCalculator address of the new incentive calculator
     function setIncentiveCalculator(address incentiveCalculator) external;
+
+    /// @notice Allows to change the extension contract
+    /// @dev Should be limited to DESTINATION_VAULT_MANAGER
+    /// @param extension contract address
+    function setExtension(address extension) external;
+
+    /// @notice Calls the execute function of the extension contract
+    /// @dev Should be limited to DESTINATION_VAULT_MANAGER
+    /// @dev Special care should be taken to ensure that balances hasn't been manipulated
+    function executeExtension() external;
 }

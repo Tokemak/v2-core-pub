@@ -12,6 +12,9 @@ contract TestDestinationVault is DestinationVault {
     uint256 private _claimVested;
     uint256 private _reclaimDebtAmount;
     uint256 private _reclaimDebtLoss;
+    uint256 private _externalDebtBalance;
+    uint256 private _internalDebtBalance;
+    uint256 private _externalQueriedBalance;
     address private _pool;
 
     constructor(ISystemRegistry systemRegistry) DestinationVault(systemRegistry) { }
@@ -50,6 +53,18 @@ contract TestDestinationVault is DestinationVault {
 
     function setDebt(uint256 val) public {
         //debt = val;
+    }
+
+    function setExternalDebtBalance(uint256 val) public {
+        _externalDebtBalance = val;
+    }
+
+    function setInternalDebtBalance(uint256 val) public {
+        _internalDebtBalance = val;
+    }
+
+    function setExternalQueriedBalance(uint256 val) public {
+        _externalQueriedBalance = val;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -99,16 +114,16 @@ contract TestDestinationVault is DestinationVault {
 
     function reset() external { }
 
-    function externalDebtBalance() public pure override returns (uint256) {
-        return 0;
+    function externalDebtBalance() public view override returns (uint256) {
+        return _externalDebtBalance;
     }
 
-    function internalDebtBalance() public pure override returns (uint256) {
-        return 0;
+    function internalDebtBalance() public view override returns (uint256) {
+        return _internalDebtBalance;
     }
 
-    function externalQueriedBalance() public pure override returns (uint256) {
-        return 0;
+    function externalQueriedBalance() public view override returns (uint256) {
+        return _externalQueriedBalance;
     }
 
     function getPool() public view override returns (address poolAddress) {

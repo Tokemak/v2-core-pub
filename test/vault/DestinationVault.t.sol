@@ -19,6 +19,7 @@ import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
+import { MaliciousTokenBalanceExtension, MaliciousInternalBalanceExtension } from "test/mocks/MaliciousExtension.sol";
 
 contract DestinationVaultBaseTests is Test {
     using Clones for address;
@@ -47,6 +48,7 @@ contract DestinationVaultBaseTests is Test {
     event Shutdown(IDestinationVault.VaultShutdownStatus reason);
     event UnderlyerRecovered(address destination, uint256 amount);
     event IncentiveCalculatorUpdated(address calculator);
+    event ExtensionSet(address extension);
 
     function setUp() public {
         testUser1 = vm.addr(1);
@@ -485,6 +487,104 @@ contract DestinationVaultBaseTests is Test {
         testVault.setIncentiveCalculator(address(newIncentiveCalculator));
 
         assertEq(address(testVault.getStats()), address(newIncentiveCalculator));
+    }
+
+    function test_setExtension_RevertsIfWrongRole() public {
+        vm.prank(makeAddr("RANDOM"));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        testVault.setExtension(address(0));
+    }
+
+    function test_setExtension_RevertsIfZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "extension_"));
+        testVault.setExtension(address(0));
+    }
+
+    function test_setExtension_EmitsEvent() public {
+        address extension = makeAddr("EXTENSION");
+        vm.expectEmit(true, true, true, true);
+        emit ExtensionSet(extension);
+
+        testVault.setExtension(extension);
+    }
+
+    function test_executeExtension_RevertsIfWrongRole() public {
+        vm.prank(makeAddr("RANDOM"));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        testVault.executeExtension();
+    }
+
+    function test_executeExtension_RevertsIfExtensionNotActive() public {
+        vm.expectRevert(abi.encodeWithSelector(DestinationVault.ExtensionNotActive.selector));
+        testVault.executeExtension();
+    }
+
+    /// @dev also covers InternalQueriedBalance which is underlyer balance
+    function test_executeExtension_RevertsIfTokensBalanceChanged() public {
+        // Give some tokens to the vault
+        baseAsset.mint(address(testVault), 100);
+        underlyer.mint(address(testVault), 100);
+
+        address rober = makeAddr("ROBER");
+        address[] memory tokensToSteal = testVault.trackedTokens();
+
+        for (uint256 i = 0; i < tokensToSteal.length; i++) {
+            MaliciousTokenBalanceExtension extension = new MaliciousTokenBalanceExtension(rober, tokensToSteal[i]);
+
+            testVault.setExtension(address(extension));
+
+            vm.warp(block.timestamp + 2 weeks);
+
+            vm.expectRevert(abi.encodeWithSelector(DestinationVault.ExtensionAmountMismatch.selector));
+            testVault.executeExtension();
+        }
+    }
+
+    function test_executeExtension_RevertsIfInternalDebtBalanceChanged() public {
+        // Mock internal debt balance
+        testVault.setInternalDebtBalance(100);
+
+        MaliciousInternalBalanceExtension extension =
+            new MaliciousInternalBalanceExtension(TestDestinationVault.setInternalDebtBalance.selector);
+
+        testVault.setExtension(address(extension));
+
+        vm.warp(block.timestamp + 2 weeks);
+
+        vm.expectRevert(abi.encodeWithSelector(DestinationVault.ExtensionAmountMismatch.selector));
+        testVault.executeExtension();
+    }
+
+    function test_executeExtension_RevertsIfExternalDebtBalanceChanged() public {
+        // Mock external debt balance
+        testVault.setExternalDebtBalance(100);
+
+        MaliciousInternalBalanceExtension extension =
+            new MaliciousInternalBalanceExtension(TestDestinationVault.setExternalDebtBalance.selector);
+
+        testVault.setExtension(address(extension));
+
+        vm.warp(block.timestamp + 2 weeks);
+
+        vm.expectRevert(abi.encodeWithSelector(DestinationVault.ExtensionAmountMismatch.selector));
+        testVault.executeExtension();
+    }
+
+    function test_executeExtension_RevertsIfExternalQueriedBalanceChanged() public {
+        // Mock external queried balance
+        testVault.setExternalQueriedBalance(100);
+
+        MaliciousInternalBalanceExtension extension =
+            new MaliciousInternalBalanceExtension(TestDestinationVault.setExternalQueriedBalance.selector);
+
+        testVault.setExtension(address(extension));
+
+        vm.warp(block.timestamp + 2 weeks);
+
+        vm.expectRevert(abi.encodeWithSelector(DestinationVault.ExtensionAmountMismatch.selector));
+        testVault.executeExtension();
     }
 
     function mockSystemBound(address addr, address systemRegistry_) internal {

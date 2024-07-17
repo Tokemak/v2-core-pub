@@ -11,6 +11,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ISwapRouter } from "src/interfaces/swapper/ISwapRouter.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
+import { IDestinationVaultExtension } from "src/interfaces/vault/IDestinationVaultExtension.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.sol";
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
@@ -18,6 +19,7 @@ import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/ext
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { IERC1271 } from "openzeppelin-contracts/interfaces/IERC1271.sol";
+import { Address } from "openzeppelin-contracts/utils/Address.sol";
 
 abstract contract DestinationVault is
     SecurityBase,
@@ -29,6 +31,7 @@ abstract contract DestinationVault is
 {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using Address for address;
 
     event Recovered(address[] tokens, uint256[] amounts, address[] destinations);
     event UnderlyerRecovered(address destination, uint256 amount);
@@ -37,6 +40,7 @@ abstract contract DestinationVault is
     event UnderlyingDeposited(uint256 amount, address sender);
     event Shutdown(VaultShutdownStatus reason);
     event IncentiveCalculatorUpdated(address calculator);
+    event ExtensionSet(address extension);
 
     error ArrayLengthMismatch();
     error PullingNonTrackedToken(address token);
@@ -48,6 +52,8 @@ abstract contract DestinationVault is
     error VaultNotShutdown();
     error InvalidIncentiveCalculator(address calc, address local, string param);
     error PricesOutOfRange(uint256 spot, uint256 safe);
+    error ExtensionNotActive();
+    error ExtensionAmountMismatch();
 
     /* ******************************** */
     /* State Variables                  */
@@ -77,6 +83,14 @@ abstract contract DestinationVault is
     uint256 public ONE;
 
     mapping(bytes32 => bool) public signedMessages;
+
+    /// @notice Address of the extension contract
+    /// @dev This is a contract that can be delegatecalled to perform additional actions
+    address public extension;
+
+    /// @notice Time the extension was set
+    /// @dev Used to ensure that the extension has been set for 7 days before it can be executed
+    uint256 public extensionSetTime;
 
     constructor(ISystemRegistry sysRegistry)
         SystemComponent(sysRegistry)
@@ -506,6 +520,57 @@ abstract contract DestinationVault is
             magicValue = IERC1271.isValidSignature.selector;
         } else {
             magicValue = 0xFFFFFFFF;
+        }
+    }
+
+    /// @inheritdoc IDestinationVault
+    function setExtension(address extension_) external hasRole(Roles.DESTINATION_VAULT_MANAGER) {
+        Errors.verifyNotZero(extension_, "extension_");
+
+        // slither-disable-next-line missing-zero-check
+        extension = extension_;
+        extensionSetTime = block.timestamp;
+
+        emit ExtensionSet(extension_);
+    }
+
+    /// @inheritdoc IDestinationVault
+    function executeExtension() external hasRole(Roles.DESTINATION_VAULT_MANAGER) {
+        // slither-disable-next-line timestamp
+        if (block.timestamp < extensionSetTime + 7 days) {
+            revert ExtensionNotActive();
+        }
+
+        uint256 trackedTokensLength = _trackedTokens.length();
+
+        // Save the balances
+        uint256[] memory trackedTokensBalances = new uint256[](trackedTokensLength);
+        uint256 externalDebtBalance_ = externalDebtBalance();
+        uint256 internalDebtBalance_ = internalDebtBalance();
+        uint256 externalQueriedBalance_ = externalQueriedBalance();
+
+        for (uint256 i = 0; i < trackedTokensLength; ++i) {
+            trackedTokensBalances[i] = IERC20(_trackedTokens.at(i)).balanceOf(address(this));
+        }
+
+        // slither-disable-next-line unused-return
+        extension.functionDelegateCall(abi.encodeCall(IDestinationVaultExtension.execute, ()));
+
+        // Verify that no tokens were pulled
+        // This also verifies internalQueriedBalance as it is the balance of the underlyer which is tracked
+        for (uint256 i = 0; i < trackedTokensLength; ++i) {
+            IERC20 token = IERC20(_trackedTokens.at(i));
+            if (trackedTokensBalances[i] > token.balanceOf(address(this))) {
+                revert ExtensionAmountMismatch();
+            }
+        }
+
+        // Verify that DestinationVault balances have not changed
+        if (
+            externalDebtBalance_ != externalDebtBalance() || internalDebtBalance_ != internalDebtBalance()
+                || externalQueriedBalance_ != externalQueriedBalance()
+        ) {
+            revert ExtensionAmountMismatch();
         }
     }
 }

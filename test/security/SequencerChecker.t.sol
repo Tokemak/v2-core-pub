@@ -17,14 +17,19 @@ contract SequencerCheckerTest is Test {
     function setUp() public virtual {
         baseFeed = makeAddr("BASE_SEQUENCER_FEED");
         registry = ISystemRegistry(makeAddr("SYSTEM_REGISTRY"));
-        checker = new SequencerChecker(registry, IAggregatorV3Interface(baseFeed));
+        checker = new SequencerChecker(registry, IAggregatorV3Interface(baseFeed), 1 hours);
     }
 }
 
 contract ConstructorTests is SequencerCheckerTest {
     function test_RevertIf_SequencerFeedZero() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_sequencerUptimeFeed"));
-        new SequencerChecker(registry, IAggregatorV3Interface(address(0)));
+        new SequencerChecker(registry, IAggregatorV3Interface(address(0)), 1 hours);
+    }
+
+    function test_RevertIf_GracePeriodZero() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "_gracePeriod"));
+        new SequencerChecker(registry, IAggregatorV3Interface(baseFeed), 0);
     }
 
     function test_sequencerUptimeFeed_Set() public {
@@ -73,7 +78,7 @@ contract CheckSequencerUptimeFeedTests is SequencerCheckerTest {
     }
 
     function test_AnswerZero_StartedAtCorrect_ReturnsTrue() public {
-        _mockFeedReturn(mockedRoundId, mockedAnswer, block.timestamp - (checker.GRACE_PERIOD() + 10_000));
+        _mockFeedReturn(mockedRoundId, mockedAnswer, block.timestamp - (checker.gracePeriod() + 10_000));
         bool returnVal = checker.checkSequencerUptimeFeed();
         assertEq(returnVal, true);
     }

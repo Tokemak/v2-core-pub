@@ -58,7 +58,7 @@ contract SystemSecurityL2IntegrationTest is Test {
         systemRegistry.setSystemSecurity(address(systemSecurity));
 
         // Set up checker
-        checker = new SequencerChecker(systemRegistry, IAggregatorV3Interface(BASE_SEQUENCER_FEED));
+        checker = new SequencerChecker(systemRegistry, IAggregatorV3Interface(BASE_SEQUENCER_FEED), 1800);
         systemRegistry.setSequencerChecker(address(checker));
 
         // Deploy autopool

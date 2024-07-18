@@ -33,6 +33,12 @@ interface IAutopoolStrategy {
         external
         returns (IStrategy.SummaryStats memory outSummary);
 
+    /// @notice Returns all hooks registered on Strategy
+    /// @dev Can return empty array if strategy has no hooks
+    /// @dev Will return zero addresses for unregistered hooks
+    /// @return hooks Array of hook addresses
+    function getHooks() external view returns (address[] memory hooks);
+
     /// @notice the number of days to pause rebalancing due to NAV decay
     function pauseRebalancePeriodInDays() external view returns (uint16);
 

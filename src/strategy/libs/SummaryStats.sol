@@ -17,6 +17,7 @@ import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { ISummaryStatsHook } from "src/interfaces/strategy/ISummaryStatsHook.sol";
 
 library SummaryStats {
     error StaleData(string name);
@@ -115,6 +116,9 @@ library SummaryStats {
         result.maxPremium = interimStats.maxPremium;
         result.maxDiscount = interimStats.maxDiscount;
 
+        // Manipulate SummaryStats by hooks if required
+        result = _getHookResults(result, autoPool, destAddress, price, direction, amount);
+
         uint256 returnExPrice = (
             result.baseApr * IAutopoolStrategy(address(this)).weightBase() / 1e6
                 + result.feeApr * IAutopoolStrategy(address(this)).weightFee() / 1e6
@@ -125,6 +129,26 @@ library SummaryStats {
         result.compositeReturn = StrategyUtils.convertUintToInt(returnExPrice) + result.priceReturn;
 
         return result;
+    }
+
+    // Broken out due to stack too deep errors
+    function _getHookResults(
+        IStrategy.SummaryStats memory _result,
+        IAutopool autopool,
+        address destAddress,
+        uint256 price,
+        IAutopoolStrategy.RebalanceDirection direction,
+        uint256 amount
+    ) private returns (IStrategy.SummaryStats memory result) {
+        result = _result;
+
+        address[] memory hooks = IAutopoolStrategy(address(this)).getHooks();
+        for (uint256 i = 0; i < hooks.length; ++i) {
+            address currentHook = hooks[i];
+            if (currentHook == address(0)) continue;
+
+            result = ISummaryStatsHook(currentHook).execute(result, autopool, destAddress, price, direction, amount);
+        }
     }
 
     // Calculate the largest difference between spot & safe price for the underlying LST tokens.

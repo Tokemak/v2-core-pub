@@ -127,6 +127,13 @@ contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrateg
 
     uint256 public immutable defaultLstPriceGapTolerance;
 
+    /// @notice Addresses of hook contracts
+    address public immutable hook1;
+    address public immutable hook2;
+    address public immutable hook3;
+    address public immutable hook4;
+    address public immutable hook5;
+
     /* ******************************** */
     /* State Variables                  */
     /* ******************************** */
@@ -291,6 +298,11 @@ contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrateg
         weightPricePremium = conf.modelWeights.pricePremium;
         defaultLstPriceGapTolerance = conf.lstPriceGapTolerance;
         swapCostOffsetInit = conf.swapCostOffset.initInDays;
+        hook1 = conf.hooks[0];
+        hook2 = conf.hooks[1];
+        hook3 = conf.hooks[2];
+        hook4 = conf.hooks[3];
+        hook5 = conf.hooks[4];
 
         _disableInitializers();
     }
@@ -884,6 +896,15 @@ contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrateg
             tightenSwapCostOffset();
             violationTrackingState.reset();
         }
+    }
+
+    /// @inheritdoc IAutopoolStrategy
+    function getHooks() public view virtual override returns (address[] memory hooks) {
+        hooks[0] = hook1;
+        hooks[1] = hook2;
+        hooks[2] = hook3;
+        hooks[3] = hook4;
+        hooks[4] = hook5;
     }
 
     function swapCostOffsetPeriodInDays() public view returns (uint16) {

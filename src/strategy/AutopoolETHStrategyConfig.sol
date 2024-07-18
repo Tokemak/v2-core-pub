@@ -30,6 +30,8 @@ library AutopoolETHStrategyConfig {
         int256 maxAllowedDiscount;
         // the maximum deviation between spot & safe price for individual LSTs
         uint256 lstPriceGapTolerance;
+        // Array of hook contracts.  Up to five hooks on AutopoolEth strategay, can be address(0)
+        address[5] hooks;
     }
 
     struct SwapCostOffsetConfig {

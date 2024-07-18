@@ -900,6 +900,7 @@ contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrateg
 
     /// @inheritdoc IAutopoolStrategy
     function getHooks() public view virtual override returns (address[] memory hooks) {
+        hooks = new address[](5);
         hooks[0] = hook1;
         hooks[1] = hook2;
         hooks[2] = hook3;

@@ -381,8 +381,9 @@ abstract contract AutopoolFullDeployTests is Test {
             maxDiscount: 0.02e18, // 2%
             staleDataToleranceInSeconds: 2 days,
             maxAllowedDiscount: 0.05e18,
-            lstPriceGapTolerance: 10 // 10 bps
-         });
+            lstPriceGapTolerance: 10, // 10 bps
+            hooks: [address(0), address(0), address(0), address(0), address(0)]
+        });
 
         // Configure Autopool template and factory
         address autoPoolTemplate = address(new AutopoolETH(_systemRegistry, WETH_MAINNET, false));

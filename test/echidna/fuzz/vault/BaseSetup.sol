@@ -597,4 +597,9 @@ contract TestingStrategy is IAutopoolStrategy {
         external
         returns (IStrategy.SummaryStats memory outSummary)
     { }
+
+    function getHooks() external view returns (address[] memory) {
+        address[] memory arr = new address[](0);
+        return arr;
+    }
 }

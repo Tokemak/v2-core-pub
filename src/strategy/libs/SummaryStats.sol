@@ -131,26 +131,6 @@ library SummaryStats {
         return result;
     }
 
-    // Broken out due to stack too deep errors
-    function _getHookResults(
-        IStrategy.SummaryStats memory _result,
-        IAutopool autopool,
-        address destAddress,
-        uint256 price,
-        IAutopoolStrategy.RebalanceDirection direction,
-        uint256 amount
-    ) private returns (IStrategy.SummaryStats memory result) {
-        result = _result;
-
-        address[] memory hooks = IAutopoolStrategy(address(this)).getHooks();
-        for (uint256 i = 0; i < hooks.length; ++i) {
-            address currentHook = hooks[i];
-            if (currentHook == address(0)) continue;
-
-            result = ISummaryStatsHook(currentHook).execute(result, autopool, destAddress, price, direction, amount);
-        }
-    }
-
     // Calculate the largest difference between spot & safe price for the underlying LST tokens.
     // This does not support Curve meta pools
     function verifyLSTPriceGap(
@@ -216,6 +196,26 @@ library SummaryStats {
         // slither-disable-next-line timestamp
         if (block.timestamp - dataTimestamp > IAutopoolStrategy(address(this)).staleDataToleranceInSeconds()) {
             revert StaleData(name);
+        }
+    }
+
+    // Broken out due to stack too deep errors
+    function _getHookResults(
+        IStrategy.SummaryStats memory _result,
+        IAutopool autopool,
+        address destAddress,
+        uint256 price,
+        IAutopoolStrategy.RebalanceDirection direction,
+        uint256 amount
+    ) private returns (IStrategy.SummaryStats memory result) {
+        result = _result;
+
+        address[] memory hooks = IAutopoolStrategy(address(this)).getHooks();
+        for (uint256 i = 0; i < hooks.length; ++i) {
+            address currentHook = hooks[i];
+            if (currentHook == address(0)) continue;
+
+            result = ISummaryStatsHook(currentHook).execute(result, autopool, destAddress, price, direction, amount);
         }
     }
 }

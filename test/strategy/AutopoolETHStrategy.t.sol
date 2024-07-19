@@ -33,6 +33,7 @@ import { Incentives } from "src/strategy/libs/Incentives.sol";
 import { PriceReturn } from "src/strategy/libs/PriceReturn.sol";
 import { SummaryStats } from "src/strategy/libs/SummaryStats.sol";
 import { IAutopoolStrategy } from "src/interfaces/strategy/IAutopoolStrategy.sol";
+import { ISummaryStatsHook } from "src/interfaces/strategy/ISummaryStatsHook.sol";
 
 contract AutopoolETHStrategyTest is Test {
     using NavTracking for NavTracking.State;
@@ -116,6 +117,24 @@ contract AutopoolETHStrategyTest is Test {
         defaultStrat = deployStrategy(cfg);
     }
 
+    function test_constructor_SetsHooks() public {
+        AutopoolETHStrategyConfig.StrategyConfig memory cfg = helpers.getDefaultConfig();
+
+        address hook1 = makeAddr("HOOK1");
+        address hook3 = makeAddr("HOOK3");
+
+        cfg.hooks[1] = hook1;
+        cfg.hooks[3] = hook3;
+
+        AutopoolETHStrategyHarness localStrat = deployStrategy(cfg);
+
+        assertEq(localStrat.hook1(), address(0));
+        assertEq(localStrat.hook2(), hook1);
+        assertEq(localStrat.hook3(), address(0));
+        assertEq(localStrat.hook4(), hook3);
+        assertEq(localStrat.hook5(), address(0));
+    }
+
     /* **************************************** */
     /* initialize Tests                         */
     /* **************************************** */
@@ -136,6 +155,45 @@ contract AutopoolETHStrategyTest is Test {
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "_autoPool"));
         harness.init(address(0));
+    }
+
+    /* **************************************** */
+    /* getHooks Tests                           */
+    /* **************************************** */
+
+    function test_getHooks_ReturnsZeroAddresses_NoHooksSet() public {
+        address[] memory hooks = defaultStrat.getHooks();
+
+        assertEq(hooks.length, 5);
+        for (uint256 i = 0; i < hooks.length; ++i) {
+            assertEq(hooks[i], address(0));
+        }
+    }
+
+    function test_getHooks_ReturnsHooksWhenSet() public {
+        AutopoolETHStrategyConfig.StrategyConfig memory cfg = helpers.getDefaultConfig();
+
+        address hook1 = makeAddr("HOOK1");
+        address hook2 = makeAddr("HOOK2");
+        address hook3 = makeAddr("HOOK3");
+        address hook4 = makeAddr("HOOK4");
+        address hook5 = makeAddr("HOOK5");
+
+        cfg.hooks[0] = hook1;
+        cfg.hooks[1] = hook2;
+        cfg.hooks[2] = hook3;
+        cfg.hooks[3] = hook4;
+        cfg.hooks[4] = hook5;
+
+        AutopoolETHStrategyHarness localStrat = deployStrategy(cfg);
+
+        address[] memory hooks = localStrat.getHooks();
+
+        assertEq(hooks[0], hook1);
+        assertEq(hooks[1], hook2);
+        assertEq(hooks[2], hook3);
+        assertEq(hooks[3], hook4);
+        assertEq(hooks[4], hook5);
     }
 
     /* **************************************** */
@@ -1412,6 +1470,92 @@ contract AutopoolETHStrategyTest is Test {
         assertEq(summary.compositeReturn, 488e14);
     }
 
+    function test_getDestinationSummaryStats_DoesNotManipulate_NoHooksSet() public {
+        uint256 submittedPrice = 1;
+
+        vm.warp(180 days);
+
+        // Set stats
+        IDexLSTStats.DexLSTStatsData memory stats;
+        stats.lastSnapshotTimestamp = 180 days;
+        setStatsCurrent(mockOutStats, stats);
+
+        IStrategy.SummaryStats memory result = defaultStrat._getDestinationSummaryStats(
+            mockOutDest, submittedPrice, IAutopoolStrategy.RebalanceDirection.Out, 1e18
+        );
+
+        // No hooks set, price should be exactly as submitted.
+        assertEq(result.pricePerShare, submittedPrice);
+    }
+
+    function test_getDestinationSummaryStats_ManipulatesProperly_SomeHooksSet() public {
+        uint256 submittedPrice = 1;
+
+        vm.warp(180 days);
+
+        // Set stats
+        IDexLSTStats.DexLSTStatsData memory stats;
+        stats.lastSnapshotTimestamp = 180 days;
+        setStatsCurrent(mockOutStats, stats);
+
+        // Deploy three hooks
+        address hook1 = address(new MockHook());
+        address hook2 = address(new MockHook());
+        address hook3 = address(new MockHook());
+
+        AutopoolETHStrategyConfig.StrategyConfig memory cfg = helpers.getDefaultConfig();
+
+        // Set hooks in config
+        cfg.hooks[0] = hook1;
+        cfg.hooks[2] = hook2;
+        cfg.hooks[4] = hook3;
+
+        AutopoolETHStrategyHarness localStrat = deployStrategy(cfg);
+
+        IStrategy.SummaryStats memory result = localStrat._getDestinationSummaryStats(
+            mockOutDest, submittedPrice, IAutopoolStrategy.RebalanceDirection.Out, 1e18
+        );
+
+        // Checking for three incrementations
+        assertEq(result.pricePerShare, submittedPrice + 3);
+    }
+
+    function test_getDestinationSummaryStats_ManipulatesProperly_AllHooksSet() public {
+        uint256 submittedPrice = 1;
+
+        vm.warp(180 days);
+
+        // Set stats
+        IDexLSTStats.DexLSTStatsData memory stats;
+        stats.lastSnapshotTimestamp = 180 days;
+        setStatsCurrent(mockOutStats, stats);
+
+        // Deploy hooks
+        address hook1 = address(new MockHook());
+        address hook2 = address(new MockHook());
+        address hook3 = address(new MockHook());
+        address hook4 = address(new MockHook());
+        address hook5 = address(new MockHook());
+
+        AutopoolETHStrategyConfig.StrategyConfig memory cfg = helpers.getDefaultConfig();
+
+        // Set hooks in config
+        cfg.hooks[0] = hook1;
+        cfg.hooks[1] = hook2;
+        cfg.hooks[2] = hook3;
+        cfg.hooks[3] = hook4;
+        cfg.hooks[4] = hook5;
+
+        AutopoolETHStrategyHarness localStrat = deployStrategy(cfg);
+
+        IStrategy.SummaryStats memory result = localStrat._getDestinationSummaryStats(
+            mockOutDest, submittedPrice, IAutopoolStrategy.RebalanceDirection.Out, 1e18
+        );
+
+        // Checking for five incrementations
+        assertEq(result.pricePerShare, submittedPrice + 5);
+    }
+
     /* **************************************** */
     /* calculateWeightedPriceReturn Tests       */
     /* **************************************** */
@@ -2553,5 +2697,21 @@ contract AutopoolETHStrategyHarness is AutopoolETHStrategy {
         RebalanceDirection direction
     ) public view returns (int256) {
         return PriceReturn.calculateWeightedPriceReturn(priceReturn, reserveValue, direction);
+    }
+}
+
+contract MockHook is ISummaryStatsHook {
+    function execute(
+        IStrategy.SummaryStats memory _result,
+        IAutopool,
+        address,
+        uint256,
+        IAutopoolStrategy.RebalanceDirection,
+        uint256
+    ) external pure override returns (IStrategy.SummaryStats memory result) {
+        result = _result;
+
+        // Increment pricePerShare.  Doing this as it is not manipulated within getDestinationSummaryStats, just set
+        result.pricePerShare++;
     }
 }

@@ -34,7 +34,6 @@ interface IAutopoolStrategy {
         returns (IStrategy.SummaryStats memory outSummary);
 
     /// @notice Returns all hooks registered on strategy
-    /// @dev Can return empty array if strategy has no hooks
     /// @dev Will return zero addresses for unregistered hooks
     /// @return hooks Array of hook addresses
     function getHooks() external view returns (address[] memory hooks);

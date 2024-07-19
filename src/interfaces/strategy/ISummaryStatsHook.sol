@@ -14,10 +14,10 @@ interface ISummaryStatsHook {
      * @param stats IStrategy.SummaryStats struct for destination stats
      * @param autoPool Address of autopool that rebalance is happening for
      * @param destAddress Address of destination
-     * @param price -
+     * @param price Price per share
      * @param direction Rebalance direction, in or out
-     * @param amount -
-     * @return IStrategy.SummaryStats struct, manipulated by hook
+     * @param amount Amount of asset that stats are evaluated at
+     * @return IStrategy.SummaryStats struct
      */
     function execute(
         IStrategy.SummaryStats memory stats,

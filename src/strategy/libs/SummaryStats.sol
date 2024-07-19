@@ -116,7 +116,7 @@ library SummaryStats {
         result.maxPremium = interimStats.maxPremium;
         result.maxDiscount = interimStats.maxDiscount;
 
-        // Manipulate SummaryStats by hooks if required
+        // Manipulate SummaryStats by hooks if there are registered hooks.  If not this returns result as is
         result = _getHookResults(result, autoPool, destAddress, price, direction, amount);
 
         uint256 returnExPrice = (
@@ -199,7 +199,7 @@ library SummaryStats {
         }
     }
 
-    // Broken out due to stack too deep errors
+    /// @dev Used to apply any manipulations to destinations stats via hooks
     function _getHookResults(
         IStrategy.SummaryStats memory _result,
         IAutopool autopool,

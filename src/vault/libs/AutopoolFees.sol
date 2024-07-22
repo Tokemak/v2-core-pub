@@ -236,7 +236,7 @@ library AutopoolFees {
         }
 
         uint256 streamingFeeShares =
-            _calculateSharesToMintFeeCollection(streamingFeeBps, totalAssets, currentTotalSupply);
+            _calculateSharesToMintFeeCollection(streamingFeeBps, profit, totalAssets, currentTotalSupply);
         tokenData.mint(sink, streamingFeeShares);
         currentTotalSupply += streamingFeeShares;
 
@@ -253,7 +253,8 @@ library AutopoolFees {
         uint256 currentTotalSupply,
         uint256 totalAssets
     ) private returns (uint256 newShares) {
-        newShares = _calculateSharesToMintFeeCollection(timeAdjustedFeeBps, totalAssets, currentTotalSupply);
+        newShares =
+            _calculateSharesToMintFeeCollection(timeAdjustedFeeBps, totalAssets, totalAssets, currentTotalSupply);
 
         // Fee in assets that we are taking.
         uint256 fees = (timeAdjustedFeeBps * totalAssets / FEE_DIVISOR).ceilDiv(FEE_DIVISOR);
@@ -265,16 +266,17 @@ library AutopoolFees {
 
     function _calculateSharesToMintFeeCollection(
         uint256 feeBps,
+        uint256 amountForFee,
         uint256 totalAssets,
         uint256 totalSupply
     ) private pure returns (uint256 toMint) {
         // Gas savings, this is used twice.
-        uint256 feeTotalAssets = feeBps * totalAssets / FEE_DIVISOR;
+        uint256 feeTotalAssets = feeBps * amountForFee / FEE_DIVISOR;
 
-        // Calculated separate from other mints as normal share mint is round down
-        // Note: We use Lido's formula: from https://docs.lido.fi/guides/lido-tokens-integration-guide/#fees
-        // suggested by: https://github.com/sherlock-audit/2023-06-tokemak-judging/blob/main/486-H/624-best.md
-        // but we scale down `profit` by FEE_DIVISOR
+        // Separate from other mints as normal share mint is round down
+        // Mints shares taking into account the dilution so we end up with the expected amount
+        // `feeBps` is padded by FEE_DIVISOR when taking periodic fee
+        // `amountForFee` is padded by FEE_DIVISOR when taking streaming fee
         toMint =
             Math.mulDiv(feeTotalAssets, totalSupply, (totalAssets * FEE_DIVISOR) - (feeTotalAssets), Math.Rounding.Up);
     }

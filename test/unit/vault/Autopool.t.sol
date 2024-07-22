@@ -214,6 +214,19 @@ contract AutopoolETHTests is
         return dv;
     }
 
+    function _setupDestinationWithRewarder(
+        DVSetup memory setup,
+        uint256 amount
+    ) internal returns (DestinationVaultFake dv1) {
+        dv1 = _setupDestinationVault(setup);
+        FakeDestinationRewarder dv1Rewarder = new FakeDestinationRewarder(vaultAsset);
+        vm.mockCall(
+            address(dv1), abi.encodeWithSelector(IDestinationVault.rewarder.selector), abi.encode(address(dv1Rewarder))
+        );
+        dv1Rewarder.claimAmountOnNextCall(amount);
+        return dv1;
+    }
+
     function _mockSuccessfulRebalance() internal {
         _mockSuccessfulRebalance(autoPoolStrategy);
     }
@@ -6610,7 +6623,7 @@ contract UpdateDebtReporting is AutopoolETHTests {
         vault.updateDebtReporting(1);
 
         uint256 feeReceiverBalStep1 = vault.balanceOf(streamingFeeReceiver);
-        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 19_999, "postNavShare");
+        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 18_999, "postNavShare");
         assertTrue(feeReceiverBalStep1 > feeReceiverBalStart, "feeReceiverBalStep1");
 
         // Set our idle lower than the last round
@@ -6644,7 +6657,7 @@ contract UpdateDebtReporting is AutopoolETHTests {
         // nav/share didn't reach height so nothing
         assertTrue(feeReceiverBalStep4 > feeReceiverBalStep3, "feeReceiverBalStep4");
 
-        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 20_999, "postNavShare");
+        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 19_854, "postNavShare");
     }
 
     function test_DisabledHighWaterMarkAllowsStreamingFeesTaken() public {
@@ -6674,7 +6687,7 @@ contract UpdateDebtReporting is AutopoolETHTests {
         vault.updateDebtReporting(1);
 
         uint256 feeReceiverBalStep1 = vault.balanceOf(streamingFeeReceiver);
-        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 19_999, "postNavShare");
+        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 18_999, "postNavShare");
         assertTrue(feeReceiverBalStep1 > feeReceiverBalStart, "feeReceiverBalStep1");
 
         vault.setRebalanceFeeHighWaterMarkEnabled(false);
@@ -6728,7 +6741,7 @@ contract UpdateDebtReporting is AutopoolETHTests {
         vault.updateDebtReporting(1);
 
         uint256 feeReceiverBalStep1 = vault.balanceOf(streamingFeeReceiver);
-        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 19_999, "postNavShare");
+        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 18_999, "postNavShare");
         assertTrue(feeReceiverBalStep1 > feeReceiverBalStart, "feeReceiverBalStep1");
 
         // Set our idle lower than the last round
@@ -6789,7 +6802,7 @@ contract UpdateDebtReporting is AutopoolETHTests {
         vault.updateDebtReporting(1);
 
         uint256 feeReceiverBalStep1 = vault.balanceOf(streamingFeeReceiver);
-        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 19_999, "postNavShare");
+        assertEq(vault.getFeeSettings().navPerShareLastFeeMark, 18_999, "postNavShare");
         assertTrue(feeReceiverBalStep1 > feeReceiverBalStart, "feeReceiverBalStep1");
 
         // Set our idle lower than the last round
@@ -6837,19 +6850,6 @@ contract UpdateDebtReporting is AutopoolETHTests {
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         vault.updateDebtReporting(1);
-    }
-
-    function _setupDestinationWithRewarder(
-        DVSetup memory setup,
-        uint256 amount
-    ) internal returns (DestinationVaultFake dv1) {
-        dv1 = _setupDestinationVault(setup);
-        FakeDestinationRewarder dv1Rewarder = new FakeDestinationRewarder(vaultAsset);
-        vm.mockCall(
-            address(dv1), abi.encodeWithSelector(IDestinationVault.rewarder.selector), abi.encode(address(dv1Rewarder))
-        );
-        dv1Rewarder.claimAmountOnNextCall(amount);
-        return dv1;
     }
 }
 
@@ -7671,6 +7671,61 @@ contract FeeAndProfitTestVault is TestAutopoolETH {
 
             return currentTotalSupply + shares;
         }
+    }
+}
+
+contract StreamingFees is AutopoolETHTests {
+    function test_CollectsStreamingOnProfitOnly() public {
+        vault.useRealCollectFees();
+
+        // Grant roles
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
+
+        uint256 depositAmount = 300e9;
+        uint256 streamingFeeBps = 500; // 5%
+        address feeSink = makeAddr("streamingFeeSink");
+
+        // Mint, approve, deposit to give supply, record supply.
+        vaultAsset.mint(address(this), type(uint112).max);
+        vaultAsset.approve(address(vault), type(uint112).max);
+        vault.deposit(depositAmount, address(this));
+
+        DestinationVaultFake dv1 = _setupDestinationWithRewarder(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 300e9,
+                valuePerShare: 1e9,
+                minDebtValue: 300e9,
+                maxDebtValue: 300e9,
+                lastDebtReportTimestamp: block.timestamp
+            }),
+            0
+        );
+
+        // Everything from idle was rebalanced out
+        vault.setTotalIdle(0);
+
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
+        vault.updateDebtReporting(1);
+
+        // Set fee and sink.
+        vault.setStreamingFeeBps(streamingFeeBps);
+        vault.setFeeSink(feeSink);
+
+        uint256 originalFeeSinkShares = vault.balanceOf(feeSink);
+        assertEq(originalFeeSinkShares, 0, "originalBal");
+
+        // Value increased by 150e9 @ 5% we get 7.5e9
+        _mockDestVaultRangePricesLP(address(dv1), 1.5e9, 1.5e9, true);
+        vault.updateDebtReporting(1);
+
+        uint256 minted = vault.balanceOf(feeSink) - originalFeeSinkShares;
+
+        // We saw a big profit so we need to allow them to unlock before we can see our full value
+        vm.warp(block.timestamp + 86_400);
+
+        assertEq(vault.convertToAssets(minted), 7.5e9, "mintedValue");
     }
 }
 

@@ -30,7 +30,7 @@ library AutopoolETHStrategyConfig {
         int256 maxAllowedDiscount;
         // the maximum deviation between spot & safe price for individual LSTs
         uint256 lstPriceGapTolerance;
-        // Array of hook contracts.  Up to five hooks on AutopoolEth strategay, can be address(0)
+        // Array of hook contracts.  Up to five hooks on AutopoolEth strategy, can be address(0)
         address[5] hooks;
     }
 
@@ -206,6 +206,8 @@ library AutopoolETHStrategyConfig {
         if (config.lstPriceGapTolerance > 500) {
             revert InvalidConfig("lstPriceGapTolerance");
         }
+
+        _validateHooks(config.hooks);
     }
 
     // slither-disable-end cyclomatic-complexity
@@ -225,6 +227,27 @@ library AutopoolETHStrategyConfig {
     function _ensureNotGt25PctE18OrLtZero(int256 value, string memory err) private pure {
         if (value > 0.25e18 || value < 0) {
             revert InvalidConfig(err);
+        }
+    }
+
+    // Checks to make sure that there are no zero address gaps in hooks array
+    function _validateHooks(address[5] memory hooks) private pure {
+        // Flipped to trye when a zero address is hit in hooks array
+        bool zeroAddressHitFlag = false;
+
+        for (uint256 i = 0; i < 5; ++i) {
+            address currentHook = hooks[i];
+
+            // If we reach a zero address for the first time, flip flag to tru
+            if (currentHook == address(0) && zeroAddressHitFlag == false) {
+                zeroAddressHitFlag = true;
+            }
+
+            // If this gets triggered there is a set hook after a zero address hook.  Revert as this
+            // is not an expected state
+            if (zeroAddressHitFlag && currentHook != address(0)) {
+                revert InvalidConfig("hooks");
+            }
         }
     }
 }

@@ -213,7 +213,7 @@ library SummaryStats {
         address[] memory hooks = IAutopoolStrategy(address(this)).getHooks();
         for (uint256 i = 0; i < hooks.length; ++i) {
             address currentHook = hooks[i];
-            if (currentHook == address(0)) continue;
+            if (currentHook == address(0)) break;
 
             result = ISummaryStatsHook(currentHook).execute(result, autopool, destAddress, price, direction, amount);
         }

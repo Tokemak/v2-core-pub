@@ -117,7 +117,7 @@ contract AutopoolETHStrategyTest is Test {
         defaultStrat = deployStrategy(cfg);
     }
 
-    function test_constructor_SetsHooks() public {
+    function test_constructor_RevertIf_InvalidHookOrder() public {
         AutopoolETHStrategyConfig.StrategyConfig memory cfg = helpers.getDefaultConfig();
 
         address hook1 = makeAddr("HOOK1");
@@ -126,12 +126,25 @@ contract AutopoolETHStrategyTest is Test {
         cfg.hooks[1] = hook1;
         cfg.hooks[3] = hook3;
 
+        vm.expectRevert(abi.encodeWithSelector(AutopoolETHStrategyConfig.InvalidConfig.selector, "hooks"));
+        deployStrategy(cfg);
+    }
+
+    function test_constructor_SetsHooks() public {
+        AutopoolETHStrategyConfig.StrategyConfig memory cfg = helpers.getDefaultConfig();
+
+        address hook1 = makeAddr("HOOK1");
+        address hook2 = makeAddr("HOOK2");
+
+        cfg.hooks[0] = hook1;
+        cfg.hooks[1] = hook2;
+
         AutopoolETHStrategyHarness localStrat = deployStrategy(cfg);
 
-        assertEq(localStrat.hook1(), address(0));
-        assertEq(localStrat.hook2(), hook1);
+        assertEq(localStrat.hook1(), hook1);
+        assertEq(localStrat.hook2(), hook2);
         assertEq(localStrat.hook3(), address(0));
-        assertEq(localStrat.hook4(), hook3);
+        assertEq(localStrat.hook4(), address(0));
         assertEq(localStrat.hook5(), address(0));
     }
 
@@ -1507,8 +1520,8 @@ contract AutopoolETHStrategyTest is Test {
 
         // Set hooks in config
         cfg.hooks[0] = hook1;
-        cfg.hooks[2] = hook2;
-        cfg.hooks[4] = hook3;
+        cfg.hooks[1] = hook2;
+        cfg.hooks[2] = hook3;
 
         AutopoolETHStrategyHarness localStrat = deployStrategy(cfg);
 

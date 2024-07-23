@@ -18,24 +18,19 @@ contract MaliciousTokenBalanceExtension is IDestinationVaultExtension {
         tokenToSteal = _tokenToSteal;
     }
 
-    function execute() external {
+    // solhint-disable-next-line no-unused-vars
+    function execute(bytes calldata data) external {
         uint256 balance = IERC20(tokenToSteal).balanceOf(address(this));
         IERC20(tokenToSteal).transfer(robber, balance);
     }
 }
 
-/// @dev Designed to be delegatecall by a TestDestinationVault
-/// @dev Will call any function with a single uint256 parameter
-contract MaliciousInternalBalanceExtension is IDestinationVaultExtension {
+/// @dev Designed to be delegatecall by any contract
+/// @dev Will call any encoded function
+contract MaliciousExtension is IDestinationVaultExtension {
     using Address for address;
 
-    bytes4 public immutable selector;
-
-    constructor(bytes4 _selector) {
-        selector = _selector;
-    }
-
-    function execute() external {
-        address(this).functionDelegateCall(abi.encodeWithSelector(selector, 0));
+    function execute(bytes calldata data) external {
+        address(this).functionDelegateCall(data);
     }
 }

@@ -19,7 +19,7 @@ import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 import { TestDestinationVault } from "test/mocks/TestDestinationVault.sol";
-import { MaliciousTokenBalanceExtension, MaliciousInternalBalanceExtension } from "test/mocks/MaliciousExtension.sol";
+import { MaliciousTokenBalanceExtension, MaliciousExtension } from "test/mocks/MaliciousExtension.sol";
 
 contract DestinationVaultBaseTests is Test {
     using Clones for address;
@@ -496,11 +496,6 @@ contract DestinationVaultBaseTests is Test {
         testVault.setExtension(address(0));
     }
 
-    function test_setExtension_RevertsIfZeroAddress() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "extension_"));
-        testVault.setExtension(address(0));
-    }
-
     function test_setExtension_EmitsEvent() public {
         address extension = makeAddr("EXTENSION");
         vm.expectEmit(true, true, true, true);
@@ -513,12 +508,20 @@ contract DestinationVaultBaseTests is Test {
         vm.prank(makeAddr("RANDOM"));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        testVault.executeExtension();
+        testVault.executeExtension(new bytes(0));
     }
 
     function test_executeExtension_RevertsIfExtensionNotActive() public {
+        address extension = makeAddr("EXTENSION");
+        testVault.setExtension(extension);
+
         vm.expectRevert(abi.encodeWithSelector(DestinationVault.ExtensionNotActive.selector));
-        testVault.executeExtension();
+        testVault.executeExtension(new bytes(0));
+    }
+
+    function test_executeExtension_RevertsIfExtensionIsDisabled() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "extension"));
+        testVault.executeExtension(new bytes(0));
     }
 
     /// @dev also covers InternalQueriedBalance which is underlyer balance
@@ -532,13 +535,12 @@ contract DestinationVaultBaseTests is Test {
 
         for (uint256 i = 0; i < tokensToSteal.length; i++) {
             MaliciousTokenBalanceExtension extension = new MaliciousTokenBalanceExtension(rober, tokensToSteal[i]);
-
             testVault.setExtension(address(extension));
 
             vm.warp(block.timestamp + 2 weeks);
 
             vm.expectRevert(abi.encodeWithSelector(DestinationVault.ExtensionAmountMismatch.selector));
-            testVault.executeExtension();
+            testVault.executeExtension(new bytes(0));
         }
     }
 
@@ -546,45 +548,45 @@ contract DestinationVaultBaseTests is Test {
         // Mock internal debt balance
         testVault.setInternalDebtBalance(100);
 
-        MaliciousInternalBalanceExtension extension =
-            new MaliciousInternalBalanceExtension(TestDestinationVault.setInternalDebtBalance.selector);
+        bytes memory data = abi.encodeWithSelector(TestDestinationVault.setInternalDebtBalance.selector, 0);
+        MaliciousExtension extension = new MaliciousExtension();
 
         testVault.setExtension(address(extension));
 
         vm.warp(block.timestamp + 2 weeks);
 
         vm.expectRevert(abi.encodeWithSelector(DestinationVault.ExtensionAmountMismatch.selector));
-        testVault.executeExtension();
+        testVault.executeExtension(data);
     }
 
     function test_executeExtension_RevertsIfExternalDebtBalanceChanged() public {
         // Mock external debt balance
         testVault.setExternalDebtBalance(100);
 
-        MaliciousInternalBalanceExtension extension =
-            new MaliciousInternalBalanceExtension(TestDestinationVault.setExternalDebtBalance.selector);
+        bytes memory data = abi.encodeWithSelector(TestDestinationVault.setExternalDebtBalance.selector, 0);
+        MaliciousExtension extension = new MaliciousExtension();
 
         testVault.setExtension(address(extension));
 
         vm.warp(block.timestamp + 2 weeks);
 
         vm.expectRevert(abi.encodeWithSelector(DestinationVault.ExtensionAmountMismatch.selector));
-        testVault.executeExtension();
+        testVault.executeExtension(data);
     }
 
     function test_executeExtension_RevertsIfExternalQueriedBalanceChanged() public {
         // Mock external queried balance
         testVault.setExternalQueriedBalance(100);
 
-        MaliciousInternalBalanceExtension extension =
-            new MaliciousInternalBalanceExtension(TestDestinationVault.setExternalQueriedBalance.selector);
+        bytes memory data = abi.encodeWithSelector(TestDestinationVault.setExternalQueriedBalance.selector, 0);
+        MaliciousExtension extension = new MaliciousExtension();
 
         testVault.setExtension(address(extension));
 
         vm.warp(block.timestamp + 2 weeks);
 
         vm.expectRevert(abi.encodeWithSelector(DestinationVault.ExtensionAmountMismatch.selector));
-        testVault.executeExtension();
+        testVault.executeExtension(data);
     }
 
     function mockSystemBound(address addr, address systemRegistry_) internal {

@@ -525,8 +525,6 @@ abstract contract DestinationVault is
 
     /// @inheritdoc IDestinationVault
     function setExtension(address extension_) external hasRole(Roles.DESTINATION_VAULT_MANAGER) {
-        Errors.verifyNotZero(extension_, "extension_");
-
         // slither-disable-next-line missing-zero-check
         extension = extension_;
         extensionSetTime = block.timestamp;
@@ -535,7 +533,9 @@ abstract contract DestinationVault is
     }
 
     /// @inheritdoc IDestinationVault
-    function executeExtension() external hasRole(Roles.DESTINATION_VAULT_MANAGER) {
+    function executeExtension(bytes calldata data) external hasRole(Roles.DESTINATION_VAULT_MANAGER) {
+        Errors.verifyNotZero(extension, "extension");
+
         // slither-disable-next-line timestamp
         if (block.timestamp < extensionSetTime + 7 days) {
             revert ExtensionNotActive();
@@ -554,13 +554,13 @@ abstract contract DestinationVault is
         }
 
         // slither-disable-next-line unused-return
-        extension.functionDelegateCall(abi.encodeCall(IDestinationVaultExtension.execute, ()));
+        extension.functionDelegateCall(abi.encodeCall(IDestinationVaultExtension.execute, (data)));
 
         // Verify that no tokens were pulled
         // This also verifies internalQueriedBalance as it is the balance of the underlyer which is tracked
         for (uint256 i = 0; i < trackedTokensLength; ++i) {
             IERC20 token = IERC20(_trackedTokens.at(i));
-            if (trackedTokensBalances[i] > token.balanceOf(address(this))) {
+            if (trackedTokensBalances[i] != token.balanceOf(address(this))) {
                 revert ExtensionAmountMismatch();
             }
         }

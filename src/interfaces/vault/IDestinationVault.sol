@@ -207,5 +207,6 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @notice Calls the execute function of the extension contract
     /// @dev Should be limited to DESTINATION_VAULT_MANAGER
     /// @dev Special care should be taken to ensure that balances hasn't been manipulated
-    function executeExtension() external;
+    /// @param data any data that the extension contract needs
+    function executeExtension(bytes calldata data) external;
 }

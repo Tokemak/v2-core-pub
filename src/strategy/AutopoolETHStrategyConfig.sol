@@ -239,7 +239,7 @@ library AutopoolETHStrategyConfig {
             address currentHook = hooks[i];
 
             // If we reach a zero address for the first time, flip flag to tru
-            if (currentHook == address(0) && zeroAddressHitFlag == false) {
+            if (currentHook == address(0) && !zeroAddressHitFlag) {
                 zeroAddressHitFlag = true;
             }
 

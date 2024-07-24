@@ -4063,6 +4063,11 @@ contract Transfer is AutopoolETHTests {
         vm.expectRevert(abi.encodeWithSelector(AutopoolToken.ERC20InvalidReceiver.selector, address(0)));
         vault.transfer(address(0), 10);
     }
+
+    function test_RevertIf_TransferToVault() public {
+        vm.expectRevert(abi.encodeWithSelector(AutopoolToken.ForbiddenTransfer.selector));
+        vault.transfer(address(vault), 10);
+    }
 }
 
 contract Approve is AutopoolETHTests {
@@ -7364,6 +7369,68 @@ contract PreviewTests is FlashRebalanceSetup {
 
         uint256 maxWithdrawableAssets = vault.maxWithdraw(user);
         assertEq(depositAmount, maxWithdrawableAssets);
+    }
+}
+
+/// @dev This test originally demonstrated a DoS vulnerability in the rebalancing function of the AutoPool contract
+/// due to a division by zero error. The issue was triggered by transferring shares directly to the vault,
+/// which manipulated the internal state and led to the division by zero.
+/// After fixing the vulnerability by preventing direct transfers to the vault,
+/// the test now expects a revert when attempting to transfer shares to the vault directly,
+/// and the rebalancing step cannot proceed as it reverts during the transfer step.
+contract TOKE12 is FlashRebalanceSetup {
+    function test_DOS_rebalance() public {
+        address attacker = makeAddr("attacker");
+
+        //prepare
+
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_REPORTING_EXECUTOR, true);
+
+        _mockDestVaultRangePricesLP(address(dv1), 1e9, 1e9, true);
+
+        _mockSuccessfulRebalance();
+
+        _depositFor(attacker, 100e9);
+
+        // Setup the solver data to mint us the dv1 underlying for amount
+
+        bytes memory data = solver.buildDataForDvIn(address(dv1), 50e9);
+
+        //dest's price increases 1%
+
+        _mockDestVaultRangePricesLP(address(dv1), 1.01e9, 1.01e9, true);
+
+        //mock fee collecting
+
+        vault.setFeeSharesToBeCollected(5e8);
+
+        address dv1Underlyer = address(dv1.underlyer());
+
+        address asset = vault.asset();
+
+        //attacker transfers shares directly into Autopool
+
+        vm.prank(attacker);
+
+        // This is the only line that differs from the original test.
+        vm.expectRevert(abi.encodeWithSelector(AutopoolToken.ForbiddenTransfer.selector));
+        vault.transfer(address(vault), 1e9);
+
+        // This call used to revert due to division by 0
+        vault.flashRebalance(
+            solver,
+            IStrategy.RebalanceParams({
+                destinationIn: address(dv1),
+                tokenIn: dv1Underlyer,
+                amountIn: 50e9,
+                destinationOut: address(vault),
+                tokenOut: asset,
+                amountOut: 50e9
+            }),
+            data
+        );
     }
 }
 

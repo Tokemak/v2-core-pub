@@ -135,15 +135,41 @@ contract AutopoolETHStrategyTest is Test {
 
         address hook1 = makeAddr("HOOK1");
         address hook2 = makeAddr("HOOK2");
+        address hook3 = makeAddr("HOOK3");
+        address hook4 = makeAddr("HOOK4");
+        address hook5 = makeAddr("HOOK5");
 
         cfg.hooks[0] = hook1;
         cfg.hooks[1] = hook2;
+        cfg.hooks[2] = hook3;
+        cfg.hooks[3] = hook4;
+        cfg.hooks[4] = hook5;
 
         AutopoolETHStrategyHarness localStrat = deployStrategy(cfg);
 
         assertEq(localStrat.hook1(), hook1);
         assertEq(localStrat.hook2(), hook2);
-        assertEq(localStrat.hook3(), address(0));
+        assertEq(localStrat.hook3(), hook3);
+        assertEq(localStrat.hook4(), hook4);
+        assertEq(localStrat.hook5(), hook5);
+    }
+
+    function test_constructor_SetsSomeHooks() public {
+        AutopoolETHStrategyConfig.StrategyConfig memory cfg = helpers.getDefaultConfig();
+
+        address hook1 = makeAddr("HOOK1");
+        address hook2 = makeAddr("HOOK2");
+        address hook3 = makeAddr("HOOK3");
+
+        cfg.hooks[0] = hook1;
+        cfg.hooks[1] = hook2;
+        cfg.hooks[2] = hook3;
+
+        AutopoolETHStrategyHarness localStrat = deployStrategy(cfg);
+
+        assertEq(localStrat.hook1(), hook1);
+        assertEq(localStrat.hook2(), hook2);
+        assertEq(localStrat.hook3(), hook3);
         assertEq(localStrat.hook4(), address(0));
         assertEq(localStrat.hook5(), address(0));
     }

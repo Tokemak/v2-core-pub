@@ -30,7 +30,7 @@ library AutopoolETHStrategyConfig {
         int256 maxAllowedDiscount;
         // the maximum deviation between spot & safe price for individual LSTs
         uint256 lstPriceGapTolerance;
-        // Array of hook contracts.  Up to five hooks on AutopoolEth strategy, can be address(0)
+        // Array of hooks.  Up to five hooks on AutopoolEth strategy, can be address(0)
         address[5] hooks;
     }
 
@@ -232,20 +232,18 @@ library AutopoolETHStrategyConfig {
 
     // Checks to make sure that there are no zero address gaps in hooks array
     function _validateHooks(address[5] memory hooks) private pure {
-        // Flipped to trye when a zero address is hit in hooks array
-        bool zeroAddressHitFlag = false;
-
+        bool zeroAddressReached = false;
         for (uint256 i = 0; i < 5; ++i) {
             address currentHook = hooks[i];
 
-            // If we reach a zero address for the first time, flip flag to tru
-            if (currentHook == address(0) && !zeroAddressHitFlag) {
-                zeroAddressHitFlag = true;
+            // If we reach a zero address for the first time, flip flag to true
+            if (currentHook == address(0) && !zeroAddressReached) {
+                zeroAddressReached = true;
             }
 
             // If this gets triggered there is a set hook after a zero address hook.  Revert as this
             // is not an expected state
-            if (zeroAddressHitFlag && currentHook != address(0)) {
+            if (zeroAddressReached && currentHook != address(0)) {
                 revert InvalidConfig("hooks");
             }
         }

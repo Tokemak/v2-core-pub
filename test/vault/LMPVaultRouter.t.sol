@@ -10,7 +10,7 @@ import { IERC20Permit } from "openzeppelin-contracts/token/ERC20/extensions/draf
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ISelfPermit } from "src/interfaces/utils/ISelfPermit.sol";
 
-import { SystemRegistry } from "src/SystemRegistry.sol";
+import { SystemRegistryBase } from "src/SystemRegistryBase.sol";
 import { AsyncSwapperRegistry } from "src/liquidation/AsyncSwapperRegistry.sol";
 import { AutopilotRouter } from "src/vault/AutopilotRouter.sol";
 import { AutopoolMainRewarder } from "src/rewarders/AutopoolMainRewarder.sol";
@@ -113,7 +113,7 @@ contract AutopilotRouterTest is BaseTest {
 
         // We use mock since this function is called not from owner and
         vm.mockCall(
-            address(systemRegistry), abi.encodeWithSelector(SystemRegistry.isRewardToken.selector), abi.encode(true)
+            address(systemRegistry), abi.encodeWithSelector(SystemRegistryBase.isRewardToken.selector), abi.encode(true)
         );
 
         deal(address(baseAsset), address(this), depositAmount * 10);

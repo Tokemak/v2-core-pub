@@ -9,6 +9,7 @@ import { Errors } from "src/utils/Errors.sol";
 import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
+import { SystemRegistryBase } from "src/SystemRegistryBase.sol";
 import { Test } from "forge-std/Test.sol";
 import { AutopoolRegistry } from "src/vault/AutopoolRegistry.sol";
 import { AutopoolFactory } from "src/vault/AutopoolFactory.sol";
@@ -81,7 +82,7 @@ contract AutopoolFactoryTest is Test {
         // Mock AutopilotRouter call.
         vm.mockCall(
             address(_systemRegistry),
-            abi.encodeWithSelector(SystemRegistry.autoPoolRouter.selector),
+            abi.encodeWithSelector(SystemRegistryBase.autoPoolRouter.selector),
             abi.encode(makeAddr("Autopool_VAULT_ROUTER"))
         );
     }

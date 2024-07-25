@@ -10,7 +10,8 @@ import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { IAccessController } from "src/interfaces/security/IAccessController.sol";
-import { ISystemRegistry, SystemRegistry } from "src/SystemRegistry.sol";
+import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { SystemRegistry } from "src/SystemRegistry.sol";
 import { IAccessController, AccessController } from "src/security/AccessController.sol";
 import { LiquidationRow } from "src/liquidation/LiquidationRow.sol";
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";

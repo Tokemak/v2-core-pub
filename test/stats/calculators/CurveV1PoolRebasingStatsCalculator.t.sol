@@ -5,6 +5,7 @@ pragma solidity 0.8.17;
 import { Test } from "forge-std/Test.sol";
 import { Stats } from "src/stats/Stats.sol";
 import { CurvePoolRebasingCalculatorBase } from "src/stats/calculators/base/CurvePoolRebasingCalculatorBase.sol";
+import { SystemRegistryBase } from "src/SystemRegistryBase.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import {
@@ -417,7 +418,7 @@ contract CurveV1PoolRebasingStatsCalculatorTest is Test {
     function mockGetCurveResolver() internal {
         vm.mockCall(
             address(systemRegistry),
-            abi.encodeWithSelector(SystemRegistry.curveResolver.selector),
+            abi.encodeWithSelector(SystemRegistryBase.curveResolver.selector),
             abi.encode(curveResolver)
         );
     }
@@ -438,7 +439,7 @@ contract CurveV1PoolRebasingStatsCalculatorTest is Test {
     function mockStatsRegistry() internal {
         vm.mockCall(
             address(systemRegistry),
-            abi.encodeWithSelector(SystemRegistry.statsCalculatorRegistry.selector),
+            abi.encodeWithSelector(SystemRegistryBase.statsCalculatorRegistry.selector),
             abi.encode(mockStatsRegistryAddr)
         );
     }
@@ -446,7 +447,7 @@ contract CurveV1PoolRebasingStatsCalculatorTest is Test {
     function mockGetRootPriceOracle() internal {
         vm.mockCall(
             address(systemRegistry),
-            abi.encodeWithSelector(SystemRegistry.rootPriceOracle.selector),
+            abi.encodeWithSelector(SystemRegistryBase.rootPriceOracle.selector),
             abi.encode(mockPricer)
         );
     }

@@ -13,7 +13,8 @@ import { IAutopoolFactory } from "src/vault/AutopoolFactory.sol";
 import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
-import { Errors, SystemRegistry } from "src/SystemRegistry.sol";
+import { Errors } from "src/SystemRegistry.sol";
+import { SystemRegistryBase } from "src/SystemRegistryBase.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { BaseTest } from "test/BaseTest.t.sol";
 import { VaultTypes } from "src/vault/VaultTypes.sol";
@@ -75,7 +76,7 @@ contract AutopoolETHBaseTest is BaseTest {
         // We use mock since this function is called not from owner and
         // SystemRegistry.addRewardToken is not accessible from the ownership perspective
         vm.mockCall(
-            address(systemRegistry), abi.encodeWithSelector(SystemRegistry.isRewardToken.selector), abi.encode(true)
+            address(systemRegistry), abi.encodeWithSelector(SystemRegistryBase.isRewardToken.selector), abi.encode(true)
         );
 
         bytes memory initData = abi.encode("");

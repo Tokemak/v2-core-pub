@@ -22,15 +22,21 @@ import { SystemRegistryBase } from "src/SystemRegistryBase.sol";
 
 // solhint-disable max-states-count
 
-/// @notice Root contract of the system instance on L1.
+/// @notice Root contract of the system instance on L2.
 /// @dev All contracts in this instance of the system should be reachable from this contract
-contract SystemRegistry is SystemRegistryBase {
+contract SystemRegistryL2 is SystemRegistryBase {
     /// =====================================================
-    /// Immutable Vars
+    /// Public Vars
     /// =====================================================
 
     /// @notice TOKE token
-    IERC20Metadata public immutable toke;
+    IERC20Metadata public toke;
+
+    /// =====================================================
+    /// Events
+    /// =====================================================
+
+    event TokeSet(address newAddress);
 
     /// =====================================================
     /// Functions - Constructor
@@ -40,5 +46,25 @@ contract SystemRegistry is SystemRegistryBase {
         Errors.verifyNotZero(address(_toke), "_toke");
 
         toke = IERC20Metadata(_toke);
+    }
+
+    /// =====================================================
+    /// Functions - External
+    /// =====================================================
+
+    /// @notice Set the Toke for this instance of the system
+    /// @param newToke Address of the Toke contract
+    function setToke(address newToke) external onlyOwner {
+        Errors.verifyNotZero(newToke, "newToke");
+
+        if (address(toke) == newToke) {
+            revert DuplicateSet(newToke);
+        }
+
+        toke = IERC20Metadata(newToke);
+
+        emit TokeSet(newToke);
+
+        _verifySystemsAgree(address(newToke));
     }
 }

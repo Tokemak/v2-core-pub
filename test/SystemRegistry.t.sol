@@ -5,6 +5,7 @@ pragma solidity >=0.8.7;
 import { Errors } from "src/utils/Errors.sol";
 import { Test } from "forge-std/Test.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
+import { SystemRegistryBase } from "src/SystemRegistryBase.sol";
 import { TOKE_MAINNET, WETH_MAINNET } from "test/utils/Addresses.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { ISystemSecurity } from "src/interfaces/security/ISystemSecurity.sol";
@@ -42,20 +43,20 @@ contract SystemRegistryTest is Test {
     /* Autopool Vault Registry
     /* ******************************** */
 
-    function testSystemRegistryAutopoolETHSetOnceDuplicateValue() public {
+    function testSystemRegistryAutopoolETHSetDuplicateValue() public {
         address autoPool = vm.addr(1);
         mockSystemComponent(autoPool);
         _systemRegistry.setAutopoolRegistry(autoPool);
-        vm.expectRevert(abi.encodeWithSelector(Errors.AlreadySet.selector, "autoPoolRegistry"));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.DuplicateSet.selector, autoPool));
         _systemRegistry.setAutopoolRegistry(autoPool);
     }
 
-    function testSystemRegistryAutopoolETHSetOnceDifferentValue() public {
+    function testSystemRegistryAutopoolETHSetDifferentValue() public {
         address autoPool = vm.addr(1);
         mockSystemComponent(autoPool);
         _systemRegistry.setAutopoolRegistry(autoPool);
         autoPool = vm.addr(2);
-        vm.expectRevert(abi.encodeWithSelector(Errors.AlreadySet.selector, "autoPoolRegistry"));
+        mockSystemComponent(autoPool);
         _systemRegistry.setAutopoolRegistry(autoPool);
     }
 
@@ -104,12 +105,12 @@ contract SystemRegistryTest is Test {
     function testSystemRegistryAutopoolETHInvalidContractCaught() public {
         // When its not a contract
         address fakeRegistry = vm.addr(2);
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeRegistry));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, fakeRegistry));
         _systemRegistry.setAutopoolRegistry(fakeRegistry);
 
         // When it is a contract, just incorrect
         address emptyContract = address(new EmptyContract());
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, emptyContract));
         _systemRegistry.setAutopoolRegistry(emptyContract);
     }
 
@@ -138,7 +139,7 @@ contract SystemRegistryTest is Test {
 
         _systemRegistry.setAutopilotRouter(fakeAutopoolRouter);
 
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.DuplicateSet.selector, fakeAutopoolRouter));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.DuplicateSet.selector, fakeAutopoolRouter));
         _systemRegistry.setAutopilotRouter(fakeAutopoolRouter);
     }
 
@@ -189,11 +190,11 @@ contract SystemRegistryTest is Test {
 
     function test_InvalidContract_setAutopilotRouter() external {
         address fakeAutopoolRouter = vm.addr(4);
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeAutopoolRouter));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, fakeAutopoolRouter));
         _systemRegistry.setAutopilotRouter(fakeAutopoolRouter);
 
         address emptyContract = address(new EmptyContract());
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, emptyContract));
         _systemRegistry.setAutopilotRouter(emptyContract);
     }
 
@@ -201,11 +202,11 @@ contract SystemRegistryTest is Test {
     /* Destination Vault Registry
     /* ******************************** */
 
-    function testSystemRegistryDestinationVaultSetOnceDuplicateValue() public {
+    function testSystemRegistryDestinationVaultSetDuplicateValue() public {
         address destinationVault = vm.addr(1);
         mockSystemComponent(destinationVault);
         _systemRegistry.setDestinationVaultRegistry(destinationVault);
-        vm.expectRevert(abi.encodeWithSelector(Errors.AlreadySet.selector, "destinationVaultRegistry"));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.DuplicateSet.selector, destinationVault));
         _systemRegistry.setDestinationVaultRegistry(destinationVault);
     }
 
@@ -214,7 +215,7 @@ contract SystemRegistryTest is Test {
         mockSystemComponent(destinationVault);
         _systemRegistry.setDestinationVaultRegistry(destinationVault);
         destinationVault = vm.addr(2);
-        vm.expectRevert(abi.encodeWithSelector(Errors.AlreadySet.selector, "destinationVaultRegistry"));
+        mockSystemComponent(destinationVault);
         _systemRegistry.setDestinationVaultRegistry(destinationVault);
     }
 
@@ -266,12 +267,12 @@ contract SystemRegistryTest is Test {
     function testSystemRegistryDestinationVaultInvalidContractCaught() public {
         // When its not a contract
         address fakeRegistry = vm.addr(2);
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeRegistry));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, fakeRegistry));
         _systemRegistry.setDestinationVaultRegistry(fakeRegistry);
 
         // When it is a contract, just incorrect
         address emptyContract = address(new EmptyContract());
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, emptyContract));
         _systemRegistry.setDestinationVaultRegistry(emptyContract);
     }
 
@@ -279,20 +280,20 @@ contract SystemRegistryTest is Test {
     /* Destination Template Registry
     /* ******************************** */
 
-    function testSystemRegistryDestinationTemplateSetOnceDuplicateValue() public {
+    function testSystemRegistryDestinationTemplateSetDuplicateValue() public {
         address destinationTemplate = vm.addr(1);
         mockSystemComponent(destinationTemplate);
         _systemRegistry.setDestinationTemplateRegistry(destinationTemplate);
-        vm.expectRevert(abi.encodeWithSelector(Errors.AlreadySet.selector, "destinationTemplateRegistry"));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.DuplicateSet.selector, destinationTemplate));
         _systemRegistry.setDestinationTemplateRegistry(destinationTemplate);
     }
 
-    function testSystemRegistryDestinationTemplateSetOnceDifferentValue() public {
+    function testSystemRegistryDestinationTemplateSetDifferentValue() public {
         address destinationTemplate = vm.addr(1);
         mockSystemComponent(destinationTemplate);
         _systemRegistry.setDestinationTemplateRegistry(destinationTemplate);
         destinationTemplate = vm.addr(2);
-        vm.expectRevert(abi.encodeWithSelector(Errors.AlreadySet.selector, "destinationTemplateRegistry"));
+        mockSystemComponent(destinationTemplate);
         _systemRegistry.setDestinationTemplateRegistry(destinationTemplate);
     }
 
@@ -344,12 +345,12 @@ contract SystemRegistryTest is Test {
     function testSystemRegistryDestinationTemplateInvalidContractCaught() public {
         // When its not a contract
         address fakeRegistry = vm.addr(2);
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeRegistry));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, fakeRegistry));
         _systemRegistry.setDestinationTemplateRegistry(fakeRegistry);
 
         // When it is a contract, just incorrect
         address emptyContract = address(new EmptyContract());
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, emptyContract));
         _systemRegistry.setDestinationTemplateRegistry(emptyContract);
     }
 
@@ -422,12 +423,12 @@ contract SystemRegistryTest is Test {
     function testSystemRegistryAccessControllerInvalidContractCaught() public {
         // When its not a contract
         address fakeController = vm.addr(2);
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeController));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, fakeController));
         _systemRegistry.setAccessController(fakeController);
 
         // When it is a contract, just incorrect
         address emptyContract = address(new EmptyContract());
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, emptyContract));
         _systemRegistry.setAccessController(emptyContract);
     }
 
@@ -435,11 +436,11 @@ contract SystemRegistryTest is Test {
     /* Stats Calc Registry
     /* ******************************** */
 
-    function testSystemRegistryStatsCalcRegistrySetOnceDuplicateValue() public {
+    function testSystemRegistryStatsCalcRegistrySetDuplicateValue() public {
         address statsCalcRegistry = vm.addr(1);
         mockSystemComponent(statsCalcRegistry);
         _systemRegistry.setStatsCalculatorRegistry(statsCalcRegistry);
-        vm.expectRevert(abi.encodeWithSelector(Errors.AlreadySet.selector, "statsCalculatorRegistry"));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.DuplicateSet.selector, statsCalcRegistry));
         _systemRegistry.setStatsCalculatorRegistry(statsCalcRegistry);
     }
 
@@ -448,7 +449,7 @@ contract SystemRegistryTest is Test {
         mockSystemComponent(statsCalcRegistry);
         _systemRegistry.setStatsCalculatorRegistry(statsCalcRegistry);
         statsCalcRegistry = vm.addr(2);
-        vm.expectRevert(abi.encodeWithSelector(Errors.AlreadySet.selector, "statsCalculatorRegistry"));
+        mockSystemComponent(statsCalcRegistry);
         _systemRegistry.setStatsCalculatorRegistry(statsCalcRegistry);
     }
 
@@ -502,12 +503,12 @@ contract SystemRegistryTest is Test {
     function testSystemRegistryStatsCalcRegistryInvalidContractCaught() public {
         // When its not a contract
         address fakeStatsCalcRegistry = vm.addr(2);
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeStatsCalcRegistry));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, fakeStatsCalcRegistry));
         _systemRegistry.setStatsCalculatorRegistry(fakeStatsCalcRegistry);
 
         // When it is a contract, just incorrect
         address emptyContract = address(new EmptyContract());
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, emptyContract));
         _systemRegistry.setStatsCalculatorRegistry(emptyContract);
     }
 
@@ -532,7 +533,7 @@ contract SystemRegistryTest is Test {
         mockSystemComponent(oracle);
         _systemRegistry.setRootPriceOracle(oracle);
 
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.DuplicateSet.selector, address(oracle)));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.DuplicateSet.selector, address(oracle)));
         _systemRegistry.setRootPriceOracle(oracle);
     }
 
@@ -566,12 +567,12 @@ contract SystemRegistryTest is Test {
     function testSystemRegistryRootPriceOracleInvalidContractCaught() public {
         // When its not a contract
         address fakeOracle = vm.addr(2);
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeOracle));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, fakeOracle));
         _systemRegistry.setRootPriceOracle(fakeOracle);
 
         // When it is a contract, just incorrect
         address emptyContract = address(new EmptyContract());
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, emptyContract));
         _systemRegistry.setRootPriceOracle(emptyContract);
     }
 
@@ -596,7 +597,7 @@ contract SystemRegistryTest is Test {
         mockSystemComponent(incentivePricing);
         _systemRegistry.setIncentivePricingStats(incentivePricing);
 
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.DuplicateSet.selector, address(incentivePricing)));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.DuplicateSet.selector, address(incentivePricing)));
         _systemRegistry.setIncentivePricingStats(incentivePricing);
     }
 
@@ -632,12 +633,12 @@ contract SystemRegistryTest is Test {
     function testSystemRegistryIncentivePricingInvalidContractCaught() public {
         // When its not a contract
         address fakeOracle = vm.addr(2);
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeOracle));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, fakeOracle));
         _systemRegistry.setIncentivePricingStats(fakeOracle);
 
         // When it is a contract, just incorrect
         address emptyContract = address(new EmptyContract());
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, emptyContract));
         _systemRegistry.setIncentivePricingStats(emptyContract);
     }
     /* ******************************** */
@@ -718,7 +719,7 @@ contract SystemRegistryTest is Test {
         mockSystemComponent(router);
         _systemRegistry.setSwapRouter(router);
 
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.DuplicateSet.selector, address(router)));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.DuplicateSet.selector, address(router)));
         _systemRegistry.setSwapRouter(router);
     }
 
@@ -752,12 +753,12 @@ contract SystemRegistryTest is Test {
     function test_setSwapRouter_CatchesInvalidContract() public {
         // When its not a contract
         address fakeRouter = vm.addr(2);
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeRouter));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, fakeRouter));
         _systemRegistry.setRootPriceOracle(fakeRouter);
 
         // When it is a contract, just incorrect
         address emptyContract = address(new EmptyContract());
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, emptyContract));
         _systemRegistry.setSwapRouter(emptyContract);
     }
 
@@ -782,7 +783,7 @@ contract SystemRegistryTest is Test {
         mockSystemComponent(resolver);
         _systemRegistry.setCurveResolver(resolver);
 
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.DuplicateSet.selector, address(resolver)));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.DuplicateSet.selector, address(resolver)));
         _systemRegistry.setCurveResolver(resolver);
     }
 
@@ -813,16 +814,16 @@ contract SystemRegistryTest is Test {
         address component = vm.addr(1);
         mockSystemComponent(component);
         _systemRegistry.setSystemSecurity(component);
-        vm.expectRevert(abi.encodeWithSelector(Errors.AlreadySet.selector, "security"));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.DuplicateSet.selector, component));
         _systemRegistry.setSystemSecurity(component);
     }
 
-    function test_setSystemSecurity_CanOnlyBeSetOnce() public {
+    function test_setSystemSecurity_CanBeSetAgain() public {
         address component = vm.addr(1);
         mockSystemComponent(component);
         _systemRegistry.setSystemSecurity(component);
         component = vm.addr(2);
-        vm.expectRevert(abi.encodeWithSelector(Errors.AlreadySet.selector, "security"));
+        mockSystemComponent(component);
         _systemRegistry.setSystemSecurity(component);
     }
 
@@ -870,12 +871,12 @@ contract SystemRegistryTest is Test {
     function test_setSystemSecurity_BlocksInvalidContractFromBeingSet() public {
         // When its not a contract
         address fakeComponent = vm.addr(2);
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, fakeComponent));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, fakeComponent));
         _systemRegistry.setSystemSecurity(fakeComponent);
 
         // When it is a contract, just incorrect
         address emptyContract = address(new EmptyContract());
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, emptyContract));
         _systemRegistry.setSystemSecurity(emptyContract);
     }
 
@@ -928,11 +929,11 @@ contract SystemRegistryTest is Test {
 
     function test_InvalidContract_setAutopoolFactory() external {
         address eoa = vm.addr(3);
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, eoa));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, eoa));
         _systemRegistry.setAutopoolFactory(bytes32("Test bytes"), eoa);
 
         address emptyContract = address(new EmptyContract());
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.InvalidContract.selector, emptyContract));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.InvalidContract.selector, emptyContract));
         _systemRegistry.setAutopoolFactory(bytes32("Test bytes"), emptyContract);
     }
 
@@ -955,7 +956,7 @@ contract SystemRegistryTest is Test {
 
         _systemRegistry.setMessageProxy(proxy);
 
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.DuplicateSet.selector, proxy));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.DuplicateSet.selector, proxy));
 
         _systemRegistry.setMessageProxy(proxy);
     }
@@ -1006,7 +1007,7 @@ contract SystemRegistryTest is Test {
 
         _systemRegistry.setReceivingRouter(router);
 
-        vm.expectRevert(abi.encodeWithSelector(SystemRegistry.DuplicateSet.selector, router));
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.DuplicateSet.selector, router));
 
         _systemRegistry.setReceivingRouter(router);
     }

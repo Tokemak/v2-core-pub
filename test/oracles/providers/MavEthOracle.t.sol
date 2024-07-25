@@ -19,7 +19,8 @@ import {
 } from "test/utils/Addresses.sol";
 
 import { MavEthOracle } from "src/oracles/providers/MavEthOracle.sol";
-import { SystemRegistry, ISystemRegistry } from "src/SystemRegistry.sol";
+import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { RootPriceOracle } from "src/oracles/RootPriceOracle.sol";
 import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";

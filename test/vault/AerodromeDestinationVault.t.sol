@@ -14,7 +14,8 @@ import {
     AERO_BASE,
     AERODROME_VOTER_BASE
 } from "test/utils/Addresses.sol";
-import { ISystemRegistry, SystemRegistry } from "src/SystemRegistry.sol";
+import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
+import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController, IAccessController } from "src/security/AccessController.sol";
 import { SwapRouter, ISwapRouter } from "src/swapper/SwapRouter.sol";
 import { AerodromeSwap } from "src/swapper/adapters/AerodromeSwap.sol";

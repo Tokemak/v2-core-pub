@@ -10,6 +10,7 @@ import { ERC2612 } from "test/utils/ERC2612.sol";
 import { AutopoolETH } from "src/vault/AutopoolETH.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
+import { SystemRegistryBase } from "src/SystemRegistryBase.sol";
 import { AutopoolFactory } from "src/vault/AutopoolFactory.sol";
 import { SystemSecurity } from "src/security/SystemSecurity.sol";
 import { AutopoolRegistry } from "src/vault/AutopoolRegistry.sol";
@@ -72,7 +73,7 @@ contract PermitTests is Test {
         // Mock AutopilotRouter call for AutopoolETH creation.
         vm.mockCall(
             address(_systemRegistry),
-            abi.encodeWithSelector(SystemRegistry.autoPoolRouter.selector),
+            abi.encodeWithSelector(SystemRegistryBase.autoPoolRouter.selector),
             abi.encode(makeAddr("Autopool_VAULT_ROUTER"))
         );
 

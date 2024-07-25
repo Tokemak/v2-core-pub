@@ -529,7 +529,7 @@ abstract contract SystemRegistryBase is ISystemRegistry, Ownable2Step {
     /// @notice Verifies that a system bound contract matches this contract
     /// @dev All system bound contracts must match a registry contract. Will revert on mismatch
     /// @param dep The contract to check
-    function _verifySystemsAgree(address dep) private view {
+    function _verifySystemsAgree(address dep) internal view {
         // slither-disable-start low-level-calls
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory data) = dep.staticcall(abi.encodeCall(ISystemComponent.getSystemRegistry, ()));

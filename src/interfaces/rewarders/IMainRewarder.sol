@@ -33,9 +33,10 @@ interface IMainRewarder is IBaseRewarder {
      * contracts.
      * @dev If claimExtras is true, also claims all rewards from linked extra reward contracts.
      * @param account The address of the account to claim rewards for.
+     * @param recipient The address to send the rewards to.
      * @param claimExtras If true, claims rewards from linked extra reward contracts.
      */
-    function getReward(address account, bool claimExtras) external;
+    function getReward(address account, address recipient, bool claimExtras) external;
 
     /**
      * @notice Number of extra rewards currently registered

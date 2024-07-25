@@ -117,7 +117,7 @@ abstract contract AutopilotRouterBase is
         _checkRewarder(vault, address(rewarder));
 
         // Always claims any extra rewards that exist.
-        rewarder.getReward(msg.sender, true);
+        rewarder.getReward(msg.sender, msg.sender, true);
     }
 
     // Helper function for repeat functionalities.

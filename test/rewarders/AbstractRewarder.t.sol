@@ -40,8 +40,8 @@ contract Rewarder is AbstractRewarder {
         revert NotImplemented();
     }
 
-    function exposed_getRewardWrapper(address account) external {
-        _getReward(account);
+    function exposed_getRewardWrapper(address account, address recipient) external {
+        _getReward(account, recipient);
     }
 
     function exposed_updateReward(address account) external {
@@ -86,6 +86,7 @@ contract Rewarder is AbstractRewarder {
 contract AbstractRewarderTest is Test {
     address public operator;
     address public liquidator;
+    address public recipient;
 
     Rewarder public rewarder;
     ERC20Mock public rewardToken;
@@ -110,7 +111,7 @@ contract AbstractRewarderTest is Test {
     event TokeLockDurationUpdated(uint256 newDuration);
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
-    event RewardPaid(address indexed user, uint256 reward);
+    event RewardPaid(address indexed user, address indexed recipient, uint256 reward);
     event UserRewardUpdated(
         address indexed user, uint256 amount, uint256 rewardPerTokenStored, uint256 lastUpdateBlock
     );
@@ -148,9 +149,12 @@ contract AbstractRewarderTest is Test {
         vm.prank(liquidator);
         rewardToken.approve(address(rewarder), 100_000_000_000);
 
+        recipient = makeAddr("recipient");
+
         vm.label(operator, "operator");
         vm.label(liquidator, "liquidator");
         vm.label(RANDOM, "RANDOM");
+        vm.label(recipient, "recipient");
         vm.label(TOKE_MAINNET, "TOKE_MAINNET");
         vm.label(address(systemRegistry), "systemRegistry");
         vm.label(address(accessController), "accessController");
@@ -585,15 +589,20 @@ contract _withdraw is AbstractRewarderTest {
 contract _getReward is AbstractRewarderTest {
     function test_RevertIf_AccountIsZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "account"));
-        rewarder.exposed_getRewardWrapper(address(0));
+        rewarder.exposed_getRewardWrapper(address(0), recipient);
     }
 
-    function test_TransferRewardsToUser() public {
+    function test_RevertIf_RecipientIsZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "recipient"));
+        rewarder.exposed_getRewardWrapper(RANDOM, address(0));
+    }
+
+    function test_TransferRewardsToRecipient() public {
         uint256 expectedRewards = _runDefaultScenario();
 
-        uint256 balanceBefore = rewardToken.balanceOf(RANDOM);
-        rewarder.exposed_getRewardWrapper(RANDOM);
-        uint256 balanceAfter = rewardToken.balanceOf(RANDOM);
+        uint256 balanceBefore = rewardToken.balanceOf(recipient);
+        rewarder.exposed_getRewardWrapper(RANDOM, recipient);
+        uint256 balanceAfter = rewardToken.balanceOf(recipient);
 
         assertEq(balanceAfter - balanceBefore, expectedRewards);
     }
@@ -602,9 +611,9 @@ contract _getReward is AbstractRewarderTest {
         uint256 expectedRewards = _runDefaultScenario();
 
         vm.expectEmit(true, true, true, true);
-        emit RewardPaid(RANDOM, expectedRewards);
+        emit RewardPaid(RANDOM, recipient, expectedRewards);
 
-        rewarder.exposed_getRewardWrapper(RANDOM);
+        rewarder.exposed_getRewardWrapper(RANDOM, recipient);
     }
 
     // @dev see above for doc: for accToke amounts had to be bumped up due to new mins
@@ -637,7 +646,7 @@ contract _getReward is AbstractRewarderTest {
         rewarder.setBalanceOf(1000);
 
         uint256 balanceBefore = accToke.balanceOf(RANDOM);
-        rewarder.exposed_getRewardWrapper(RANDOM);
+        rewarder.exposed_getRewardWrapper(RANDOM, RANDOM);
         uint256 balanceAfter = accToke.balanceOf(RANDOM);
 
         assertTrue(balanceAfter > balanceBefore);
@@ -653,7 +662,7 @@ contract _getReward is AbstractRewarderTest {
         rewarder.setBalanceOf(1000);
 
         uint256 balanceBefore = accToke.balanceOf(RANDOM);
-        rewarder.exposed_getRewardWrapper(RANDOM);
+        rewarder.exposed_getRewardWrapper(RANDOM, RANDOM);
         uint256 balanceAfter = accToke.balanceOf(RANDOM);
 
         assertTrue(balanceAfter == balanceBefore);
@@ -675,7 +684,7 @@ contract _getReward is AbstractRewarderTest {
         assertTrue(rewarder.earned(RANDOM) < tokeMinStakeAmount);
 
         uint256 balanceBefore = accToke.balanceOf(RANDOM);
-        rewarder.exposed_getRewardWrapper(RANDOM);
+        rewarder.exposed_getRewardWrapper(RANDOM, RANDOM);
         uint256 balanceAfter = accToke.balanceOf(RANDOM);
 
         assertTrue(balanceAfter == balanceBefore);

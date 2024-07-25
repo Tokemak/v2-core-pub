@@ -52,16 +52,16 @@ contract ExtraRewarder is AbstractRewarder, IExtraRewarder, ReentrancyGuard {
         _withdrawAbstractRewarder(account, amount);
     }
 
-    function getReward(address account) public nonReentrant {
+    function getReward(address account, address recipient) public nonReentrant {
         if (msg.sender != address(mainReward) && msg.sender != account) {
             revert Errors.AccessDenied();
         }
         _updateReward(account);
-        _getReward(account);
+        _getReward(account, recipient);
     }
 
     function getReward() external {
-        getReward(msg.sender);
+        getReward(msg.sender, msg.sender);
     }
 
     function totalSupply() public view override(AbstractRewarder, IBaseRewarder) returns (uint256) {

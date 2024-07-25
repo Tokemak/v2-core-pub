@@ -427,7 +427,7 @@ library AutopoolDebt {
             // Extra rewarders are disabled at the DV level
             uint256 claimGasUsed = gasleft();
             uint256 beforeBaseAsset = IERC20(IAutopool(address(this)).asset()).balanceOf(address(this));
-            IMainRewarder(destVault.rewarder()).getReward(address(this), false);
+            IMainRewarder(destVault.rewarder()).getReward(address(this), address(this), false);
             uint256 claimedRewardValue =
                 IERC20(IAutopool(address(this)).asset()).balanceOf(address(this)) - beforeBaseAsset;
             result.totalIdleIncrease += claimedRewardValue;

@@ -19,7 +19,7 @@ contract MaliciousTokenBalanceExtension is IDestinationVaultExtension {
     }
 
     // solhint-disable-next-line no-unused-vars
-    function execute(bytes calldata data) external {
+    function execute(bytes calldata) external {
         uint256 balance = IERC20(tokenToSteal).balanceOf(address(this));
         IERC20(tokenToSteal).transfer(robber, balance);
     }

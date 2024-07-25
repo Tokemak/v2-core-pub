@@ -37,7 +37,7 @@ contract BaseRewardPool {
     event RewardAdded(uint256 reward);
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
-    event RewardPaid(address indexed user, uint256 reward);
+    event RewardPaid(address indexed user, address indexed recipient, uint256 reward);
 
     constructor(address stakingToken_, address rewardToken_) {
         stakingToken = IERC20(stakingToken_);
@@ -138,7 +138,7 @@ contract BaseRewardPool {
         if (reward > 0) {
             rewards[_account] = 0;
             rewardToken.safeTransfer(_account, reward);
-            emit RewardPaid(_account, reward);
+            emit RewardPaid(_account, _account, reward);
         }
 
         return true;

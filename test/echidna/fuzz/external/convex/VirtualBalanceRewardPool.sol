@@ -45,7 +45,7 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
     event RewardAdded(uint256 reward);
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
-    event RewardPaid(address indexed user, uint256 reward);
+    event RewardPaid(address indexed user, address indexed recipient, uint256 reward);
 
     constructor(address deposit_, address reward_) {
         deposits = IDeposit(deposit_);
@@ -97,7 +97,7 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
         if (reward > 0) {
             rewards[_account] = 0;
             rewardToken.safeTransfer(_account, reward);
-            emit RewardPaid(_account, reward);
+            emit RewardPaid(_account, _account, reward);
         }
     }
 

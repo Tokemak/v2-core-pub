@@ -7686,7 +7686,7 @@ contract FakeDestinationRewarder {
         _claimAmountOnNextCall = amount;
     }
 
-    function getReward(address, bool) public {
+    function getReward(address, address, bool) public {
         if (_claimAmountOnNextCall > 0) {
             _baseAsset.mint(msg.sender, _claimAmountOnNextCall);
         }

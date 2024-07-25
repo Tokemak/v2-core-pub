@@ -68,13 +68,14 @@ contract DestinationVaultMainRewarder is MainRewarder {
      * @dev This function is not actually used by the DV contracts, this function is implemented to lock reward
      *      claiming.
      * @param account Account to claim rewards for.
+     * @param recipient Address to send rewards to.
      * @param claimExtras Whether or not to claim extra rewards.
      */
-    function getReward(address account, bool claimExtras) public {
-        if (msg.sender != account) {
+    function getReward(address account, address recipient, bool claimExtras) public {
+        if (msg.sender != account && msg.sender != recipient) {
             revert Errors.AccessDenied();
         }
 
-        _getReward(account, claimExtras);
+        _getReward(account, recipient, claimExtras);
     }
 }

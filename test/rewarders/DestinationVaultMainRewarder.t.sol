@@ -113,7 +113,7 @@ contract DVRewarderGetRewardTest is DestinationVaultRewarderTest {
     function test_RevertsWhenNotStakeTracker() public {
         vm.expectRevert(Errors.AccessDenied.selector);
         // Calling from `address(this)`.
-        rewarder.getReward(stakeTracker, false);
+        rewarder.getReward(stakeTracker, stakeTracker, false);
     }
 
     function test_RewardsCanBeClaimed() public {
@@ -129,7 +129,7 @@ contract DVRewarderGetRewardTest is DestinationVaultRewarderTest {
         vm.roll(durationInBlock + 1);
 
         // Still pranked as `stakeTracker`,
-        rewarder.getReward(stakeTracker, false);
+        rewarder.getReward(stakeTracker, stakeTracker, false);
         vm.stopPrank();
 
         // Check balances post operation.
@@ -153,10 +153,10 @@ contract DVRewarderGetRewardTest is DestinationVaultRewarderTest {
         vm.stopPrank();
 
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        rewarder.getReward(user, false);
+        rewarder.getReward(user, user, false);
 
         vm.startPrank(user);
-        rewarder.getReward(user, false);
+        rewarder.getReward(user, user, false);
         vm.stopPrank();
     }
 }

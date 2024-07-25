@@ -75,12 +75,13 @@ contract AutopoolMainRewarder is MainRewarder {
      * @notice Gets reward for msg.sender.
      * @dev Used to enforce msg.sender check.
      * @param account Account to claim rewards for
+     * @param recipient Address to send rewards to
      */
-    function getReward(address account, bool claimExtras) public {
+    function getReward(address account, address recipient, bool claimExtras) public {
         if (msg.sender != account && msg.sender != address(systemRegistry.autoPoolRouter())) {
             revert Errors.AccessDenied();
         }
 
-        _getReward(account, claimExtras);
+        _getReward(account, recipient, claimExtras);
     }
 }

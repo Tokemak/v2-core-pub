@@ -103,21 +103,21 @@ contract WithdrawTest is ExtraRewarderTest {
 contract GetReward is ExtraRewarderTest {
     function test_RevertIf_ClaimForOther() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        rewarder.getReward(RANDOM);
+        rewarder.getReward(RANDOM, RANDOM);
     }
 
     function test_CanClaimForYourself() public {
         vm.mockCall(address(mainRewarder), abi.encodeWithSelector(IBaseRewarder.balanceOf.selector), abi.encode(10));
 
         vm.prank(RANDOM);
-        rewarder.getReward(RANDOM);
+        rewarder.getReward(RANDOM, RANDOM);
     }
 
     function test_OnlyMainRewarderCanClaimForOther() public {
         vm.mockCall(address(mainRewarder), abi.encodeWithSelector(IBaseRewarder.balanceOf.selector), abi.encode(10));
 
         vm.prank(mainRewarder);
-        rewarder.getReward(RANDOM);
+        rewarder.getReward(RANDOM, RANDOM);
     }
 
     function test_UserCanClaimRewardDirectly() public {

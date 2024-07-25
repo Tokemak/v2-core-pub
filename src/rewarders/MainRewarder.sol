@@ -93,7 +93,7 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         }
 
         if (claim) {
-            _processRewards(account, true);
+            _processRewards(account, account, true);
         }
 
         // slither-disable-next-line events-maths
@@ -120,12 +120,12 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
     /// @inheritdoc IBaseRewarder
     function getReward() external nonReentrant {
         _updateReward(msg.sender);
-        _processRewards(msg.sender, true);
+        _processRewards(msg.sender, msg.sender, true);
     }
 
-    function _getReward(address account, bool claimExtras) internal nonReentrant {
+    function _getReward(address account, address recipient, bool claimExtras) internal nonReentrant {
         _updateReward(account);
-        _processRewards(account, claimExtras);
+        _processRewards(account, recipient, claimExtras);
     }
 
     /// @inheritdoc IBaseRewarder
@@ -138,14 +138,14 @@ abstract contract MainRewarder is AbstractRewarder, IMainRewarder, ReentrancyGua
         return _balances[account];
     }
 
-    function _processRewards(address account, bool claimExtras) internal {
-        _getReward(account);
+    function _processRewards(address account, address recipient, bool claimExtras) internal {
+        _getReward(account, recipient);
         uint256 length = _extraRewards.length();
 
         //also get rewards from linked rewards
         if (claimExtras) {
             for (uint256 i = 0; i < length; ++i) {
-                IExtraRewarder(_extraRewards.at(i)).getReward(account);
+                IExtraRewarder(_extraRewards.at(i)).getReward(account, recipient);
             }
         }
     }

@@ -197,7 +197,7 @@ contract GetRewardAutopoolRewarder is AutopoolMainRewarderTest {
         address notRouterOrAccount = makeAddr("NOT_ROUTER_OR_ACCOUNT");
         vm.prank(notRouterOrAccount);
         vm.expectRevert(Errors.AccessDenied.selector);
-        rewarder.getReward(staker, false);
+        rewarder.getReward(staker, staker, false);
     }
 
     function test_getReward_AllowsRouterToClaim() public {
@@ -206,7 +206,7 @@ contract GetRewardAutopoolRewarder is AutopoolMainRewarderTest {
 
         // Prank router, get rewards.
         vm.prank(router);
-        rewarder.getReward(staker, false);
+        rewarder.getReward(staker, staker, false);
 
         // Check balances post claim.
         assertEq(rewardToken.balanceOf(staker), stakeAmount);
@@ -219,7 +219,7 @@ contract GetRewardAutopoolRewarder is AutopoolMainRewarderTest {
 
         // Prank staker, get rewards.
         vm.prank(staker);
-        rewarder.getReward(staker, false);
+        rewarder.getReward(staker, staker, false);
 
         // Check balances post claim.
         assertEq(rewardToken.balanceOf(staker), stakeAmount);

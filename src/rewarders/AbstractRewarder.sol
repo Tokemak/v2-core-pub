@@ -298,9 +298,11 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
     /**
      * @notice Internal function to distribute rewards to a specific account.
      * @param account The address of the user to distribute rewards to.
+     * @param recipient The address to send the rewards to.
      */
-    function _getReward(address account) internal {
+    function _getReward(address account, address recipient) internal {
         Errors.verifyNotZero(account, "account");
+        Errors.verifyNotZero(recipient, "recipient");
 
         uint256 reward = earned(account);
         (IAccToke accToke, address tokeAddress) = (systemRegistry.accToke(), address(systemRegistry.toke()));
@@ -311,12 +313,12 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
         // if NOT toke, or staking is turned off (by duration = 0), just send reward back
         if (rewardToken != tokeAddress || tokeLockDuration == 0) {
             rewards[account] = 0;
-            emit RewardPaid(account, reward);
+            emit RewardPaid(account, recipient, reward);
 
-            IERC20(rewardToken).safeTransfer(account, reward);
+            IERC20(rewardToken).safeTransfer(recipient, reward);
         } else if (accToke.isStakeableAmount(reward)) {
             rewards[account] = 0;
-            emit RewardPaid(account, reward);
+            emit RewardPaid(account, address(accToke), reward);
             // authorize accToke to get our reward Toke
             LibAdapter._approve(IERC20(tokeAddress), address(accToke), reward);
 

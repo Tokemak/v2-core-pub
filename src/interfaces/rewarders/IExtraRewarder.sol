@@ -15,6 +15,7 @@ interface IExtraRewarder is IBaseRewarder {
     /**
      * @notice Claims and transfers all rewards for the specified account from this contract.
      * @param account The address of the account to claim rewards for.
+     * @param recipient The address to send the rewards to.
      */
-    function getReward(address account) external;
+    function getReward(address account, address recipient) external;
 }

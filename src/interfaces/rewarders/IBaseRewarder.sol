@@ -15,7 +15,7 @@ interface IBaseRewarder {
     );
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
-    event RewardPaid(address indexed user, uint256 reward);
+    event RewardPaid(address indexed user, address indexed recipient, uint256 reward);
     event QueuedRewardsUpdated(uint256 startingQueuedRewards, uint256 startingNewRewards, uint256 queuedRewards);
     event AddedToWhitelist(address indexed wallet);
     event RemovedFromWhitelist(address indexed wallet);

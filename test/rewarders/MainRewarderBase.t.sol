@@ -35,8 +35,8 @@ contract MainRewarderNotAbstract is MainRewarder {
         _withdraw(account, amount, claim);
     }
 
-    function getReward(address account, bool claimExtras) external {
-        _getReward(account, claimExtras);
+    function getReward(address account, address recipient, bool claimExtras) external {
+        _getReward(account, recipient, claimExtras);
     }
 }
 

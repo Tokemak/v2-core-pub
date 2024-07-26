@@ -98,6 +98,7 @@ contract LiquidationRowWrapper is LiquidationRow {
 contract LiquidationRowTest is Test {
     event SwapperAdded(address indexed swapper);
     event SwapperRemoved(address indexed swapper);
+    event FeeReceiverSet(address indexed feeReceiver, uint256 feeBps);
     event BalanceUpdated(address indexed token, address indexed vault, uint256 balance);
     event VaultLiquidated(address indexed vault, address indexed fromToken, address indexed toToken, uint256 amount);
     event GasUsedForVault(address indexed vault, uint256 gasAmount, bytes32 action);
@@ -483,6 +484,8 @@ contract SetFeeAndReceiver is LiquidationRowTest {
         address feeReceiver = address(1);
         uint256 feeBps = 5000;
 
+        vm.expectEmit(true, true, true, true);
+        emit FeeReceiverSet(feeReceiver, feeBps);
         liquidationRow.setFeeAndReceiver(feeReceiver, feeBps);
 
         assertTrue(liquidationRow.feeReceiver() == feeReceiver);

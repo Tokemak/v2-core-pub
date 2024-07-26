@@ -104,6 +104,8 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
         feeBps = _feeBps;
         // slither-disable-next-line missing-zero-check
         feeReceiver = _feeReceiver;
+
+        emit FeeReceiverSet(_feeReceiver, _feeBps);
     }
 
     /// @inheritdoc ILiquidationRow

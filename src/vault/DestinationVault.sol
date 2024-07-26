@@ -547,7 +547,9 @@ abstract contract DestinationVault is
         uint256[] memory trackedTokensBalances = new uint256[](trackedTokensLength);
         uint256 externalDebtBalance_ = externalDebtBalance();
         uint256 internalDebtBalance_ = internalDebtBalance();
+        // slither-disable-next-line similar-names
         uint256 externalQueriedBalance_ = externalQueriedBalance();
+        uint256 internalQueriedBalance_ = internalQueriedBalance();
 
         for (uint256 i = 0; i < trackedTokensLength; ++i) {
             trackedTokensBalances[i] = IERC20(_trackedTokens.at(i)).balanceOf(address(this));
@@ -557,7 +559,6 @@ abstract contract DestinationVault is
         extension.functionDelegateCall(abi.encodeCall(IDestinationVaultExtension.execute, (data)));
 
         // Verify that no tokens were pulled
-        // This also verifies internalQueriedBalance as it is the balance of the underlyer which is tracked
         for (uint256 i = 0; i < trackedTokensLength; ++i) {
             IERC20 token = IERC20(_trackedTokens.at(i));
             if (trackedTokensBalances[i] != token.balanceOf(address(this))) {
@@ -569,6 +570,7 @@ abstract contract DestinationVault is
         if (
             externalDebtBalance_ != externalDebtBalance() || internalDebtBalance_ != internalDebtBalance()
                 || externalQueriedBalance_ != externalQueriedBalance()
+                || internalQueriedBalance_ != internalQueriedBalance()
         ) {
             revert ExtensionAmountMismatch();
         }

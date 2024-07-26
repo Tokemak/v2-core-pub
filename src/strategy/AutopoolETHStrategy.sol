@@ -17,7 +17,6 @@ import { NavTracking } from "src/strategy/NavTracking.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { AutopoolETHStrategyConfig } from "src/strategy/AutopoolETHStrategyConfig.sol";
-import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { AutopoolDebt } from "src/vault/libs/AutopoolDebt.sol";
 import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
@@ -128,11 +127,11 @@ contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrateg
     uint256 public immutable defaultLstPriceGapTolerance;
 
     /// @notice Addresses of hook contracts
-    address public immutable hook1;
-    address public immutable hook2;
-    address public immutable hook3;
-    address public immutable hook4;
-    address public immutable hook5;
+    address private immutable hook1;
+    address private immutable hook2;
+    address private immutable hook3;
+    address private immutable hook4;
+    address private immutable hook5;
 
     /* ******************************** */
     /* State Variables                  */
@@ -200,11 +199,11 @@ contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrateg
     );
     event DestViolationMaxTrimAmount(uint256 trimAmount);
     event RebalanceToIdle(
-        RebalanceValueStats valueStats, IStrategy.SummaryStats outSummary, IStrategy.RebalanceParams params
+        SummaryStats.RebalanceValueStats valueStats, IStrategy.SummaryStats outSummary, IStrategy.RebalanceParams params
     );
 
     event RebalanceBetweenDestinations(
-        RebalanceValueStats valueStats,
+        SummaryStats.RebalanceValueStats valueStats,
         IStrategy.RebalanceParams params,
         IStrategy.SummaryStats outSummaryStats,
         IStrategy.SummaryStats inSummaryStats,
@@ -249,15 +248,6 @@ contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrateg
     error LSTPriceGapToleranceExceeded();
     error InconsistentIdleThresholds();
     error IdleHighThresholdViolated();
-
-    struct RebalanceValueStats {
-        uint256 inPrice;
-        uint256 outPrice;
-        uint256 inEthValue;
-        uint256 outEthValue;
-        uint256 swapCost;
-        uint256 slippage;
-    }
 
     modifier onlyAutopool() {
         if (msg.sender != address(autoPool)) revert NotAutopoolETH();
@@ -364,7 +354,8 @@ contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrateg
         IStrategy.RebalanceParams memory params,
         IStrategy.SummaryStats memory outSummary
     ) external returns (bool success, string memory message) {
-        RebalanceValueStats memory valueStats = getRebalanceValueStats(params);
+        SummaryStats.RebalanceValueStats memory valueStats =
+            SummaryStats.getRebalanceValueStats(params, address(autoPool));
 
         // moves from a destination back to eth only happen under specific scenarios
         // if the move is valid, the constraints are different than if assets are moving to a normal destination
@@ -519,51 +510,6 @@ contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrateg
         if (!(autoPool.isDestinationRegistered(dest) || autoPool.isDestinationQueuedForRemoval(dest))) {
             revert UnregisteredDestination(dest);
         }
-    }
-
-    function getRebalanceValueStats(IStrategy.RebalanceParams memory params)
-        internal
-        returns (RebalanceValueStats memory)
-    {
-        uint8 tokenOutDecimals = IERC20Metadata(params.tokenOut).decimals();
-        uint8 tokenInDecimals = IERC20Metadata(params.tokenIn).decimals();
-        address autoPoolAddress = address(autoPool);
-
-        // Prices are all in terms of the base asset, so when its a rebalance back to the vault
-        // or out of the vault, We can just take things as 1:1
-
-        // Get the price of one unit of the underlying lp token, the params.tokenOut/tokenIn
-        // Prices are calculated using the spot of price of the constituent tokens
-        // validated to be within a tolerance of the safe price of those tokens
-        uint256 outPrice = params.destinationOut != autoPoolAddress
-            ? IDestinationVault(params.destinationOut).getValidatedSpotPrice()
-            : 10 ** tokenOutDecimals;
-
-        uint256 inPrice = params.destinationIn != autoPoolAddress
-            ? IDestinationVault(params.destinationIn).getValidatedSpotPrice()
-            : 10 ** tokenInDecimals;
-
-        // prices are 1e18 and we want values in 1e18, so divide by token decimals
-        uint256 outEthValue = params.destinationOut != autoPoolAddress
-            ? outPrice * params.amountOut / 10 ** tokenOutDecimals
-            : params.amountOut;
-
-        // amountIn is a minimum to receive, but it is OK if we receive more
-        uint256 inEthValue = params.destinationIn != autoPoolAddress
-            ? inPrice * params.amountIn / 10 ** tokenInDecimals
-            : params.amountIn;
-
-        uint256 swapCost = outEthValue.subSaturate(inEthValue);
-        uint256 slippage = outEthValue == 0 ? 0 : swapCost * 1e18 / outEthValue;
-
-        return RebalanceValueStats({
-            inPrice: inPrice,
-            outPrice: outPrice,
-            inEthValue: inEthValue,
-            outEthValue: outEthValue,
-            swapCost: swapCost,
-            slippage: slippage
-        });
     }
 
     function verifyRebalanceToIdle(IStrategy.RebalanceParams memory params, uint256 slippage) internal {

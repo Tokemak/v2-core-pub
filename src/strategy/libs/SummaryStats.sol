@@ -18,8 +18,12 @@ import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ISummaryStatsHook } from "src/interfaces/strategy/ISummaryStatsHook.sol";
+import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { SubSaturateMath } from "src/strategy/libs/SubSaturateMath.sol";
 
 library SummaryStats {
+    using SubSaturateMath for uint256;
+
     error StaleData(string name);
     error LstStatsReservesMismatch();
 
@@ -34,6 +38,15 @@ library SummaryStats {
         uint256 reservesTotal;
         int256[] priceReturns;
         uint256 numLstStats;
+    }
+
+    struct RebalanceValueStats {
+        uint256 inPrice;
+        uint256 outPrice;
+        uint256 inEthValue;
+        uint256 outEthValue;
+        uint256 swapCost;
+        uint256 slippage;
     }
 
     function getDestinationSummaryStats(
@@ -129,6 +142,50 @@ library SummaryStats {
         result.compositeReturn = StrategyUtils.convertUintToInt(returnExPrice) + result.priceReturn;
 
         return result;
+    }
+
+    function getRebalanceValueStats(
+        IStrategy.RebalanceParams memory params,
+        address autoPoolAddress
+    ) external returns (RebalanceValueStats memory) {
+        uint8 tokenOutDecimals = IERC20Metadata(params.tokenOut).decimals();
+        uint8 tokenInDecimals = IERC20Metadata(params.tokenIn).decimals();
+
+        // Prices are all in terms of the base asset, so when its a rebalance back to the vault
+        // or out of the vault, We can just take things as 1:1
+
+        // Get the price of one unit of the underlying lp token, the params.tokenOut/tokenIn
+        // Prices are calculated using the spot of price of the constituent tokens
+        // validated to be within a tolerance of the safe price of those tokens
+        uint256 outPrice = params.destinationOut != autoPoolAddress
+            ? IDestinationVault(params.destinationOut).getValidatedSpotPrice()
+            : 10 ** tokenOutDecimals;
+
+        uint256 inPrice = params.destinationIn != autoPoolAddress
+            ? IDestinationVault(params.destinationIn).getValidatedSpotPrice()
+            : 10 ** tokenInDecimals;
+
+        // prices are 1e18 and we want values in 1e18, so divide by token decimals
+        uint256 outEthValue = params.destinationOut != autoPoolAddress
+            ? outPrice * params.amountOut / 10 ** tokenOutDecimals
+            : params.amountOut;
+
+        // amountIn is a minimum to receive, but it is OK if we receive more
+        uint256 inEthValue = params.destinationIn != autoPoolAddress
+            ? inPrice * params.amountIn / 10 ** tokenInDecimals
+            : params.amountIn;
+
+        uint256 swapCost = outEthValue.subSaturate(inEthValue);
+        uint256 slippage = outEthValue == 0 ? 0 : swapCost * 1e18 / outEthValue;
+
+        return RebalanceValueStats({
+            inPrice: inPrice,
+            outPrice: outPrice,
+            inEthValue: inEthValue,
+            outEthValue: outEthValue,
+            swapCost: swapCost,
+            slippage: slippage
+        });
     }
 
     // Calculate the largest difference between spot & safe price for the underlying LST tokens.

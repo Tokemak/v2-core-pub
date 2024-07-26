@@ -147,11 +147,11 @@ contract AutopoolETHStrategyTest is Test {
 
         AutopoolETHStrategyHarness localStrat = deployStrategy(cfg);
 
-        assertEq(localStrat.hook1(), hook1);
-        assertEq(localStrat.hook2(), hook2);
-        assertEq(localStrat.hook3(), hook3);
-        assertEq(localStrat.hook4(), hook4);
-        assertEq(localStrat.hook5(), hook5);
+        assertEq(localStrat.getHooks()[0], hook1);
+        assertEq(localStrat.getHooks()[1], hook2);
+        assertEq(localStrat.getHooks()[2], hook3);
+        assertEq(localStrat.getHooks()[3], hook4);
+        assertEq(localStrat.getHooks()[4], hook5);
     }
 
     function test_constructor_SetsSomeHooks() public {
@@ -167,11 +167,11 @@ contract AutopoolETHStrategyTest is Test {
 
         AutopoolETHStrategyHarness localStrat = deployStrategy(cfg);
 
-        assertEq(localStrat.hook1(), hook1);
-        assertEq(localStrat.hook2(), hook2);
-        assertEq(localStrat.hook3(), hook3);
-        assertEq(localStrat.hook4(), address(0));
-        assertEq(localStrat.hook5(), address(0));
+        assertEq(localStrat.getHooks()[0], hook1);
+        assertEq(localStrat.getHooks()[1], hook2);
+        assertEq(localStrat.getHooks()[2], hook3);
+        assertEq(localStrat.getHooks()[3], address(0));
+        assertEq(localStrat.getHooks()[4], address(0));
     }
 
     /* **************************************** */
@@ -921,7 +921,7 @@ contract AutopoolETHStrategyTest is Test {
         defaultParams.amountOut = 78e18;
         defaultParams.amountIn = 77e18; // also set slightly lower than out token
 
-        AutopoolETHStrategy.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
+        SummaryStats.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
 
         assertEq(stats.outPrice, 100e16);
         assertEq(stats.inPrice, 99e16);
@@ -942,7 +942,7 @@ contract AutopoolETHStrategyTest is Test {
         defaultParams.amountIn = 100e12; // 12 decimals
         setTokenDecimals(mockInToken, 12);
 
-        AutopoolETHStrategy.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
+        SummaryStats.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
         assertEq(stats.inEthValue, 100e18);
         assertEq(stats.outEthValue, 100e18);
     }
@@ -952,7 +952,7 @@ contract AutopoolETHStrategyTest is Test {
         defaultParams.amountOut = 100e18;
         defaultParams.amountIn = 101e18;
 
-        AutopoolETHStrategy.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
+        SummaryStats.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
         assertEq(stats.slippage, 0);
         assertEq(stats.swapCost, 0);
     }
@@ -969,7 +969,7 @@ contract AutopoolETHStrategyTest is Test {
         defaultParams.destinationOut = mockAutopoolETH;
         defaultParams.amountOut = outAmount;
 
-        AutopoolETHStrategy.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
+        SummaryStats.RebalanceValueStats memory stats = defaultStrat._getRebalanceValueStats(defaultParams);
         assertEq(stats.outPrice, 1e18, "outPrice");
         assertEq(stats.outEthValue, outAmount, "outEthValue");
     }
@@ -2643,9 +2643,9 @@ contract AutopoolETHStrategyHarness is AutopoolETHStrategy {
 
     function _getRebalanceValueStats(IStrategy.RebalanceParams memory params)
         public
-        returns (RebalanceValueStats memory)
+        returns (SummaryStats.RebalanceValueStats memory)
     {
-        return getRebalanceValueStats(params);
+        return SummaryStats.getRebalanceValueStats(params, address(autoPool));
     }
 
     function _verifyRebalanceToIdle(IStrategy.RebalanceParams memory params, uint256 slippage) public {

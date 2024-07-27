@@ -112,12 +112,12 @@ abstract contract AutopilotRouterBase is
     }
 
     /// @inheritdoc IAutopilotRouterBase
-    function claimAutopoolRewards(IAutopool vault, IMainRewarder rewarder) external {
+    function claimAutopoolRewards(IAutopool vault, IMainRewarder rewarder, address recipient) external {
         _checkVault(address(vault));
         _checkRewarder(vault, address(rewarder));
 
         // Always claims any extra rewards that exist.
-        rewarder.getReward(msg.sender, msg.sender, true);
+        rewarder.getReward(msg.sender, recipient, true);
     }
 
     // Helper function for repeat functionalities.

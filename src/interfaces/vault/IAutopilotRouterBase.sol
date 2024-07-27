@@ -120,5 +120,6 @@ interface IAutopilotRouterBase {
     /// @notice Claims rewards on user stake of vault token.
     /// @param vault IAutopool instance of vault token to claim rewards for.
     /// @param rewarder Rewarder to claim rewards from.
-    function claimAutopoolRewards(IAutopool vault, IMainRewarder rewarder) external;
+    /// @param recipient Address to claim rewards for.
+    function claimAutopoolRewards(IAutopool vault, IMainRewarder rewarder, address recipient) external;
 }

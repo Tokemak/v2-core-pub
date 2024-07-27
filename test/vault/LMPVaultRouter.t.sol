@@ -969,7 +969,7 @@ contract AutopilotRouterTest is BaseTest {
 
     function test_RevertRewarderDoesNotExist_claim() public {
         vm.expectRevert(Errors.ItemNotFound.selector);
-        autoPoolRouter.claimAutopoolRewards(autoPool, IMainRewarder(makeAddr("FAKE_REWARDER")));
+        autoPoolRouter.claimAutopoolRewards(autoPool, IMainRewarder(makeAddr("FAKE_REWARDER")), address(this));
     }
 
     function test_ClaimFromPastRewarder() public {
@@ -1024,7 +1024,7 @@ contract AutopilotRouterTest is BaseTest {
         assertEq(userRewardsPastRewarderBefore, localStakeAmount);
 
         // Claim rewards.
-        autoPoolRouter.claimAutopoolRewards(autoPool, autoPoolRewarder);
+        autoPoolRouter.claimAutopoolRewards(autoPool, autoPoolRewarder, address(this));
 
         // Snapshot and checks.
         uint256 userClaimedRewards = toke.balanceOf(address(this));
@@ -1130,7 +1130,7 @@ contract AutopilotRouterTest is BaseTest {
         // Roll for entire reward duration, gives all rewards to user.  100 is reward duration.
         vm.roll(block.number + 100);
 
-        autoPoolRouter.claimAutopoolRewards(autoPool, autoPoolRewarder);
+        autoPoolRouter.claimAutopoolRewards(autoPool, autoPoolRewarder, address(this));
 
         assertEq(toke.balanceOf(address(this)), localStakeAmount); // Make sure all toke transferred to user.
         assertEq(toke.balanceOf(address(autoPoolRewarder)), 0); // Rewarder should have no toke left.

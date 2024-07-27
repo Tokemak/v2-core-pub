@@ -555,6 +555,8 @@ abstract contract DestinationVault is
             trackedTokensBalances[i] = IERC20(_trackedTokens.at(i)).balanceOf(address(this));
         }
 
+        // This could still set an approval that allows a later exfil
+        // but that is acceptable for our use case
         // slither-disable-next-line unused-return
         extension.functionDelegateCall(abi.encodeCall(IDestinationVaultExtension.execute, (data)));
 

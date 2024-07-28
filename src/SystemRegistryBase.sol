@@ -75,6 +75,8 @@ abstract contract SystemRegistryBase is ISystemRegistry, Ownable2Step {
     EnumerableSet.AddressSet private _rewardTokens;
     IMessageProxy private _messageProxy;
     address private _receivingRouter;
+    mapping(bytes32 => mapping(address => bool)) private _additionalContracts;
+    mapping(bytes32 => address) private _uniqueContracts;
 
     /// =====================================================
     /// Events
@@ -99,6 +101,10 @@ abstract contract SystemRegistryBase is ISystemRegistry, Ownable2Step {
     event SystemSecuritySet(address security);
     event MessageProxySet(address messageProxy);
     event ReceivingRouterSet(address receivingRouter);
+    event ContractSet(bytes32 contractType, address contractAddress);
+    event ContractUnset(bytes32 contractType, address contractAddress);
+    event UniqueContractSet(bytes32 contractType, address contractAddress);
+    event UniqueContractUnset(bytes32 contractType);
 
     /// =====================================================
     /// Errors
@@ -431,6 +437,90 @@ abstract contract SystemRegistryBase is ISystemRegistry, Ownable2Step {
         _receivingRouter = router;
 
         _verifySystemsAgree(router);
+    }
+
+    /// @notice Set an additional contract as valid as a type in this system
+    /// @dev Used for future extensibility and one-off helpers
+    /// @param contractType Type of contract to register
+    /// @param contractAddress Address fo the contract to register
+    function setContract(bytes32 contractType, address contractAddress) external onlyOwner {
+        Errors.verifyNotZero(contractType, "contractType");
+        Errors.verifyNotZero(contractAddress, "contractAddress");
+
+        if (_additionalContracts[contractType][contractAddress]) {
+            revert DuplicateSet(contractAddress);
+        }
+
+        emit ContractSet(contractType, contractAddress);
+
+        _additionalContracts[contractType][contractAddress] = true;
+
+        _verifySystemsAgree(contractAddress);
+    }
+
+    /// @notice Unset a contract as valid in the system
+    /// @param contractType Type of contract to unregister
+    /// @param contractAddress Address fo the contract to unregister
+    function unsetContract(bytes32 contractType, address contractAddress) external onlyOwner {
+        Errors.verifyNotZero(contractType, "contractType");
+        Errors.verifyNotZero(contractAddress, "contractAddress");
+
+        if (!_additionalContracts[contractType][contractAddress]) {
+            revert Errors.ItemNotFound();
+        }
+
+        emit ContractUnset(contractType, contractAddress);
+
+        _additionalContracts[contractType][contractAddress] = false;
+    }
+
+    /// @notice Set a unique contract instance by type in the system
+    /// @dev Used for future enhancement and extensibility
+    /// @param contractType Type of contract to register
+    /// @param contractAddress Address fo the contract to register
+    function setUniqueContract(bytes32 contractType, address contractAddress) external onlyOwner {
+        Errors.verifyNotZero(contractType, "contractType");
+        Errors.verifyNotZero(contractAddress, "contractAddress");
+
+        if (_uniqueContracts[contractType] == contractAddress) {
+            revert DuplicateSet(contractAddress);
+        }
+
+        emit UniqueContractSet(contractType, contractAddress);
+
+        _uniqueContracts[contractType] = contractAddress;
+
+        _verifySystemsAgree(contractAddress);
+    }
+
+    /// @notice Unset a unique contract instance by type in the system
+    /// @param contractType Type of contract to register
+    function unsetUniqueContract(bytes32 contractType) external onlyOwner {
+        Errors.verifyNotZero(contractType, "contractType");
+
+        if (_uniqueContracts[contractType] == address(0)) {
+            revert Errors.ItemNotFound();
+        }
+
+        emit UniqueContractUnset(contractType);
+
+        _uniqueContracts[contractType] = address(0);
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function getContract(bytes32 contractType) external view returns (address) {
+        Errors.verifyNotZero(contractType, "contractType");
+
+        address ret = _uniqueContracts[contractType];
+
+        Errors.verifyNotZero(ret, "ret");
+
+        return ret;
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function isValidContract(bytes32 contractType, address contractAddress) external view returns (bool) {
+        return _additionalContracts[contractType][contractAddress];
     }
 
     /// @inheritdoc ISystemRegistry

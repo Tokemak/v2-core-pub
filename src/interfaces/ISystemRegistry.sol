@@ -93,11 +93,19 @@ interface ISystemRegistry {
     /// @return incentivePricing the incentive pricing contract
     function incentivePricing() external view returns (IIncentivesPricingStats);
 
-    /// @notice Get the Messagy Proxy
+    /// @notice Get the Message Proxy
     /// @return Message proxy contract
     function messageProxy() external view returns (IMessageProxy);
 
     /// @notice Get the receiving router contract.
     /// @return Receiving router contract
     function receivingRouter() external view returns (address);
+
+    /// @notice Check if an additional contract of type is valid in the system
+    /// @return True if the contract is a valid for the given type
+    function isValidContract(bytes32 contractType, address contractAddress) external view returns (bool);
+
+    /// @notice Returns the additional contract of the given type
+    /// @dev Revert if not set
+    function getContract(bytes32 contractType) external view returns (address);
 }

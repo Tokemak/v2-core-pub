@@ -34,6 +34,10 @@ contract SystemRegistryTest is Test {
     event IncentivePricingStatsSet(address incentivePricingStats);
     event MessageProxySet(address messageProxy);
     event ReceivingRouterSet(address recevingRouter);
+    event ContractSet(bytes32 contractType, address contractAddress);
+    event ContractUnset(bytes32 contractType, address contractAddress);
+    event UniqueContractSet(bytes32 contractType, address contractAddress);
+    event UniqueContractUnset(bytes32 contractType);
 
     function setUp() public {
         _systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
@@ -1037,6 +1041,211 @@ contract SystemRegistryTest is Test {
         _systemRegistry.setReceivingRouter(router);
 
         assertEq(address(_systemRegistry.receivingRouter()), router);
+    }
+
+    /* ******************************** */
+    /* Set Contract
+    /* ******************************** */
+
+    function test_setContract_RevertIf_TypeIsZero() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "contractType"));
+        _systemRegistry.setContract("", address(1));
+    }
+
+    function test_setContract_RevertIf_AddressIsZero() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "contractAddress"));
+        _systemRegistry.setContract(keccak256("1"), address(0));
+    }
+
+    function test_setContract_RevertIf_AlreadySet() public {
+        mockSystemComponent(address(1));
+        _systemRegistry.setContract(keccak256("1"), address(1));
+
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.DuplicateSet.selector, address(1)));
+        _systemRegistry.setContract(keccak256("1"), address(1));
+    }
+
+    function test_setContract_RevertIf_NotCalledByOwner() public {
+        mockSystemComponent(address(1));
+
+        vm.startPrank(address(2));
+
+        vm.expectRevert("Ownable: caller is not the owner");
+        _systemRegistry.setContract(keccak256("1"), address(1));
+
+        vm.stopPrank();
+    }
+
+    function test_setContract_EmitsEvent() public {
+        mockSystemComponent(address(1));
+
+        vm.expectEmit(true, true, true, true);
+        emit ContractSet(keccak256("1"), address(1));
+
+        _systemRegistry.setContract(keccak256("1"), address(1));
+    }
+
+    function test_setContract_SetsValue() public {
+        mockSystemComponent(address(1));
+        _systemRegistry.setContract(keccak256("1"), address(1));
+
+        bool queried = _systemRegistry.isValidContract(keccak256("1"), address(1));
+        assertEq(queried, true, "queried");
+    }
+
+    /* ******************************** */
+    /* Unset Contract
+    /* ******************************** */
+
+    function test_unsetContract_RevertIf_TypeIsZero() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "contractType"));
+        _systemRegistry.unsetContract("", address(1));
+    }
+
+    function test_unsetContract_RevertIf_AddressIsZero() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "contractAddress"));
+        _systemRegistry.unsetContract(keccak256("1"), address(0));
+    }
+
+    function test_unsetContract_RevertIf_NotAlreadySet() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ItemNotFound.selector));
+        _systemRegistry.unsetContract(keccak256("1"), address(1));
+    }
+
+    function test_unsetContract_RevertIf_NotCalledByOwner() public {
+        vm.startPrank(address(2));
+
+        vm.expectRevert("Ownable: caller is not the owner");
+        _systemRegistry.unsetContract(keccak256("1"), address(1));
+
+        vm.stopPrank();
+    }
+
+    function test_unsetContract_UnsetsValue() public {
+        mockSystemComponent(address(1));
+        _systemRegistry.setContract(keccak256("1"), address(1));
+
+        bool queried = _systemRegistry.isValidContract(keccak256("1"), address(1));
+        assertEq(queried, true, "queried");
+
+        _systemRegistry.unsetContract(keccak256("1"), address(1));
+
+        queried = _systemRegistry.isValidContract(keccak256("1"), address(1));
+        assertEq(queried, false, "queried2");
+    }
+
+    function test_unsetContract_EmitsEvent() public {
+        mockSystemComponent(address(1));
+        _systemRegistry.setContract(keccak256("1"), address(1));
+
+        bool queried = _systemRegistry.isValidContract(keccak256("1"), address(1));
+        assertEq(queried, true, "queried");
+
+        vm.expectEmit(true, true, true, true);
+        emit ContractUnset(keccak256("1"), address(1));
+
+        _systemRegistry.unsetContract(keccak256("1"), address(1));
+    }
+
+    /* ******************************** */
+    /* Set Unique Contract
+    /* ******************************** */
+
+    function test_setUniqueContract_RevertIf_TypeIsZero() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "contractType"));
+        _systemRegistry.setUniqueContract("", address(1));
+    }
+
+    function test_setUniqueContract_RevertIf_AddressIsZero() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "contractAddress"));
+        _systemRegistry.setUniqueContract(keccak256("1"), address(0));
+    }
+
+    function test_setUniqueContract_RevertIf_AlreadySet() public {
+        mockSystemComponent(address(1));
+        _systemRegistry.setUniqueContract(keccak256("1"), address(1));
+
+        vm.expectRevert(abi.encodeWithSelector(SystemRegistryBase.DuplicateSet.selector, address(1)));
+        _systemRegistry.setUniqueContract(keccak256("1"), address(1));
+    }
+
+    function test_setUniqueContract_RevertIf_NotCalledByOwner() public {
+        mockSystemComponent(address(1));
+
+        vm.startPrank(address(2));
+
+        vm.expectRevert("Ownable: caller is not the owner");
+        _systemRegistry.setUniqueContract(keccak256("1"), address(1));
+
+        vm.stopPrank();
+    }
+
+    function test_setUniqueContract_EmitsEvent() public {
+        mockSystemComponent(address(1));
+
+        vm.expectEmit(true, true, true, true);
+        emit UniqueContractSet(keccak256("1"), address(1));
+
+        _systemRegistry.setUniqueContract(keccak256("1"), address(1));
+    }
+
+    function test_setUniqueContract_SetsValue() public {
+        mockSystemComponent(address(1));
+        _systemRegistry.setUniqueContract(keccak256("1"), address(1));
+
+        address queried = _systemRegistry.getContract(keccak256("1"));
+        assertEq(queried, address(1), "queried");
+    }
+
+    function test_getContract_RevertIf_ValueNotSet() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "ret"));
+        _systemRegistry.getContract(keccak256("2"));
+    }
+
+    /* ******************************** */
+    /* Unset Unique Contract
+    /* ******************************** */
+
+    function test_unsetUniqueContract_RevertIf_TypeIsZero() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "contractType"));
+        _systemRegistry.unsetUniqueContract("");
+    }
+
+    function test_unsetUniqueContract_RevertIf_NotAlreadySet() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ItemNotFound.selector));
+        _systemRegistry.unsetUniqueContract(keccak256("1"));
+    }
+
+    function test_unsetUniqueContract_RevertIf_NotCalledByOwner() public {
+        vm.startPrank(address(2));
+
+        vm.expectRevert("Ownable: caller is not the owner");
+        _systemRegistry.unsetUniqueContract(keccak256("1"));
+
+        vm.stopPrank();
+    }
+
+    function test_unsetUniqueContract_UnsetsValue() public {
+        mockSystemComponent(address(1));
+        _systemRegistry.setUniqueContract(keccak256("1"), address(1));
+
+        address queried = _systemRegistry.getContract(keccak256("1"));
+        assertEq(queried, address(1), "queried");
+
+        _systemRegistry.unsetUniqueContract(keccak256("1"));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "ret"));
+        _systemRegistry.getContract(keccak256("1"));
+    }
+
+    function test_unsetUniqueContract_EmitsEvent() public {
+        mockSystemComponent(address(1));
+        _systemRegistry.setUniqueContract(keccak256("1"), address(1));
+
+        vm.expectEmit(true, true, true, true);
+        emit UniqueContractUnset(keccak256("1"));
+
+        _systemRegistry.unsetUniqueContract(keccak256("1"));
     }
 
     /* ******************************** */

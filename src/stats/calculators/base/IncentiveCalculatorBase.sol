@@ -193,14 +193,28 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
         /// @dev use the safeTotalSupply is inferred from the rewardRate and the change in rewardPerToken
         /// by using the safeTotalSupply of the most recently emitting rewarder we get the most current
         /// safeTotalSupply estimate.
-
-        uint256 highestPeriodFinish = 0;
         uint256 currentSafeTotalSupply = 0;
-
+        bool isSet = false;
         for (uint256 i = 0; i < totalRewardsLength; ++i) {
-            if (periodFinishForRewards[i] > highestPeriodFinish) {
-                currentSafeTotalSupply = safeTotalSupply[i];
-                highestPeriodFinish = periodFinishForRewards[i];
+            if ((annualizedRewardAmounts[i] > 0) && (block.timestamp < periodFinishForRewards[i])) {
+                // Set the current safe supply to the largest estimate of all active rewarders
+                // with reward rate > 0
+                if (currentSafeTotalSupply < safeTotalSupply[i]) {
+                    currentSafeTotalSupply = safeTotalSupply[i];
+                    isSet = true;
+                }
+            }
+        }
+
+        // If currentSafeTotalSupply was not set previously, set to the rewarder with latest
+        // periodFinish with reward rate > 0
+        if (!isSet) {
+            uint256 highestPeriodFinish = 0;
+            for (uint256 i = 0; i < totalRewardsLength; ++i) {
+                if ((periodFinishForRewards[i] > highestPeriodFinish) && (annualizedRewardAmounts[i] > 0)) {
+                    currentSafeTotalSupply = safeTotalSupply[i];
+                    highestPeriodFinish = periodFinishForRewards[i];
+                }
             }
         }
 

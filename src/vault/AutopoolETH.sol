@@ -147,9 +147,6 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
     /// @notice The strategy logic for the Autopool
     IAutopoolStrategy public autoPoolStrategy;
 
-    /// @notice Temporary restriction of depositors
-    mapping(address => bool) public allowedUsers;
-
     /// =====================================================
     /// Events
     /// =====================================================
@@ -173,11 +170,6 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
     /// =====================================================
     /// Modifiers
     /// =====================================================
-
-    modifier onlyAllowedUsers(address receiver) {
-        _ensureAllowedUsers(receiver);
-        _;
-    }
 
     /// @notice Reverts if nav/share decreases during a deposit/mint/withdraw/redeem
     /// @dev Increases are allowed. Ignored when supply is 0
@@ -256,11 +248,7 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
 
         // Send 100_000 shares to dead address to prevent nav / share inflation attack that can happen
         // with very small shares and totalAssets amount.
-        allowedUsers[msg.sender] = true;
-        allowedUsers[DEAD_ADDRESS] = true;
         uint256 sharesMinted = deposit(WETH_INIT_DEPOSIT, DEAD_ADDRESS);
-        allowedUsers[msg.sender] = false;
-        allowedUsers[DEAD_ADDRESS] = false;
 
         // First mint, must be 1:1
         if (sharesMinted != WETH_INIT_DEPOSIT) revert ValueSharesMismatch(WETH_INIT_DEPOSIT, sharesMinted);
@@ -283,7 +271,6 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
         nonReentrant
         noNavPerShareDecrease(TotalAssetPurpose.Deposit)
         ensureNoNavOps
-        onlyAllowedUsers(receiver)
         returns (uint256 shares)
     {
         Errors.verifyNotZero(assets, "assets");
@@ -312,7 +299,6 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
         nonReentrant
         noNavPerShareDecrease(TotalAssetPurpose.Deposit)
         ensureNoNavOps
-        onlyAllowedUsers(receiver)
         returns (uint256 assets)
     {
         // Handles the vault being paused, returns 0
@@ -339,7 +325,6 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
         whenNotPaused
         noNavPerShareDecrease(TotalAssetPurpose.Withdraw)
         ensureNoNavOps
-        onlyAllowedUsers(receiver)
         returns (uint256 shares)
     {
         Errors.verifyNotZero(assets, "assets");
@@ -371,7 +356,6 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
         whenNotPaused
         noNavPerShareDecrease(TotalAssetPurpose.Withdraw)
         ensureNoNavOps
-        onlyAllowedUsers(receiver)
         returns (uint256 assets)
     {
         uint256 maxShares = maxRedeem(owner);
@@ -429,10 +413,6 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
 
     function setProfitUnlockPeriod(uint48 newUnlockPeriodSeconds) external hasRole(Roles.AUTO_POOL_MANAGER) {
         AutopoolFees.setProfitUnlockPeriod(_profitUnlockSettings, _tokenData, newUnlockPeriodSeconds);
-    }
-
-    function toggleAllowedUser(address user) external hasRole(Roles.AUTO_POOL_MANAGER) {
-        allowedUsers[user] = !allowedUsers[user];
     }
 
     /// @notice Set the rewarder contract used by the vault.
@@ -980,12 +960,6 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
             }),
             data
         );
-    }
-
-    function _ensureAllowedUsers(address receiver) internal view {
-        if (_checkUsers && (!allowedUsers[msg.sender] || !allowedUsers[receiver])) {
-            revert InvalidUser();
-        }
     }
 
     /// @inheritdoc IAutopool

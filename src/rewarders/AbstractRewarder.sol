@@ -323,7 +323,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
             LibAdapter._approve(IERC20(tokeAddress), address(accToke), reward);
 
             // stake Toke
-            accToke.stake(reward, tokeLockDuration, account);
+            accToke.stake(reward, tokeLockDuration, recipient);
         }
     }
 

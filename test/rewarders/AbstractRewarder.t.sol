@@ -645,9 +645,10 @@ contract _getReward is AbstractRewarderTest {
         // mock rewarder balanceOf function
         rewarder.setBalanceOf(1000);
 
-        uint256 balanceBefore = accToke.balanceOf(RANDOM);
-        rewarder.exposed_getRewardWrapper(RANDOM, RANDOM);
-        uint256 balanceAfter = accToke.balanceOf(RANDOM);
+        address random2 = makeAddr("random2");
+        uint256 balanceBefore = accToke.balanceOf(random2);
+        rewarder.exposed_getRewardWrapper(RANDOM, random2);
+        uint256 balanceAfter = accToke.balanceOf(random2);
 
         assertTrue(balanceAfter > balanceBefore);
     }

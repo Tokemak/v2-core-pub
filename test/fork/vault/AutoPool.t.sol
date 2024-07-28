@@ -386,7 +386,7 @@ abstract contract AutopoolFullDeployTests is Test {
         });
 
         // Configure Autopool template and factory
-        address autoPoolTemplate = address(new AutopoolETH(_systemRegistry, WETH_MAINNET, false));
+        address autoPoolTemplate = address(new AutopoolETH(_systemRegistry, WETH_MAINNET));
         _autopoolFactory = new AutopoolFactory(_systemRegistry, autoPoolTemplate, 800, 100);
         _accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(_autopoolFactory));
 

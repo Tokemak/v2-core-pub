@@ -74,8 +74,6 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
     /// @dev Exposed via `decimals()`
     uint8 internal immutable _baseAssetDecimals;
 
-    bool public immutable _checkUsers;
-
     /// =====================================================
     /// Internal Vars
     /// =====================================================
@@ -201,8 +199,7 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
 
     constructor(
         ISystemRegistry systemRegistry,
-        address _vaultAsset,
-        bool checkUsers
+        address _vaultAsset
     ) SecurityBase(address(systemRegistry.accessController())) Pausable(systemRegistry) {
         Errors.verifyNotZero(address(systemRegistry), "systemRegistry");
         _systemRegistry = systemRegistry;
@@ -215,8 +212,6 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
         _baseAsset = IERC20Metadata(_vaultAsset);
         _symbol = string(abi.encodePacked("autoPool", IERC20Metadata(_vaultAsset).symbol(), "Template"));
         _name = string(abi.encodePacked(_symbol, " Token"));
-
-        _checkUsers = checkUsers;
 
         _disableInitializers();
     }

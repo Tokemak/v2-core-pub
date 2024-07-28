@@ -372,7 +372,7 @@ contract InitializationTests is AutopoolETHTests {
         super.setUp();
 
         TestAutopoolETH initTestVaultTemplate = new TestAutopoolETH(systemRegistry, address(vaultAsset));
-        AutopoolETH initTestVaultRestrictedTemplate = new AutopoolETH(systemRegistry, address(vaultAsset), false);
+        AutopoolETH initTestVaultRestrictedTemplate = new AutopoolETH(systemRegistry, address(vaultAsset));
 
         initTestVault = TestAutopoolETH(Clones.cloneDeterministic(address(initTestVaultTemplate), "salt1"));
         // solhint-disable-next-line max-line-length
@@ -7472,10 +7472,7 @@ contract TestAutopoolETH is AutopoolETH {
     bool private _nextDepositGetsDoubleShares;
     bool private _nextWithdrawHalvesIdle;
 
-    constructor(
-        ISystemRegistry _systemRegistry,
-        address _vaultAsset
-    ) AutopoolETH(_systemRegistry, _vaultAsset, false) { }
+    constructor(ISystemRegistry _systemRegistry, address _vaultAsset) AutopoolETH(_systemRegistry, _vaultAsset) { }
 
     function directTransfer(address to, uint256 value) external {
         AutopoolToken.transfer(_tokenData, to, value);

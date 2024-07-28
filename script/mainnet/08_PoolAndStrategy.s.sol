@@ -26,7 +26,7 @@ contract PoolAndStrategy is Script {
         (, address owner,) = vm.readCallers();
 
         AutopoolETH autoPoolTemplate =
-            new AutopoolETH(constants.sys.systemRegistry, address(constants.sys.systemRegistry.weth()), false);
+            new AutopoolETH(constants.sys.systemRegistry, address(constants.sys.systemRegistry.weth()));
         console.log("Autopool Template: ", address(autoPoolTemplate));
 
         AutopoolFactory autoPoolFactory =

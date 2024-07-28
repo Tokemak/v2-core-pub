@@ -25,7 +25,7 @@ contract Liquidator is Script {
         constants.sys.accessController.grantRole(Roles.AUTO_POOL_FACTORY_VAULT_CREATOR, owner);
 
         AutopoolETH autoPoolTemplate =
-            new AutopoolETH(constants.sys.systemRegistry, address(constants.sys.systemRegistry.weth()), true);
+            new AutopoolETH(constants.sys.systemRegistry, address(constants.sys.systemRegistry.weth()));
         console.log("Autopool Template: ", address(autoPoolTemplate));
 
         AutopoolFactory autoPoolFactory =

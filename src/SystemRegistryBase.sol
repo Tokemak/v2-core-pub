@@ -528,7 +528,7 @@ abstract contract SystemRegistryBase is ISystemRegistry, Ownable2Step {
     }
 
     /// @inheritdoc ISystemRegistry
-    function getContract(bytes32 contractType) external view returns (address) {
+    function getUniqueContract(bytes32 contractType) external view returns (address) {
         Errors.verifyNotZero(contractType, "contractType");
 
         address ret = _uniqueContracts[contractType];

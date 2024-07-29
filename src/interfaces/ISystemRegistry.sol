@@ -107,7 +107,7 @@ interface ISystemRegistry {
 
     /// @notice Returns the additional contract of the given type
     /// @dev Revert if not set
-    function getContract(bytes32 contractType) external view returns (address);
+    function getUniqueContract(bytes32 contractType) external view returns (address);
 
     /// @notice Returns all unique contracts configured
     function listUniqueContracts() external view returns (bytes32[] memory contractTypes, address[] memory addresses);

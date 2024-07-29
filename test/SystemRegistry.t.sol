@@ -1245,13 +1245,13 @@ contract SystemRegistryTest is Test {
         mockSystemComponent(address(1));
         _systemRegistry.setUniqueContract(keccak256("1"), address(1));
 
-        address queried = _systemRegistry.getContract(keccak256("1"));
+        address queried = _systemRegistry.getUniqueContract(keccak256("1"));
         assertEq(queried, address(1), "queried");
     }
 
     function test_getContract_RevertIf_ValueNotSet() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "ret"));
-        _systemRegistry.getContract(keccak256("2"));
+        _systemRegistry.getUniqueContract(keccak256("2"));
     }
 
     function test_listUniqueContracts_ReturnsValues() public {
@@ -1300,13 +1300,13 @@ contract SystemRegistryTest is Test {
         mockSystemComponent(address(1));
         _systemRegistry.setUniqueContract(keccak256("1"), address(1));
 
-        address queried = _systemRegistry.getContract(keccak256("1"));
+        address queried = _systemRegistry.getUniqueContract(keccak256("1"));
         assertEq(queried, address(1), "queried");
 
         _systemRegistry.unsetUniqueContract(keccak256("1"));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "ret"));
-        _systemRegistry.getContract(keccak256("1"));
+        _systemRegistry.getUniqueContract(keccak256("1"));
     }
 
     function test_unsetUniqueContract_EmitsEvent() public {

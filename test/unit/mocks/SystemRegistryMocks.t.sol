@@ -53,4 +53,12 @@ contract SystemRegistryMocks {
             abi.encode(messageProxy)
         );
     }
+
+    function _mockSysRegDestVaultRegistry(ISystemRegistry systemRegistry, address destinationVaultRegistry) internal {
+        vm.mockCall(
+            address(systemRegistry),
+            abi.encodeWithSelector(ISystemRegistry.destinationVaultRegistry.selector),
+            abi.encode(destinationVaultRegistry)
+        );
+    }
 }

@@ -32,6 +32,7 @@ library Roles {
     bytes32 public constant AUTO_POOL_REWARD_MANAGER = keccak256("AUTO_POOL_REWARD_MANAGER_ROLE");
     bytes32 public constant AUTO_POOL_MANAGER = keccak256("AUTO_POOL_ADMIN");
     bytes32 public constant REBALANCER = keccak256("REBALANCER_ROLE");
+    bytes32 public constant STATS_HOOK_POINTS_ADMIN = keccak256("STATS_HOOK_POINTS_ADMIN");
 
     // Reward Management
     bytes32 public constant LIQUIDATOR_MANAGER = keccak256("LIQUIDATOR_ROLE");

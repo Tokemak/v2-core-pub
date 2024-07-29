@@ -76,10 +76,16 @@ abstract contract SystemRegistryBase is ISystemRegistry, Ownable2Step {
     IMessageProxy private _messageProxy;
     address private _receivingRouter;
 
+    /// @dev Exposed via `listAdditionalContractTypes()`
     EnumerableSet.Bytes32Set private _additionalContractTypes;
+
+    /// @dev Exposed via `listAdditionalContracts()`
     mapping(bytes32 => EnumerableSet.AddressSet) private _additionalContracts;
 
+    /// @dev Exposed via `listUniqueContracts()`
     EnumerableSet.Bytes32Set private _uniqueContractsTypes;
+
+    /// @dev Exposed via `listUniqueContracts()`
     mapping(bytes32 => address) private _uniqueContracts;
 
     /// =====================================================

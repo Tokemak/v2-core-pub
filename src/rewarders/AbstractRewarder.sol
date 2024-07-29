@@ -318,7 +318,7 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
             IERC20(rewardToken).safeTransfer(recipient, reward);
         } else if (accToke.isStakeableAmount(reward)) {
             rewards[account] = 0;
-            emit RewardPaid(account, address(accToke), reward);
+            emit RewardPaid(account, recipient, reward);
             // authorize accToke to get our reward Toke
             LibAdapter._approve(IERC20(tokeAddress), address(accToke), reward);
 

@@ -1093,6 +1093,58 @@ contract SystemRegistryTest is Test {
         assertEq(queried, true, "queried");
     }
 
+    function test_listAdditionalContractTypes_ReturnsConfiguredValue() public {
+        mockSystemComponent(address(1));
+        _systemRegistry.setContract(keccak256("1"), address(1));
+        _systemRegistry.setContract(keccak256("2"), address(1));
+
+        bytes32[] memory ret = _systemRegistry.listAdditionalContractTypes();
+        assertEq(ret.length, 2, "len");
+        assertEq(ret[0], keccak256("1"), "value");
+        assertEq(ret[1], keccak256("2"), "value2");
+    }
+
+    function test_listAdditionalContractTypes_IsEmptyWhenAllRemoved() public {
+        mockSystemComponent(address(1));
+        _systemRegistry.setContract(keccak256("1"), address(1));
+        _systemRegistry.setContract(keccak256("2"), address(1));
+
+        bytes32[] memory ret = _systemRegistry.listAdditionalContractTypes();
+        assertEq(ret.length, 2, "len");
+        assertEq(ret[0], keccak256("1"), "value");
+        assertEq(ret[1], keccak256("2"), "value2");
+
+        _systemRegistry.unsetContract(keccak256("1"), address(1));
+        _systemRegistry.unsetContract(keccak256("2"), address(1));
+
+        ret = _systemRegistry.listAdditionalContractTypes();
+        assertEq(ret.length, 0, "len2");
+    }
+
+    function test_listAdditionalContracts_ReturnsValues() public {
+        mockSystemComponent(address(1));
+        mockSystemComponent(address(2));
+
+        _systemRegistry.setContract(keccak256("1"), address(1));
+        _systemRegistry.setContract(keccak256("1"), address(2));
+
+        address[] memory ret = _systemRegistry.listAdditionalContracts(keccak256("1"));
+        assertEq(ret.length, 2, "len");
+        assertEq(ret[0], address(1), "value");
+        assertEq(ret[1], address(2), "value2");
+
+        _systemRegistry.unsetContract(keccak256("1"), address(1));
+
+        ret = _systemRegistry.listAdditionalContracts(keccak256("1"));
+        assertEq(ret.length, 1, "len2");
+        assertEq(ret[0], address(2), "value2");
+
+        _systemRegistry.unsetContract(keccak256("1"), address(2));
+
+        ret = _systemRegistry.listAdditionalContracts(keccak256("1"));
+        assertEq(ret.length, 0, "len3");
+    }
+
     /* ******************************** */
     /* Unset Contract
     /* ******************************** */
@@ -1200,6 +1252,25 @@ contract SystemRegistryTest is Test {
     function test_getContract_RevertIf_ValueNotSet() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "ret"));
         _systemRegistry.getContract(keccak256("2"));
+    }
+
+    function test_listUniqueContracts_ReturnsValues() public {
+        mockSystemComponent(address(1));
+        _systemRegistry.setUniqueContract(keccak256("1"), address(1));
+
+        (bytes32[] memory types, address[] memory addresses) = _systemRegistry.listUniqueContracts();
+
+        assertEq(types.length, 1, "typesLen");
+        assertEq(addresses.length, 1, "addressesLen");
+        assertEq(types[0], keccak256("1"), "typesVal");
+        assertEq(addresses[0], address(1), "addressesVal");
+
+        _systemRegistry.unsetUniqueContract(keccak256("1"));
+
+        (types, addresses) = _systemRegistry.listUniqueContracts();
+
+        assertEq(types.length, 0, "typesLen");
+        assertEq(addresses.length, 0, "addressesLen");
     }
 
     /* ******************************** */

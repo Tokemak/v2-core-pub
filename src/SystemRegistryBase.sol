@@ -75,7 +75,11 @@ abstract contract SystemRegistryBase is ISystemRegistry, Ownable2Step {
     EnumerableSet.AddressSet private _rewardTokens;
     IMessageProxy private _messageProxy;
     address private _receivingRouter;
-    mapping(bytes32 => mapping(address => bool)) private _additionalContracts;
+
+    EnumerableSet.Bytes32Set private _additionalContractTypes;
+    mapping(bytes32 => EnumerableSet.AddressSet) private _additionalContracts;
+
+    EnumerableSet.Bytes32Set private _uniqueContractsTypes;
     mapping(bytes32 => address) private _uniqueContracts;
 
     /// =====================================================
@@ -442,42 +446,46 @@ abstract contract SystemRegistryBase is ISystemRegistry, Ownable2Step {
     /// @notice Set an additional contract as valid as a type in this system
     /// @dev Used for future extensibility and one-off helpers
     /// @param contractType Type of contract to register
-    /// @param contractAddress Address fo the contract to register
+    /// @param contractAddress Address of the contract to register
     function setContract(bytes32 contractType, address contractAddress) external onlyOwner {
         Errors.verifyNotZero(contractType, "contractType");
         Errors.verifyNotZero(contractAddress, "contractAddress");
 
-        if (_additionalContracts[contractType][contractAddress]) {
+        if (!_additionalContracts[contractType].add(contractAddress)) {
             revert DuplicateSet(contractAddress);
         }
 
         emit ContractSet(contractType, contractAddress);
 
-        _additionalContracts[contractType][contractAddress] = true;
+        // slither-disable-next-line unused-return
+        _additionalContractTypes.add(contractType);
 
         _verifySystemsAgree(contractAddress);
     }
 
     /// @notice Unset a contract as valid in the system
     /// @param contractType Type of contract to unregister
-    /// @param contractAddress Address fo the contract to unregister
+    /// @param contractAddress Address of the contract to unregister
     function unsetContract(bytes32 contractType, address contractAddress) external onlyOwner {
         Errors.verifyNotZero(contractType, "contractType");
         Errors.verifyNotZero(contractAddress, "contractAddress");
 
-        if (!_additionalContracts[contractType][contractAddress]) {
+        if (!_additionalContracts[contractType].remove(contractAddress)) {
             revert Errors.ItemNotFound();
         }
 
         emit ContractUnset(contractType, contractAddress);
 
-        _additionalContracts[contractType][contractAddress] = false;
+        if (_additionalContracts[contractType].length() == 0) {
+            // slither-disable-next-line unused-return
+            _additionalContractTypes.remove(contractType);
+        }
     }
 
     /// @notice Set a unique contract instance by type in the system
     /// @dev Used for future enhancement and extensibility
     /// @param contractType Type of contract to register
-    /// @param contractAddress Address fo the contract to register
+    /// @param contractAddress Address of the contract to register
     function setUniqueContract(bytes32 contractType, address contractAddress) external onlyOwner {
         Errors.verifyNotZero(contractType, "contractType");
         Errors.verifyNotZero(contractAddress, "contractAddress");
@@ -489,6 +497,9 @@ abstract contract SystemRegistryBase is ISystemRegistry, Ownable2Step {
         emit UniqueContractSet(contractType, contractAddress);
 
         _uniqueContracts[contractType] = contractAddress;
+
+        // slither-disable-next-line unused-return
+        _uniqueContractsTypes.add(contractType);
 
         _verifySystemsAgree(contractAddress);
     }
@@ -505,6 +516,9 @@ abstract contract SystemRegistryBase is ISystemRegistry, Ownable2Step {
         emit UniqueContractUnset(contractType);
 
         _uniqueContracts[contractType] = address(0);
+
+        // slither-disable-next-line unused-return
+        _uniqueContractsTypes.remove(contractType);
     }
 
     /// @inheritdoc ISystemRegistry
@@ -520,7 +534,27 @@ abstract contract SystemRegistryBase is ISystemRegistry, Ownable2Step {
 
     /// @inheritdoc ISystemRegistry
     function isValidContract(bytes32 contractType, address contractAddress) external view returns (bool) {
-        return _additionalContracts[contractType][contractAddress];
+        return _additionalContracts[contractType].contains(contractAddress);
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function listUniqueContracts() external view returns (bytes32[] memory contractTypes, address[] memory addresses) {
+        contractTypes = _uniqueContractsTypes.values();
+        uint256 len = contractTypes.length;
+        addresses = new address[](len);
+        for (uint256 i = 0; i < len; ++i) {
+            addresses[i] = _uniqueContracts[contractTypes[i]];
+        }
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function listAdditionalContractTypes() external view returns (bytes32[] memory) {
+        return _additionalContractTypes.values();
+    }
+
+    /// @inheritdoc ISystemRegistry
+    function listAdditionalContracts(bytes32 contractType) external view returns (address[] memory) {
+        return _additionalContracts[contractType].values();
     }
 
     /// @inheritdoc ISystemRegistry

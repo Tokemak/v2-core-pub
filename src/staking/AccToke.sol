@@ -37,6 +37,7 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
     mapping(address => Lockup[]) public lockups;
 
     uint256 private constant YEAR_BASE_BOOST = 18e17;
+    uint256 private constant MIN_STAKE_DURATION = 1 days;
     IERC20Metadata public immutable toke;
 
     //
@@ -70,6 +71,8 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
         ERC20Permit("accToke")
         SecurityBase(address(_systemRegistry.accessController()))
     {
+        if (_minStakeDuration < MIN_STAKE_DURATION) revert InvalidMinStakeDuration();
+
         startEpoch = _startEpoch;
         minStakeDuration = _minStakeDuration;
 

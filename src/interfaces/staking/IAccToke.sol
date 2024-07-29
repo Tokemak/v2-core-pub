@@ -41,6 +41,7 @@ interface IAccToke {
     error InsufficientAmount();
     error InvalidLockupIds();
     error InvalidDurationLength();
+    error InvalidMinStakeDuration();
 
     ///////////////////////////////////////////////////////////////////
     //                        Events

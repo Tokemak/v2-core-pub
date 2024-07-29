@@ -6,6 +6,7 @@ pragma solidity 0.8.17;
 import { IAccToke } from "src/interfaces/staking/IAccToke.sol";
 import { BaseTest } from "test/BaseTest.t.sol";
 import { Roles } from "src/libs/Roles.sol";
+import { AccToke } from "src/staking/AccToke.sol";
 
 contract StakingTest is BaseTest {
     uint256 private stakeAmount = 1 ether;
@@ -48,6 +49,13 @@ contract StakingTest is BaseTest {
 
         // approve future spending
         toke.approve(address(accToke), toke.balanceOf(address(this)));
+    }
+
+    function testDeployAccTokeInvalidMinsStakeDuration() public {
+        vm.expectRevert(IAccToke.InvalidMinStakeDuration.selector);
+        new AccToke(systemRegistry, block.timestamp, 0);
+        vm.expectRevert(IAccToke.InvalidMinStakeDuration.selector);
+        new AccToke(systemRegistry, block.timestamp, 1 days - 1);
     }
 
     function testStakingCanBePaused() public {

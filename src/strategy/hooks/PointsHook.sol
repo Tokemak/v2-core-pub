@@ -17,11 +17,11 @@ import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaul
 /// @title Allow the configuration of APR boosts to represent future "points" earnings
 contract PointsHook is ISummaryStatsHook, SystemComponent, SecurityBase {
     /// =====================================================
-    /// Constant Vars
+    /// Immutable Vars
     /// =====================================================
 
     /// @notice Maximum allowed boost
-    uint256 public constant MAX_BOOST = 0.1e18;
+    uint256 public immutable maxBoost;
 
     /// =====================================================
     /// Public Vars
@@ -40,16 +40,20 @@ contract PointsHook is ISummaryStatsHook, SystemComponent, SecurityBase {
     /// Errors
     /// =====================================================
 
-    error BoostExceedsMax(uint256 providedValue);
+    error BoostExceedsMax(address destinationVault, uint256 providedValue);
 
     /// =====================================================
     /// Functions - Constructor
     /// =====================================================
 
-    constructor(ISystemRegistry _systemRegistry)
-        SystemComponent(_systemRegistry)
-        SecurityBase(address(_systemRegistry.accessController()))
-    { }
+    constructor(
+        ISystemRegistry _systemRegistry,
+        uint256 _maxBoost
+    ) SystemComponent(_systemRegistry) SecurityBase(address(_systemRegistry.accessController())) {
+        Errors.verifyNotZero(_maxBoost, "maxBoost");
+
+        maxBoost = _maxBoost;
+    }
 
     /// =====================================================
     /// Functions - External
@@ -74,8 +78,8 @@ contract PointsHook is ISummaryStatsHook, SystemComponent, SecurityBase {
 
             dvRegistry.verifyIsRegistered(destinationVault);
 
-            if (boost > MAX_BOOST) {
-                revert BoostExceedsMax(boost);
+            if (boost > maxBoost) {
+                revert BoostExceedsMax(destinationVault, boost);
             }
 
             destinationBoosts[destinationVault] = boost;

@@ -193,7 +193,7 @@ contract PointsHookInt is Test {
         address autoPoolAddress =
             Clones.predictDeterministicAddress(autoPoolTemplate, autoPoolSalt, address(_autoPoolFactory));
 
-        pointsHook = new PointsHook(_systemRegistry);
+        pointsHook = new PointsHook(_systemRegistry, 0.1e18);
         _accessController.grantRole(Roles.STATS_HOOK_POINTS_ADMIN, address(this));
 
         ValueCheckingStrategy _strategyTemplate =

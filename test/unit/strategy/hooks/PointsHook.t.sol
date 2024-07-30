@@ -25,7 +25,7 @@ contract PointsHookTests is Test, SystemRegistryMocks, AccessControllerMocks, De
 
     PointsHook internal _hook;
 
-    error BoostExceedsMax(uint256 providedValue);
+    error BoostExceedsMax(address destinationVault, uint256 providedValue);
 
     event BoostsSet(address[] destinationVaults, uint256[] boosts);
 
@@ -39,7 +39,7 @@ contract PointsHookTests is Test, SystemRegistryMocks, AccessControllerMocks, De
         _mockSysRegAccessController(_systemRegistry, address(_accessController));
         _mockSysRegDestVaultRegistry(_systemRegistry, address(_destVaultRegistry));
 
-        _hook = new PointsHook(_systemRegistry);
+        _hook = new PointsHook(_systemRegistry, 0.1e18);
     }
 
     function _mockIsPointsAdmin(address user, bool isAdmin) internal {
@@ -50,6 +50,11 @@ contract PointsHookTests is Test, SystemRegistryMocks, AccessControllerMocks, De
 contract Constructor is PointsHookTests {
     function test_SetUpState() public {
         assertEq(_hook.getSystemRegistry(), address(_systemRegistry));
+    }
+
+    function test_RevertIf_MaxBoostIsZero() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "maxBoost"));
+        new PointsHook(_systemRegistry, 0);
     }
 }
 
@@ -94,8 +99,8 @@ contract SetBoosts is PointsHookTests {
         uint256[] memory boosts = new uint256[](1);
 
         destinationVaults[0] = address(1);
-        boosts[0] = _hook.MAX_BOOST() + 1;
-        vm.expectRevert(abi.encodeWithSelector(PointsHook.BoostExceedsMax.selector, boosts[0]));
+        boosts[0] = _hook.maxBoost() + 1;
+        vm.expectRevert(abi.encodeWithSelector(PointsHook.BoostExceedsMax.selector, destinationVaults[0], boosts[0]));
         _hook.setBoosts(destinationVaults, boosts);
     }
 
@@ -107,7 +112,7 @@ contract SetBoosts is PointsHookTests {
         uint256[] memory boosts = new uint256[](1);
 
         destinationVaults[0] = address(1);
-        boosts[0] = _hook.MAX_BOOST();
+        boosts[0] = _hook.maxBoost();
 
         vm.startPrank(badUser);
 
@@ -125,12 +130,12 @@ contract SetBoosts is PointsHookTests {
 
         destinationVaults[0] = address(1);
         destinationVaults[1] = address(2);
-        boosts[0] = _hook.MAX_BOOST();
+        boosts[0] = _hook.maxBoost();
         boosts[1] = 1;
 
         _hook.setBoosts(destinationVaults, boosts);
 
-        assertEq(_hook.destinationBoosts(address(1)), _hook.MAX_BOOST(), "value");
+        assertEq(_hook.destinationBoosts(address(1)), _hook.maxBoost(), "value");
         assertEq(_hook.destinationBoosts(address(2)), 1, "value2");
     }
 
@@ -142,7 +147,7 @@ contract SetBoosts is PointsHookTests {
 
         destinationVaults[0] = address(1);
         destinationVaults[1] = address(2);
-        boosts[0] = _hook.MAX_BOOST();
+        boosts[0] = _hook.maxBoost();
         boosts[1] = 1;
 
         vm.expectEmit(true, true, true, true);
@@ -160,7 +165,7 @@ contract Execute is PointsHookTests {
 
         destinationVaults[0] = address(1);
         destinationVaults[1] = address(2);
-        boosts[0] = _hook.MAX_BOOST();
+        boosts[0] = _hook.maxBoost();
         boosts[1] = 1;
 
         _hook.setBoosts(destinationVaults, boosts);
@@ -170,7 +175,7 @@ contract Execute is PointsHookTests {
 
         stats = _hook.execute(stats, IAutopool(address(0)), address(1), 0, IAutopoolStrategy.RebalanceDirection.In, 0);
 
-        assertEq(stats.baseApr, _hook.MAX_BOOST() + 1, "newValue");
+        assertEq(stats.baseApr, _hook.maxBoost() + 1, "newValue");
     }
 
     function test_ReturnsUnmodifiedWhenNoBoostSet() external {
@@ -181,7 +186,7 @@ contract Execute is PointsHookTests {
 
         destinationVaults[0] = address(1);
         destinationVaults[1] = address(2);
-        boosts[0] = _hook.MAX_BOOST();
+        boosts[0] = _hook.maxBoost();
         boosts[1] = 1;
 
         _hook.setBoosts(destinationVaults, boosts);

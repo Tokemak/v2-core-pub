@@ -90,6 +90,7 @@ contract CurveOracleBase is Script {
         rootPriceOracle.setSafeSpotPriceThreshold(values.tokens.rEth, 200);
         rootPriceOracle.setSafeSpotPriceThreshold(values.tokens.wstEth, 200);
         rootPriceOracle.setSafeSpotPriceThreshold(values.tokens.ezEth, 200);
+        rootPriceOracle.setSafeSpotPriceThreshold(values.tokens.weth, 200);
 
         _registerChainlinkOracles(chainlinkOracle);
 

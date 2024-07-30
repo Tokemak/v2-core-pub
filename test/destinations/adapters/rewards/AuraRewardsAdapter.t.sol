@@ -197,7 +197,7 @@ contract AuraRewardsAdapterTest is Test {
     }
 
     function test_StashTokensWithUnderlyingBalanceAreReturned() public {
-        vm.createSelectFork(_endpoint, 18_033_699);
+        vm.createSelectFork(_endpoint, 18_033_698);
 
         address gauge = 0xdC38CCAc2008547275878F5D89B642DA27910739;
         address curveLp = 0x20a61B948E33879ce7F23e535CC7BAA3BC66c5a9;

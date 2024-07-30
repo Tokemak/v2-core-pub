@@ -26,4 +26,7 @@ interface IAutopoolFactory {
     function addStrategyTemplate(address strategyTemplate) external;
 
     function removeStrategyTemplate(address strategyTemplate) external;
+
+    /// @notice Returns the template used to create Autopools
+    function template() external returns (address);
 }

@@ -4,33 +4,15 @@ pragma solidity 0.8.17;
 
 // solhint-disable no-console
 
-import { Script } from "forge-std/Script.sol";
-import { console } from "forge-std/console.sol";
-import { Systems, Constants } from "../utils/Constants.sol";
-
 import { Roles } from "src/libs/Roles.sol";
+import { Script } from "forge-std/Script.sol";
+import { Systems, Constants } from "../utils/Constants.sol";
+import { Destinations as DestinationFns } from "script/core/Destinations.sol";
 
-import { CurveConvexDestinationVault } from "src/vault/CurveConvexDestinationVault.sol";
-import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
-
-contract Destinations is Script {
-    uint256 public saltIx;
+contract Destinations is Script, DestinationFns {
     Constants.Values public constants;
 
-    struct CurveConvexSetup {
-        string name;
-        address curvePool;
-        address curveLpToken;
-        address convexStaking;
-        uint256 convexPoolId;
-    }
-
-    struct BalancerAuraSetup {
-        string name;
-        address balancerPool;
-        address auraStaking;
-        uint256 auraPoolId;
-    }
+    constructor() DestinationFns(vm) { }
 
     function run() external {
         constants = Constants.get(Systems.LST_GEN2_MAINNET);
@@ -55,6 +37,7 @@ contract Destinations is Script {
 
     function setupCurveDestinations() internal {
         setupCurveConvexDestinationVault(
+            constants,
             CurveConvexSetup({
                 name: "stETH/ETH Original",
                 curvePool: 0xDC24316b9AE028F1497c275EB9192a3Ea0f67022,
@@ -65,6 +48,7 @@ contract Destinations is Script {
         );
 
         setupCurveConvexDestinationVault(
+            constants,
             CurveConvexSetup({
                 name: "stETH/ETH NG",
                 curvePool: 0x21E27a5E5513D6e65C4f830167390997aA84843a,
@@ -75,6 +59,7 @@ contract Destinations is Script {
         );
 
         setupCurveConvexDestinationVault(
+            constants,
             CurveConvexSetup({
                 name: "cbETH/ETH",
                 curvePool: 0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A,
@@ -85,6 +70,7 @@ contract Destinations is Script {
         );
 
         setupCurveNGConvexDestinationVault(
+            constants,
             CurveConvexSetup({
                 name: "osETH/rETH",
                 curvePool: 0xe080027Bd47353b5D1639772b4a75E9Ed3658A0d,
@@ -95,6 +81,7 @@ contract Destinations is Script {
         );
 
         setupCurveConvexDestinationVault(
+            constants,
             CurveConvexSetup({
                 name: "rETH/wstETH",
                 curvePool: 0x447Ddd4960d9fdBF6af9a790560d0AF76795CB08,
@@ -107,6 +94,7 @@ contract Destinations is Script {
 
     function setupBalancerDestinations() internal {
         setupBalancerAuraDestinationVault(
+            constants,
             BalancerAuraSetup({
                 name: "wstETH/WETH",
                 balancerPool: 0x32296969Ef14EB0c6d29669C550D4a0449130230,
@@ -116,6 +104,7 @@ contract Destinations is Script {
         );
 
         setupBalancerAuraDestinationVault(
+            constants,
             BalancerAuraSetup({
                 name: "rETH/WETH",
                 balancerPool: 0x1E19CF2D73a72Ef1332C882F20534B6519Be0276,
@@ -123,80 +112,5 @@ contract Destinations is Script {
                 auraPoolId: 109
             })
         );
-    }
-
-    function setupBalancerAuraDestinationVault(BalancerAuraSetup memory args) internal {
-        BalancerAuraDestinationVault.InitParams memory initParams = BalancerAuraDestinationVault.InitParams({
-            balancerPool: args.balancerPool,
-            auraStaking: args.auraStaking,
-            auraBooster: constants.ext.auraBooster,
-            auraPoolId: args.auraPoolId
-        });
-
-        bytes memory initParamBytes = abi.encode(initParams);
-
-        address payable newVault = payable(
-            constants.sys.destinationVaultFactory.create(
-                "bal-aura-v1",
-                constants.tokens.weth,
-                initParams.balancerPool,
-                address(
-                    constants.sys.statsCalcRegistry.getCalculator(
-                        keccak256(abi.encode("incentive-v4-", constants.tokens.aura, args.auraStaking))
-                    )
-                ),
-                new address[](0), // additionalTrackedTokens
-                keccak256(abi.encodePacked(block.number, saltIx++)),
-                initParamBytes
-            )
-        );
-
-        console.log(string.concat("Balancer ", args.name, " Dest Vault: "), address(newVault));
-    }
-
-    function setupCurveNGConvexDestinationVault(CurveConvexSetup memory args) internal {
-        setupCurveConvexBaseDestinationVault(
-            args.name, "crv-cvx-ng-v1", args.curvePool, args.curveLpToken, args.convexStaking, args.convexPoolId
-        );
-    }
-
-    function setupCurveConvexDestinationVault(CurveConvexSetup memory args) internal {
-        setupCurveConvexBaseDestinationVault(
-            args.name, "crv-cvx-v1", args.curvePool, args.curveLpToken, args.convexStaking, args.convexPoolId
-        );
-    }
-
-    function setupCurveConvexBaseDestinationVault(
-        string memory name,
-        string memory template,
-        address curvePool,
-        address curveLpToken,
-        address convexStaking,
-        uint256 convexPoolId
-    ) internal {
-        CurveConvexDestinationVault.InitParams memory initParams = CurveConvexDestinationVault.InitParams({
-            curvePool: curvePool,
-            convexStaking: convexStaking,
-            convexPoolId: convexPoolId
-        });
-        bytes memory initParamBytes = abi.encode(initParams);
-
-        address payable newVault = payable(
-            constants.sys.destinationVaultFactory.create(
-                template,
-                constants.tokens.weth,
-                curveLpToken,
-                address(
-                    constants.sys.statsCalcRegistry.getCalculator(
-                        keccak256(abi.encode("incentive-v4-", constants.tokens.cvx, convexStaking))
-                    )
-                ),
-                new address[](0), // additionalTrackedTokens
-                keccak256(abi.encodePacked(block.number, saltIx++)),
-                initParamBytes
-            )
-        );
-
-        console.log(string.concat("Curve ", name, " Dest Vault: "), address(newVault));
     }
 }

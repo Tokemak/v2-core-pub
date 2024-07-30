@@ -39,7 +39,7 @@ contract AuraCalculator is IncentiveCalculatorBase {
     function getPlatformTokenMintAmount(
         address _platformToken,
         uint256 _annualizedReward
-    ) public view override returns (uint256) {
+    ) public view virtual override returns (uint256) {
         return AuraRewards.getAURAMintAmount(_platformToken, BOOSTER, address(rewarder), _annualizedReward);
     }
 

@@ -129,7 +129,7 @@ contract Calculators is Script {
         registerAndOutput("Aura Template", auraTemplate, auraTemplateId);
 
         convexTemplate = new ConvexCalculator(constants.sys.systemRegistry, constants.ext.convexBooster);
-        registerAndOutput("Aura Template", convexTemplate, convexTemplateId);
+        registerAndOutput("Convex Template", convexTemplate, convexTemplateId);
 
         balCompTemplate = new BalancerComposableStablePoolCalculator(
             constants.sys.systemRegistry, address(constants.ext.balancerVault)
@@ -480,7 +480,7 @@ contract Calculators is Script {
         return addr;
     }
 
-    function outputCalculator(string memory name, address addr) private {
+    function outputCalculator(string memory name, address addr) internal {
         vm.stopBroadcast();
         console.log("-----------------");
         console.log(string.concat(name, " LST Calculator address: "), addr);

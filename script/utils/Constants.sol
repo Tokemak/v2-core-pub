@@ -15,6 +15,7 @@ import { WstETHEthOracle } from "src/oracles/providers/WstETHEthOracle.sol";
 import { EthPeggedOracle } from "src/oracles/providers/EthPeggedOracle.sol";
 import { ChainlinkOracle } from "src/oracles/providers/ChainlinkOracle.sol";
 import { BalancerLPMetaStableEthOracle } from "src/oracles/providers/BalancerLPMetaStableEthOracle.sol";
+import { BalancerLPComposableStableEthOracle } from "src/oracles/providers/BalancerLPComposableStableEthOracle.sol";
 import { CurveV2CryptoEthOracle } from "src/oracles/providers/CurveV2CryptoEthOracle.sol";
 import { CurveV1StableEthOracle } from "src/oracles/providers/CurveV1StableEthOracle.sol";
 import { RedstoneOracle } from "src/oracles/providers/RedstoneOracle.sol";
@@ -22,6 +23,9 @@ import { CustomSetOracle } from "src/oracles/providers/CustomSetOracle.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { IRouterClient } from "src/interfaces/external/chainlink/IRouterClient.sol";
 import { MessageProxy } from "src/messageProxy/MessageProxy.sol";
+import { AutopilotRouter } from "src/vault/AutopilotRouter.sol";
+import { EthPerTokenStore } from "src/stats/calculators/bridged/EthPerTokenStore.sol";
+import { EthPerTokenSender } from "src/stats/calculators/bridged/EthPerTokenSender.sol";
 
 /* solhint-disable gas-custom-errors */
 
@@ -58,6 +62,11 @@ library Constants {
         address osEth;
         address aero;
         address ezEth;
+        address rsEth;
+        address ethX;
+        address eEth;
+        address weEth;
+        address rswEth;
     }
 
     struct System {
@@ -76,6 +85,9 @@ library Constants {
         IncentivePricingStats incentivePricing;
         AsyncSwappers asyncSwappers;
         MessageProxy messageProxy;
+        AutopilotRouter autopilotRouter;
+        EthPerTokenStore ethPerTokenStore;
+        EthPerTokenSender ethPerTokenSender;
     }
 
     struct SystemOracles {
@@ -84,7 +96,7 @@ library Constants {
         CurveV1StableEthOracle curveV1;
         CurveV2CryptoEthOracle curveV2;
         BalancerLPMetaStableEthOracle balancerMeta;
-        address balancerComp;
+        BalancerLPComposableStableEthOracle balancerComp;
         WstETHEthOracle wstEth;
         RedstoneOracle redStone;
         CustomSetOracle customSet;
@@ -150,6 +162,13 @@ library Constants {
         System memory sys =
             getQueryableSystem(0xBa69A35D353Af239B12db3c5C90b1EB09F52e3dd, 0x1523738df2c6Cc303B6A919de69a976056848C80);
 
+        sys.ethPerTokenStore = EthPerTokenStore(0x4B462D397f191ABDA1Da3786cE965c2F142b47C4);
+
+        sys.subOracles.chainlink = ChainlinkOracle(0xFC6375101Edf42bdBE4e4c11c4a6A5aEB4BF5f0b);
+        sys.subOracles.balancerComp = BalancerLPComposableStableEthOracle(0x79f68feF172F455F2298Cdb430277e4074087957);
+        sys.subOracles.ethPegged = EthPeggedOracle(0x440db143427fF6011EcC44365f6500722B6Fbffb);
+        sys.subOracles.customSet = CustomSetOracle(0x88B0A26A3B75707B5CD005BFe7A8d2eA11e14775);
+
         return Values({ tokens: getBaseTokens(), sys: sys, ext: getBaseExternal() });
     }
 
@@ -176,7 +195,7 @@ library Constants {
             curveV1: CurveV1StableEthOracle(0x9F4ccD800848ee15CAb538E636d3de9C9f340A53),
             curveV2: CurveV2CryptoEthOracle(0x401070e4394219Fac55473d786579b2C88f6b3c2),
             balancerMeta: BalancerLPMetaStableEthOracle(0xC60535Ce2dF8c4ff203f9729e0aF196F8231EACA),
-            balancerComp: address(0),
+            balancerComp: BalancerLPComposableStableEthOracle(0xA1946dd8086e781685689F9c19733caa35771c79),
             wstEth: WstETHEthOracle(0xe383DBF350f6A8d0cE4b4654Acaa60E04FfA6c67),
             redStone: RedstoneOracle(0x23a7d7707f80a26495ac73B15Db6F4FA541164F7),
             customSet: CustomSetOracle(0x107a0ffA06595A5A2491C974CB2C8541Fc7FBccA)
@@ -187,6 +206,8 @@ library Constants {
             propellerHead: 0xaA58f93e1Fb86199DdF12a61aB9429d85B6C8341,
             liFi: 0x369E19c3Aa355196340F4b8Cc97E39c1858380c1
         });
+
+        sys.ethPerTokenSender = EthPerTokenSender(0x4a6dc8aFB1167e6e55c022fbC3f38bCd5dCec66c);
 
         return Values({ tokens: getMainnetTokens(), sys: sys, ext: getMainnetExternal() });
     }
@@ -214,12 +235,15 @@ library Constants {
                     curveV1: CurveV1StableEthOracle(0xc3fD8f8C544adc02aFF22C31a9aBAd0c3f79a672),
                     curveV2: CurveV2CryptoEthOracle(0x075c80cd9E8455F94b7Ea6EDB91485F2D974FB9B),
                     balancerMeta: BalancerLPMetaStableEthOracle(0xeaD83A1A04f730b428055151710ba38e886b644e),
-                    balancerComp: 0x2BB64D96B0DCfaB7826D11707AAE3F55409d8E19,
+                    balancerComp: BalancerLPComposableStableEthOracle(0x2BB64D96B0DCfaB7826D11707AAE3F55409d8E19),
                     wstEth: WstETHEthOracle(0xA93F316ef40848AeaFCd23485b6044E7027b5890),
                     redStone: RedstoneOracle(0x9E16879c6F4415Ce5EBE21816C51F476AEEc49bE),
                     customSet: CustomSetOracle(0x58e161B002034f1F94858613Da0967EB985EB3D0)
                 }),
-                asyncSwappers: AsyncSwappers({ zeroEx: address(0), propellerHead: address(0), liFi: address(0) })
+                asyncSwappers: AsyncSwappers({ zeroEx: address(0), propellerHead: address(0), liFi: address(0) }),
+                autopilotRouter: AutopilotRouter(payable(address(0))),
+                ethPerTokenStore: EthPerTokenStore(address(0)),
+                ethPerTokenSender: EthPerTokenSender(address(0))
             }),
             ext: getMainnetExternal()
         });
@@ -246,6 +270,7 @@ library Constants {
         sys.rootPriceOracle = RootPriceOracle(address(systemRegistry.rootPriceOracle()));
         sys.incentivePricing = IncentivePricingStats(address(systemRegistry.incentivePricing()));
         sys.messageProxy = MessageProxy(payable(address(systemRegistry.messageProxy())));
+        sys.autopilotRouter = AutopilotRouter(payable(address(systemRegistry.autoPoolRouter())));
     }
 
     function getMainnetExternal() private pure returns (External memory) {
@@ -282,7 +307,12 @@ library Constants {
             aura: 0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF,
             osEth: 0xf1C9acDc66974dFB6dEcB12aA385b9cD01190E38,
             aero: address(0),
-            ezEth: 0xbf5495Efe5DB9ce00f80364C8B423567e58d2110
+            ezEth: 0xbf5495Efe5DB9ce00f80364C8B423567e58d2110,
+            rsEth: 0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7,
+            ethX: 0xA35b1B31Ce002FBF2058D22F30f95D405200A15b,
+            eEth: 0x35fA164735182de50811E8e2E824cFb9B6118ac2,
+            weEth: 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee,
+            rswEth: 0xFAe103DC9cf190eD75350761e95403b7b8aFa6c0
         });
     }
 
@@ -306,7 +336,12 @@ library Constants {
             aura: 0x1509706a6c66CA549ff0cB464de88231DDBe213B,
             osEth: address(0),
             aero: 0x940181a94A35A4569E4529A3CDfB74e38FD98631,
-            ezEth: 0x2416092f143378750bb29b79eD961ab195CcEea5
+            ezEth: 0x2416092f143378750bb29b79eD961ab195CcEea5,
+            rsEth: 0x1Bc71130A0e39942a7658878169764Bbd8A45993,
+            ethX: address(0),
+            eEth: address(0),
+            weEth: 0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A,
+            rswEth: address(0)
         });
     }
 
@@ -358,7 +393,12 @@ library Constants {
             aura: address(0),
             osEth: address(0),
             aero: address(0),
-            ezEth: address(0)
+            ezEth: address(0),
+            rsEth: address(0),
+            ethX: address(0),
+            eEth: address(0),
+            weEth: address(0),
+            rswEth: address(0)
         });
     }
 }

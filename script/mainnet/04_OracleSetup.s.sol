@@ -10,8 +10,6 @@ import { Systems } from "script/utils/Constants.sol";
 
 import { SystemRegistry } from "src/SystemRegistry.sol";
 
-import { IPriceOracle } from "src/interfaces/oracles/IPriceOracle.sol";
-import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
 
@@ -29,10 +27,11 @@ import { CustomSetOracle } from "src/oracles/providers/CustomSetOracle.sol";
 import { Roles } from "src/libs/Roles.sol";
 
 import { Systems, Constants } from "../utils/Constants.sol";
+import { Oracle } from "script/core/Oracle.sol";
 
 // solhint-disable state-visibility,no-console
 
-contract CurveOracleBase is Script {
+contract OracleSetup is Script, Oracle {
     address constant ETH_IN_USD = address(bytes20("ETH_IN_USD"));
 
     // Mainnet Chainlink feed addresses
@@ -96,19 +95,19 @@ contract CurveOracleBase is Script {
         values.sys.accessController.grantRole(Roles.ORACLE_MANAGER, owner);
 
         // Register base tokens
-        _registerMapping(chainlinkOracle, values.tokens.cbEth, true);
-        _registerMapping(chainlinkOracle, values.tokens.rEth, true);
-        _registerMapping(chainlinkOracle, values.tokens.stEth, true);
-        _registerMapping(wstEthOracle, values.tokens.wstEth, true);
-        _registerMapping(ethPegOracle, values.tokens.weth, true);
-        _registerMapping(ethPegOracle, values.tokens.curveEth, true);
+        _registerMapping(rootPriceOracle, chainlinkOracle, values.tokens.cbEth, true);
+        _registerMapping(rootPriceOracle, chainlinkOracle, values.tokens.rEth, true);
+        _registerMapping(rootPriceOracle, chainlinkOracle, values.tokens.stEth, true);
+        _registerMapping(rootPriceOracle, wstEthOracle, values.tokens.wstEth, true);
+        _registerMapping(rootPriceOracle, ethPegOracle, values.tokens.weth, true);
+        _registerMapping(rootPriceOracle, ethPegOracle, values.tokens.curveEth, true);
 
-        _registerMapping(chainlinkOracle, values.tokens.crv, true);
-        _registerMapping(chainlinkOracle, values.tokens.cvx, true);
-        _registerMapping(chainlinkOracle, values.tokens.ldo, true);
-        _registerMapping(chainlinkOracle, values.tokens.rpl, true);
-        _registerMapping(chainlinkOracle, values.tokens.bal, true);
-        _registerMapping(chainlinkOracle, ETH_IN_USD, true);
+        _registerMapping(rootPriceOracle, chainlinkOracle, values.tokens.crv, true);
+        _registerMapping(rootPriceOracle, chainlinkOracle, values.tokens.cvx, true);
+        _registerMapping(rootPriceOracle, chainlinkOracle, values.tokens.ldo, true);
+        _registerMapping(rootPriceOracle, chainlinkOracle, values.tokens.rpl, true);
+        _registerMapping(rootPriceOracle, chainlinkOracle, values.tokens.bal, true);
+        _registerMapping(rootPriceOracle, chainlinkOracle, ETH_IN_USD, true);
 
         // Register Balancer and Curve oracles
         _registerBalancerMeta(balancerMetaOracle);
@@ -148,39 +147,13 @@ contract CurveOracleBase is Script {
         }
     }
 
-    function _registerMapping(IPriceOracle oracle, address lpToken, bool replace) internal {
-        IPriceOracle existingRootPriceOracle = rootPriceOracle.tokenMappings(lpToken);
-        if (address(existingRootPriceOracle) == address(0)) {
-            rootPriceOracle.registerMapping(lpToken, oracle);
-        } else {
-            if (replace) {
-                rootPriceOracle.replaceMapping(lpToken, existingRootPriceOracle, oracle);
-            } else {
-                console.log("lpToken %s is already registered", lpToken);
-            }
-        }
-    }
-
-    function _registerPoolMapping(ISpotPriceOracle oracle, address pool, bool replace) internal {
-        ISpotPriceOracle existingPoolMappings = rootPriceOracle.poolMappings(pool);
-        if (address(existingPoolMappings) == address(0)) {
-            rootPriceOracle.registerPoolMapping(pool, oracle);
-        } else {
-            if (replace) {
-                rootPriceOracle.replacePoolMapping(pool, existingPoolMappings, oracle);
-            } else {
-                console.log("pool %s is already registered", pool);
-            }
-        }
-    }
-
     function _registerBalancerMeta(BalancerLPMetaStableEthOracle balMetaOracle) internal {
         // Register balancer pools
         address balancerWstEthWethPool = 0x32296969Ef14EB0c6d29669C550D4a0449130230;
         address balancerRethWethPool = 0x1E19CF2D73a72Ef1332C882F20534B6519Be0276;
 
-        _registerPoolMapping(balMetaOracle, balancerWstEthWethPool, true);
-        _registerPoolMapping(balMetaOracle, balancerRethWethPool, true);
+        _registerPoolMapping(rootPriceOracle, balMetaOracle, balancerWstEthWethPool, true);
+        _registerPoolMapping(rootPriceOracle, balMetaOracle, balancerRethWethPool, true);
     }
 
     function _registerCurveSet2(CurveV2CryptoEthOracle curveV2Oracle) internal {
@@ -188,13 +161,13 @@ contract CurveOracleBase is Script {
         address curveV2RethEthLpToken = 0x6c38cE8984a890F5e46e6dF6117C26b3F1EcfC9C;
 
         curveV2Oracle.registerPool(curveV2RethEthPool, curveV2RethEthLpToken);
-        _registerPoolMapping(curveV2Oracle, curveV2RethEthPool, true);
+        _registerPoolMapping(rootPriceOracle, curveV2Oracle, curveV2RethEthPool, true);
 
         address curveV2cbEthEthPool = 0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A;
         address curveV2cbEthEthLpToken = 0x5b6C539b224014A09B3388e51CaAA8e354c959C8;
 
         curveV2Oracle.registerPool(curveV2cbEthEthPool, curveV2cbEthEthLpToken);
-        _registerPoolMapping(curveV2Oracle, curveV2cbEthEthPool, true);
+        _registerPoolMapping(rootPriceOracle, curveV2Oracle, curveV2cbEthEthPool, true);
     }
 
     function _registerCurveSet1(CurveV1StableEthOracle curveV1Oracle) internal {
@@ -202,31 +175,31 @@ contract CurveOracleBase is Script {
         address curveStEthOriginalLpToken = 0x06325440D014e39736583c165C2963BA99fAf14E;
 
         curveV1Oracle.registerPool(curveStEthOriginalPool, curveStEthOriginalLpToken);
-        _registerPoolMapping(curveV1Oracle, curveStEthOriginalPool, true);
+        _registerPoolMapping(rootPriceOracle, curveV1Oracle, curveStEthOriginalPool, true);
 
         address curveStEthConcentratedPool = 0x828b154032950C8ff7CF8085D841723Db2696056;
         address curveStEthConcentratedLpToken = 0x828b154032950C8ff7CF8085D841723Db2696056;
 
         curveV1Oracle.registerPool(curveStEthConcentratedPool, curveStEthConcentratedLpToken);
-        _registerPoolMapping(curveV1Oracle, curveStEthConcentratedPool, true);
+        _registerPoolMapping(rootPriceOracle, curveV1Oracle, curveStEthConcentratedPool, true);
 
         address curveStEthNgPool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
         address curveStEthNgLpToken = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
 
         curveV1Oracle.registerPool(curveStEthNgPool, curveStEthNgLpToken);
-        _registerPoolMapping(curveV1Oracle, curveStEthNgPool, true);
+        _registerPoolMapping(rootPriceOracle, curveV1Oracle, curveStEthNgPool, true);
 
         address curveRethWstethPool = 0x447Ddd4960d9fdBF6af9a790560d0AF76795CB08;
         address curveRethWstethLpToken = 0x447Ddd4960d9fdBF6af9a790560d0AF76795CB08;
 
         curveV1Oracle.registerPool(curveRethWstethPool, curveRethWstethLpToken);
-        _registerPoolMapping(curveV1Oracle, curveRethWstethPool, true);
+        _registerPoolMapping(rootPriceOracle, curveV1Oracle, curveRethWstethPool, true);
 
         address curveOsEthRethPool = 0xe080027Bd47353b5D1639772b4a75E9Ed3658A0d;
         address curveOsEthRethLpToken = 0xe080027Bd47353b5D1639772b4a75E9Ed3658A0d;
 
         curveV1Oracle.registerPool(curveOsEthRethPool, curveOsEthRethLpToken);
-        _registerPoolMapping(curveV1Oracle, curveOsEthRethPool, true);
+        _registerPoolMapping(rootPriceOracle, curveV1Oracle, curveOsEthRethPool, true);
     }
 
     function _registerRedstoneOracles(RedstoneOracle oracle) internal {
@@ -236,7 +209,7 @@ contract CurveOracleBase is Script {
             BaseOracleDenominations.Denomination.ETH,
             24 hours
         );
-        _registerMapping(oracle, values.tokens.osEth, true);
+        _registerMapping(rootPriceOracle, oracle, values.tokens.osEth, true);
 
         oracle.registerOracle(
             values.tokens.swEth,
@@ -244,7 +217,7 @@ contract CurveOracleBase is Script {
             BaseOracleDenominations.Denomination.ETH,
             6 hours
         );
-        _registerMapping(oracle, values.tokens.swEth, true);
+        _registerMapping(rootPriceOracle, oracle, values.tokens.swEth, true);
     }
 
     function _registerChainlinkOracles(ChainlinkOracle chainlinkOracle) internal {

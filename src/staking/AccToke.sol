@@ -201,6 +201,10 @@ contract AccToke is IAccToke, ERC20Votes, Pausable, SystemComponent, SecurityBas
             uint256 oldEnd = lockup.end;
             uint256 oldPoints = lockup.points;
 
+            // Can only extend ongoing lockups
+            // Ref: https://github.com/Tokemak/v2-core/issues/696
+            Errors.verifyNotZero(oldEnd, "oldEnd");
+
             (uint256 newPoints, uint256 newEnd) = previewPoints(oldAmount, duration);
 
             if (newEnd <= oldEnd) revert ExtendDurationTooShort();

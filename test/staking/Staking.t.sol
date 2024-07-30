@@ -7,6 +7,7 @@ import { IAccToke } from "src/interfaces/staking/IAccToke.sol";
 import { BaseTest } from "test/BaseTest.t.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { AccToke } from "src/staking/AccToke.sol";
+import { Errors } from "src/utils/Errors.sol";
 
 contract StakingTest is BaseTest {
     uint256 private stakeAmount = 1 ether;
@@ -337,6 +338,34 @@ contract StakingTest is BaseTest {
 
         uint256[] memory durations = new uint256[](1);
         durations[0] = 10 * ONE_YEAR;
+        accToke.extend(lockupIds, durations);
+    }
+
+    function testExtendZeroDuration() public {
+        uint256 amount = stakeAmount;
+        prepareFunds(address(this), amount);
+
+        // original stake
+        stake(amount, ONE_YEAR);
+
+        // init locks
+        uint256 lockupId = 0;
+        uint256[] memory lockupIds = new uint256[](1);
+        lockupIds[0] = lockupId;
+
+        // unstake
+        warpAndUnstake(ONE_YEAR, lockupId);
+
+        // verify that lockup is zero
+        IAccToke.Lockup memory lockup0 = accToke.getLockups(address(this))[lockupId];
+        assertEq(lockup0.end, 0); // <- Ref: https://github.com/Tokemak/v2-core/issues/696
+        assertEq(lockup0.amount, 0);
+        assertEq(lockup0.points, 0);
+
+        // try extend to 2 years
+        uint256[] memory durations = new uint256[](1);
+        durations[0] = 2 * ONE_YEAR;
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "oldEnd"));
         accToke.extend(lockupIds, durations);
     }
 

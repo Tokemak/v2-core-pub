@@ -77,7 +77,7 @@ abstract contract AutopilotRouterBase is
     }
 
     /// @inheritdoc IAutopilotRouterBase
-    function stakeVaultToken(IERC20 vault, uint256 maxAmount) external returns (uint256) {
+    function stakeVaultToken(IERC20 vault, uint256 maxAmount) external payable returns (uint256) {
         _checkVault(address(vault));
         IMainRewarder autoPoolRewarder = IAutopool(address(vault)).rewarder();
 
@@ -97,7 +97,7 @@ abstract contract AutopilotRouterBase is
         IMainRewarder rewarder,
         uint256 maxAmount,
         bool claim
-    ) external returns (uint256) {
+    ) external payable returns (uint256) {
         _checkVault(address(vault));
         _checkRewarder(vault, address(rewarder));
 
@@ -112,7 +112,7 @@ abstract contract AutopilotRouterBase is
     }
 
     /// @inheritdoc IAutopilotRouterBase
-    function claimAutopoolRewards(IAutopool vault, IMainRewarder rewarder, address recipient) external {
+    function claimAutopoolRewards(IAutopool vault, IMainRewarder rewarder, address recipient) external payable {
         _checkVault(address(vault));
         _checkRewarder(vault, address(rewarder));
 

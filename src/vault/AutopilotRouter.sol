@@ -28,7 +28,7 @@ contract AutopilotRouter is IAutopilotRouter, AutopilotRouterBase, ReentrancyGua
         uint256 amount,
         uint256 maxSharesIn,
         uint256 minSharesOut
-    ) external override returns (uint256 sharesOut) {
+    ) external payable override returns (uint256 sharesOut) {
         withdraw(fromVault, address(this), amount, maxSharesIn);
         approve(IERC20(toVault.asset()), address(toVault), amount);
         return deposit(toVault, to, amount, minSharesOut);
@@ -41,7 +41,7 @@ contract AutopilotRouter is IAutopilotRouter, AutopilotRouterBase, ReentrancyGua
         address to,
         uint256 shares,
         uint256 minSharesOut
-    ) external override returns (uint256 sharesOut) {
+    ) external payable override returns (uint256 sharesOut) {
         // amount out passes through so only one slippage check is needed
         uint256 amount = redeem(fromVault, address(this), shares, 0);
 
@@ -53,7 +53,7 @@ contract AutopilotRouter is IAutopilotRouter, AutopilotRouterBase, ReentrancyGua
     function swapToken(
         address swapper,
         SwapParams memory swapParams
-    ) external nonReentrant returns (uint256 amountReceived) {
+    ) external payable nonReentrant returns (uint256 amountReceived) {
         systemRegistry.asyncSwapperRegistry().verifyIsRegistered(swapper);
 
         bytes memory data = swapper.functionDelegateCall(abi.encodeCall(IAsyncSwapper.swap, swapParams), "SwapFailed");
@@ -65,7 +65,7 @@ contract AutopilotRouter is IAutopilotRouter, AutopilotRouterBase, ReentrancyGua
     function swapTokenBalance(
         address swapper,
         SwapParams memory swapParams
-    ) external nonReentrant returns (uint256 amountReceived) {
+    ) external payable nonReentrant returns (uint256 amountReceived) {
         systemRegistry.asyncSwapperRegistry().verifyIsRegistered(swapper);
 
         IERC20 sellToken = IERC20(swapParams.sellTokenAddress);
@@ -81,7 +81,7 @@ contract AutopilotRouter is IAutopilotRouter, AutopilotRouterBase, ReentrancyGua
         IAutopool vault,
         address to,
         uint256 minSharesOut
-    ) public override returns (uint256 sharesOut) {
+    ) public payable override returns (uint256 sharesOut) {
         uint256 vaultAssetBalance = IERC20(vault.asset()).balanceOf(address(this));
         approve(IERC20(vault.asset()), address(vault), vaultAssetBalance);
         return deposit(vault, to, vaultAssetBalance, minSharesOut);
@@ -92,7 +92,7 @@ contract AutopilotRouter is IAutopilotRouter, AutopilotRouterBase, ReentrancyGua
         IAutopool vault,
         address to,
         uint256 minSharesOut
-    ) public override returns (uint256 sharesOut) {
+    ) public payable override returns (uint256 sharesOut) {
         IERC20 asset = IERC20(vault.asset());
         uint256 assetBalance = asset.balanceOf(msg.sender);
         uint256 maxDeposit = vault.maxDeposit(to);
@@ -104,7 +104,11 @@ contract AutopilotRouter is IAutopilotRouter, AutopilotRouterBase, ReentrancyGua
     }
 
     /// @inheritdoc IAutopilotRouter
-    function redeemMax(IAutopool vault, address to, uint256 minAmountOut) public override returns (uint256 amountOut) {
+    function redeemMax(
+        IAutopool vault,
+        address to,
+        uint256 minAmountOut
+    ) public payable override returns (uint256 amountOut) {
         uint256 shareBalance = vault.balanceOf(msg.sender);
         uint256 maxRedeem = vault.maxRedeem(msg.sender);
         uint256 amountShares = maxRedeem < shareBalance ? maxRedeem : shareBalance;
@@ -118,7 +122,7 @@ contract AutopilotRouter is IAutopilotRouter, AutopilotRouterBase, ReentrancyGua
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) public override returns (uint256) {
+    ) public payable override returns (uint256) {
         if (msg.sender != recipient.wallet) revert Errors.AccessDenied();
         return rewarder.claimFor(recipient, v, r, s);
     }

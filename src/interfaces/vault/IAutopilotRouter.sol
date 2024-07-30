@@ -24,7 +24,11 @@ interface IAutopilotRouter is IAutopilotRouterBase {
      * @return sharesOut the amount of shares received by `to`.
      * @dev throws MinSharesError
      */
-    function depositBalance(IAutopool vault, address to, uint256 minSharesOut) external returns (uint256 sharesOut);
+    function depositBalance(
+        IAutopool vault,
+        address to,
+        uint256 minSharesOut
+    ) external payable returns (uint256 sharesOut);
 
     /**
      * @notice deposit max assets to a AutopoolETH.
@@ -34,7 +38,11 @@ interface IAutopilotRouter is IAutopilotRouterBase {
      * @return sharesOut the amount of shares received by `to`.
      * @dev throws MinSharesError
      */
-    function depositMax(IAutopool vault, address to, uint256 minSharesOut) external returns (uint256 sharesOut);
+    function depositMax(
+        IAutopool vault,
+        address to,
+        uint256 minSharesOut
+    ) external payable returns (uint256 sharesOut);
 
     /**
      * *************************   Withdraw   **********************************
@@ -58,7 +66,7 @@ interface IAutopilotRouter is IAutopilotRouterBase {
         uint256 amount,
         uint256 maxSharesIn,
         uint256 minSharesOut
-    ) external returns (uint256 sharesOut);
+    ) external payable returns (uint256 sharesOut);
 
     /**
      * *************************   Redeem    ********************************
@@ -80,7 +88,7 @@ interface IAutopilotRouter is IAutopilotRouterBase {
         address to,
         uint256 shares,
         uint256 minSharesOut
-    ) external returns (uint256 sharesOut);
+    ) external payable returns (uint256 sharesOut);
 
     /**
      * @notice redeem max shares to a AutopoolETH.
@@ -90,7 +98,11 @@ interface IAutopilotRouter is IAutopilotRouterBase {
      * @return amountOut the amount of assets received by `to`.
      * @dev throws MinAmountError
      */
-    function redeemMax(IAutopool vault, address to, uint256 minAmountOut) external returns (uint256 amountOut);
+    function redeemMax(
+        IAutopool vault,
+        address to,
+        uint256 minAmountOut
+    ) external payable returns (uint256 amountOut);
 
     /**
      * @notice swaps token
@@ -98,7 +110,10 @@ interface IAutopilotRouter is IAutopilotRouterBase {
      * @param swapParams  Parameters for the swap
      * @return amountReceived Swap output amount
      */
-    function swapToken(address swapper, SwapParams memory swapParams) external returns (uint256 amountReceived);
+    function swapToken(
+        address swapper,
+        SwapParams memory swapParams
+    ) external payable returns (uint256 amountReceived);
 
     /**
      * @notice claims vault token rewards
@@ -112,7 +127,7 @@ interface IAutopilotRouter is IAutopilotRouterBase {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external returns (uint256);
+    ) external payable returns (uint256);
 
     /**
      * @notice swaps Exact token balance in the contract
@@ -124,5 +139,5 @@ interface IAutopilotRouter is IAutopilotRouterBase {
     function swapTokenBalance(
         address swapper,
         SwapParams memory swapParams
-    ) external returns (uint256 amountReceived);
+    ) external payable returns (uint256 amountReceived);
 }

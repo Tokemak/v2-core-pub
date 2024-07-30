@@ -102,7 +102,7 @@ interface IAutopilotRouterBase {
     /// @param vault IERC20 instance of an Autopool to stake to.
     /// @param maxAmount Maximum amount for user to stake.  Amount > balanceOf(user) will stake all present tokens.
     /// @return staked Returns total amount staked.
-    function stakeVaultToken(IERC20 vault, uint256 maxAmount) external returns (uint256 staked);
+    function stakeVaultToken(IERC20 vault, uint256 maxAmount) external payable returns (uint256 staked);
 
     /// @notice Unstakes vault token from corresponding rewarder.
     /// @param vault IAutopool instance of the vault token to withdraw.
@@ -115,11 +115,11 @@ interface IAutopilotRouterBase {
         IMainRewarder rewarder,
         uint256 maxAmount,
         bool claim
-    ) external returns (uint256 withdrawn);
+    ) external payable returns (uint256 withdrawn);
 
     /// @notice Claims rewards on user stake of vault token.
     /// @param vault IAutopool instance of vault token to claim rewards for.
     /// @param rewarder Rewarder to claim rewards from.
     /// @param recipient Address to claim rewards for.
-    function claimAutopoolRewards(IAutopool vault, IMainRewarder rewarder, address recipient) external;
+    function claimAutopoolRewards(IAutopool vault, IMainRewarder rewarder, address recipient) external payable;
 }

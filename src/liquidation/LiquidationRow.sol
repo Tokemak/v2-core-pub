@@ -355,6 +355,7 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
         }
 
         uint256 gasUsedPerVault = (gasBefore - gasleft()) / vaultsToLiquidate.length;
+        uint256 totalAmount;
         for (uint256 i = 0; i < length; ++i) {
             IDestinationVault vaultAddress = vaultsToLiquidate[i];
             IMainRewarder mainRewarder = IMainRewarder(vaultAddress.rewarder());
@@ -364,6 +365,13 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
             }
 
             uint256 amount = amountReceived * vaultsBalances[i] / totalBalanceToLiquidate;
+            totalAmount += amount;
+
+            // last vault clears all the dust
+            // ref: https://github.com/Tokemak/v2-core/issues/697
+            if (i == length - 1) {
+                amount = totalBalanceToLiquidate - totalAmount;
+            }
 
             // approve main rewarder to pull the tokens
             LibAdapter._approve(IERC20(params.buyTokenAddress), address(mainRewarder), amount);

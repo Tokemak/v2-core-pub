@@ -355,7 +355,7 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
         }
 
         uint256 gasUsedPerVault = (gasBefore - gasleft()) / vaultsToLiquidate.length;
-        uint256 totalAmount;
+        uint256 totalAmounts = 0;
         for (uint256 i = 0; i < length; ++i) {
             IDestinationVault vaultAddress = vaultsToLiquidate[i];
             IMainRewarder mainRewarder = IMainRewarder(vaultAddress.rewarder());
@@ -364,13 +364,14 @@ contract LiquidationRow is ILiquidationRow, ReentrancyGuard, SystemComponent, Se
                 revert InvalidRewardToken();
             }
 
-            uint256 amount = amountReceived * vaultsBalances[i] / totalBalanceToLiquidate;
-            totalAmount += amount;
-
             // last vault clears all the dust
             // ref: https://github.com/Tokemak/v2-core/issues/697
+            uint256 amount;
             if (i == length - 1) {
-                amount = totalBalanceToLiquidate - totalAmount;
+                amount = amountReceived - totalAmounts;
+            } else {
+                amount = amountReceived * vaultsBalances[i] / totalBalanceToLiquidate;
+                totalAmounts += amount;
             }
 
             // approve main rewarder to pull the tokens

@@ -84,4 +84,17 @@ contract AutopoolMainRewarder is MainRewarder {
 
         _getReward(account, recipient, claimExtras);
     }
+
+    /**
+     * @notice Checks if token can be recovered.
+     * @dev staked token cant be recovered
+     * @param token Token to check.
+     * @return bool True if token can be recovered.
+     */
+    function canTokenBeRecovered(address token) public view override returns (bool) {
+        if (token == address(stakingToken)) {
+            return false;
+        }
+        return true;
+    }
 }

@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
+import { Address } from "openzeppelin-contracts/utils/Address.sol";
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { SecurityBase } from "src/security/SecurityBase.sol";
@@ -25,6 +26,9 @@ import { Errors } from "src/utils/Errors.sol";
  */
 abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
     using SafeERC20 for IERC20;
+
+    /// @notice The minimum duration for recovering tokens (1 year).
+    uint256 public constant MINIMUM_RECOVER_DURATION = 31_536_000;
 
     /// @notice The duration of the reward period in blocks.
     uint256 public immutable durationInBlock;
@@ -120,11 +124,10 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
     function _updateReward(address account) internal {
         uint256 earnedRewards = 0;
         rewardPerTokenStored = rewardPerToken();
+        lastUpdateBlock = lastBlockRewardApplicable();
 
-        // Do not update lastUpdateBlock if rewardPerTokenStored is 0, to prevent the loss of rewards when supply is 0
         if (rewardPerTokenStored > 0) {
             if (account != address(0)) {
-                lastUpdateBlock = lastBlockRewardApplicable();
                 earnedRewards = earned(account);
                 rewards[account] = earnedRewards;
                 userRewardPerTokenPaid[account] = rewardPerTokenStored;
@@ -361,6 +364,39 @@ abstract contract AbstractRewarder is IBaseRewarder, SecurityBase {
 
     /// @inheritdoc IBaseRewarder
     function totalSupply() public view virtual returns (uint256);
+
+    /// @inheritdoc IBaseRewarder
+    function recover(address token, address recipient) external override hasRole(Roles.TOKEN_RECOVERY_MANAGER) {
+        Errors.verifyNotZero(token, "token");
+        Errors.verifyNotZero(recipient, "recipient");
+        if (recipient == address(this)) revert Errors.InvalidAddress(recipient);
+
+        if (!canTokenBeRecovered(token)) revert Errors.AssetNotAllowed(token);
+        if (block.number < lastUpdateBlock + MINIMUM_RECOVER_DURATION && token == rewardToken) {
+            revert RecoverDurationPending();
+        }
+
+        if (token == LibAdapter.CURVE_REGISTRY_ETH_ADDRESS_POINTER) {
+            uint256 tokenBalance = address(this).balance;
+            if (tokenBalance > 0) {
+                emit Recovered(token, recipient, tokenBalance);
+                Address.sendValue(payable(recipient), tokenBalance);
+            }
+        } else {
+            uint256 tokenBalance = IERC20(token).balanceOf(address(this));
+            if (tokenBalance > 0) {
+                emit Recovered(token, recipient, tokenBalance);
+                IERC20(token).safeTransfer(recipient, tokenBalance);
+            }
+        }
+    }
+
+    /**
+     * @notice Check if a token is recoverable.
+     * @param token The address to be checked.
+     * @return bool indicating if the token is recoverable.
+     */
+    function canTokenBeRecovered(address token) public view virtual returns (bool);
 
     /// @inheritdoc IBaseRewarder
     function balanceOf(address account) public view virtual returns (uint256);

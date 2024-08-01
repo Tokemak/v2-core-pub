@@ -10,7 +10,7 @@ import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ERC20Mock } from "openzeppelin-contracts/mocks/ERC20Mock.sol";
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IAccToke, AccToke } from "src/staking/AccToke.sol";
-
+import { IBaseRewarder } from "src/interfaces/rewarders/IBaseRewarder.sol";
 import { SystemRegistry } from "src/SystemRegistry.sol";
 import { AccessController } from "src/security/AccessController.sol";
 
@@ -81,14 +81,75 @@ contract Rewarder is AbstractRewarder {
     function setTotalSupply(uint256 mockTotalSupply) external {
         _mockTotalSupply = mockTotalSupply;
     }
+
+    function canTokenBeRecovered(address) public pure override returns (bool) {
+        return true;
+    }
+}
+
+contract Rewarder2 is AbstractRewarder {
+    error NotImplemented();
+
+    uint256 internal _mockBalanceOf;
+    uint256 internal _mockTotalSupply;
+
+    constructor(
+        ISystemRegistry _systemRegistry,
+        address _rewardToken,
+        uint256 _newRewardRatio,
+        uint256 _durationInBlock,
+        bytes32 _rewardRole
+    ) AbstractRewarder(_systemRegistry, _rewardToken, _newRewardRatio, _durationInBlock, _rewardRole) { }
+
+    function getReward() external pure override {
+        revert NotImplemented();
+    }
+
+    function exposed_getRewardWrapper(address account, address recipient) external {
+        _getReward(account, recipient);
+    }
+
+    function exposed_updateReward(address account) external {
+        _updateReward(account);
+    }
+
+    function stake(address account, uint256 amount) external override {
+        _stakeAbstractRewarder(account, amount);
+    }
+
+    function exposed_notifyRewardAmount(uint256 reward) external {
+        notifyRewardAmount(reward);
+    }
+
+    function withdraw(address account, uint256 amount) external {
+        _withdrawAbstractRewarder(account, amount);
+    }
+
+    function totalSupply() public view override returns (uint256) {
+        return _mockTotalSupply;
+    }
+
+    function balanceOf(address) public view override returns (uint256) {
+        return _mockBalanceOf;
+    }
+
+    function setTotalSupply(uint256 mockTotalSupply) external {
+        _mockTotalSupply = mockTotalSupply;
+    }
+
+    function canTokenBeRecovered(address) public pure override returns (bool) {
+        return false;
+    }
 }
 
 contract AbstractRewarderTest is Test {
     address public operator;
     address public liquidator;
     address public recipient;
+    address public recoveryManager;
 
     Rewarder public rewarder;
+    Rewarder2 public rewarder2;
     ERC20Mock public rewardToken;
 
     SystemRegistry public systemRegistry;
@@ -122,12 +183,14 @@ contract AbstractRewarderTest is Test {
         vm.selectFork(mainnetFork);
         operator = vm.addr(1);
         liquidator = vm.addr(2);
+        recoveryManager = vm.addr(3);
 
         systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
         AccessController accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
         accessController.grantRole(Roles.DV_REWARD_MANAGER, operator);
         accessController.grantRole(Roles.LIQUIDATOR_MANAGER, liquidator);
+        accessController.grantRole(Roles.TOKEN_RECOVERY_MANAGER, recoveryManager);
 
         rewardToken = new ERC20Mock("MAIN_REWARD", "MAIN_REWARD", address(this), 0);
 
@@ -140,6 +203,11 @@ contract AbstractRewarderTest is Test {
         //  solhint-disable max-line-length
         rewarder =
             new Rewarder(systemRegistry, address(rewardToken), newRewardRatio, durationInBlock, Roles.DV_REWARD_MANAGER);
+
+        //  solhint-disable max-line-length
+        rewarder2 = new Rewarder2(
+            systemRegistry, address(rewardToken), newRewardRatio, durationInBlock, Roles.DV_REWARD_MANAGER
+        );
 
         // mint reward token to liquidator
         rewardToken.mint(liquidator, 100_000_000_000);
@@ -159,6 +227,7 @@ contract AbstractRewarderTest is Test {
         vm.label(address(systemRegistry), "systemRegistry");
         vm.label(address(accessController), "accessController");
         vm.label(address(rewarder), "rewarder");
+        vm.label(address(rewarder2), "rewarder2");
     }
 
     /**
@@ -689,5 +758,63 @@ contract _getReward is AbstractRewarderTest {
         uint256 balanceAfter = accToke.balanceOf(RANDOM);
 
         assertTrue(balanceAfter == balanceBefore);
+    }
+}
+
+contract recover is AbstractRewarderTest {
+    function test_RevertIf_SenderIsNotRewardManager() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        rewarder.recover(address(rewardToken), address(this));
+    }
+
+    function test_RevertIf_TokenCannotBeRecovered() public {
+        vm.startPrank(recoveryManager);
+        vm.expectRevert(abi.encodeWithSelector(Errors.AssetNotAllowed.selector, address(rewardToken)));
+        rewarder2.recover(address(rewardToken), address(this));
+    }
+
+    function test_RevertIf_RecoverDurationPendingForRewardToken() public {
+        _runDefaultScenario();
+        vm.startPrank(recoveryManager);
+        vm.expectRevert(abi.encodeWithSelector(IBaseRewarder.RecoverDurationPending.selector));
+
+        rewarder.recover(address(rewardToken), address(this));
+    }
+
+    function test_RecoverNonRewardToken() public {
+        uint256 tokenAmount = 100_000_000_000;
+
+        _runDefaultScenario();
+
+        //lock some non reward token in rewarder and recover it before the recover duration
+        deal(WETH_MAINNET, address(rewarder), 100_000_000_000);
+        vm.startPrank(recoveryManager);
+        uint256 balanceBefore = IERC20(WETH_MAINNET).balanceOf(address(this));
+        rewarder.recover(WETH_MAINNET, address(this));
+        uint256 balanceAfter = IERC20(WETH_MAINNET).balanceOf(address(this));
+
+        assertEq(balanceAfter - balanceBefore, tokenAmount);
+    }
+
+    function test_Recover() public {
+        uint256 minimumRecoverDuration = 31_536_000; //1 year
+        uint256 totalRewards = 100; // _runDefaultScenario assumes totalRewards100
+
+        _runDefaultScenario();
+
+        vm.startPrank(recoveryManager);
+        uint256 balanceBefore = rewardToken.balanceOf(address(this));
+
+        vm.roll(block.number + minimumRecoverDuration);
+        rewarder.recover(address(rewardToken), address(this));
+
+        uint256 balanceAfter = rewardToken.balanceOf(address(this));
+
+        /*
+         * The mock rewarder above does not implement getReward and no
+         * rewards are claimed in the default scenario. Therefore, the 
+         * recovery of all queued Rewards is expected
+         */
+        assertEq(balanceAfter - balanceBefore, totalRewards);
     }
 }

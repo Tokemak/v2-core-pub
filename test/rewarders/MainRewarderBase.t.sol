@@ -38,6 +38,10 @@ contract MainRewarderNotAbstract is MainRewarder {
     function getReward(address account, address recipient, bool claimExtras) external {
         _getReward(account, recipient, claimExtras);
     }
+
+    function canTokenBeRecovered(address) public pure override returns (bool) {
+        return true;
+    }
 }
 
 contract MainRewarderTest is Test {
@@ -48,7 +52,7 @@ contract MainRewarderTest is Test {
     AccessController public accessController;
 
     uint256 public newRewardRatio = 800;
-    uint256 public durationInBlock = 100_000;
+    uint256 public durationInBlock = 150_000;
     uint256 public totalSupply = 100;
 
     event ExtraRewardAdded(address reward);
@@ -71,6 +75,7 @@ contract MainRewarderTest is Test {
 
         accessController.grantRole(Roles.LIQUIDATOR_MANAGER, address(this));
         accessController.grantRole(Roles.AUTO_POOL_REWARD_MANAGER, address(this));
+        accessController.grantRole(Roles.TOKEN_RECOVERY_MANAGER, address(this));
     }
 }
 
@@ -177,6 +182,7 @@ contract Withdraw is MainRewarderTest {
 
         rewardToken.approve(address(rewarder), newReward + newReward2);
         rewarder.queueNewRewards(newReward);
+        uint256 rewardRateReward1 = rewarder.rewardRate();
 
         // advance the blockNumber by durationInBlock / 2 to simulate that the period is almost finished.
         vm.roll(block.number + durationInBlock / 2);
@@ -188,8 +194,10 @@ contract Withdraw is MainRewarderTest {
 
         assertEq(rewarder.historicalRewards(), newReward + newReward2, "historicalRewards");
         assertEq(rewarder.rewardPerTokenStored(), 0, "rewardPerTokenStored");
-        assertEq(currentRewards, newReward + newReward2, "currentRewards");
-        // rewardRate = currentRewards / durationInBlock
+
+        uint256 finalReward = newReward2 + durationInBlock * rewardRateReward1;
+
+        assertEq(currentRewards, finalReward, "currentRewards");
         assertEq(rewarder.rewardRate(), currentRewards / localDurationInBlock, "rewardRate");
     }
 
@@ -239,7 +247,9 @@ contract Withdraw is MainRewarderTest {
         uint256 user2Reward = rewardToken.balanceOf(user2) - balanceBeforeUser2;
         uint256 user3Reward = rewardToken.balanceOf(user3) - balanceBeforeUser3;
 
-        assertEq(user1Reward + user2Reward + user3Reward, totalRewards, "Incorrect total rewards");
+        //The distributed rewards may get stuck depending upon the totalSupply, the stuck rewards are recovered after
+        // the recovery duration
+        assertLt(user1Reward + user2Reward + user3Reward, totalRewards, "Incorrect total rewards");
     }
 
     function test_QueueNewRewards_WhenNoSupply_And_Stake_After() public {
@@ -257,9 +267,75 @@ contract Withdraw is MainRewarderTest {
 
         vm.roll(block.number + durationInBlock + 1);
         uint256 balanceBefore = rewardToken.balanceOf(RANDOM);
+        uint256 rewardRate = rewarder.rewardRate();
+        uint256 blocksStaked = durationInBlock / 2;
         vm.prank(RANDOM);
         rewarder.getReward();
 
-        assertEq(rewardToken.balanceOf(RANDOM) - balanceBefore, newReward, "Incorrect reward");
+        assertEq(rewardToken.balanceOf(RANDOM) - balanceBefore, rewardRate * blocksStaked, "Incorrect reward");
+    }
+}
+
+contract Recover is MainRewarderTest {
+    function test_RecoverStuckRewards() public {
+        uint256 deposit = 1000;
+        uint256 totalRewards = 1_000_000;
+
+        address user1 = makeAddr("USER1");
+        address user2 = makeAddr("USER2");
+        address user3 = makeAddr("USER3");
+
+        // Divides the durationInBlock into 10 intervals (100,000 / 10,000)
+        uint256 interval = 10_000;
+
+        // Queue new rewards
+        rewardToken.mint(address(this), totalRewards);
+        rewardToken.approve(address(rewarder), totalRewards);
+        rewarder.queueNewRewards(totalRewards);
+
+        // Wait to 1/10 of the period (block.number + interval) with 0 totalSupply and let user1 and user2 stake
+        vm.roll(block.number + interval);
+        rewarder.stake(user1, deposit);
+        rewarder.stake(user2, deposit);
+
+        // Move to 3/10 of the period (block.number + 3 * interval) and let user3 stake
+        vm.roll(block.number + 3 * interval);
+        rewarder.stake(user3, deposit);
+
+        // Capture the balance of users before the rewards are distributed
+        uint256 balanceBeforeUser1 = rewardToken.balanceOf(user1);
+        uint256 balanceBeforeUser2 = rewardToken.balanceOf(user2);
+        uint256 balanceBeforeUser3 = rewardToken.balanceOf(user3);
+
+        // Move to the end of the period (block.number + 10 * interval + 1)
+        vm.roll(block.number + 10 * interval + 1);
+
+        // Claim rewards for all users
+        vm.prank(user1);
+        rewarder.getReward();
+        vm.prank(user2);
+        rewarder.getReward();
+        vm.prank(user3);
+        rewarder.getReward();
+
+        // Capture the distributed rewards
+        uint256 user1Reward = rewardToken.balanceOf(user1) - balanceBeforeUser1;
+        uint256 user2Reward = rewardToken.balanceOf(user2) - balanceBeforeUser2;
+        uint256 user3Reward = rewardToken.balanceOf(user3) - balanceBeforeUser3;
+
+        assertLt(user1Reward + user2Reward + user3Reward, totalRewards, "Incorrect total rewards");
+
+        if (user1Reward + user2Reward + user3Reward < totalRewards) {
+            //ROLL OVER RECOVERY DURATION
+            vm.roll(block.number + 31_536_000);
+            uint256 beforeRecoverBal = rewardToken.balanceOf(address(this));
+            rewarder.recover(address(rewardToken), address(this));
+            uint256 afterRecoverBal = rewardToken.balanceOf(address(this));
+            assertEq(
+                afterRecoverBal - beforeRecoverBal,
+                totalRewards - (user1Reward + user2Reward + user3Reward),
+                "Incorrect recover amount"
+            );
+        }
     }
 }

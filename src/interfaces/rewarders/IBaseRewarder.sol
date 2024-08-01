@@ -3,6 +3,8 @@
 pragma solidity 0.8.17;
 
 interface IBaseRewarder {
+    error RecoverDurationPending();
+
     event RewardAdded(
         uint256 reward,
         uint256 rewardRate,
@@ -21,6 +23,8 @@ interface IBaseRewarder {
     event RemovedFromWhitelist(address indexed wallet);
 
     event TokeLockDurationUpdated(uint256 newDuration);
+
+    event Recovered(address token, address recipient, uint256 amount);
 
     /**
      * @notice Claims and transfers all rewards for the specified account
@@ -104,6 +108,13 @@ interface IBaseRewarder {
      * @param wallet The address to be removed from the whitelist.
      */
     function removeFromWhitelist(address wallet) external;
+
+    /**
+     * @notice Recovers tokens from the rewarder. However, a recovery duration of 1 year is applicable for reward token
+     * @param token Address of token
+     * @param recipient recipient Address of recipient
+     */
+    function recover(address token, address recipient) external;
 
     /**
      * @notice Check if an address is whitelisted.

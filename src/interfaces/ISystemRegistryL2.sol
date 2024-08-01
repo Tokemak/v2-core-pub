@@ -7,6 +7,6 @@ import { ISequencerChecker } from "src/interfaces/security/ISequencerChecker.sol
 
 interface ISystemRegistryL2 {
     /// @notice Get the L2 sequencer uptime checker
-    /// @return sequencerChecker Instance of the sequencer checker for this system
-    function sequencerChecker() external view returns (ISequencerChecker sequencerChecker);
+    /// @return checker Instance of the sequencer checker for this system
+    function sequencerChecker() external view returns (ISequencerChecker checker);
 }

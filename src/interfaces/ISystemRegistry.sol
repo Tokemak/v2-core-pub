@@ -21,7 +21,6 @@ import { IAsyncSwapperRegistry } from "src/interfaces/liquidation/IAsyncSwapperR
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IIncentivesPricingStats } from "src/interfaces/stats/IIncentivesPricingStats.sol";
 import { IMessageProxy } from "src/interfaces/messageProxy/IMessageProxy.sol";
-import { ISequencerChecker } from "src/interfaces/security/ISequencerChecker.sol";
 
 /// @notice Root most registry contract for the system
 interface ISystemRegistry {
@@ -119,8 +118,4 @@ interface ISystemRegistry {
     /// @notice Returns configured additional contracts by type
     /// @param contractType Type of contract to list
     function listAdditionalContracts(bytes32 contractType) external view returns (address[] memory);
-    
-    /// @notice Get the Sequencer Checker
-    /// @return SequencerChecker contract
-    function sequencerChecker() external view returns (ISequencerChecker);
 }

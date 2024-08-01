@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import { Roles } from "src/libs/Roles.sol";
-import { SystemSecurityL2, ISystemRegistry, Errors } from "src/security/SystemSecurityL2.sol";
+import { SystemSecurityL2, Errors } from "src/security/SystemSecurityL2.sol";
 import {
     SystemSecurityBaseTests,
     SystemSecurity,
@@ -11,6 +11,7 @@ import {
     AccessController,
     IAutopoolRegistry
 } from "test/security/SystemSecurityBase.t.sol";
+import { SystemRegistryL2, ISystemRegistryL2 } from "src/SystemRegistryL2.sol";
 
 // solhint-disable func-name-mixedcase
 
@@ -20,7 +21,7 @@ contract SystemSecurityL2Tests is SystemSecurityBaseTests {
     MockSequencerChecker public checker;
 
     function setUp() public virtual {
-        _systemRegistry = new SystemRegistry(vm.addr(100), vm.addr(101));
+        _systemRegistry = SystemRegistry(address(new SystemRegistryL2(vm.addr(100), vm.addr(101))));
 
         _accessController = new AccessController(address(_systemRegistry));
         _systemRegistry.setAccessController(address(_accessController));
@@ -41,7 +42,7 @@ contract SystemSecurityL2Tests is SystemSecurityBaseTests {
         checker = new MockSequencerChecker();
 
         _mockSystemBound(address(_systemRegistry), address(checker));
-        _systemRegistry.setSequencerChecker(address(checker));
+        SystemRegistryL2(address(_systemRegistry)).setSequencerChecker(address(checker));
 
         // Some underlying tests hit path of calling sequencer, return true for all
         checker.setSequencerReturnValue(true);
@@ -88,7 +89,7 @@ contract IsSystemPausedTests is SystemSecurityL2Tests {
     function test_RevertIf_ZeroAddress() public {
         vm.mockCall(
             address(_systemRegistry),
-            abi.encodeWithSelector(ISystemRegistry.sequencerChecker.selector),
+            abi.encodeWithSelector(ISystemRegistryL2.sequencerChecker.selector),
             abi.encode(address(0))
         );
 

@@ -19,12 +19,14 @@ pragma solidity 0.8.17;
 import { Errors } from "src/utils/Errors.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SystemRegistryBase } from "src/SystemRegistryBase.sol";
+import { ISystemRegistryL2 } from "src/interfaces/ISystemRegistryL2.sol";
+import { ISequencerChecker } from "src/interfaces/security/ISequencerChecker.sol";
 
 // solhint-disable max-states-count
 
 /// @notice Root contract of the system instance on L2.
 /// @dev All contracts in this instance of the system should be reachable from this contract
-contract SystemRegistryL2 is SystemRegistryBase {
+contract SystemRegistryL2 is SystemRegistryBase, ISystemRegistryL2 {
     /// =====================================================
     /// Public Vars
     /// =====================================================
@@ -33,10 +35,17 @@ contract SystemRegistryL2 is SystemRegistryBase {
     IERC20Metadata public toke;
 
     /// =====================================================
+    /// Private Vars
+    /// =====================================================
+
+    ISequencerChecker private _sequencerChecker;
+
+    /// =====================================================
     /// Events
     /// =====================================================
 
     event TokeSet(address newAddress);
+    event SequencerCheckerSet(address newSequencerChecker);
 
     /// =====================================================
     /// Functions - Constructor
@@ -66,5 +75,27 @@ contract SystemRegistryL2 is SystemRegistryBase {
         emit TokeSet(newToke);
 
         _verifySystemsAgree(address(newToke));
+    }
+
+    /// @notice Set sequencer checker instance for this system
+    /// @dev Value can be replaced
+    /// @dev This is expected to be a zero address on an L2 that does not use a sequencer
+    /// @param checker Address of the sequencer checker
+    function setSequencerChecker(address checker) external onlyOwner {
+        Errors.verifyNotZero(checker, "checker");
+
+        if (checker == address(_sequencerChecker)) {
+            revert DuplicateSet(checker);
+        }
+
+        emit SequencerCheckerSet(checker);
+
+        _sequencerChecker = ISequencerChecker(checker);
+
+        _verifySystemsAgree(checker);
+    }
+
+    function sequencerChecker() external view returns (ISequencerChecker) {
+        return _sequencerChecker;
     }
 }

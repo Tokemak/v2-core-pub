@@ -6,6 +6,7 @@ import { Roles } from "src/libs/Roles.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { SystemSecurity, Errors } from "src/security/SystemSecurity.sol";
 import { ISequencerChecker } from "src/interfaces/security/ISequencerChecker.sol";
+import { ISystemRegistryL2 } from "src/interfaces/ISystemRegistryL2.sol";
 
 contract SystemSecurityL2 is SystemSecurity {
     /// @notice Used in the case of an issue with sequencer uptime reports
@@ -28,7 +29,7 @@ contract SystemSecurityL2 is SystemSecurity {
         }
 
         // Check sequencer controlled system pause, ensure that we are not overriding the sequencer return
-        ISequencerChecker checker = systemRegistry.sequencerChecker();
+        ISequencerChecker checker = ISystemRegistryL2(address(systemRegistry)).sequencerChecker();
         Errors.verifyNotZero(address(checker), "checker");
         bool sequencerStatus = checker.checkSequencerUptimeFeed();
 
@@ -49,7 +50,7 @@ contract SystemSecurityL2 is SystemSecurity {
     ///   the Chainlink feed.
     function setOverrideSequencerUptime() external hasRole(Roles.SEQUENCER_OVERRIDE_MANAGER) {
         // If sequencer is up, cannot override
-        if (systemRegistry.sequencerChecker().checkSequencerUptimeFeed()) {
+        if (ISystemRegistryL2(address(systemRegistry)).sequencerChecker().checkSequencerUptimeFeed()) {
             revert CannotOverride();
         }
 

@@ -8,7 +8,7 @@ import { MockERC20 } from "test/mocks/MockERC20.sol";
 import { TestWETH9 } from "test/mocks/TestWETH9.sol";
 import { Pausable } from "src/security/Pausable.sol";
 import { AutopoolETH } from "src/vault/AutopoolETH.sol";
-import { SystemRegistry } from "src/SystemRegistry.sol";
+import { SystemRegistryL2 } from "src/SystemRegistryL2.sol";
 import { BASE_SEQUENCER_FEED } from "test/utils/Addresses.sol";
 import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { SequencerChecker } from "src/security/SequencerChecker.sol";
@@ -22,7 +22,7 @@ contract SystemSecurityL2IntegrationTest is Test {
     uint256 public constant MINT_AMOUNT = 1e18;
     uint256 public constant MIN_STAKING_DURATION = 30 days;
 
-    SystemRegistry public systemRegistry;
+    SystemRegistryL2 public systemRegistry;
     AccessController public accessController;
 
     AutopoolETH public autopool;
@@ -45,7 +45,7 @@ contract SystemSecurityL2IntegrationTest is Test {
         weth.mint(address(this), MINT_AMOUNT);
 
         // Set up registry
-        systemRegistry = new SystemRegistry(address(toke), address(weth));
+        systemRegistry = new SystemRegistryL2(address(toke), address(weth));
         systemRegistry.addRewardToken(address(weth));
         systemRegistry.addRewardToken(address(toke));
 
@@ -63,7 +63,7 @@ contract SystemSecurityL2IntegrationTest is Test {
 
         // Deploy autopool
         address autopoolStrategy = makeAddr("autopoolStrategy");
-        address template = address(new AutopoolETH(systemRegistry, address(weth), false));
+        address template = address(new AutopoolETH(systemRegistry, address(weth)));
         autopool = AutopoolETH(Clones.cloneDeterministic(template, keccak256("1")));
         weth.mint(address(this), 100_000);
         weth.approve(address(autopool), 100_000);

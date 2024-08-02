@@ -1304,6 +1304,67 @@ contract SendMessage is MessageProxyTests {
 
         vm.stopPrank();
     }
+
+    function test_OperatesProperlyWhenSinglegetFeeCallFails() public {
+        _mockIsProxyAdmin(address(this), true);
+
+        address sender = makeAddr("sender");
+        bytes32 messageType = keccak256("message");
+        bytes memory message = abi.encode("message");
+
+        MessageProxy.MessageRouteConfig[] memory routes = new MessageProxy.MessageRouteConfig[](2);
+
+        address chainReceiver12 = makeAddr("chainReceiver12");
+        address chainReceiver14 = makeAddr("chainReceiver14");
+
+        uint64 chainId12 = 12;
+        uint64 chainId14 = 14;
+
+        _mockRouterIsChainSupported(chainId12, true);
+        _mockRouterIsChainSupported(chainId14, true);
+
+        _proxy.setDestinationChainReceiver(chainId12, chainReceiver12);
+        _proxy.setDestinationChainReceiver(chainId14, chainReceiver14);
+
+        routes[0] = MessageProxy.MessageRouteConfig({ destinationChainSelector: chainId12, gas: 1 });
+        routes[1] = MessageProxy.MessageRouteConfig({ destinationChainSelector: chainId14, gas: 1 });
+        _proxy.addMessageRoutes(sender, messageType, routes);
+
+        bytes32 ccipMsgId = keccak256("msgId");
+        _mockRouterGetFeeAll(1e9);
+        _mockRouterCcipSendAll(ccipMsgId);
+
+        uint256 timestamp = block.timestamp;
+        bytes memory encodedMsg = CCUtils.encodeMessage(sender, timestamp, messageType, message);
+        bytes32 messageHash = keccak256(encodedMsg);
+
+        // Two messages
+        deal(address(_proxy), 1e9 * 2);
+
+        // Building ccip message, need explicit calldata for reverting single getFee out of multiple calls
+        Client.EVM2AnyMessage memory ccipMessage = _proxy.buildMsg(chainReceiver12, 1, encodedMsg);
+
+        // Actual revert message does not matter here, just want it to revert
+        vm.mockCallRevert(
+            address(_routerClient),
+            abi.encodeWithSelector(IRouterClient.getFee.selector, chainId12, ccipMessage),
+            "REVERT"
+        );
+
+        vm.startPrank(sender);
+
+        // For `expectEmit`, emitted events must always be in order.  `GetFeeFailed` first, `MessageSent` second
+        // Vaidates both order to ensure that continue is being tested, and that we are getting one send and one fail
+        vm.expectEmit(true, true, true, true);
+        emit GetFeeFailed(chainId12, messageHash);
+
+        vm.expectEmit(true, true, true, true);
+        emit MessageSent(chainId14, messageHash, ccipMsgId);
+
+        _proxy.sendMessage(messageType, message);
+
+        vm.stopPrank();
+    }
 }
 
 contract ResendLastMessage is MessageProxyTests {

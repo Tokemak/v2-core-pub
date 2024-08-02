@@ -174,7 +174,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
                 fee = _fee;
             } catch {
                 emit GetFeeFailed(destChainSelector, messageHash);
-                break;
+                continue;
             }
 
             uint256 addressBalance = address(this).balance;

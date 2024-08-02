@@ -1305,6 +1305,7 @@ contract SendMessage is MessageProxyTests {
         vm.stopPrank();
     }
 
+    // Testing for Toke-29.  Ref: https://github.com/Tokemak/v2-core/issues/720
     function test_OperatesProperlyWhenSinglegetFeeCallFails() public {
         _mockIsProxyAdmin(address(this), true);
 

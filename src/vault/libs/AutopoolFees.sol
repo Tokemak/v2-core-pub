@@ -148,12 +148,6 @@ library AutopoolFees {
             return 0;
         }
 
-        // slither-disable-next-line incorrect-equality
-        if (settings.totalAssetsHighMark == 0) {
-            // Initialize our high water mark to the current assets
-            settings.totalAssetsHighMark = totalAssets;
-        }
-
         // slither-disable-start timestamp
         if (collectPeriodicFees) {
             address periodicFeeSink = settings.periodicFeeSink;

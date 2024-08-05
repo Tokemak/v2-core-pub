@@ -63,22 +63,22 @@ contract Destinations is Calculators, Oracle {
     function setupBalancerGyroAuraDestinationVault(
         Constants.Values memory constants,
         BalancerAuraSetup memory args
-    ) internal {
-        _setupBalancerAuraDestinationVault(constants, args, "bal-aura-gyro-v1");
+    ) internal returns (address) {
+        return _setupBalancerAuraDestinationVault(constants, args, "bal-aura-gyro-v1");
     }
 
     function setupBalancerAuraDestinationVault(
         Constants.Values memory constants,
         BalancerAuraSetup memory args
-    ) internal {
-        _setupBalancerAuraDestinationVault(constants, args, "bal-aura-v1");
+    ) internal returns (address) {
+        return _setupBalancerAuraDestinationVault(constants, args, "bal-aura-v1");
     }
 
     function _setupBalancerAuraDestinationVault(
         Constants.Values memory constants,
         BalancerAuraSetup memory args,
         string memory destinationTemplateId
-    ) private {
+    ) private returns (address) {
         BalancerAuraDestinationVault.InitParams memory initParams = BalancerAuraDestinationVault.InitParams({
             balancerPool: args.balancerPool,
             auraStaking: args.auraStaking,
@@ -105,6 +105,8 @@ contract Destinations is Calculators, Oracle {
         );
 
         console.log(string.concat("Balancer Aura ", args.name, " Dest Vault: "), address(newVault));
+
+        return address(newVault);
     }
 
     function setupBalancerDestinationVault(Constants.Values memory constants, BalancerSetup memory args) internal {

@@ -70,9 +70,14 @@ contract CalcsAndDestSet3 is Script, Destinations {
             })
         );
 
-        setupBalancerDestinationVault(
+        setupBalancerAuraDestinationVault(
             constants,
-            BalancerSetup({ name: "Balancer rsETH/WETH Pool", balancerPool: 0x58AAdFB1Afac0ad7fca1148f3cdE6aEDF5236B6D })
+            BalancerAuraSetup({
+                name: "Balancer rsETH/WETH Pool",
+                balancerPool: 0x58AAdFB1Afac0ad7fca1148f3cdE6aEDF5236B6D,
+                auraStaking: 0xB5FdB4f75C26798A62302ee4959E4281667557E0,
+                auraPoolId: 221
+            })
         );
     }
 }

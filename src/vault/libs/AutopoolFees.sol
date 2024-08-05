@@ -403,8 +403,12 @@ library AutopoolFees {
         // Amount of time it will take to unlock all shares, weighted avg over current and new shares
         uint256 newUnlockPeriod = (previousLockTime + newLockShares * unlockPeriod) / totalLockShares;
 
-        // Rate at which totalLockShares will unlock
-        settings.profitUnlockRate = totalLockShares * MAX_BPS_PROFIT / newUnlockPeriod;
+        if (newUnlockPeriod == 0) {
+            settings.profitUnlockRate = 0;
+        } else {
+            // Rate at which totalLockShares will unlock
+            settings.profitUnlockRate = totalLockShares * MAX_BPS_PROFIT / newUnlockPeriod;
+        }
 
         // Time the full of amount of totalLockShares will be unlocked
         settings.fullProfitUnlockTime = uint48(block.timestamp + newUnlockPeriod);

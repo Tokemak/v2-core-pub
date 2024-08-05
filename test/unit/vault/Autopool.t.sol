@@ -4063,11 +4063,6 @@ contract Transfer is AutopoolETHTests {
         vm.expectRevert(abi.encodeWithSelector(AutopoolToken.ERC20InvalidReceiver.selector, address(0)));
         vault.transfer(address(0), 10);
     }
-
-    function test_RevertIf_TransferToVault() public {
-        vm.expectRevert(abi.encodeWithSelector(AutopoolToken.ForbiddenTransfer.selector));
-        vault.transfer(address(vault), 10);
-    }
 }
 
 contract Approve is AutopoolETHTests {
@@ -7411,11 +7406,7 @@ contract TOKE12 is FlashRebalanceSetup {
         address asset = vault.asset();
 
         //attacker transfers shares directly into Autopool
-
         vm.prank(attacker);
-
-        // This is the only line that differs from the original test.
-        vm.expectRevert(abi.encodeWithSelector(AutopoolToken.ForbiddenTransfer.selector));
         vault.transfer(address(vault), 1e9);
 
         // This call used to revert due to division by 0

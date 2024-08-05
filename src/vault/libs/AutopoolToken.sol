@@ -67,9 +67,6 @@ library AutopoolToken {
     /// @dev The nonce used for an `account` is not the expected current nonce.
     error InvalidAccountNonce(address account, uint256 currentNonce);
 
-    /// @dev Indicates a transfer to the Autopool contract itself.
-    error ForbiddenTransfer();
-
     /// @dev Emitted when `value` tokens are moved from one account `from` to another `to`.
     event Transfer(address indexed from, address indexed to, uint256 value);
 
@@ -90,10 +87,6 @@ library AutopoolToken {
     }
 
     function transfer(TokenData storage data, address to, uint256 value) external returns (bool) {
-        if (to == address(this)) {
-            revert ForbiddenTransfer();
-        }
-
         address owner = msg.sender;
         _transfer(data, owner, to, value);
         return true;
@@ -102,10 +95,6 @@ library AutopoolToken {
     /// @dev Moves a `value` amount of tokens from `from` to `to` using the allowance mechanism.
     /// value` is then deducted from the caller's allowance.
     function transferFrom(TokenData storage data, address from, address to, uint256 value) external returns (bool) {
-        if (to == address(this)) {
-            revert ForbiddenTransfer();
-        }
-
         address spender = msg.sender;
         _spendAllowance(data, from, spender, value);
         _transfer(data, from, to, value);

@@ -1206,6 +1206,68 @@ contract LiquidateVaultsForTokens is LiquidationRowTest {
         assertTrue(liquidationRow.totalBalanceOf(address(rewardToken5)) == 200_000);
     }
 
+    // Ref: https://github.com/Tokemak/v2-core/issues/697
+    function test_LiquidatesMultipleTokensClearsDust() public {
+        liquidationRow.addToWhitelist(address(asyncSwapper));
+
+        // Set the price of the token to 1.1111 ETH so that the exchange rate is 90 reward tokens for 100 base asset
+        testOracle.setPriceInEth(address(rewardToken), 1.1111 ether);
+
+        // Init two vaults with 53% and 37% of the total rewards
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 53_000;
+
+        uint256[] memory amounts2 = new uint256[](1);
+        amounts2[0] = 37_000;
+
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(rewardToken);
+
+        _mockCollectRewardsCalls(address(testVault), amounts, tokens);
+        _mockCollectRewardsCalls(address(testVault2), amounts2, tokens);
+
+        // Claim rewards for both vaults
+        IDestinationVault[] memory vaults = new IDestinationVault[](2);
+        vaults[0] = testVault;
+        vaults[1] = testVault2;
+        liquidationRow.claimsVaultRewards(vaults);
+
+        SwapParams memory swapParams = SwapParams(
+            address(rewardToken), 90_000, address(baseAsset), 100_000, new bytes(0), new bytes(0), block.timestamp
+        );
+
+        ILiquidationRow.LiquidationParams[] memory liquidateParams = new ILiquidationRow.LiquidationParams[](1);
+        liquidateParams[0] =
+            ILiquidationRow.LiquidationParams(address(rewardToken), address(asyncSwapper), vaults, swapParams);
+
+        uint256 balanceBefore = IERC20(baseAsset).balanceOf(testVault.rewarder());
+        uint256 balanceBefore2 = IERC20(baseAsset).balanceOf(testVault2.rewarder());
+        // Validate that the base asset balances are 0 before the liquidation
+        assertEq(balanceBefore, 0);
+        assertEq(balanceBefore2, 0);
+
+        liquidationRow.liquidateVaultsForTokens(liquidateParams);
+
+        // Validate that the reward token balances are 0 after the liquidation
+        assertEq(liquidationRow.balanceOf(address(rewardToken), address(testVault)), 0);
+        assertEq(liquidationRow.balanceOf(address(rewardToken), address(testVault2)), 0);
+        assertEq(liquidationRow.totalBalanceOf(address(rewardToken)), 0);
+
+        // Validate that the base asset balances are 0 after the liquidation
+        assertEq(liquidationRow.balanceOf(address(baseAsset), address(testVault)), 0);
+        assertEq(liquidationRow.balanceOf(address(baseAsset), address(testVault2)), 0);
+        assertEq(liquidationRow.totalBalanceOf(address(baseAsset)), 0);
+
+        // Validate that the base asset balances are equal to the expected total after the liquidation
+        uint256 balanceAfter = IERC20(baseAsset).balanceOf(testVault.rewarder());
+        assertEq(balanceAfter, 58_888);
+
+        uint256 balanceAfter2 = IERC20(baseAsset).balanceOf(testVault2.rewarder());
+        assertEq(balanceAfter2, 41_112);
+
+        assertEq(balanceAfter + balanceAfter2, 100_000);
+    }
+
     function test_OnlyLiquidateGivenTokenForGivenVaults() public {
         liquidationRow.addToWhitelist(address(asyncSwapper));
 

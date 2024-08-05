@@ -61,6 +61,24 @@ contract TellorOracleTest is Test {
         _oracle.addTellorRegistration(address(0), bytes32("Test Bytes"), BaseOracleDenominations.Denomination.ETH, 0);
     }
 
+    function test_RevertIfZeroPricingFreshness() external {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "newFreshness"));
+        _oracle.setTellorPricingFreshness(0);
+    }
+
+    function test_SetOraclePricingFreshness() external {
+        uint256 newFreshness = 1000 seconds;
+        _oracle.setTellorPricingFreshness(newFreshness);
+        assertEq(_oracle.tellorPricingFreshness(), newFreshness);
+    }
+
+    function test_RevertNonOwnerSetsPricingFreshness() external {
+        uint256 newFreshness = 1000 seconds;
+        vm.prank(address(2));
+        vm.expectRevert(abi.encodeWithSelector(IAccessController.AccessDenied.selector));
+        _oracle.setTellorPricingFreshness(newFreshness);
+    }
+
     function test_ZeroBytesRevert_AddTellorRegistration() external {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "queryId"));
 

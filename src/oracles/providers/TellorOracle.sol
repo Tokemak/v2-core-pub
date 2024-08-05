@@ -52,7 +52,7 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
     }
 
     /// @dev Minimum time to have passed since price submitted to Tellor.
-    uint256 public constant TELLOR_PRICING_FRESHNESS = 15 minutes;
+    uint256 public tellorPricingFreshness = 15 minutes;
 
     /// @dev Token address to TellorInfo structs.
     mapping(address => TellorInfo) private tellorQueryInfo;
@@ -66,6 +66,9 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
     /// @notice Emitted when  information about a Tellor query is removed.
     event TellorRegistrationRemoved(address token, bytes32 queryId);
 
+    /// @notice Emitted when the freshness of Tellor pricing is updated.
+    event TellorPricingFreshnessUpdated(uint256 newFreshness);
+
     constructor(
         ISystemRegistry _systemRegistry,
         address _tellorOracleAddress
@@ -75,6 +78,16 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
         BaseOracleDenominations(_systemRegistry)
     {
         Errors.verifyNotZero(_tellorOracleAddress, "tellor");
+    }
+
+    /**
+     * @notice Allows ORACLE_MANAGER to set the freshness of Tellor price data
+     * @param _newFreshness The new freshness time in seconds
+     */
+    function setTellorPricingFreshness(uint256 _newFreshness) external hasRole(Roles.ORACLE_MANAGER) {
+        Errors.verifyNotZero(_newFreshness, "newFreshness");
+        tellorPricingFreshness = _newFreshness;
+        emit TellorPricingFreshnessUpdated(_newFreshness);
     }
 
     /// @inheritdoc IPriceOracle
@@ -99,7 +112,7 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
         Errors.verifyNotZero(token, "tokenForQueryId");
         Errors.verifyNotZero(_queryId, "queryId");
         if (tellorQueryInfo[token].queryId != bytes32(0)) revert Errors.MustBeZero();
-        if (pricingTimeout != 0 && pricingTimeout < TELLOR_PRICING_FRESHNESS) {
+        if (pricingTimeout != 0 && pricingTimeout < tellorPricingFreshness) {
             revert InvalidPricingTimeout(pricingTimeout);
         }
         tellorQueryInfo[token] =
@@ -140,7 +153,7 @@ contract TellorOracle is BaseOracleDenominations, UsingTellor {
     function getPriceInEth(address tokenToPrice) external returns (uint256) {
         TellorInfo memory tellorInfo = _getQueryInfo(tokenToPrice);
         uint256 timestamp = block.timestamp;
-        uint256 tellorMaxAllowableTimestamp = timestamp - TELLOR_PRICING_FRESHNESS;
+        uint256 tellorMaxAllowableTimestamp = timestamp - tellorPricingFreshness;
 
         // Giving time for Tellor network to dispute price
         (bytes memory value, uint256 timestampRetrieved) =

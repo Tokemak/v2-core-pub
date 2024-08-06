@@ -93,7 +93,8 @@ contract EncodeCalcAddressForKeeper is Script {
         0xE9E5E390276274423eF290692863a40F5db312c1,
         0xe9f93DdF3590E8e8cc1170442064800977deCe81,
         0xf82e7262D4b64fdE6D032c52c7F0A17Bc4783D93,
-        0xC464583337F0Ce508018bD791a308d768dB344F2
+        0xC464583337F0Ce508018bD791a308d768dB344F2,
+        0x153E095561AE66210Dfb2c63B5E11ad940e39f1C
     ];
 
     address[] private gen1Base = [
@@ -110,7 +111,7 @@ contract EncodeCalcAddressForKeeper is Script {
     ];
 
     function run() external view {
-        bytes memory x = abi.encode(gen1Base);
+        bytes memory x = abi.encode(gen2Mainnet);
         console.logBytes(x);
     }
 }

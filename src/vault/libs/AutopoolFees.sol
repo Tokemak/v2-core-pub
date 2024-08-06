@@ -428,6 +428,8 @@ library AutopoolFees {
     /// @notice Set the fee that will be taken when profit is realized
     /// @dev Resets the high water to current value
     /// @param fee Percent. 100% == 10000
+    /// @param oldestDebtReporting Debt reporting timestamp to be checked
+    /// @param debtReportQueueLength Total length of the debt reporting queue
     function setStreamingFeeBps(
         IAutopool.AutopoolFeeSettings storage feeSettings,
         uint256 fee,
@@ -461,6 +463,8 @@ library AutopoolFees {
     /// @notice Set the periodic fee taken.
     /// @dev Zero is allowed, no fee taken.
     /// @param fee Fee to update periodic fee to.
+    /// @param oldestDebtReporting Debt reporting timestamp to be checked
+    /// @param debtReportQueueLength Total length of the debt reporting queue
     function setPeriodicFeeBps(
         IAutopool.AutopoolFeeSettings storage feeSettings,
         uint256 fee,

@@ -270,12 +270,14 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
     {
         Errors.verifyNotZero(assets, "assets");
 
+        uint256 ta = _totalAssetsTimeChecked(TotalAssetPurpose.Deposit);
+
         // Handles the vault being paused, returns 0
-        if (assets > maxDeposit(receiver)) {
-            revert ERC4626DepositExceedsMax(assets, maxDeposit(receiver));
+        uint256 maxDepositAmount = _maxDeposit(receiver, ta);
+        if (assets > maxDepositAmount) {
+            revert ERC4626DepositExceedsMax(assets, maxDepositAmount);
         }
 
-        uint256 ta = _totalAssetsTimeChecked(TotalAssetPurpose.Deposit);
         shares = convertToShares(assets, ta, totalSupply(), Math.Rounding.Down);
 
         Errors.verifyNotZero(shares, "shares");
@@ -353,12 +355,13 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
         ensureNoNavOps
         returns (uint256 assets)
     {
-        uint256 maxShares = maxRedeem(owner);
+        uint256 ta = _totalAssetsTimeChecked(TotalAssetPurpose.Withdraw);
+
+        uint256 maxShares = _maxRedeem(owner, ta);
         if (shares > maxShares) {
             revert ERC4626ExceededMaxRedeem(owner, shares, maxShares);
         }
 
-        uint256 ta = _totalAssetsTimeChecked(TotalAssetPurpose.Withdraw);
         uint256 possibleAssets = convertToAssets(shares, ta, totalSupply(), Math.Rounding.Down);
         Errors.verifyNotZero(possibleAssets, "possibleAssets");
 
@@ -645,13 +648,12 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
     /// @notice Returns the maximum amount of the underlying asset that can be
     /// deposited into the Vault for the receiver, through a deposit call
     function maxDeposit(address wallet) public virtual override returns (uint256 maxAssets) {
-        uint256 ta = _totalAssetsTimeChecked(TotalAssetPurpose.Deposit);
-        maxAssets = _maxDeposit(wallet, ta);
+        maxAssets = _maxDeposit(wallet, _totalAssetsTimeChecked(TotalAssetPurpose.Deposit));
     }
 
+    /// @dev Local gas-saving function to pass pre-calculated total assets time checked value
     function _maxDeposit(address wallet, uint256 aptTotalAssets) private returns (uint256) {
-        uint256 mintAmt = maxMint(wallet);
-        return convertToAssets(mintAmt, aptTotalAssets, totalSupply(), Math.Rounding.Up);
+        return convertToAssets(maxMint(wallet), aptTotalAssets, totalSupply(), Math.Rounding.Up);
     }
 
     /// @notice Simulate the effects of the deposit at the current block, given current on-chain conditions.
@@ -696,7 +698,11 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
     /// @notice Returns the maximum amount of Vault shares that can be redeemed
     /// from the owner balance in the Vault, through a redeem call
     function maxRedeem(address owner) public virtual returns (uint256 maxShares) {
-        uint256 ta = _totalAssetsTimeChecked(TotalAssetPurpose.Withdraw);
+        maxShares = _maxRedeem(owner, _totalAssetsTimeChecked(TotalAssetPurpose.Withdraw));
+    }
+
+    /// @dev Local gas-saving function to pass pre-calculated total assets time checked value
+    function _maxRedeem(address owner, uint256 ta) private view returns (uint256 maxShares) {
         // If total assets are zero then we are considered uncollateralized and all redeem's will fail
         if (ta > 0) {
             maxShares = paused() ? 0 : balanceOf(owner);

@@ -39,10 +39,6 @@ abstract contract SystemSecurity is SystemComponent, SecurityBase, ISystemSecuri
     { }
 
     /// @inheritdoc ISystemSecurity
-    /// @notice Returns true when the entire system is paused
-    function isSystemPaused() external virtual returns (bool);
-
-    /// @inheritdoc ISystemSecurity
     /// @notice Enters a NAV/share changing operation from an Autopool
     function enterNavOperation() external override onlyAutopool {
         ++navOpsInProgress;

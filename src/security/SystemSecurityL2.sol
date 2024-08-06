@@ -4,11 +4,11 @@ pragma solidity 0.8.17;
 
 import { Roles } from "src/libs/Roles.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { SystemSecurity, Errors } from "src/security/SystemSecurity.sol";
+import { SystemSecurity, Errors, ISystemSecurity } from "src/security/SystemSecurity.sol";
 import { ISequencerChecker } from "src/interfaces/security/ISequencerChecker.sol";
 import { ISystemRegistryL2 } from "src/interfaces/ISystemRegistryL2.sol";
 
-contract SystemSecurityL2 is SystemSecurity {
+contract SystemSecurityL2 is ISystemSecurity, SystemSecurity {
     /// @notice Used in the case of an issue with sequencer uptime reports
     bool public overrideSequencerUptime = false;
 
@@ -19,9 +19,9 @@ contract SystemSecurityL2 is SystemSecurity {
     event SequencerOverrideSet(bool overrideStatus);
 
     // slither-disable-next-line similar-names
-    constructor(ISystemRegistry _systemRegsitry) SystemSecurity(_systemRegsitry) { }
+    constructor(ISystemRegistry _systemRegistry) SystemSecurity(_systemRegistry) { }
 
-    /// @inheritdoc SystemSecurity
+    /// @inheritdoc ISystemSecurity
     function isSystemPaused() external override returns (bool) {
         // Check admin controlled system pause
         if (_systemPaused) {

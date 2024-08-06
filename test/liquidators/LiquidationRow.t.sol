@@ -1206,7 +1206,6 @@ contract LiquidateVaultsForTokens is LiquidationRowTest {
         assertTrue(liquidationRow.totalBalanceOf(address(rewardToken5)) == 200_000);
     }
 
-    // Ref: https://github.com/Tokemak/v2-core/issues/697
     function test_LiquidatesMultipleTokensClearsDust() public {
         liquidationRow.addToWhitelist(address(asyncSwapper));
 

@@ -301,7 +301,9 @@ contract AutopoolETHTests is Test, AutopoolETHUsage {
         assertEq(_pool.getFeeSettings().periodicFeeSink, address(8));
     }
 
-    function test_SetStreamingFee() public {
+    function test_SetStreamingFee1() public {
+        vm.warp(1 days);
+
         setStreamingFee(900);
 
         assertEq(_pool.getFeeSettings().streamingFeeBps, 900);

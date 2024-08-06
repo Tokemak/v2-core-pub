@@ -383,14 +383,14 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
     /// @dev Resets the high water to current value
     /// @param fee Percent. 100% == 10000
     function setStreamingFeeBps(uint256 fee) external nonReentrant hasRole(Roles.AUTO_POOL_FEE_UPDATER) {
-        AutopoolFees.setStreamingFeeBps(_feeSettings, fee);
+        AutopoolFees.setStreamingFeeBps(_feeSettings, fee, oldestDebtReporting(), _debtReportQueue.size);
     }
 
     /// @notice Set the periodic fee taken.
     /// @dev Depending on time until next fee take, may update periodicFeeBps directly or queue fee.
     /// @param fee Fee to update periodic fee to.
     function setPeriodicFeeBps(uint256 fee) external hasRole(Roles.AUTO_POOL_PERIODIC_FEE_UPDATER) {
-        AutopoolFees.setPeriodicFeeBps(_feeSettings, fee);
+        AutopoolFees.setPeriodicFeeBps(_feeSettings, fee, oldestDebtReporting(), _debtReportQueue.size);
     }
 
     /// @notice Set the address that will receive fees

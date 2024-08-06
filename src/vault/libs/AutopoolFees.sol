@@ -37,6 +37,7 @@ library AutopoolFees {
 
     error InvalidFee(uint256 newFee);
     error AlreadySet();
+    error DebtReportingStale();
 
     /// @notice Returns the amount of unlocked profit shares that will be burned
     function unlockedShares(
@@ -427,14 +428,21 @@ library AutopoolFees {
     /// @notice Set the fee that will be taken when profit is realized
     /// @dev Resets the high water to current value
     /// @param fee Percent. 100% == 10000
-    function setStreamingFeeBps(IAutopool.AutopoolFeeSettings storage feeSettings, uint256 fee) external {
+    function setStreamingFeeBps(
+        IAutopool.AutopoolFeeSettings storage feeSettings,
+        uint256 fee,
+        uint256 oldestDebtReporting,
+        uint256 debtReportQueueLength
+    ) external {
         if (fee >= FEE_DIVISOR) {
             revert InvalidFee(fee);
         }
 
-        feeSettings.streamingFeeBps = fee;
+        _checkLastDebtReportingTime(oldestDebtReporting, debtReportQueueLength);
 
         IAutopool vault = IAutopool(address(this));
+
+        feeSettings.streamingFeeBps = fee;
 
         // Set the high mark when we change the fee so we aren't able to go farther back in
         // time than one debt reporting and claim fee's against past profits
@@ -453,10 +461,17 @@ library AutopoolFees {
     /// @notice Set the periodic fee taken.
     /// @dev Zero is allowed, no fee taken.
     /// @param fee Fee to update periodic fee to.
-    function setPeriodicFeeBps(IAutopool.AutopoolFeeSettings storage feeSettings, uint256 fee) external {
+    function setPeriodicFeeBps(
+        IAutopool.AutopoolFeeSettings storage feeSettings,
+        uint256 fee,
+        uint256 oldestDebtReporting,
+        uint256 debtReportQueueLength
+    ) external {
         if (fee > MAX_PERIODIC_FEE_BPS) {
             revert InvalidFee(fee);
         }
+
+        _checkLastDebtReportingTime(oldestDebtReporting, debtReportQueueLength);
 
         // Fee checked to fit into uint16 above, able to be wrapped without safe cast here.
         emit PeriodicFeeSet(fee);
@@ -484,5 +499,11 @@ library AutopoolFees {
 
         // slither-disable-next-line missing-zero-check
         feeSettings.periodicFeeSink = newPeriodicFeeSink;
+    }
+
+    function _checkLastDebtReportingTime(uint256 oldestDebtReporting, uint256 debtReportQueueLength) private {
+        if (debtReportQueueLength > 0 && oldestDebtReporting < block.timestamp - 10 minutes) {
+            revert DebtReportingStale();
+        }
     }
 }

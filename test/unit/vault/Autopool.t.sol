@@ -235,6 +235,11 @@ contract AutopoolETHTests is
         _mockFailingRebalance(autoPoolStrategy, message);
     }
 
+    function _mockLatestDebtReporting(uint256 timestampOfDebtReport) internal {
+        // solhint-disable-next-line max-line-length
+        vm.mockCall(address(vault), abi.encodeWithSignature("oldestDebtReporting()"), abi.encode(timestampOfDebtReport));
+    }
+
     function _ensureNoStateChanges(VmSafe.AccountAccess[] memory records) internal {
         for (uint256 i = 0; i < records.length; i++) {
             if (!records[i].reverted) {
@@ -299,6 +304,8 @@ contract BaseConstructionTests is AutopoolETHTests {
         // This test is allowed
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
+        _mockLatestDebtReporting(block.timestamp);
+
         // notAdmin is not allowed
         address notAdmin = makeAddr("notAdmin");
         _mockAccessControllerHasRole(accessController, notAdmin, Roles.AUTO_POOL_FEE_UPDATER, false);
@@ -309,6 +316,29 @@ contract BaseConstructionTests is AutopoolETHTests {
         vm.stopPrank();
 
         vault.setStreamingFeeBps(100);
+    }
+
+    function test_setStreamingFeeBps_RevertIf_DebtReportingStale() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
+
+        vault.incrementDebtReportQueueSize();
+
+        _mockLatestDebtReporting(block.timestamp - 11 minutes);
+
+        vm.expectRevert(AutopoolFees.DebtReportingStale.selector);
+        vault.setStreamingFeeBps(100);
+    }
+
+    function test_setStreamingFeeBps_CanBetSetAnyDebtReportingStaleness_WhenNoQueue() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
+
+        assertEq(vault.getDebtReportingQueue().length, 0);
+
+        _mockLatestDebtReporting(block.timestamp - 52 weeks);
+
+        vault.setStreamingFeeBps(150);
+
+        assertEq(vault.getFeeSettings().streamingFeeBps, 150);
     }
 
     function test_setPeriodicFeeSink_RevertIf_CallerMissingMgmtFeeSetterRole() public {
@@ -352,6 +382,31 @@ contract BaseConstructionTests is AutopoolETHTests {
         vault.setPeriodicFeeBps(1001);
 
         vault.setPeriodicFeeBps(1000);
+    }
+
+    function test_setPeriodicFeeBps_RevertIf_DebtReportingStale() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, true);
+
+        // Increment debt queue size to ensure that staleness check triggers
+        vault.incrementDebtReportQueueSize();
+
+        // Limit is ten mins
+        _mockLatestDebtReporting(block.timestamp - 11 minutes);
+
+        vm.expectRevert(AutopoolFees.DebtReportingStale.selector);
+        vault.setPeriodicFeeBps(100);
+    }
+
+    function test_setPeriodicFeeBps_CanBetSetAnyDebtReportingStaleness_WhenNoQueue() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_PERIODIC_FEE_UPDATER, true);
+
+        assertEq(vault.getDebtReportingQueue().length, 0);
+
+        _mockLatestDebtReporting(block.timestamp - 52 weeks);
+
+        vault.setPeriodicFeeBps(150);
+
+        assertEq(vault.getFeeSettings().periodicFeeBps, 150);
     }
 
     function test_setPeriodicFeeSink_SetsAndEmitsAddress() public {
@@ -6262,6 +6317,8 @@ contract UpdateDebtReporting is AutopoolETHTests {
 
         address user = makeAddr("user");
 
+        _mockLatestDebtReporting(block.timestamp);
+
         address periodicFeeReceiver = makeAddr("periodicFeeReceiver");
         address streamingFeeReceiver = makeAddr("streamingFeeReceiver");
         vault.setPeriodicFeeBps(1000);
@@ -6624,6 +6681,8 @@ contract UpdateDebtReporting is AutopoolETHTests {
 
         address streamingFeeReceiver = makeAddr("streamingFeeReceiver");
 
+        _mockLatestDebtReporting(block.timestamp);
+
         vault.setStreamingFeeBps(1000);
         vault.setFeeSink(streamingFeeReceiver);
         vault.useRealCollectFees();
@@ -6688,6 +6747,8 @@ contract UpdateDebtReporting is AutopoolETHTests {
 
         address streamingFeeReceiver = makeAddr("streamingFeeReceiver");
 
+        _mockLatestDebtReporting(block.timestamp);
+
         vault.setStreamingFeeBps(1000);
         vault.setFeeSink(streamingFeeReceiver);
         vault.useRealCollectFees();
@@ -6741,6 +6802,8 @@ contract UpdateDebtReporting is AutopoolETHTests {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         address streamingFeeReceiver = makeAddr("streamingFeeReceiver");
+
+        _mockLatestDebtReporting(block.timestamp);
 
         vault.setStreamingFeeBps(1000);
         vault.setFeeSink(streamingFeeReceiver);
@@ -6802,6 +6865,8 @@ contract UpdateDebtReporting is AutopoolETHTests {
         _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
 
         address streamingFeeReceiver = makeAddr("streamingFeeReceiver");
+
+        _mockLatestDebtReporting(block.timestamp);
 
         vault.setStreamingFeeBps(1000);
         vault.setFeeSink(streamingFeeReceiver);
@@ -7734,6 +7799,10 @@ contract FeeAndProfitTestVault is TestAutopoolETH {
 
     function setFullProfitUnlockTime(uint256 time) public {
         _profitUnlockSettings.fullProfitUnlockTime = uint48(time);
+    }
+
+    function incrementDebtReportQueueSize() public {
+        _debtReportQueue.size += 1;
     }
 
     function _collectFees(

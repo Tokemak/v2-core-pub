@@ -168,7 +168,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
             // Build ccip message
             Client.EVM2AnyMessage memory ccipMessage = _ccipBuild(destChainReceiver, configs[i].gas, encodedMessage);
 
-            // Attempt to get fee destination chain send, emit event and break look on failure.
+            // Attempt to get fee destination chain send, emit event and continue loop on failure.
             uint256 fee = 0;
             try routerClient.getFee(destChainSelector, ccipMessage) returns (uint256 _fee) {
                 fee = _fee;

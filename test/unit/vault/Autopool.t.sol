@@ -4207,6 +4207,28 @@ contract FeeAndProfitTests is AutopoolETHTests {
         assertEq(mintedShares, 0e18, "mintedShares");
     }
 
+    function test_TotalAssetHighWaterMarkSet_InitialHighWatermarkSet() public {
+        assertEq(vault.totalAssets(), 0);
+        assertEq(vault.getFeeSettings().totalAssetsHighMark, 0);
+        assertEq(vault.getFeeSettings().totalAssetsHighMarkTimestamp, 0);
+
+        // Set totalSupply to get to end of AutopoolFees.collectFees()
+        vault.setTotalSupply(10_000);
+
+        uint256 timestamp = block.timestamp;
+        uint256 assetWatermark = 10_000;
+
+        vault.useRealCollectFees();
+
+        vm.expectEmit(false, false, false, true);
+        emit NewTotalAssetsHighWatermark(assetWatermark, timestamp);
+        vault.feesAndProfitHandling(assetWatermark, 0, 0);
+
+        // Total assets stored on vault will not actually change here, not checking again
+        assertEq(vault.getFeeSettings().totalAssetsHighMark, assetWatermark);
+        assertEq(vault.getFeeSettings().totalAssetsHighMarkTimestamp, timestamp);
+    }
+
     function test_ProfitIsMintedAsSharesToVault() public {
         vault.mint(address(1), 90e18);
 

@@ -420,30 +420,27 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
         // Finalization: If a snapshot exists, finalize by calculating the reward accrued
         // since initialization, then reset the snapshot state.
         if (status == SnapshotStatus.shouldFinalize) {
-            // scope to avoid stack too deep errors
-            uint256 lastSnapshotTimestamp;
-            uint256 timeBetweenSnapshots;
-            uint256 diff;
-            {
-                lastSnapshotTimestamp = lastSnapshotTimestamps[_rewarder];
-                uint256 lastRewardPerToken = lastSnapshotRewardPerToken[_rewarder];
-                // Subtract one, added during initialization, to ensure 0 is only used as an uninitialized value flag.
-                diff = rewardPerToken - (lastRewardPerToken - 1);
-                // slither-disable-start timestamp
+            address mainRewarder = _rewarder;
+            uint256 lastSnapshotTimestamp = lastSnapshotTimestamps[mainRewarder];
+            uint256 lastRewardPerToken = lastSnapshotRewardPerToken[mainRewarder];
+            // Subtract one, added during initialization, to ensure 0 is only used as an uninitialized value flag.
+            uint256 diff = rewardPerToken - (lastRewardPerToken - 1);
+            // slither-disable-start timestamp
+            uint256 timeBetweenSnapshots = block.timestamp - lastSnapshotTimestamp;
 
-                timeBetweenSnapshots = block.timestamp - lastSnapshotTimestamp;
-
-                // Set safe total supply only when we are able to calculate it
-                if ((diff > 0) && (periodFinish > block.timestamp)) {
-                    safeTotalSupplies[_rewarder] = rewardRate * timeBetweenSnapshots * 1e18 / diff;
-                }
-                lastSnapshotRewardPerToken[_rewarder] = 0;
-                lastSnapshotTimestamps[_rewarder] = block.timestamp;
-                // slither-disable-end timestamp
+            // Set safe total supply only when we are able to calculate it
+            // This can result in slightly stale numbers however when this value is used
+            // it's done so in the context of all other rewarders for this pool and the best/most recent value is used
+            if ((diff > 0) && (periodFinish > block.timestamp)) {
+                safeTotalSupplies[mainRewarder] = rewardRate * timeBetweenSnapshots * 1e18 / diff;
             }
+            lastSnapshotRewardPerToken[mainRewarder] = 0;
+            lastSnapshotTimestamps[mainRewarder] = block.timestamp;
+            // slither-disable-end timestamp
+
             // slither-disable-next-line reentrancy-events
             emit RewarderSafeTotalSupplySnapshot(
-                _rewarder, rewardRate, timeBetweenSnapshots, diff, safeTotalSupplies[_rewarder]
+                mainRewarder, rewardRate, timeBetweenSnapshots, diff, safeTotalSupplies[mainRewarder]
             );
 
             return;

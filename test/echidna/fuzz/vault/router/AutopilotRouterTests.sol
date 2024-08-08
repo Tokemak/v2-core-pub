@@ -9,6 +9,8 @@ import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/ext
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 import { AutopilotRouter } from "src/vault/AutopilotRouter.sol";
 import { IAutopool } from "src/vault/AutopoolETH.sol";
+import { IRewards } from "src/interfaces/rewarders/IRewards.sol";
+import { Rewards } from "src/rewarders/Rewards.sol";
 import { ISystemRegistry } from "src/vault/AutopilotRouterBase.sol";
 import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { AsyncSwapperRegistry } from "src/liquidation/AsyncSwapperRegistry.sol";
@@ -191,6 +193,20 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
         queuedCalls.push(abi.encodeCall(autoPoolRouter.pullToken, (baseAsset, amount, address(autoPoolRouter))));
         queuedCalls.push(abi.encodeCall(autoPoolRouter.approve, (baseAsset, address(_pool), amount)));
         queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.deposit.selector, _pool, to, amount, minSharesOut));
+    }
+
+    function depositBalance(uint256 toSeed, uint256 minSharesOut) public updateUser1Balance {
+        address to = _resolveUserFromSeed(toSeed);
+
+        _startPrank(msg.sender);
+        autoPoolRouter.depositBalance(_pool, to, minSharesOut);
+        _stopPrank();
+    }
+
+    function queueDepositBalance(uint256 toSeed, uint256 minSharesOut) public updateUser1Balance {
+        address to = _resolveUserFromSeed(toSeed);
+
+        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.depositBalance.selector, _pool, to, minSharesOut));
     }
 
     function depositMax(uint256 toSeed, uint256 minSharesOut) public updateUser1Balance {
@@ -449,6 +465,70 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
         queuedCalls.push(abi.encodeCall(autoPoolRouter.depositBalance, (_pool, to, minSharesOut)));
     }
 
+    function swapToken(uint256 amount, uint256 minSharesOut) public updateUser1Balance {
+        // Selling WETH for Vault Asset
+        SwapParams memory swapParams = SwapParams({
+            sellTokenAddress: address(_weth),
+            sellAmount: amount,
+            buyTokenAddress: _pool.asset(),
+            buyAmount: minSharesOut,
+            data: "", // no real payload since the swap is mocked
+            extraData: "",
+            deadline: block.timestamp
+        });
+
+        _startPrank(msg.sender);
+        autoPoolRouter.swapToken(address(swapperMock), swapParams);
+        _stopPrank();
+    }
+
+    function queueSwapToken(uint256 amount, uint256 minSharesOut) public updateUser1Balance {
+        // Selling WETH for Vault Asset
+        SwapParams memory swapParams = SwapParams({
+            sellTokenAddress: address(_weth),
+            sellAmount: amount,
+            buyTokenAddress: _pool.asset(),
+            buyAmount: minSharesOut,
+            data: "", // no real payload since the swap is mocked
+            extraData: "",
+            deadline: block.timestamp
+        });
+
+        queuedCalls.push(abi.encodeCall(autoPoolRouter.swapToken, (address(swapperMock), swapParams)));
+    }
+
+    function swapTokenBalance(uint256 amount, uint256 minSharesOut) public updateUser1Balance {
+        // Selling WETH for Vault Asset
+        SwapParams memory swapParams = SwapParams({
+            sellTokenAddress: address(_weth),
+            sellAmount: amount,
+            buyTokenAddress: _pool.asset(),
+            buyAmount: minSharesOut,
+            data: "", // no real payload since the swap is mocked
+            extraData: "",
+            deadline: block.timestamp
+        });
+
+        _startPrank(msg.sender);
+        autoPoolRouter.swapTokenBalance(address(swapperMock), swapParams);
+        _stopPrank();
+    }
+
+    function queueSwapTokenBalance(uint256 amount, uint256 minSharesOut) public updateUser1Balance {
+        // Selling WETH for Vault Asset
+        SwapParams memory swapParams = SwapParams({
+            sellTokenAddress: address(_weth),
+            sellAmount: amount,
+            buyTokenAddress: _pool.asset(),
+            buyAmount: minSharesOut,
+            data: "", // no real payload since the swap is mocked
+            extraData: "",
+            deadline: block.timestamp
+        });
+
+        queuedCalls.push(abi.encodeCall(autoPoolRouter.swapTokenBalance, (address(swapperMock), swapParams)));
+    }
+
     // Redeem
     function redeem(uint256 toSeed, uint256 shares, uint256 minAmountOut) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
@@ -500,6 +580,52 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
         queuedCalls.push(
             abi.encodeWithSelector(autoPoolRouter.redeemToDeposit.selector, _pool, _pool, to, shares, minSharesOut)
         );
+    }
+
+    function claimRewards(
+        uint256 userSeed,
+        uint256 recipientSeed,
+        uint256 amount,
+        uint256 cycle
+    ) public updateUser1Balance {
+        address recipientAddress = _resolveUserFromSeed(recipientSeed);
+
+        IRewards.Recipient memory recipient =
+            IRewards.Recipient({ chainId: block.chainid, cycle: cycle, wallet: recipientAddress, amount: amount });
+
+        address signer = _resolveUserFromSeed(userSeed);
+
+        Rewards rewards = new Rewards(_systemRegistry, IERC20(address(_pool)), signer);
+        bytes32 hashedRecipient = rewards.genHash(recipient);
+
+        uint256 signerKey = _resolveUserPrivateKeyFromSeed(userSeed);
+        (uint8 v, bytes32 r, bytes32 s) = hevm.sign(signerKey, hashedRecipient);
+
+        _startPrank(msg.sender);
+        autoPoolRouter.claimRewards(rewards, recipient, v, r, s);
+        _stopPrank();
+    }
+
+    function queueClaimRewards(
+        uint256 userSeed,
+        uint256 recipientSeed,
+        uint256 amount,
+        uint256 cycle
+    ) public updateUser1Balance {
+        address recipientAddress = _resolveUserFromSeed(recipientSeed);
+
+        IRewards.Recipient memory recipient =
+            IRewards.Recipient({ chainId: block.chainid, cycle: cycle, wallet: recipientAddress, amount: amount });
+
+        address signer = _resolveUserFromSeed(userSeed);
+
+        Rewards rewards = new Rewards(_systemRegistry, IERC20(address(_pool)), signer);
+        bytes32 hashedRecipient = rewards.genHash(recipient);
+
+        uint256 signerKey = _resolveUserPrivateKeyFromSeed(userSeed);
+        (uint8 v, bytes32 r, bytes32 s) = hevm.sign(signerKey, hashedRecipient);
+
+        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.claimRewards.selector, rewards, recipient, v, r, s));
     }
 
     // Utils

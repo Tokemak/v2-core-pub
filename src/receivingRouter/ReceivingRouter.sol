@@ -35,6 +35,17 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     /// @notice Thrown when a message receiver does not exist in storage.
     error MessageReceiverDoesNotExist(address notReceiver);
 
+    /// @notice Thrown when an invalid address sends a message from the source chain
+    error InvalidSenderFromSource(
+        uint256 sourceChainSelector,
+        address sourceChainSender,
+        address sourceChainSenderRegistered1,
+        address sourceChainSenderRegistered2
+    );
+
+    /// @notice Thrown when no message receivers are registered
+    error NoMessageReceiversRegistered(address messageOrigin, bytes32 messageType, uint64 sourceChainSelector);
+
     /// =====================================================
     /// Events
     /// =====================================================
@@ -72,17 +83,6 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     /// Failure Events
     /// =====================================================
 
-    /// @notice Emitted when an invalid address sends a message from the source chain
-    event InvalidSenderFromSource(
-        uint256 sourceChainSelector,
-        address sourceChainSender,
-        address sourceChainSenderRegistered1,
-        address sourceChainSenderRegistered2
-    );
-
-    /// @notice Emitted when no message receivers are registered
-    event NoMessageReceiversRegistered(address messageOrigin, bytes32 messageType, uint64 sourceChainSelector);
-
     /// @notice Emitted when message versions don't match
     event MessageVersionMismatch(uint256 versionSource, uint256 versionReceiver);
 
@@ -119,8 +119,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
             address registeredSender2 = sourceChainSenders[sourceChainSelector][1];
             // slither-disable-end similar-names
             if (proxySender != registeredSender1 && proxySender != registeredSender2) {
-                emit InvalidSenderFromSource(sourceChainSelector, proxySender, registeredSender1, registeredSender2);
-                return;
+                revert InvalidSenderFromSource(sourceChainSelector, proxySender, registeredSender1, registeredSender2);
             }
         }
 
@@ -144,14 +143,14 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
 
         // Receivers registration act as security, this accounts for zero checks for type, origin, selector.
         if (messageReceiversForRouteLength == 0) {
-            emit NoMessageReceiversRegistered(origin, messageType, sourceChainSelector);
-            return;
+            revert NoMessageReceiversRegistered(origin, messageType, sourceChainSelector);
         }
 
         emit MessageData(
             messageFromProxy.messageTimestamp, origin, messageType, ccipMessage.messageId, sourceChainSelector, message
         );
 
+        // slither-disable-start reentrancy-events
         // Loop through stored receivers, send messages off to them
         for (uint256 i = 0; i < messageReceiversForRouteLength; ++i) {
             address currentMessageReceiver = messageReceiversForRoute[i];
@@ -161,6 +160,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
             emit MessageReceived(currentMessageReceiver, message);
             IMessageReceiverBase(currentMessageReceiver).onMessageReceive(messageType, message);
         }
+        // slither-disable-end reentrancy-events
     }
 
     /// @notice Sets message receivers for an origin, type, source selector combination

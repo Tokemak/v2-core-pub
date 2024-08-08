@@ -34,12 +34,6 @@ contract ReceivingRouterTests is Test, SystemRegistryMocks, AccessControllerMock
     event MessageReceiverDeleted(
         address messageOrigin, uint64 sourceChainSelector, bytes32 messageType, address messageReceiverToRemove
     );
-    event InvalidSenderFromSource(
-        uint256 sourceChainSelector,
-        address sourceChainSender,
-        address sourceChainSenderRegistered1,
-        address sourceChainSenderRegistered2
-    );
     event MessageVersionMismatch(uint256 sourceVersion, uint256 receiverVersion);
     event MessageData(
         uint256 messageTimestamp,
@@ -49,7 +43,6 @@ contract ReceivingRouterTests is Test, SystemRegistryMocks, AccessControllerMock
         uint64 sourceChainSelector,
         bytes message
     );
-    event NoMessageReceiversRegistered(address messageOrigin, bytes32 messageType, uint64 sourceChainSelector);
     event MessageReceived(address messageReceiver, bytes message);
     event MessageReceivedOnResend(address currentReceiver, bytes32 messageHash);
 
@@ -926,8 +919,9 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         _mockRouterIsChainSupported(chainId, true);
         _router.setSourceChainSenders(chainId, sender, 0);
 
-        vm.expectEmit(true, true, true, true);
-        emit NoMessageReceiversRegistered(origin, messageType, chainId);
+        vm.expectRevert(
+            abi.encodeWithSelector(ReceivingRouter.NoMessageReceiversRegistered.selector, origin, messageType, chainId)
+        );
         vm.prank(address(_routerClient));
         _router.ccipReceive(ccipMessage);
     }
@@ -965,7 +959,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         _router.ccipReceive(ccipMessage);
     }
 
-    function test_EmitsFailureEvent_SourceChainSenderNotSet() public {
+    function test_RevertIf_SourceChainSenderNotSet() public {
         _mockIsRouterManager(address(this), true);
 
         bytes32 messageId = keccak256("messageId");
@@ -980,8 +974,15 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         _mockRouterIsChainSupported(chainId, true);
         _router.setSourceChainSenders(chainId, senderSetReceivingChain, 0);
 
-        vm.expectEmit(true, true, true, true);
-        emit InvalidSenderFromSource(chainId, senderSourceChain, senderSetReceivingChain, address(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ReceivingRouter.InvalidSenderFromSource.selector,
+                chainId,
+                senderSourceChain,
+                senderSetReceivingChain,
+                address(0)
+            )
+        );
         vm.prank(address(_routerClient));
         _router.ccipReceive(ccipMessage);
     }

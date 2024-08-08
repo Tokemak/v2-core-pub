@@ -36,6 +36,8 @@ contract SwapperMock is BaseAsyncSwapper {
     function swap(SwapParams memory params) public override returns (uint256 buyTokenAmountReceived) {
         // Mock 1:1 swap
         TestERC20(params.buyTokenAddress).mint(address(this), params.buyAmount);
+        // Burn sell token to 0x0 to simulate a transfer of a sell token during a swap
+        TestERC20(params.sellTokenAddress).transfer(address(0), params.sellAmount);
         return params.buyAmount;
     }
 }

@@ -431,6 +431,7 @@ abstract contract IncentiveCalculatorBase is BaseStatsCalculator, IDexLSTStats {
             // Set safe total supply only when we are able to calculate it
             // This can result in slightly stale numbers however when this value is used
             // it's done so in the context of all other rewarders for this pool and the best/most recent value is used
+            // old or stale values for safe total supply are handled in current()
             if ((diff > 0) && (periodFinish > block.timestamp)) {
                 safeTotalSupplies[mainRewarder] = rewardRate * timeBetweenSnapshots * 1e18 / diff;
             }

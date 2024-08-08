@@ -82,7 +82,7 @@ contract TestIncentiveCalculator {
             uint24(4),
             uint24(4)
         ];
-        uint40[5] memory discountTimestampByPercent = [uint40(5), uint40(5), uint40(5), uint40(5), uint40(5)];
+        uint40 discountTimestampByPercent = 1;
 
         stats[0] = ILSTStats.LSTStatsData(
             lastSnapshotTimestamp, baseApr, discount, discountHistory, discountTimestampByPercent

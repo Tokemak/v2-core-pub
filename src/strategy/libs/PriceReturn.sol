@@ -39,6 +39,7 @@ library PriceReturn {
 
         uint256 numLsts = lstStatsData.length;
         int256[] memory priceReturns = new int256[](numLsts);
+        int256 maxDiscount = strategy.maxAllowedDiscount();
 
         for (uint256 i = 0; i < numLsts; ++i) {
             ILSTStats.LSTStatsData memory data = lstStatsData[i];
@@ -46,33 +47,25 @@ library PriceReturn {
             uint256 scalingFactor = 1e18; // default scalingFactor is 1
 
             int256 discount = data.discount;
-            if (discount > strategy.maxAllowedDiscount()) {
-                discount = strategy.maxAllowedDiscount();
+            if (discount > maxDiscount) {
+                discount = maxDiscount;
             }
 
             // discount value that is negative indicates LST price premium
             // scalingFactor = 1e18 for premiums and discounts that are small
-            // discountTimestampByPercent array holds the timestamp in position i for discount = (i+1)%
-            uint40[5] memory discountTimestampByPercent = data.discountTimestampByPercent;
+            // discountTimestampByPercent holds the timestamp for 1% discount
+            uint40 discountTimestampByPercent = data.discountTimestampByPercent;
 
             // 1e16 means a 1% LST discount where full scale is 1e18.
-            if (discount > 1e16) {
+            if ((discount > 1e16) && (discountTimestampByPercent > 0)) {
                 // linear approximation for exponential function with approx. half life of 30 days
                 uint256 halfLifeSec = 30 * 24 * 60 * 60;
-                uint256 len = data.discountTimestampByPercent.length;
-                for (uint256 j = 1; j < len; ++j) {
-                    // slither-disable-next-line timestamp
-                    if (discount <= StrategyUtils.convertUintToInt((j + 1) * 1e16)) {
-                        // current timestamp should be strictly >= timestamp in discountTimestampByPercent
-                        uint256 timeSinceDiscountSec =
-                            uint256(uint40(block.timestamp) - discountTimestampByPercent[j - 1]);
-                        scalingFactor >>= (timeSinceDiscountSec / halfLifeSec);
-                        // slither-disable-next-line weak-prng
-                        timeSinceDiscountSec %= halfLifeSec;
-                        scalingFactor -= scalingFactor * timeSinceDiscountSec / halfLifeSec / 2;
-                        break;
-                    }
-                }
+                // current timestamp should be strictly >= timestamp in discountTimestampByPercent
+                uint256 timeSinceDiscountSec = uint256(uint40(block.timestamp) - discountTimestampByPercent);
+                scalingFactor >>= (timeSinceDiscountSec / halfLifeSec);
+                // slither-disable-next-line weak-prng
+                timeSinceDiscountSec %= halfLifeSec;
+                scalingFactor -= scalingFactor * timeSinceDiscountSec / halfLifeSec / 2;
             }
             priceReturns[i] = discount * StrategyUtils.convertUintToInt(scalingFactor) / 1e18;
         }

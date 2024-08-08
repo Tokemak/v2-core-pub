@@ -45,7 +45,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
     uint24[10] public discountHistory;
 
     /// @notice each index is the timestamp that the token reached that discount (e.g., 1pct = 0 index)
-    uint40[5] public discountTimestampByPercent;
+    uint40 public discountTimestampByPercent;
 
     // TODO: verify that we save space by using a uint8. It should be packed with the bool & bytes32 below
     /// @dev the next index in the discountHistory buffer to be written
@@ -222,30 +222,17 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
         uint40 currentDiscount =
             discountHistory[(discountHistoryIndex + discountHistoryLength - 1) % discountHistoryLength];
 
-        // for each percent slot ask:
+        // ask:
         // "was this not in violation last round and now in violation this round?"
         // if yes, overwrite that slot in discountTimestampByPercent with the current timestamp
         // if no, do nothing
-        // TODO: There is gas optimization here with early stopping
+        // 1e5 in discountHistory means a 1% LST discount.
+        uint40 discountPercent = 1e5;
+        bool inViolationLastSnapshot = discountPercent <= previousDiscount;
+        bool inViolationThisSnapshot = discountPercent <= currentDiscount;
 
-        uint40 discountPercent;
-        bool inViolationLastSnapshot;
-        bool inViolationThisSnapshot;
-
-        // cached for gas efficiency see slither: cache-array-length
-        uint40 discountTimestampByPercentLength = uint40(discountTimestampByPercent.length);
-
-        // iterate over 1-5% discounts. max discount = discountTimestampByPercent.length percent
-        for (uint40 i; i < discountTimestampByPercentLength; ++i) {
-            // 1e5 in discountHistory means a 1% LST discount.
-            discountPercent = (i + 1) * 1e5;
-
-            inViolationLastSnapshot = discountPercent <= previousDiscount;
-            inViolationThisSnapshot = discountPercent <= currentDiscount;
-
-            if (inViolationThisSnapshot && !inViolationLastSnapshot) {
-                discountTimestampByPercent[i] = uint40(block.timestamp);
-            }
+        if (inViolationThisSnapshot && !inViolationLastSnapshot) {
+            discountTimestampByPercent = uint40(block.timestamp);
         }
     }
 

@@ -58,9 +58,6 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     /// @notice Emitted when a message is successfully sent to a message receiver contract.
     event MessageReceived(address messageReceiver, bytes message);
 
-    /// @notice Emitted when a message is successfully sent to a message receiver contract on a resend.
-    event MessageReceivedOnResend(address currentReceiver, bytes32 messageHash);
-
     /// @notice Emitted when a message receiver is added
     event MessageReceiverAdded(
         address messageOrigin, uint64 sourceChainSelector, bytes32 messageType, address messageReceiverToAdd
@@ -129,15 +126,12 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
 
         CCUtils.Message memory messageFromProxy = decodeMessage(messageData);
 
-        // Scope stack too deep
-        {
-            // Checking Message struct versioning
-            uint256 sourceVersion = messageFromProxy.version;
-            uint256 receiverVersion = CCUtils.getVersion();
-            if (sourceVersion != receiverVersion) {
-                emit MessageVersionMismatch(sourceVersion, receiverVersion);
-                return;
-            }
+        // Checking Message struct versioning
+        uint256 sourceVersion = messageFromProxy.version;
+        uint256 receiverVersion = CCUtils.getVersion();
+        if (sourceVersion != receiverVersion) {
+            emit MessageVersionMismatch(sourceVersion, receiverVersion);
+            return;
         }
 
         address origin = messageFromProxy.messageOrigin;
@@ -164,8 +158,8 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
 
             // Any failures will bubble and result in the option for a manual execution of this transaction
             // via ccip UI.
-            IMessageReceiverBase(currentMessageReceiver).onMessageReceive(messageType, message);
             emit MessageReceived(currentMessageReceiver, message);
+            IMessageReceiverBase(currentMessageReceiver).onMessageReceive(messageType, message);
         }
     }
 

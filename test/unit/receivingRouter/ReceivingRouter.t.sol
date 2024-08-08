@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
 pragma solidity 0.8.17;
 
-import { Test, Vm } from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { Roles } from "src/libs/Roles.sol";
 import { SystemComponent } from "src/SystemComponent.sol";
 import { Client } from "src/external/chainlink/ccip/Client.sol";
@@ -42,7 +42,6 @@ contract ReceivingRouterTests is Test, SystemRegistryMocks, AccessControllerMock
     );
     event MessageVersionMismatch(uint256 sourceVersion, uint256 receiverVersion);
     event MessageData(
-        bytes32 indexed messageHash,
         uint256 messageTimestamp,
         address messageOrigin,
         bytes32 messageType,
@@ -51,8 +50,7 @@ contract ReceivingRouterTests is Test, SystemRegistryMocks, AccessControllerMock
         bytes message
     );
     event NoMessageReceiversRegistered(address messageOrigin, bytes32 messageType, uint64 sourceChainSelector);
-    event MessageReceived(address messageReceiver, bytes32 messageHash);
-    event MessageFailed(address messageReceiver, bytes32 messageHash);
+    event MessageReceived(address messageReceiver, bytes message);
     event MessageReceivedOnResend(address currentReceiver, bytes32 messageHash);
 
     constructor() SystemRegistryMocks(vm) AccessControllerMocks(vm) { }
@@ -796,7 +794,6 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         bytes32 messageType = keccak256("messageType");
         bytes memory message = abi.encode("message");
         bytes memory data = CCUtils.encodeMessage(origin, block.timestamp, messageType, message);
-        bytes32 messageHash = keccak256(data);
 
         Client.Any2EVMMessage memory ccipMessage = _buildChainlinkCCIPMessage(messageId, chainId, sender, data);
         address[] memory receivers = new address[](1);
@@ -808,13 +805,11 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.expectEmit(true, true, true, true);
-        emit MessageData(messageHash, block.timestamp, origin, messageType, messageId, chainId, message);
+        emit MessageData(block.timestamp, origin, messageType, messageId, chainId, message);
         vm.expectEmit(true, true, true, true);
-        emit MessageReceived(receiver1, messageHash);
+        emit MessageReceived(receiver1, message);
         vm.prank(address(_routerClient));
         _router.ccipReceive(ccipMessage);
-
-        assertEq(_router.lastMessageReceived(_getMessageReceiversKey(origin, chainId, messageType)), messageHash);
     }
 
     function test_SendToMultipleMessageReceivers() public {
@@ -830,7 +825,6 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         bytes32 messageType = keccak256("messageType");
         bytes memory message = abi.encode("message");
         bytes memory data = CCUtils.encodeMessage(origin, block.timestamp, messageType, message);
-        bytes32 messageHash = keccak256(data);
 
         Client.Any2EVMMessage memory ccipMessage = _buildChainlinkCCIPMessage(messageId, chainId, sender, data);
         address[] memory receivers = new address[](2);
@@ -843,15 +837,13 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.expectEmit(true, true, true, true);
-        emit MessageData(messageHash, block.timestamp, origin, messageType, messageId, chainId, message);
+        emit MessageData(block.timestamp, origin, messageType, messageId, chainId, message);
         vm.expectEmit(true, true, true, true);
-        emit MessageReceived(receiver1, messageHash);
+        emit MessageReceived(receiver1, message);
         vm.expectEmit(true, true, true, true);
-        emit MessageReceived(receiver2, messageHash);
+        emit MessageReceived(receiver2, message);
         vm.prank(address(_routerClient));
         _router.ccipReceive(ccipMessage);
-
-        assertEq(_router.lastMessageReceived(_getMessageReceiversKey(origin, chainId, messageType)), messageHash);
     }
 
     function test_SuccessfulSend_TwoSourceSendersSet() public {
@@ -866,7 +858,6 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         bytes32 messageType = keccak256("messageType");
         bytes memory message = abi.encode("message");
         bytes memory data = CCUtils.encodeMessage(origin, block.timestamp, messageType, message);
-        bytes32 messageHash = keccak256(data);
 
         Client.Any2EVMMessage memory ccipMessage = _buildChainlinkCCIPMessage(messageId, chainId, sender, data);
         address[] memory receivers = new address[](1);
@@ -879,13 +870,11 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.expectEmit(true, true, true, true);
-        emit MessageData(messageHash, block.timestamp, origin, messageType, messageId, chainId, message);
+        emit MessageData(block.timestamp, origin, messageType, messageId, chainId, message);
         vm.expectEmit(true, true, true, true);
-        emit MessageReceived(receiver1, messageHash);
+        emit MessageReceived(receiver1, message);
         vm.prank(address(_routerClient));
         _router.ccipReceive(ccipMessage);
-
-        assertEq(_router.lastMessageReceived(_getMessageReceiversKey(origin, chainId, messageType)), messageHash);
     }
 
     function test_SendsFailureEvent_WhenFailureAtMessageReceiver() public {
@@ -900,7 +889,6 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         bytes32 messageType = keccak256("messageType");
         bytes memory message = abi.encode("message");
         bytes memory data = CCUtils.encodeMessage(origin, block.timestamp, messageType, message);
-        bytes32 messageHash = keccak256(data);
 
         Client.Any2EVMMessage memory ccipMessage = _buildChainlinkCCIPMessage(messageId, chainId, sender, data);
         address[] memory receivers = new address[](1);
@@ -914,13 +902,11 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         MockMessageReceiver(receiver1).setFailure(true);
 
         vm.expectEmit(true, true, true, true);
-        emit MessageData(messageHash, block.timestamp, origin, messageType, messageId, chainId, message);
-        vm.expectEmit(true, true, true, true);
-        emit MessageFailed(receiver1, messageHash);
-        vm.prank(address(_routerClient));
-        _router.ccipReceive(ccipMessage);
+        emit MessageData(block.timestamp, origin, messageType, messageId, chainId, message);
 
-        assertEq(_router.lastMessageReceived(_getMessageReceiversKey(origin, chainId, messageType)), messageHash);
+        vm.prank(address(_routerClient));
+        vm.expectRevert(MockMessageReceiver.Fail.selector);
+        _router.ccipReceive(ccipMessage);
     }
 
     function test_RevertIf_NoMessageReceiversRegistered() external {
@@ -977,8 +963,6 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         emit MessageVersionMismatch(messageVersionSource, messageVersionReceiver);
         vm.prank(address(_routerClient));
         _router.ccipReceive(ccipMessage);
-
-        assertEq(_router.lastMessageReceived(_getMessageReceiversKey(origin, chainId, messageType)), bytes32(0));
     }
 
     function test_EmitsFailureEvent_SourceChainSenderNotSet() public {
@@ -1012,592 +996,6 @@ contract _ccipReceiverTests is ReceivingRouterTests {
 
         vm.expectRevert(abi.encodeWithSelector(InvalidRouter.selector, address(this)));
         _router.ccipReceive(ccipMessage);
-    }
-}
-
-contract ResendLastMessageTests is ReceivingRouterTests {
-    function test_MultipleResends_MultipleReceivers() public {
-        _mockIsRouterManager(address(this), true);
-        _mockIsRouterExecutor(address(this), true);
-
-        address proxySender = makeAddr("proxySender");
-        address receiver1 = address(new MockMessageReceiver(_systemRegistry));
-        address receiver2 = address(new MockMessageReceiver(_systemRegistry));
-        address receiver3 = address(new MockMessageReceiver(_systemRegistry));
-        address receiver4 = address(new MockMessageReceiver(_systemRegistry));
-        bytes memory messageToReceiverFirstMessage = abi.encode(1);
-        bytes memory messageToReceiverSecondMessage = abi.encode(2);
-
-        bytes memory encodedFirstMessage = CCUtils.encodeMessage(
-            makeAddr("origin"), block.timestamp, keccak256("messageType1"), messageToReceiverFirstMessage
-        );
-        bytes memory encodedSecondMessage = CCUtils.encodeMessage(
-            makeAddr("origin"), block.timestamp, keccak256("messageType2"), messageToReceiverSecondMessage
-        );
-
-        Client.Any2EVMMessage memory ccipFirstMessage =
-            _buildChainlinkCCIPMessage(keccak256("ccipMessageId1"), 12, proxySender, encodedFirstMessage);
-        Client.Any2EVMMessage memory ccipSecondMessage =
-            _buildChainlinkCCIPMessage(keccak256("ccipMessageId2"), 12, proxySender, encodedSecondMessage);
-
-        _mockRouterIsChainSupported(12, true);
-        _mockSysRegReceivingRouter(_systemRegistry, address(_router));
-
-        address[] memory receiversFirstMessage = new address[](3);
-        address[] memory receiversSecondMessage = new address[](2);
-        receiversFirstMessage[0] = receiver1;
-        receiversFirstMessage[1] = receiver3;
-        receiversFirstMessage[2] = receiver2;
-        receiversSecondMessage[0] = receiver4;
-        receiversSecondMessage[1] = receiver1;
-        _router.setSourceChainSenders(12, proxySender, 0);
-        _router.setMessageReceivers(makeAddr("origin"), keccak256("messageType1"), 12, receiversFirstMessage);
-        _router.setMessageReceivers(makeAddr("origin"), keccak256("messageType2"), 12, receiversSecondMessage);
-
-        vm.startPrank(address(_routerClient));
-        _router.ccipReceive(ccipFirstMessage);
-        _router.ccipReceive(ccipSecondMessage);
-        vm.stopPrank();
-
-        ReceivingRouter.ResendArgsReceivingChain[] memory args = new ReceivingRouter.ResendArgsReceivingChain[](2);
-        args[0] = ReceivingRouter.ResendArgsReceivingChain({
-            messageOrigin: makeAddr("origin"),
-            messageType: keccak256("messageType1"),
-            messageResendTimestamp: block.timestamp,
-            sourceChainSelector: 12,
-            message: messageToReceiverFirstMessage,
-            messageReceivers: receiversFirstMessage
-        });
-        args[1] = ReceivingRouter.ResendArgsReceivingChain({
-            messageOrigin: makeAddr("origin"),
-            messageType: keccak256("messageType2"),
-            messageResendTimestamp: block.timestamp,
-            sourceChainSelector: 12,
-            message: messageToReceiverSecondMessage,
-            messageReceivers: receiversSecondMessage
-        });
-
-        vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver1, keccak256(encodedFirstMessage));
-        vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver3, keccak256(encodedFirstMessage));
-        vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver2, keccak256(encodedFirstMessage));
-        vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver4, keccak256(encodedSecondMessage));
-        vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver1, keccak256(encodedSecondMessage));
-        _router.resendLastMessage(args);
-    }
-
-    function test_SingleResend_MultipleReceivers() public {
-        _mockIsRouterManager(address(this), true);
-        _mockIsRouterExecutor(address(this), true);
-
-        address origin = makeAddr("origin");
-        address proxySender = makeAddr("proxySender");
-        address receiver1 = address(new MockMessageReceiver(_systemRegistry));
-        address receiver2 = address(new MockMessageReceiver(_systemRegistry));
-        address receiver3 = address(new MockMessageReceiver(_systemRegistry));
-        bytes32 ccipMessageId = keccak256("ccipMessageId");
-        bytes32 messageType = keccak256("messageType");
-        uint64 chainId = 12;
-        bytes memory messageToReceiver = abi.encode(1);
-        bytes memory encodedMessage = CCUtils.encodeMessage(origin, block.timestamp, messageType, messageToReceiver);
-        bytes32 messageHash = keccak256(encodedMessage);
-
-        Client.Any2EVMMessage memory ccip =
-            _buildChainlinkCCIPMessage(ccipMessageId, chainId, proxySender, encodedMessage);
-
-        _mockRouterIsChainSupported(chainId, true);
-        _mockSysRegReceivingRouter(_systemRegistry, address(_router));
-
-        address[] memory receivers = new address[](3);
-        receivers[0] = receiver1;
-        receivers[1] = receiver3;
-        receivers[2] = receiver2;
-        _router.setSourceChainSenders(chainId, proxySender, 0);
-        _router.setMessageReceivers(origin, messageType, chainId, receivers);
-
-        vm.prank(address(_routerClient));
-        _router.ccipReceive(ccip);
-
-        ReceivingRouter.ResendArgsReceivingChain[] memory args = new ReceivingRouter.ResendArgsReceivingChain[](1);
-        args[0] = ReceivingRouter.ResendArgsReceivingChain({
-            messageOrigin: origin,
-            messageType: messageType,
-            messageResendTimestamp: block.timestamp,
-            sourceChainSelector: chainId,
-            message: messageToReceiver,
-            messageReceivers: receivers
-        });
-
-        vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver1, messageHash);
-        vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver3, messageHash);
-        vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver2, messageHash);
-        _router.resendLastMessage(args);
-    }
-
-    function test_SingleResend_SingleReceiver_MultipleStorage_OnlySendsTo_RequestedReceivers() public {
-        _mockIsRouterManager(address(this), true);
-        _mockIsRouterExecutor(address(this), true);
-
-        address origin = makeAddr("origin");
-        address proxySender = makeAddr("proxySender");
-        address receiver1 = address(new MockMessageReceiver(_systemRegistry));
-        address receiver2 = address(new MockMessageReceiver(_systemRegistry));
-        address receiver3 = address(new MockMessageReceiver(_systemRegistry));
-        bytes32 ccipMessageId = keccak256("ccipMessageId");
-        bytes32 messageType = keccak256("messageType");
-        uint64 chainId = 12;
-        bytes memory messageToReceiver = abi.encode(1);
-
-        bytes memory encodedMessage = CCUtils.encodeMessage(origin, block.timestamp, messageType, messageToReceiver);
-
-        Client.Any2EVMMessage memory ccip =
-            _buildChainlinkCCIPMessage(ccipMessageId, chainId, proxySender, encodedMessage);
-
-        _mockRouterIsChainSupported(chainId, true);
-        _mockSysRegReceivingRouter(_systemRegistry, address(_router));
-
-        address[] memory receivers = new address[](3);
-        receivers[0] = receiver1;
-        receivers[1] = receiver2;
-        receivers[2] = receiver3;
-        _router.setSourceChainSenders(chainId, proxySender, 0);
-        _router.setMessageReceivers(origin, messageType, chainId, receivers);
-
-        vm.prank(address(_routerClient));
-        _router.ccipReceive(ccip);
-
-        address[] memory receiversForResend = new address[](1);
-        receiversForResend[0] = receiver3;
-        ReceivingRouter.ResendArgsReceivingChain[] memory args = new ReceivingRouter.ResendArgsReceivingChain[](1);
-        args[0] = ReceivingRouter.ResendArgsReceivingChain({
-            messageOrigin: origin,
-            messageType: messageType,
-            messageResendTimestamp: block.timestamp,
-            sourceChainSelector: chainId,
-            message: messageToReceiver,
-            messageReceivers: receiversForResend
-        });
-
-        vm.recordLogs();
-        _router.resendLastMessage(args);
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        // Make sure total logs emitted on function call is what we expect.
-        assertEq(logs.length, 1);
-    }
-
-    function test_SingleResend_SingleReceiver() public {
-        _mockIsRouterManager(address(this), true);
-        _mockIsRouterExecutor(address(this), true);
-
-        address origin = makeAddr("origin");
-        address proxySender = makeAddr("proxySender");
-        address receiver1 = address(new MockMessageReceiver(_systemRegistry));
-        bytes32 ccipMessageId = keccak256("ccipMessageId");
-        bytes32 messageType = keccak256("messageType");
-        uint64 chainId = 12;
-        bytes memory messageToReceiver = abi.encode(1);
-        bytes memory encodedMessage = CCUtils.encodeMessage(origin, block.timestamp, messageType, messageToReceiver);
-        bytes32 messageHash = keccak256(encodedMessage);
-
-        Client.Any2EVMMessage memory ccip =
-            _buildChainlinkCCIPMessage(ccipMessageId, chainId, proxySender, encodedMessage);
-
-        _mockRouterIsChainSupported(chainId, true);
-        _mockSysRegReceivingRouter(_systemRegistry, address(_router));
-
-        address[] memory receivers = new address[](1);
-        receivers[0] = receiver1;
-        _router.setSourceChainSenders(chainId, proxySender, 0);
-        _router.setMessageReceivers(origin, messageType, chainId, receivers);
-
-        vm.prank(address(_routerClient));
-        _router.ccipReceive(ccip);
-
-        ReceivingRouter.ResendArgsReceivingChain[] memory args = new ReceivingRouter.ResendArgsReceivingChain[](1);
-        args[0] = ReceivingRouter.ResendArgsReceivingChain({
-            messageOrigin: origin,
-            messageType: messageType,
-            messageResendTimestamp: block.timestamp,
-            sourceChainSelector: chainId,
-            message: messageToReceiver,
-            messageReceivers: receivers
-        });
-
-        vm.expectEmit(true, true, true, true);
-        emit MessageReceivedOnResend(receiver1, messageHash);
-        _router.resendLastMessage(args);
-    }
-
-    function test_RevertIf_ReceiverDoesNotExistInStorage_LastOfMultipleInStorage() public {
-        _mockIsRouterManager(address(this), true);
-        _mockIsRouterExecutor(address(this), true);
-
-        address origin = makeAddr("origin");
-        address proxySender = makeAddr("proxySender");
-        address receiver1 = address(new MockMessageReceiver(_systemRegistry));
-        address receiver2 = address(new MockMessageReceiver(_systemRegistry));
-        address receiver3 = address(new MockMessageReceiver(_systemRegistry));
-        address receiverDNE = address(new MockMessageReceiver(_systemRegistry));
-        bytes32 ccipMessageId = keccak256("ccipMessageId");
-        bytes32 messageType = keccak256("messageType");
-        uint64 chainId = 12;
-        bytes memory messageToReceiver = abi.encode(1);
-
-        bytes memory encodedMessage = CCUtils.encodeMessage(origin, block.timestamp, messageType, messageToReceiver);
-
-        Client.Any2EVMMessage memory ccip =
-            _buildChainlinkCCIPMessage(ccipMessageId, chainId, proxySender, encodedMessage);
-
-        _mockRouterIsChainSupported(chainId, true);
-        _mockSysRegReceivingRouter(_systemRegistry, address(_router));
-
-        address[] memory receivers = new address[](3);
-        receivers[0] = receiver1;
-        receivers[1] = receiver2;
-        receivers[2] = receiver3;
-        _router.setSourceChainSenders(chainId, proxySender, 0);
-        _router.setMessageReceivers(origin, messageType, chainId, receivers);
-
-        vm.prank(address(_routerClient));
-        _router.ccipReceive(ccip);
-
-        receivers[2] = receiverDNE;
-        ReceivingRouter.ResendArgsReceivingChain[] memory args = new ReceivingRouter.ResendArgsReceivingChain[](1);
-        args[0] = ReceivingRouter.ResendArgsReceivingChain({
-            messageOrigin: origin,
-            messageType: messageType,
-            messageResendTimestamp: block.timestamp,
-            sourceChainSelector: chainId,
-            message: messageToReceiver,
-            messageReceivers: receivers
-        });
-
-        vm.expectRevert(abi.encodeWithSelector(ReceivingRouter.MessageReceiverDoesNotExist.selector, receiverDNE));
-        _router.resendLastMessage(args);
-    }
-
-    function test_RevertIf_ReceiverDoesNotExistInStorage_FirstOfMultipleInStorage() public {
-        _mockIsRouterManager(address(this), true);
-        _mockIsRouterExecutor(address(this), true);
-
-        address origin = makeAddr("origin");
-        address proxySender = makeAddr("proxySender");
-        address receiver1 = address(new MockMessageReceiver(_systemRegistry));
-        address receiver2 = address(new MockMessageReceiver(_systemRegistry));
-        address receiver3 = address(new MockMessageReceiver(_systemRegistry));
-        address receiverDNE = address(new MockMessageReceiver(_systemRegistry));
-        bytes32 ccipMessageId = keccak256("ccipMessageId");
-        bytes32 messageType = keccak256("messageType");
-        uint64 chainId = 12;
-        bytes memory messageToReceiver = abi.encode(1);
-
-        bytes memory encodedMessage = CCUtils.encodeMessage(origin, block.timestamp, messageType, messageToReceiver);
-
-        Client.Any2EVMMessage memory ccip =
-            _buildChainlinkCCIPMessage(ccipMessageId, chainId, proxySender, encodedMessage);
-
-        _mockRouterIsChainSupported(chainId, true);
-        _mockSysRegReceivingRouter(_systemRegistry, address(_router));
-
-        address[] memory receivers = new address[](3);
-        receivers[0] = receiver1;
-        receivers[1] = receiver2;
-        receivers[2] = receiver3;
-        _router.setSourceChainSenders(chainId, proxySender, 0);
-        _router.setMessageReceivers(origin, messageType, chainId, receivers);
-
-        vm.prank(address(_routerClient));
-        _router.ccipReceive(ccip);
-
-        receivers[0] = receiverDNE;
-        ReceivingRouter.ResendArgsReceivingChain[] memory args = new ReceivingRouter.ResendArgsReceivingChain[](1);
-        args[0] = ReceivingRouter.ResendArgsReceivingChain({
-            messageOrigin: origin,
-            messageType: messageType,
-            messageResendTimestamp: block.timestamp,
-            sourceChainSelector: chainId,
-            message: messageToReceiver,
-            messageReceivers: receivers
-        });
-
-        vm.expectRevert(abi.encodeWithSelector(ReceivingRouter.MessageReceiverDoesNotExist.selector, receiverDNE));
-        _router.resendLastMessage(args);
-    }
-
-    function test_RevertIf_ReceiverDoesNotExistInStorage_SingleStorage() public {
-        _mockIsRouterManager(address(this), true);
-        _mockIsRouterExecutor(address(this), true);
-
-        address origin = makeAddr("origin");
-        address proxySender = makeAddr("proxySender");
-        address receiver1 = address(new MockMessageReceiver(_systemRegistry));
-        address receiver2 = address(new MockMessageReceiver(_systemRegistry));
-        bytes32 ccipMessageId = keccak256("ccipMessageId");
-        bytes32 messageType = keccak256("messageType");
-        uint64 chainId = 12;
-        bytes memory messageToReceiver = abi.encode(1);
-
-        bytes memory encodedMessage = CCUtils.encodeMessage(origin, block.timestamp, messageType, messageToReceiver);
-
-        Client.Any2EVMMessage memory ccip =
-            _buildChainlinkCCIPMessage(ccipMessageId, chainId, proxySender, encodedMessage);
-
-        _mockRouterIsChainSupported(chainId, true);
-        _mockSysRegReceivingRouter(_systemRegistry, address(_router));
-
-        address[] memory receivers = new address[](1);
-        receivers[0] = receiver1;
-        _router.setSourceChainSenders(chainId, proxySender, 0);
-        _router.setMessageReceivers(origin, messageType, chainId, receivers);
-
-        vm.prank(address(_routerClient));
-        _router.ccipReceive(ccip);
-
-        receivers[0] = receiver2;
-        ReceivingRouter.ResendArgsReceivingChain[] memory args = new ReceivingRouter.ResendArgsReceivingChain[](1);
-        args[0] = ReceivingRouter.ResendArgsReceivingChain({
-            messageOrigin: origin,
-            messageType: messageType,
-            messageResendTimestamp: block.timestamp,
-            sourceChainSelector: chainId,
-            message: messageToReceiver,
-            messageReceivers: receivers
-        });
-
-        vm.expectRevert(abi.encodeWithSelector(ReceivingRouter.MessageReceiverDoesNotExist.selector, receiver2));
-        _router.resendLastMessage(args);
-    }
-
-    function test_RevertIf_CurrrentReceiver_ZeroAddress_Multiple() public {
-        _mockIsRouterManager(address(this), true);
-        _mockIsRouterExecutor(address(this), true);
-
-        address origin = makeAddr("origin");
-        address proxySender = makeAddr("proxySender");
-        address receiver1 = address(new MockMessageReceiver(_systemRegistry));
-        address receiver2 = address(new MockMessageReceiver(_systemRegistry));
-        address zeroAddressReceiver = address(0);
-        bytes32 ccipMessageId = keccak256("ccipMessageId");
-        bytes32 messageType = keccak256("messageType");
-        uint64 chainId = 12;
-        bytes memory messageToReceiver = abi.encode(1);
-
-        bytes memory encodedMessage = CCUtils.encodeMessage(origin, block.timestamp, messageType, messageToReceiver);
-
-        Client.Any2EVMMessage memory ccip =
-            _buildChainlinkCCIPMessage(ccipMessageId, chainId, proxySender, encodedMessage);
-
-        _mockRouterIsChainSupported(chainId, true);
-        _mockSysRegReceivingRouter(_systemRegistry, address(_router));
-
-        address[] memory receivers = new address[](2);
-        receivers[0] = receiver1;
-        receivers[1] = receiver2;
-        _router.setSourceChainSenders(chainId, proxySender, 0);
-        _router.setMessageReceivers(origin, messageType, chainId, receivers);
-
-        vm.prank(address(_routerClient));
-        _router.ccipReceive(ccip);
-
-        receivers[1] = zeroAddressReceiver;
-        ReceivingRouter.ResendArgsReceivingChain[] memory args = new ReceivingRouter.ResendArgsReceivingChain[](1);
-        args[0] = ReceivingRouter.ResendArgsReceivingChain({
-            messageOrigin: origin,
-            messageType: messageType,
-            messageResendTimestamp: block.timestamp,
-            sourceChainSelector: chainId,
-            message: messageToReceiver,
-            messageReceivers: receivers
-        });
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "currentReceiver"));
-        _router.resendLastMessage(args);
-    }
-
-    function test_RevertIf_CurrrentReceiver_ZeroAddress_Single() public {
-        _mockIsRouterManager(address(this), true);
-        _mockIsRouterExecutor(address(this), true);
-
-        address origin = makeAddr("origin");
-        address proxySender = makeAddr("proxySender");
-        address receiver = address(new MockMessageReceiver(_systemRegistry));
-        address zeroAddressReceiver = address(0);
-        bytes32 ccipMessageId = keccak256("ccipMessageId");
-        bytes32 messageType = keccak256("messageType");
-        uint64 chainId = 12;
-        bytes memory messageToReceiver = abi.encode(1);
-
-        bytes memory encodedMessage = CCUtils.encodeMessage(origin, block.timestamp, messageType, messageToReceiver);
-
-        Client.Any2EVMMessage memory ccip =
-            _buildChainlinkCCIPMessage(ccipMessageId, chainId, proxySender, encodedMessage);
-
-        _mockRouterIsChainSupported(chainId, true);
-        _mockSysRegReceivingRouter(_systemRegistry, address(_router));
-
-        address[] memory receivers = new address[](1);
-        receivers[0] = receiver;
-        _router.setSourceChainSenders(chainId, proxySender, 0);
-        _router.setMessageReceivers(origin, messageType, chainId, receivers);
-
-        vm.prank(address(_routerClient));
-        _router.ccipReceive(ccip);
-
-        receivers[0] = zeroAddressReceiver;
-        ReceivingRouter.ResendArgsReceivingChain[] memory args = new ReceivingRouter.ResendArgsReceivingChain[](1);
-        args[0] = ReceivingRouter.ResendArgsReceivingChain({
-            messageOrigin: origin,
-            messageType: messageType,
-            messageResendTimestamp: block.timestamp,
-            sourceChainSelector: chainId,
-            message: messageToReceiver,
-            messageReceivers: receivers
-        });
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "currentReceiver"));
-        _router.resendLastMessage(args);
-    }
-
-    function test_RevertIf_NoReceviersStored() public {
-        _mockIsRouterManager(address(this), true);
-        _mockIsRouterExecutor(address(this), true);
-
-        address origin = makeAddr("origin");
-        address proxySender = makeAddr("proxySender");
-        address receiver = address(new MockMessageReceiver(_systemRegistry));
-        bytes32 ccipMessageId = keccak256("ccipMessageId");
-        bytes32 messageType = keccak256("messageType");
-        uint64 chainId = 12;
-        bytes memory messageToReceiver = abi.encode(1);
-
-        bytes memory encodedMessage = CCUtils.encodeMessage(origin, block.timestamp, messageType, messageToReceiver);
-
-        Client.Any2EVMMessage memory ccip =
-            _buildChainlinkCCIPMessage(ccipMessageId, chainId, proxySender, encodedMessage);
-
-        _mockRouterIsChainSupported(chainId, true);
-        _mockSysRegReceivingRouter(_systemRegistry, address(_router));
-
-        address[] memory receivers = new address[](1);
-        receivers[0] = receiver;
-        _router.setSourceChainSenders(chainId, proxySender, 0);
-        _router.setMessageReceivers(origin, messageType, chainId, receivers);
-
-        vm.prank(address(_routerClient));
-        _router.ccipReceive(ccip);
-
-        _router.removeMessageReceivers(origin, messageType, chainId, receivers);
-
-        ReceivingRouter.ResendArgsReceivingChain[] memory args = new ReceivingRouter.ResendArgsReceivingChain[](1);
-        args[0] = ReceivingRouter.ResendArgsReceivingChain({
-            messageOrigin: origin,
-            messageType: messageType,
-            messageResendTimestamp: block.timestamp,
-            sourceChainSelector: chainId,
-            message: messageToReceiver,
-            messageReceivers: receivers
-        });
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "storedReceiversLength"));
-        _router.resendLastMessage(args);
-    }
-
-    function test_RevertIf_HashMismatch() public {
-        _mockIsRouterManager(address(this), true);
-        _mockIsRouterExecutor(address(this), true);
-
-        address origin = makeAddr("origin");
-        address proxySender = makeAddr("proxySender");
-        address receiver = address(new MockMessageReceiver(_systemRegistry));
-        bytes32 ccipMessageId = keccak256("ccipMessageId");
-        bytes32 messageType = keccak256("messageType");
-        uint64 chainId = 12;
-        bytes memory messageToReceiver = abi.encode(1);
-
-        bytes memory encodedMessage = CCUtils.encodeMessage(origin, block.timestamp, messageType, messageToReceiver);
-
-        Client.Any2EVMMessage memory ccip =
-            _buildChainlinkCCIPMessage(ccipMessageId, chainId, proxySender, encodedMessage);
-
-        _mockRouterIsChainSupported(chainId, true);
-        _mockSysRegReceivingRouter(_systemRegistry, address(_router));
-
-        address[] memory receivers = new address[](1);
-        receivers[0] = receiver;
-        _router.setSourceChainSenders(chainId, proxySender, 0);
-        _router.setMessageReceivers(origin, messageType, chainId, receivers);
-
-        vm.prank(address(_routerClient));
-        _router.ccipReceive(ccip);
-
-        ReceivingRouter.ResendArgsReceivingChain[] memory args = new ReceivingRouter.ResendArgsReceivingChain[](1);
-        args[0] = ReceivingRouter.ResendArgsReceivingChain({
-            messageOrigin: origin,
-            messageType: messageType,
-            messageResendTimestamp: block.timestamp,
-            sourceChainSelector: chainId,
-            message: abi.encode(2), // Manipulate hash
-            messageReceivers: receivers
-        });
-
-        bytes32 storedHash = _router.lastMessageReceived(_getMessageReceiversKey(origin, chainId, messageType));
-        bytes32 submittedHash = keccak256(CCUtils.encodeMessage(origin, block.timestamp, messageType, abi.encode(2)));
-
-        vm.expectRevert(abi.encodeWithSelector(CCUtils.MismatchMessageHash.selector, storedHash, submittedHash));
-        _router.resendLastMessage(args);
-    }
-
-    function test_RevertIf_MessageReceiversNoMembers() public {
-        _mockIsRouterExecutor(address(this), true);
-
-        address origin = makeAddr("origin");
-        bytes32 messageType = keccak256("messageType");
-        uint64 chainId = 12;
-        bytes memory message = abi.encode(1);
-        address[] memory receivers = new address[](0);
-
-        ReceivingRouter.ResendArgsReceivingChain[] memory args = new ReceivingRouter.ResendArgsReceivingChain[](1);
-        args[0] = ReceivingRouter.ResendArgsReceivingChain({
-            messageOrigin: origin,
-            messageType: messageType,
-            messageResendTimestamp: block.timestamp,
-            sourceChainSelector: chainId,
-            message: message,
-            messageReceivers: receivers
-        });
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidParam.selector, "resendMessageReceiversLength"));
-        _router.resendLastMessage(args);
-    }
-
-    function test_RevertIf_NotRouterManager() public {
-        _mockIsRouterExecutor(address(this), false);
-
-        address origin = makeAddr("origin");
-        bytes32 messageType = keccak256("messageType");
-        uint64 chainId = 12;
-        bytes memory message = abi.encode(1);
-        address[] memory receivers = new address[](0);
-
-        ReceivingRouter.ResendArgsReceivingChain[] memory args = new ReceivingRouter.ResendArgsReceivingChain[](1);
-        args[0] = ReceivingRouter.ResendArgsReceivingChain({
-            messageOrigin: origin,
-            messageType: messageType,
-            messageResendTimestamp: block.timestamp,
-            sourceChainSelector: chainId,
-            message: message,
-            messageReceivers: receivers
-        });
-
-        vm.expectRevert(Errors.AccessDenied.selector);
-        _router.resendLastMessage(args);
     }
 }
 

@@ -28,23 +28,6 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     /// @dev Multiple to handle replacing MessageProxy on source chain.
     mapping(uint64 => address[2]) public sourceChainSenders;
 
-    /// @notice keccak256(address origin, uint256 sourceChainSelector, bytes32 messageType) => bytes32 hash
-    mapping(bytes32 => bytes32) public lastMessageReceived;
-
-    /// =====================================================
-    /// Structs
-    /// =====================================================
-
-    /// @notice Used for resending messages that fail on _ccipReceive
-    struct ResendArgsReceivingChain {
-        address messageOrigin; // Origin of message on source chain. Different from sender
-        bytes32 messageType;
-        uint256 messageResendTimestamp;
-        uint64 sourceChainSelector;
-        bytes message;
-        address[] messageReceivers;
-    }
-
     /// =====================================================
     /// Errors
     /// =====================================================
@@ -58,7 +41,6 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
 
     /// @notice Emitted when message is built to be sent for message origin, type, and source chain.
     event MessageData(
-        bytes32 indexed messageHash,
         uint256 messageTimestamp,
         address messageOrigin,
         bytes32 messageType,
@@ -74,7 +56,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
     event SourceChainSenderDeleted(uint64 sourceChainSelector);
 
     /// @notice Emitted when a message is successfully sent to a message receiver contract.
-    event MessageReceived(address messageReceiver, bytes32 messageHash);
+    event MessageReceived(address messageReceiver, bytes message);
 
     /// @notice Emitted when a message is successfully sent to a message receiver contract on a resend.
     event MessageReceivedOnResend(address currentReceiver, bytes32 messageHash);
@@ -106,9 +88,6 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
 
     /// @notice Emitted when message versions don't match
     event MessageVersionMismatch(uint256 versionSource, uint256 versionReceiver);
-
-    /// @notice Emitted when message send to a receiver fails
-    event MessageFailed(address messageReceiver, bytes32 messageHash);
 
     /// =====================================================
     /// Functions - Constructor
@@ -175,97 +154,18 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
             return;
         }
 
-        // Set message hash for retries
-        bytes32 messageHash = keccak256(messageData);
-        lastMessageReceived[senderKey] = messageHash;
-
         emit MessageData(
-            messageHash,
-            messageFromProxy.messageTimestamp,
-            origin,
-            messageType,
-            ccipMessage.messageId,
-            sourceChainSelector,
-            message
+            messageFromProxy.messageTimestamp, origin, messageType, ccipMessage.messageId, sourceChainSelector, message
         );
 
         // Loop through stored receivers, send messages off to them
         for (uint256 i = 0; i < messageReceiversForRouteLength; ++i) {
             address currentMessageReceiver = messageReceiversForRoute[i];
-            // slither-disable-start reentrancy-events
-            // Try to send message to receiver, catch any errors and emit event
-            try IMessageReceiverBase(currentMessageReceiver).onMessageReceive(messageType, message) {
-                emit MessageReceived(currentMessageReceiver, messageHash);
-            } catch {
-                emit MessageFailed(currentMessageReceiver, messageHash);
-            }
-            // slither-disable-end reentrancy-events
-        }
-    }
 
-    /// @notice Used to resend messages that failed when attempting to go to message receivers
-    /// @dev This can be used even if messages did not fail, be aware of receivers being sent in
-    /// @param args Array of Resend structs with information for retries
-    function resendLastMessage(ResendArgsReceivingChain[] memory args)
-        external
-        hasRole(Roles.RECEIVING_ROUTER_EXECUTOR)
-    {
-        // Loop through ResendArgsReceivingChain array.
-        for (uint256 i = 0; i < args.length; ++i) {
-            // Store vars with multiple usages locally
-            ResendArgsReceivingChain memory currentResend = args[i];
-            address messageOrigin = currentResend.messageOrigin;
-            bytes32 messageType = currentResend.messageType;
-            bytes memory message = currentResend.message;
-            address[] memory resendMessageReceivers = currentResend.messageReceivers;
-            uint256 resendMessageReceiversLength = resendMessageReceivers.length;
-
-            // Verify that message receivers are sent in.
-            Errors.verifyNotZero(resendMessageReceiversLength, "resendMessageReceiversLength");
-
-            // Get hash from data passed in for comparison to stored hash
-            bytes32 currentMessageHash = keccak256(
-                CCUtils.encodeMessage(messageOrigin, currentResend.messageResendTimestamp, messageType, message)
-            );
-            bytes32 messageReceiverKey =
-                _getMessageReceiversKey(messageOrigin, currentResend.sourceChainSelector, messageType);
-
-            // Check message hashes.  Acts as security for origin, timestamp, type, selector, message passed in
-            {
-                bytes32 storedMessageHash = lastMessageReceived[messageReceiverKey];
-                if (currentMessageHash != storedMessageHash) {
-                    revert CCUtils.MismatchMessageHash(storedMessageHash, currentMessageHash);
-                }
-            }
-
-            // Get receivers registered, check that there is at least one
-            address[] memory storedMessageReceiversForKey = messageReceivers[messageReceiverKey];
-            uint256 storedReceiversLength = storedMessageReceiversForKey.length;
-            Errors.verifyNotZero(storedReceiversLength, "storedReceiversLength");
-
-            // Loop through and send messages.
-            for (uint256 j = 0; j < resendMessageReceiversLength; ++j) {
-                address currentReceiver = resendMessageReceivers[j];
-                Errors.verifyNotZero(currentReceiver, "currentReceiver");
-
-                // Checking that message receiver exists in our registered receivers information.
-                uint256 k;
-                for (; k < storedReceiversLength; ++k) {
-                    // Break for loop if we have a match
-                    if (currentReceiver == storedMessageReceiversForKey[k]) {
-                        break;
-                    }
-                }
-                // Revert if for loop finishes without finding match, not registered
-                if (k == storedReceiversLength) {
-                    revert MessageReceiverDoesNotExist(currentReceiver);
-                }
-
-                // slither-disable-start reentrancy-events
-                emit MessageReceivedOnResend(currentReceiver, currentMessageHash);
-                IMessageReceiverBase(currentReceiver).onMessageReceive(messageType, message);
-                // slither-disable-end reentrancy-events
-            }
+            // Any failures will bubble and result in the option for a manual execution of this transaction
+            // via ccip UI.
+            IMessageReceiverBase(currentMessageReceiver).onMessageReceive(messageType, message);
+            emit MessageReceived(currentMessageReceiver, message);
         }
     }
 

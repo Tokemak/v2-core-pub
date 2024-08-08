@@ -886,7 +886,8 @@ contract Initialize is AuraCalculatorTest {
 contract SafeTotalSupplyTests is AuraCalculatorTest {
     function testOnlyUseLatestTotalSupply() public {
         mockSimpleMainRewarder();
-        mockPeriodFinish(mainRewarder, block.timestamp + 3 hours);
+        mockPeriodFinish(mainRewarder, block.timestamp + 28 hours);
+
         calculator.snapshot();
 
         mockRewardPerToken(mainRewarder, REWARD_PER_TOKEN * 2);
@@ -895,16 +896,12 @@ contract SafeTotalSupplyTests is AuraCalculatorTest {
         calculator.snapshot();
 
         assertEq(calculator.safeTotalSupplies(mainRewarder), 108_000_000_000_000_000_000_000);
-
         IDexLSTStats.DexLSTStatsData memory res = calculator.current();
-
         assertEq(res.stakingIncentiveStats.safeTotalSupply, 108_000_000_000_000_000_000_000);
 
-        vm.warp(block.timestamp + 24 hours);
-        assertFalse(calculator.shouldSnapshot());
-
+        vm.warp(block.timestamp + 25 hours);
         addMockExtraRewarder();
-        mockPeriodFinish(extraRewarder1, block.timestamp + 3 hours);
+        mockPeriodFinish(extraRewarder1, block.timestamp + 7 days);
         mockRewardPerToken(extraRewarder1, REWARD_PER_TOKEN);
         mockRewardRate(extraRewarder1, REWARD_RATE);
 

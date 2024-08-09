@@ -11,6 +11,7 @@ import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
+import { console2 as console } from "forge-std/console2.sol";
 
 import { IDexLSTStats, ILSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 
@@ -31,7 +32,7 @@ contract LensInt is Test {
         uint256 baseApr;
         int256 discount;
         uint24[10] discountHistory;
-        uint40 discountTimestampByPercent;
+        uint40[5] discountTimestampByPercent;
         uint256[] slashingCosts;
         uint256[] slashingTimestamps;
     }
@@ -150,7 +151,7 @@ contract LensInt is Test {
                             baseApr: lstStatsOldFormat.baseApr,
                             discount: lstStatsOldFormat.discount,
                             discountHistory: lstStatsOldFormat.discountHistory,
-                            discountTimestampByPercent: lstStatsOldFormat.discountTimestampByPercent
+                            discountTimestampByPercent: lstStatsOldFormat.discountTimestampByPercent[0]
                         });
                     }
                 }

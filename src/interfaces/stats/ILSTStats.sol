@@ -9,7 +9,7 @@ interface ILSTStats {
         uint256 baseApr;
         int256 discount; // positive number is a discount, negative is a premium
         uint24[10] discountHistory; // 7 decimal precision
-        uint40 discountTimestampByPercent; // each index is the timestamp that the token reached that discount
+        uint40 discountTimestampByPercent; // index is the timestamp that the token reached that discount
     }
 
     /// @notice Get the current stats for the LST

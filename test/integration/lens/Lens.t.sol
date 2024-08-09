@@ -31,7 +31,7 @@ contract LensInt is Test {
         uint256 baseApr;
         int256 discount;
         uint24[10] discountHistory;
-        uint40[5] discountTimestampByPercent;
+        uint40 discountTimestampByPercent;
         uint256[] slashingCosts;
         uint256[] slashingTimestamps;
     }

@@ -493,7 +493,7 @@ contract CurveV1PoolRebasingStatsCalculatorTest is Test {
 
     function mockLSTData(address stats, uint256 baseApr) internal {
         uint24[10] memory discountHistory;
-        uint40[5] memory discountTimestampByPercent;
+        uint40 discountTimestampByPercent;
         ILSTStats.LSTStatsData memory res = ILSTStats.LSTStatsData({
             lastSnapshotTimestamp: 0,
             baseApr: baseApr,

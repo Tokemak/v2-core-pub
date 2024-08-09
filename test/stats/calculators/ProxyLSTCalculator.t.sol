@@ -48,7 +48,7 @@ contract ProxyLSTCalculatorTest is Test {
 
     function test_current_Success() public {
         uint24[10] memory discountHistory;
-        uint40[5] memory discountTimestampByPercent;
+        uint40 discountTimestampByPercent;
         ILSTStats.LSTStatsData memory stats = ILSTStats.LSTStatsData({
             lastSnapshotTimestamp: 12,
             baseApr: 10,

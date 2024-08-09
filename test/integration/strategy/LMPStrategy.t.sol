@@ -665,7 +665,7 @@ contract AutopoolETHStrategyInt is Test {
             baseApr: lstStatsOldFormat.baseApr,
             discount: lstStatsOldFormat.discount,
             discountHistory: lstStatsOldFormat.discountHistory,
-            discountTimestampByPercent: lstStatsOldFormat.discountTimestampByPercent
+            discountTimestampByPercent: lstStatsOldFormat.discountTimestampByPercent[0]
         });
 
         // Stays zero, not needed for these tests

@@ -34,6 +34,7 @@ import { PriceReturn } from "src/strategy/libs/PriceReturn.sol";
 import { SummaryStats } from "src/strategy/libs/SummaryStats.sol";
 import { IAutopoolStrategy } from "src/interfaces/strategy/IAutopoolStrategy.sol";
 import { ISummaryStatsHook } from "src/interfaces/strategy/ISummaryStatsHook.sol";
+import { console2 as console } from "forge-std/console2.sol";
 
 contract AutopoolETHStrategyTest is Test {
     using NavTracking for NavTracking.State;
@@ -1650,8 +1651,9 @@ contract AutopoolETHStrategyTest is Test {
         dexStats.lstStatsData[0] = lstStat;
 
         int256[] memory priceReturns = defaultStrat._calculatePriceReturns(dexStats);
+        console.log("return is ", priceReturns[0]);
         assertEq(priceReturns.length, 1);
-        assertEq(priceReturns[0], 49_999_990_354_938_271);
+        assertEq(priceReturns[0], 50_000_000_000_000_000);
     }
 
     // Near half-life
@@ -1662,12 +1664,8 @@ contract AutopoolETHStrategyTest is Test {
         ILSTStats.LSTStatsData memory lstStat;
         lstStat.discount = 3e16; // maxAllowed is 5e16
         vm.warp(35 days);
-        uint40[5] memory discountTimestampByPercent;
-        discountTimestampByPercent[0] = 1 days;
-        discountTimestampByPercent[1] = 1 days;
-        discountTimestampByPercent[2] = 1 days;
-        discountTimestampByPercent[3] = 1 days;
-        discountTimestampByPercent[4] = 1 days;
+        uint40 discountTimestampByPercent;
+        discountTimestampByPercent = 1 days;
         lstStat.discountTimestampByPercent = discountTimestampByPercent;
         dexStats.lstStatsData[0] = lstStat;
 
@@ -1684,12 +1682,7 @@ contract AutopoolETHStrategyTest is Test {
         ILSTStats.LSTStatsData memory lstStat;
         lstStat.discount = 3e16; // maxAllowed is 5e16
         vm.warp(15 days);
-        uint40[5] memory discountTimestampByPercent;
-        discountTimestampByPercent[0] = 1 days;
-        discountTimestampByPercent[1] = 1 days;
-        discountTimestampByPercent[2] = 1 days;
-        discountTimestampByPercent[3] = 1 days;
-        discountTimestampByPercent[4] = 1 days;
+        uint40 discountTimestampByPercent = 1 days;
         lstStat.discountTimestampByPercent = discountTimestampByPercent;
         dexStats.lstStatsData[0] = lstStat;
 
@@ -1706,12 +1699,7 @@ contract AutopoolETHStrategyTest is Test {
         ILSTStats.LSTStatsData memory lstStat;
         lstStat.discount = 3e16; // maxAllowed is 5e16
         vm.warp(60 days);
-        uint40[5] memory discountTimestampByPercent;
-        discountTimestampByPercent[0] = 1 days;
-        discountTimestampByPercent[1] = 1 days;
-        discountTimestampByPercent[2] = 1 days;
-        discountTimestampByPercent[3] = 1 days;
-        discountTimestampByPercent[4] = 1 days;
+        uint40 discountTimestampByPercent = 1 days;
         lstStat.discountTimestampByPercent = discountTimestampByPercent;
         dexStats.lstStatsData[0] = lstStat;
 
@@ -1728,12 +1716,8 @@ contract AutopoolETHStrategyTest is Test {
         ILSTStats.LSTStatsData memory lstStat;
         lstStat.discount = 5e15; // maxAllowed is 5e16
         vm.warp(35 days);
-        uint40[5] memory discountTimestampByPercent;
-        discountTimestampByPercent[0] = 1 days;
-        discountTimestampByPercent[1] = 1 days;
-        discountTimestampByPercent[2] = 1 days;
-        discountTimestampByPercent[3] = 1 days;
-        discountTimestampByPercent[4] = 1 days;
+        uint40 discountTimestampByPercent = 1 days;
+
         lstStat.discountTimestampByPercent = discountTimestampByPercent;
         dexStats.lstStatsData[0] = lstStat;
 

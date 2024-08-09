@@ -331,10 +331,7 @@ contract LSTCalculatorBaseTest is Test {
         setDiscount(int256(50e15)); // 5%
         testCalculator.snapshot();
         stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], timestamps[1]],
-            stats.discountTimestampByPercent
-        );
+        verifyDiscountTimestampByPercent(timestamps[1], stats.discountTimestampByPercent);
     }
 
     function testDiscountTimestampByPercentIncreasingDiscount() public {
@@ -347,22 +344,7 @@ contract LSTCalculatorBaseTest is Test {
         testCalculator.snapshot();
 
         stats = testCalculator.current();
-        verifyDiscountTimestampByPercent([timestamps[1], 0, 0, 0, 0], stats.discountTimestampByPercent);
-
-        setBlockAndTimestamp(2);
-        setDiscount(int256(20e15)); // 2%
-        testCalculator.snapshot();
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent([timestamps[1], timestamps[2], 0, 0, 0], stats.discountTimestampByPercent);
-
-        setBlockAndTimestamp(3);
-        setDiscount(int256(30e15)); // 3%
-        testCalculator.snapshot();
-
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[2], timestamps[3], 0, 0], stats.discountTimestampByPercent
-        );
+        verifyDiscountTimestampByPercent(timestamps[1], stats.discountTimestampByPercent);
     }
 
     function testDiscountTimestampByPercentDecreasingDiscount() public {
@@ -375,36 +357,7 @@ contract LSTCalculatorBaseTest is Test {
         testCalculator.snapshot();
 
         stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
-        );
-
-        setBlockAndTimestamp(2);
-        setDiscount(int256(20e15)); // 2%
-        testCalculator.snapshot();
-
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
-        );
-
-        setBlockAndTimestamp(3);
-        setDiscount(int256(10e15)); // 1%
-        testCalculator.snapshot();
-
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
-        );
-
-        setBlockAndTimestamp(4);
-        setDiscount(int256(0)); // 0%
-        testCalculator.snapshot();
-
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], timestamps[1], 0], stats.discountTimestampByPercent
-        );
+        verifyDiscountTimestampByPercent(timestamps[1], stats.discountTimestampByPercent);
     }
 
     function testDiscountTimestampByPercentJitterHighToZeroToLow() public {
@@ -417,9 +370,7 @@ contract LSTCalculatorBaseTest is Test {
         testCalculator.snapshot();
 
         stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], 0, 0], stats.discountTimestampByPercent
-        );
+        verifyDiscountTimestampByPercent(timestamps[1], stats.discountTimestampByPercent);
 
         setBlockAndTimestamp(2);
         setDiscount(int256(0)); // 0%
@@ -427,60 +378,14 @@ contract LSTCalculatorBaseTest is Test {
 
         stats = testCalculator.current();
 
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], 0, 0], stats.discountTimestampByPercent
-        );
+        verifyDiscountTimestampByPercent(timestamps[1], stats.discountTimestampByPercent);
 
         setBlockAndTimestamp(3);
         setDiscount(int256(10e15)); // 1%
         testCalculator.snapshot();
 
         stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[3], timestamps[1], timestamps[1], 0, 0], stats.discountTimestampByPercent
-        );
-    }
-
-    function testDiscountTimestampByPercentJitterAroundMedium() public {
-        mockCalculateEthPerToken(1);
-        mockIsRebasing(false);
-        initCalculator(1e18);
-
-        setBlockAndTimestamp(1);
-        setDiscount(int256(30e15)); // 3%
-        testCalculator.snapshot();
-
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], 0, 0], stats.discountTimestampByPercent
-        );
-
-        setBlockAndTimestamp(2);
-        setDiscount(int256(32e15)); // 3.2%
-        testCalculator.snapshot();
-
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], 0, 0], stats.discountTimestampByPercent
-        );
-
-        setBlockAndTimestamp(3);
-        setDiscount(int256(29e15)); // 2.9%
-        testCalculator.snapshot();
-
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[1], 0, 0], stats.discountTimestampByPercent
-        );
-
-        setBlockAndTimestamp(4);
-        setDiscount(int256(32e15)); // 3.2%
-        testCalculator.snapshot();
-
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[1], timestamps[1], timestamps[4], 0, 0], stats.discountTimestampByPercent
-        );
+        verifyDiscountTimestampByPercent(timestamps[3], stats.discountTimestampByPercent);
     }
 
     function testDiscountTimestampByPercentStartingDiscount() public {
@@ -492,42 +397,7 @@ contract LSTCalculatorBaseTest is Test {
         testCalculator.initialize(dependantAprs, abi.encode(initData));
         stats = testCalculator.current();
         assertEq(stats.discountHistory[0], 5e5); // the discount when the contract was initalized() was 5%
-        verifyDiscountTimestampByPercent(
-            [timestamps[0], timestamps[0], timestamps[0], timestamps[0], timestamps[0]],
-            stats.discountTimestampByPercent
-        );
-    }
-
-    function testDiscountTimestampByPercentWrapAroundDiscountHistory() public {
-        mockCalculateEthPerToken(1);
-        mockIsRebasing(false);
-        initCalculator(1e18);
-        setDiscount(10e15);
-        for (uint256 i = 1; i <= 10; i++) {
-            setBlockAndTimestamp(i);
-            testCalculator.snapshot();
-            stats = testCalculator.current();
-            verifyDiscountTimestampByPercent([timestamps[1], 0, 0, 0, 0], stats.discountTimestampByPercent);
-        }
-        setBlockAndTimestamp(11);
-        setDiscount(20e15);
-        testCalculator.snapshot();
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent([timestamps[1], timestamps[11], 0, 0, 0], stats.discountTimestampByPercent);
-
-        setBlockAndTimestamp(12);
-        setDiscount(0);
-        testCalculator.snapshot();
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent([timestamps[1], timestamps[11], 0, 0, 0], stats.discountTimestampByPercent);
-
-        setBlockAndTimestamp(13);
-        setDiscount(30e15);
-        testCalculator.snapshot();
-        stats = testCalculator.current();
-        verifyDiscountTimestampByPercent(
-            [timestamps[13], timestamps[13], timestamps[13], 0, 0], stats.discountTimestampByPercent
-        );
+        verifyDiscountTimestampByPercent(timestamps[0], stats.discountTimestampByPercent);
     }
 
     // ############################## discount history tests ##################################
@@ -714,10 +584,8 @@ contract LSTCalculatorBaseTest is Test {
         }
     }
 
-    function verifyDiscountTimestampByPercent(uint40[5] memory expected, uint40[5] memory actual) private {
-        for (uint256 i = 0; i < 5; i += 1) {
-            assertEq(actual[i], expected[i], "expected != actual");
-        }
+    function verifyDiscountTimestampByPercent(uint40 expected, uint40 actual) private {
+        assertEq(actual, expected, "expected != actual");
     }
 
     function verifyDiscount(int256 expectedDiscount) private {

@@ -44,7 +44,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
     /// @notice the last 10 daily discount/premium values for the token
     uint24[10] public discountHistory;
 
-    /// @notice each index is the timestamp that the token reached that discount (e.g., 1pct = 0 index)
+    /// @notice timestamp that the token reached 1 pct discount
     uint40 public discountTimestampByPercent;
 
     // TODO: verify that we save space by using a uint8. It should be packed with the bool & bytes32 below

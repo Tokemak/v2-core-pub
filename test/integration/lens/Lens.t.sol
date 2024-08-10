@@ -11,7 +11,6 @@ import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { AccessController } from "src/security/AccessController.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
-import { console2 as console } from "forge-std/console2.sol";
 
 import { IDexLSTStats, ILSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 

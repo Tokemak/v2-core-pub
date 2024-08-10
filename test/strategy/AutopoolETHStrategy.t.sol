@@ -34,7 +34,6 @@ import { PriceReturn } from "src/strategy/libs/PriceReturn.sol";
 import { SummaryStats } from "src/strategy/libs/SummaryStats.sol";
 import { IAutopoolStrategy } from "src/interfaces/strategy/IAutopoolStrategy.sol";
 import { ISummaryStatsHook } from "src/interfaces/strategy/ISummaryStatsHook.sol";
-import { console2 as console } from "forge-std/console2.sol";
 
 contract AutopoolETHStrategyTest is Test {
     using NavTracking for NavTracking.State;
@@ -1651,7 +1650,6 @@ contract AutopoolETHStrategyTest is Test {
         dexStats.lstStatsData[0] = lstStat;
 
         int256[] memory priceReturns = defaultStrat._calculatePriceReturns(dexStats);
-        console.log("return is ", priceReturns[0]);
         assertEq(priceReturns.length, 1);
         assertEq(priceReturns[0], 50_000_000_000_000_000);
     }

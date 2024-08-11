@@ -44,7 +44,6 @@ contract ReceivingRouterTests is Test, SystemRegistryMocks, AccessControllerMock
         bytes message
     );
     event MessageReceived(address messageReceiver, bytes message);
-    event MessageReceivedOnResend(address currentReceiver, bytes32 messageHash);
 
     constructor() SystemRegistryMocks(vm) AccessControllerMocks(vm) { }
 

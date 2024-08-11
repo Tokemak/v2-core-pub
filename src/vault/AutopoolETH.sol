@@ -702,7 +702,7 @@ contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, S
     }
 
     /// @dev Local gas-saving function to pass pre-calculated total assets time checked value
-    function _maxRedeem(address owner, uint256 ta) private view returns (uint256 maxShares) {
+    function _maxRedeem(address owner, uint256 ta) private returns (uint256 maxShares) {
         // If total assets are zero then we are considered uncollateralized and all redeem's will fail
         if (ta > 0) {
             maxShares = paused() ? 0 : balanceOf(owner);

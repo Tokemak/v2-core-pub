@@ -505,7 +505,7 @@ library AutopoolFees {
         feeSettings.periodicFeeSink = newPeriodicFeeSink;
     }
 
-    function _checkLastDebtReportingTime(uint256 oldestDebtReporting, uint256 debtReportQueueLength) private {
+    function _checkLastDebtReportingTime(uint256 oldestDebtReporting, uint256 debtReportQueueLength) private view {
         if (debtReportQueueLength > 0 && oldestDebtReporting < block.timestamp - 10 minutes) {
             revert DebtReportingStale();
         }

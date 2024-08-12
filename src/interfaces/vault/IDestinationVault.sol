@@ -30,6 +30,9 @@ interface IDestinationVault is ISystemComponent, IBaseAssetVault, IERC20 {
     /// @notice The asset that is deposited into the vault
     function underlying() external view returns (address);
 
+    /// @notice The total supply of the underlying asset
+    function underlyingTotalSupply() external view returns (uint256);
+
     /// @notice The asset that rewards and withdrawals to the Autopool are denominated in
     /// @inheritdoc IBaseAssetVault
     function baseAsset() external view override returns (address);

@@ -117,6 +117,9 @@ contract BalancerDestinationVault is DestinationVault {
     }
 
     /// @inheritdoc IDestinationVault
+    function underlyingTotalSupply() external view override returns (uint256) { }
+
+    /// @inheritdoc IDestinationVault
     function underlyingTokens() external view override returns (address[] memory ret) {
         if (isComposable) {
             // slither-disable-next-line unused-return

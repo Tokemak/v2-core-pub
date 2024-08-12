@@ -21,6 +21,9 @@ contract BalancerGyroscopeDestinationVault is BalancerAuraDestinationVault {
     }
 
     /// @inheritdoc IDestinationVault
+    function underlyingTotalSupply() external view virtual override returns (uint256) { }
+
+    /// @inheritdoc IDestinationVault
     function underlyingTokens() external view override returns (address[] memory ret) {
         ret = BalancerUtilities._convertERC20sToAddresses(poolTokens);
     }

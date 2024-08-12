@@ -123,6 +123,9 @@ contract AerodromeDestinationVault is DestinationVault {
         return false;
     }
 
+    /// @inheritdoc IDestinationVault
+    function underlyingTotalSupply() external view override returns (uint256) { }
+
     /// @notice Returns two tokens in Aerodrome Pool. Tokens returns in order lower address value -> higher
     /// @inheritdoc IDestinationVault
     function underlyingTokens() external view override returns (address[] memory _underlyingTokens) {

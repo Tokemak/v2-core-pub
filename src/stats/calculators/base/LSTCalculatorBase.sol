@@ -227,12 +227,16 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
         // if yes, overwrite that slot in discountTimestampByPercent with the current timestamp
         // if no, do nothing
         // 1e5 in discountHistory means a 1% LST discount.
+        // clear recorded timestamp if discount collapses to below 1%
         uint40 discountPercent = 1e5;
         bool inViolationLastSnapshot = discountPercent <= previousDiscount;
         bool inViolationThisSnapshot = discountPercent <= currentDiscount;
-
         if (inViolationThisSnapshot && !inViolationLastSnapshot) {
             discountTimestampByPercent = uint40(block.timestamp);
+        }
+
+        if (!inViolationThisSnapshot && inViolationLastSnapshot) {
+            discountTimestampByPercent = uint40(0);
         }
     }
 

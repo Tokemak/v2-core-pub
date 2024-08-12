@@ -378,7 +378,7 @@ contract LSTCalculatorBaseTest is Test {
 
         stats = testCalculator.current();
 
-        verifyDiscountTimestampByPercent(timestamps[1], stats.discountTimestampByPercent);
+        verifyDiscountTimestampByPercent(0, stats.discountTimestampByPercent);
 
         setBlockAndTimestamp(3);
         setDiscount(int256(10e15)); // 1%

@@ -747,6 +747,41 @@ contract BridgedLSTCalculatorTests is Test {
         assertEq(testCalculator.calculateEthPerToken(), storeValue, "val");
     }
 
+    function test_UpdatesNonce() public {
+        mockCalculateEthPerToken(1);
+        address sourceToken = makeAddr("sourceToken");
+        bytes32[] memory dependantAprs = new bytes32[](0);
+        BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
+            lstTokenAddress: mockToken,
+            sourceTokenAddress: sourceToken,
+            isRebasing: false,
+            ethPerTokenStore: ethPerTokenStore
+        });
+        mockTokenPrice(1e18);
+        testCalculator.initialize(dependantAprs, abi.encode(initData));
+
+        uint256 storeValue = 1_000_000;
+        vm.mockCall(
+            ethPerTokenStore,
+            abi.encodeWithSelector(EthPerTokenStore.getEthPerToken.selector, sourceToken),
+            abi.encode(storeValue, block.timestamp - 1 days + 1)
+        );
+
+        bytes memory message = abi.encode(
+            MessageTypes.LSTDestinationInfo({
+                snapshotTimestamp: block.timestamp,
+                newBaseApr: 9,
+                currentEthPerToken: storeValue
+            })
+        );
+
+        vm.startPrank(receivingRouter);
+        testCalculator.onMessageReceive(MessageTypes.LST_SNAPSHOT_MESSAGE_TYPE, 3, message);
+        vm.stopPrank();
+
+        assertEq(testCalculator.lastStoredNonce(), 3);
+    }
+
     function test_RevertIf_UnsupportedMessageReceived() public {
         bytes memory message = abi.encode(
             MessageTypes.LSTDestinationInfo({ snapshotTimestamp: block.timestamp, newBaseApr: 1, currentEthPerToken: 1 })
@@ -778,6 +813,21 @@ contract BridgedLSTCalculatorTests is Test {
     function test_RevertIf_InvalidRoleForSetEthPerTokenStore() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         testCalculator.setEthPerTokenStore(EthPerTokenStore(address(1)));
+    }
+
+    function test_RevertIf_InvalidNonceReceived() public {
+        bytes memory message = abi.encode(
+            MessageTypes.LSTDestinationInfo({ snapshotTimestamp: block.timestamp, newBaseApr: 1, currentEthPerToken: 1 })
+        );
+
+        uint256 currentStoredNonce = testCalculator.lastStoredNonce();
+
+        vm.startPrank(receivingRouter);
+        vm.expectRevert(
+            abi.encodeWithSelector(BridgedLSTCalculator.OnlyNewerValue.selector, currentStoredNonce, currentStoredNonce)
+        );
+        testCalculator.onMessageReceive(MessageTypes.LST_SNAPSHOT_MESSAGE_TYPE, currentStoredNonce, message);
+        vm.stopPrank();
     }
 
     // ############################## helper functions ########################################

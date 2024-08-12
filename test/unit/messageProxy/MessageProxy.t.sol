@@ -1055,8 +1055,10 @@ contract SendMessage is MessageProxyTests {
     function test_DoesNotRevertWhenNoRoutes() public {
         bytes32 messageType = keccak256("messageType");
         bytes memory message = abi.encode("message");
+        uint256 messageNonceBefore = _proxy.messageNonce();
 
         _proxy.sendMessage(messageType, message);
+        assertEq(_proxy.messageNonce(), messageNonceBefore);
     }
 
     function test_SavesLastMessageSent() public {
@@ -1078,7 +1080,8 @@ contract SendMessage is MessageProxyTests {
         _mockRouterGetFeeAll(1e9);
         _mockRouterCcipSendAll(ccipMsgId);
 
-        bytes32 messageHash = _getEncodedMsgHash(sender, _proxy.messageNonce() + 1, messageType, message);
+        uint256 messageNonceBefore = _proxy.messageNonce();
+        bytes32 messageHash = _getEncodedMsgHash(sender, messageNonceBefore + 1, messageType, message);
 
         // Make sure we can pass the fee checks
         deal(address(_proxy), 1e9);
@@ -1090,6 +1093,7 @@ contract SendMessage is MessageProxyTests {
         vm.stopPrank();
 
         assertEq(_proxy.lastMessageSent(sender, messageType), messageHash, "endingHash");
+        assertEq(_proxy.messageNonce(), messageNonceBefore + 1);
     }
 
     function test_EmitsMessageDataEvent() public {
@@ -1110,16 +1114,18 @@ contract SendMessage is MessageProxyTests {
         _mockRouterGetFeeAll(1e9);
         _mockRouterCcipSendAll(keccak256("msgId"));
 
-        uint256 messageNonce = _proxy.messageNonce() + 1;
-        bytes32 messageHash = _getEncodedMsgHash(sender, messageNonce, messageType, message);
+        uint256 messageNonceBefore = _proxy.messageNonce();
+        bytes32 messageHash = _getEncodedMsgHash(sender, messageNonceBefore + 1, messageType, message);
 
         vm.startPrank(sender);
 
         vm.expectEmit(true, true, true, true, address(_proxy));
-        emit MessageData(messageHash, messageNonce, sender, messageType, message);
+        emit MessageData(messageHash, messageNonceBefore + 1, sender, messageType, message);
         _proxy.sendMessage(messageType, message);
 
         vm.stopPrank();
+
+        assertEq(_proxy.messageNonce(), messageNonceBefore + 1);
     }
 
     function test_EmitsMissingReceiverEvent() public {
@@ -1140,8 +1146,8 @@ contract SendMessage is MessageProxyTests {
         _mockRouterGetFeeAll(1e9);
         _mockRouterCcipSendAll(ccipMsgId);
 
-        uint256 messageNonce = _proxy.messageNonce() + 1;
-        bytes32 messageHash = _getEncodedMsgHash(sender, messageNonce, messageType, message);
+        uint256 messageNonceBefore = _proxy.messageNonce();
+        bytes32 messageHash = _getEncodedMsgHash(sender, messageNonceBefore + 1, messageType, message);
 
         // Make sure we can pass the fee checks
         deal(address(_proxy), 1e9);
@@ -1149,7 +1155,7 @@ contract SendMessage is MessageProxyTests {
         vm.startPrank(sender);
 
         vm.expectEmit(true, true, true, true, address(_proxy));
-        emit MessageData(messageHash, messageNonce, sender, messageType, message);
+        emit MessageData(messageHash, messageNonceBefore + 1, sender, messageType, message);
 
         vm.expectEmit(true, true, true, true, address(_proxy));
         emit DestinationChainNotRegisteredEvent(chainId, messageHash);
@@ -1157,6 +1163,8 @@ contract SendMessage is MessageProxyTests {
         _proxy.sendMessage(messageType, message);
 
         vm.stopPrank();
+
+        assertEq(_proxy.messageNonce(), messageNonceBefore + 1);
     }
 
     function test_EmitsGetFeeFailedEvent() public {
@@ -1179,7 +1187,8 @@ contract SendMessage is MessageProxyTests {
         // solhint-disable-next-line  max-line-length
         vm.mockCallRevert(address(_routerClient), abi.encodeWithSelector(IRouterClient.getFee.selector), abi.encode(""));
 
-        bytes32 messageHash = _getEncodedMsgHash(sender, _proxy.messageNonce() + 1, messageType, message);
+        uint256 messageNonceBefore = _proxy.messageNonce();
+        bytes32 messageHash = _getEncodedMsgHash(sender, messageNonceBefore + 1, messageType, message);
         uint256 dealAmount = 1e9;
         deal(address(_proxy), dealAmount);
 
@@ -1191,6 +1200,8 @@ contract SendMessage is MessageProxyTests {
         _proxy.sendMessage(messageType, message);
 
         vm.stopPrank();
+
+        assertEq(_proxy.messageNonce(), messageNonceBefore + 1);
     }
 
     function test_EmitsMessageSentEventForDestinationChain() public {
@@ -1212,8 +1223,8 @@ contract SendMessage is MessageProxyTests {
         _mockRouterGetFeeAll(1e9);
         _mockRouterCcipSendAll(ccipMsgId);
 
-        uint256 messageNonce = _proxy.messageNonce() + 1;
-        bytes32 messageHash = _getEncodedMsgHash(sender, messageNonce, messageType, message);
+        uint256 messageNonceBefore = _proxy.messageNonce();
+        bytes32 messageHash = _getEncodedMsgHash(sender, messageNonceBefore + 1, messageType, message);
 
         // Make sure we can pass the fee checks
         deal(address(_proxy), 1e9);
@@ -1221,7 +1232,7 @@ contract SendMessage is MessageProxyTests {
         vm.startPrank(sender);
 
         vm.expectEmit(true, true, true, true, address(_proxy));
-        emit MessageData(messageHash, messageNonce, sender, messageType, message);
+        emit MessageData(messageHash, messageNonceBefore + 1, sender, messageType, message);
 
         vm.expectEmit(true, true, true, true, address(_proxy));
         emit MessageSent(chainId, messageHash, ccipMsgId);
@@ -1229,6 +1240,8 @@ contract SendMessage is MessageProxyTests {
         _proxy.sendMessage(messageType, message);
 
         vm.stopPrank();
+
+        assertEq(_proxy.messageNonce(), messageNonceBefore + 1);
     }
 
     function test_EmitsMessageFailedEventForDestinationChain() public {
@@ -1252,13 +1265,13 @@ contract SendMessage is MessageProxyTests {
         // Make sure we can pass the fee checks
         deal(address(_proxy), 1e9);
 
-        uint256 messageNonce = _proxy.messageNonce() + 1;
-        bytes32 messageHash = _getEncodedMsgHash(sender, messageNonce, messageType, message);
+        uint256 messageNonceBefore = _proxy.messageNonce();
+        bytes32 messageHash = _getEncodedMsgHash(sender, messageNonceBefore + 1, messageType, message);
 
         vm.startPrank(sender);
 
         vm.expectEmit(true, true, true, true, address(_proxy));
-        emit MessageData(messageHash, messageNonce, sender, messageType, message);
+        emit MessageData(messageHash, messageNonceBefore + 1, sender, messageType, message);
 
         vm.expectEmit(true, true, true, true, address(_proxy));
         emit MessageFailed(chainId, messageHash);
@@ -1266,6 +1279,8 @@ contract SendMessage is MessageProxyTests {
         _proxy.sendMessage(messageType, message);
 
         vm.stopPrank();
+
+        assertEq(_proxy.messageNonce(), messageNonceBefore + 1);
     }
 
     function test_EmitsFeeFailedEventForDestinationChain() public {
@@ -1287,8 +1302,8 @@ contract SendMessage is MessageProxyTests {
         _mockRouterGetFeeAll(1e9);
         _mockRouterCcipSendAll(ccipMsgId);
 
-        uint256 messageNonce = _proxy.messageNonce() + 1;
-        bytes32 messageHash = _getEncodedMsgHash(sender, messageNonce, messageType, message);
+        uint256 messageNonceBefore = _proxy.messageNonce();
+        bytes32 messageHash = _getEncodedMsgHash(sender, messageNonceBefore + 1, messageType, message);
 
         // Make sure we can pass the fee checks
         deal(address(_proxy), 1e9 - 1);
@@ -1296,7 +1311,7 @@ contract SendMessage is MessageProxyTests {
         vm.startPrank(sender);
 
         vm.expectEmit(true, true, true, true, address(_proxy));
-        emit MessageData(messageHash, messageNonce, sender, messageType, message);
+        emit MessageData(messageHash, messageNonceBefore + 1, sender, messageType, message);
 
         vm.expectEmit(true, true, true, true, address(_proxy));
         emit MessageFailedFee(chainId, messageHash, 1e9 - 1, 1e9);
@@ -1304,6 +1319,8 @@ contract SendMessage is MessageProxyTests {
         _proxy.sendMessage(messageType, message);
 
         vm.stopPrank();
+
+        assertEq(_proxy.messageNonce(), messageNonceBefore + 1);
     }
 
     // Testing for Toke-29.  Ref: https://github.com/Tokemak/v2-core/issues/720
@@ -1336,8 +1353,8 @@ contract SendMessage is MessageProxyTests {
         _mockRouterGetFeeAll(1e9);
         _mockRouterCcipSendAll(ccipMsgId);
 
-        uint256 messageNonce = _proxy.messageNonce() + 1;
-        bytes memory encodedMsg = CCUtils.encodeMessage(sender, messageNonce, messageType, message);
+        uint256 messageNonceBefore = _proxy.messageNonce();
+        bytes memory encodedMsg = CCUtils.encodeMessage(sender, messageNonceBefore + 1, messageType, message);
         bytes32 messageHash = keccak256(encodedMsg);
 
         // Two messages
@@ -1366,6 +1383,8 @@ contract SendMessage is MessageProxyTests {
         _proxy.sendMessage(messageType, message);
 
         vm.stopPrank();
+
+        assertEq(_proxy.messageNonce(), messageNonceBefore + 1);
     }
 }
 

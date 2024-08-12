@@ -35,6 +35,9 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     /// @notice Address of corresponding token on source chain
     address public sourceTokenAddress;
 
+    /// @notice Storing nonce sent from source chain
+    uint256 public lastStoredNonce;
+
     /// =====================================================
     /// Events
     /// =====================================================
@@ -45,7 +48,7 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     /// Errors
     /// =====================================================
 
-    error OnlyNewerValue(uint256 currentSetTimestamp, uint256 newTimestamp);
+    error OnlyNewerValue(uint256 lastStoredNonce, uint256 newSourceChainNonce);
 
     /// =====================================================
     /// Structs
@@ -134,10 +137,16 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     /// =====================================================
 
     /// @inheritdoc MessageReceiverBase
-    function _onMessageReceive(bytes32 messageType, bytes memory message) internal virtual override {
+    function _onMessageReceive(
+        bytes32 messageType,
+        uint256 sourceChainNonce,
+        bytes memory message
+    ) internal virtual override {
         if (messageType == MessageTypes.LST_SNAPSHOT_MESSAGE_TYPE) {
             MessageTypes.LSTDestinationInfo memory info = abi.decode(message, (MessageTypes.LSTDestinationInfo));
-            _snapshotOnMessageReceive(info.currentEthPerToken, info.snapshotTimestamp, info.newBaseApr);
+            _snapshotOnMessageReceive(
+                info.currentEthPerToken, info.snapshotTimestamp, info.newBaseApr, sourceChainNonce
+            );
         } else {
             revert Errors.UnsupportedMessage(messageType, message);
         }
@@ -149,14 +158,17 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     function _snapshotOnMessageReceive(
         uint256 currentEthPerToken,
         uint256 snapshotTimestamp,
-        uint256 newBaseApr
+        uint256 newBaseApr,
+        uint256 sourceChainNonce
     ) internal {
         // Message may be retried but if the message is older than one we've already
         // processed we don't want to accept it. The send in the same block on the source chain
         // slither-disable-next-line timestamp
-        if (lastBaseAprSnapshotTimestamp >= snapshotTimestamp) {
-            revert OnlyNewerValue(lastBaseAprSnapshotTimestamp, snapshotTimestamp);
+        if (sourceChainNonce <= lastStoredNonce) {
+            revert OnlyNewerValue(lastStoredNonce, sourceChainNonce);
         }
+
+        lastStoredNonce = sourceChainNonce;
 
         emit BaseAprSnapshotTaken(
             lastBaseAprEthPerToken,

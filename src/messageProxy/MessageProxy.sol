@@ -24,6 +24,9 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     /// Public Vars
     /// =====================================================
 
+    /// @notice Nonce of message. Used for tracking on L2. Incremented once per message sent
+    uint256 public messageNonce;
+
     /// @notice Receiver contracts on the destination chains
     /// @dev mapping is destinationChainSelector -> our receiver contract
     mapping(uint64 => address) public destinationChainReceivers;
@@ -54,7 +57,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     struct ResendArgsSendingChain {
         address msgSender;
         bytes32 messageType;
-        uint256 messageRetryTimestamp; // Timestamp of original message, emitted in `MessageData` event.
+        uint256 messageNonce; // Nonce of original message
         bytes message;
         MessageRouteConfig[] configs;
     }
@@ -72,7 +75,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
 
     /// @notice Emitted when message is built to be sent for message sender and type.
     event MessageData(
-        bytes32 indexed messageHash, uint256 messageTimestamp, address sender, bytes32 messageType, bytes message
+        bytes32 indexed messageHash, uint256 messageNonce, address sender, bytes32 messageType, bytes message
     );
 
     /// @notice Emitted when a message is sent.
@@ -131,7 +134,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     /// =====================================================
 
     /// @notice Sends message to destination chain(s)
-    /// @dev Can only be called by registered message sender.
+    /// @dev Can only be called by registered message sender
     /// @dev Should not revert under normal circumstances, do not want ability to interrupt calculator snap-shotting
     /// @param messageType bytes32 message type
     /// @param message Bytes message to send to receiver contract
@@ -144,15 +147,18 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
         // Routes act as our security
         if (configsLength == 0) return;
 
-        uint256 messageTimestamp = block.timestamp;
+        // Store in memory, gas savings
+        uint256 currentMessageNonce = messageNonce;
 
         // Encode and hash message, set hash to last message for sender and messageType
-        bytes memory encodedMessage = CCUtils.encodeMessage(msg.sender, messageTimestamp, messageType, message);
+        bytes memory encodedMessage = CCUtils.encodeMessage(msg.sender, currentMessageNonce, messageType, message);
         bytes32 messageHash = keccak256(encodedMessage);
 
         lastMessageSent[msg.sender][messageType] = messageHash;
 
-        emit MessageData(messageHash, messageTimestamp, msg.sender, messageType, message);
+        emit MessageData(messageHash, currentMessageNonce, msg.sender, messageType, message);
+
+        messageNonce++;
 
         // Loop through configs, attempt to send message to each destination.
         for (uint256 i = 0; i < configsLength; ++i) {
@@ -215,12 +221,12 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
             ResendArgsSendingChain memory currentRetry = args[i];
             address msgSender = currentRetry.msgSender;
             bytes32 messageType = currentRetry.messageType;
-            uint256 messageRetryTimestamp = currentRetry.messageRetryTimestamp;
+            uint256 originalMessageNonce = currentRetry.messageNonce;
             bytes memory message = currentRetry.message;
 
             // Get hash from data passed in, hash from last message, revert if they are not equal.
             // solhint-disable-next-line max-line-length
-            bytes memory encodedMessage = CCUtils.encodeMessage(msgSender, messageRetryTimestamp, messageType, message);
+            bytes memory encodedMessage = CCUtils.encodeMessage(msgSender, originalMessageNonce, messageType, message);
             bytes32 currentMessageHash = keccak256(encodedMessage);
             {
                 bytes32 storedMessageHash = lastMessageSent[msgSender][messageType];

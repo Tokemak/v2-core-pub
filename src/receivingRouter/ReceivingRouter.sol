@@ -52,7 +52,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
 
     /// @notice Emitted when message is built to be sent for message origin, type, and source chain.
     event MessageData(
-        uint256 messageTimestamp,
+        uint256 messageNonce,
         address messageOrigin,
         bytes32 messageType,
         bytes32 ccipMessageId,
@@ -125,16 +125,20 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
 
         CCUtils.Message memory messageFromProxy = decodeMessage(messageData);
 
-        // Checking Message struct versioning
-        uint256 sourceVersion = messageFromProxy.version;
-        uint256 receiverVersion = CCUtils.getVersion();
-        if (sourceVersion != receiverVersion) {
-            emit MessageVersionMismatch(sourceVersion, receiverVersion);
-            return;
+        // Scoping for stack too deep
+        {
+            // Checking Message struct versioning
+            uint256 sourceVersion = messageFromProxy.version;
+            uint256 receiverVersion = CCUtils.getVersion();
+            if (sourceVersion != receiverVersion) {
+                emit MessageVersionMismatch(sourceVersion, receiverVersion);
+                return;
+            }
         }
 
         address origin = messageFromProxy.messageOrigin;
         bytes32 messageType = messageFromProxy.messageType;
+        uint256 messageNonce = messageFromProxy.messageNonce;
         bytes memory message = messageFromProxy.message;
 
         bytes32 senderKey = _getMessageReceiversKey(origin, sourceChainSelector, messageType);
@@ -146,9 +150,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
             revert NoMessageReceiversRegistered(origin, messageType, sourceChainSelector);
         }
 
-        emit MessageData(
-            messageFromProxy.messageTimestamp, origin, messageType, ccipMessage.messageId, sourceChainSelector, message
-        );
+        emit MessageData(messageNonce, origin, messageType, ccipMessage.messageId, sourceChainSelector, message);
 
         // slither-disable-start reentrancy-events
         // Loop through stored receivers, send messages off to them
@@ -158,7 +160,7 @@ contract ReceivingRouter is CCIPReceiver, SystemComponent, SecurityBase {
             // Any failures will bubble and result in the option for a manual execution of this transaction
             // via ccip UI.
             emit MessageReceived(currentMessageReceiver, message);
-            IMessageReceiverBase(currentMessageReceiver).onMessageReceive(messageType, message);
+            IMessageReceiverBase(currentMessageReceiver).onMessageReceive(messageType, messageNonce, message);
         }
         // slither-disable-end reentrancy-events
     }

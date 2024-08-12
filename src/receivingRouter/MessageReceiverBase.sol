@@ -17,12 +17,16 @@ abstract contract MessageReceiverBase is IMessageReceiverBase {
     }
 
     /// @inheritdoc IMessageReceiverBase
-    function onMessageReceive(bytes32 messageType, bytes memory message) external override onlyReceivingRouter {
-        _onMessageReceive(messageType, message);
+    function onMessageReceive(
+        bytes32 messageType,
+        uint256 messageNonce,
+        bytes memory message
+    ) external override onlyReceivingRouter {
+        _onMessageReceive(messageType, messageNonce, message);
     }
 
     /// @dev This function will decode the incoming message and perform any other actions needed.
     /// @param message Bytes message to decode.
     // slither-disable-next-line unimplemented-functions
-    function _onMessageReceive(bytes32 messageType, bytes memory message) internal virtual;
+    function _onMessageReceive(bytes32 messageType, uint256 messageNonce, bytes memory message) internal virtual;
 }

@@ -123,7 +123,7 @@ contract EthPerTokenStore is SystemComponent, SecurityBase, MessageReceiverBase 
     /// =====================================================
 
     /// @inheritdoc MessageReceiverBase
-    function _onMessageReceive(bytes32 messageType, bytes memory message) internal virtual override {
+    function _onMessageReceive(bytes32 messageType, uint256, bytes memory message) internal virtual override {
         if (messageType == MessageTypes.LST_BACKING_MESSAGE_TYPE) {
             MessageTypes.LstBackingMessage memory info = abi.decode(message, (MessageTypes.LstBackingMessage));
             _trackPerTokenOnMessageReceive(info.token, info.ethPerToken, info.timestamp);

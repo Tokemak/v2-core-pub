@@ -31,7 +31,7 @@ library CrossChainMessagingUtilities {
     struct Message {
         address messageOrigin;
         uint256 version;
-        uint256 messageTimestamp;
+        uint256 messageNonce;
         bytes32 messageType;
         bytes message;
     }
@@ -47,12 +47,12 @@ library CrossChainMessagingUtilities {
 
     /// @notice Encodes message to be sent to receiving chain
     /// @param sender Message sender
-    /// @param messageTimestamp Timestamp of message to be sent
+    /// @param messageNonce Nonce of message to be sent
     /// @param messageType message type to be sent
     /// @param message Bytes message to be processed on receiving chain
     function encodeMessage(
         address sender,
-        uint256 messageTimestamp,
+        uint256 messageNonce,
         bytes32 messageType,
         bytes memory message
     ) internal pure returns (bytes memory) {
@@ -60,7 +60,7 @@ library CrossChainMessagingUtilities {
             Message({
                 messageOrigin: sender,
                 version: VERSION,
-                messageTimestamp: messageTimestamp,
+                messageNonce: messageNonce,
                 messageType: messageType,
                 message: message
             })

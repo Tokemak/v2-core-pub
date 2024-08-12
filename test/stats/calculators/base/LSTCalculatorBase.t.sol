@@ -546,7 +546,7 @@ contract LSTCalculatorBaseTest is Test {
         bytes32 messageHash = keccak256(
             CCUtils.encodeMessage(
                 address(testCalculator),
-                timestamp,
+                messageProxy.messageNonce() + 1,
                 MessageTypes.LST_SNAPSHOT_MESSAGE_TYPE,
                 abi.encode(
                     MessageTypes.LSTDestinationInfo({

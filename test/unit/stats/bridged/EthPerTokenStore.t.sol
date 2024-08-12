@@ -194,7 +194,7 @@ contract UnregisterToken is EthPerTokenStoreTests {
         bytes memory msgBytes = abi.encode(message);
 
         vm.prank(receivingRouter);
-        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, msgBytes);
+        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, 1, msgBytes);
 
         (uint208 ethPerToken, uint48 timestamp) = store.trackedTokens(token1);
         assertEq(ethPerToken, 3, "ethPerToken");
@@ -229,7 +229,7 @@ contract GetEthPerToken is EthPerTokenStoreTests {
         bytes memory msgBytes = abi.encode(message);
 
         vm.prank(receivingRouter);
-        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, msgBytes);
+        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, 1, msgBytes);
 
         vm.expectRevert(abi.encodeWithSelector(EthPerTokenStore.ValueNotAvailable.selector, token1));
         store.getEthPerToken(token1);
@@ -246,7 +246,7 @@ contract GetEthPerToken is EthPerTokenStoreTests {
         bytes memory msgBytes = abi.encode(message);
 
         vm.prank(receivingRouter);
-        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, msgBytes);
+        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, 1, msgBytes);
 
         (uint256 newEthPerToken, uint256 newTimestamp) = store.getEthPerToken(token1);
 
@@ -269,7 +269,7 @@ contract _onMessageReceive is EthPerTokenStoreTests {
         vm.startPrank(receivingRouter);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.UnsupportedMessage.selector, keccak256("BAD"), msgBytes));
-        store.onMessageReceive(keccak256("BAD"), msgBytes);
+        store.onMessageReceive(keccak256("BAD"), 1, msgBytes);
 
         vm.stopPrank();
     }
@@ -287,7 +287,7 @@ contract _onMessageReceive is EthPerTokenStoreTests {
         vm.startPrank(receivingRouter);
 
         vm.expectRevert(abi.encodeWithSelector(EthPerTokenStore.UnsupportedToken.selector, token2));
-        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, msgBytes);
+        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, 1, msgBytes);
 
         vm.stopPrank();
     }
@@ -303,7 +303,7 @@ contract _onMessageReceive is EthPerTokenStoreTests {
         bytes memory msgBytes = abi.encode(message);
 
         vm.startPrank(receivingRouter);
-        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, msgBytes);
+        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, 1, msgBytes);
         vm.stopPrank();
 
         message = MessageTypes.LstBackingMessage({ token: token1, ethPerToken: 3, timestamp: 999 days - 1 });
@@ -314,7 +314,7 @@ contract _onMessageReceive is EthPerTokenStoreTests {
         vm.expectRevert(
             abi.encodeWithSelector(EthPerTokenStore.OnlyNewerValue.selector, token1, 999 days, 999 days - 1)
         );
-        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, msgBytes);
+        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, 1, msgBytes);
         vm.stopPrank();
     }
 
@@ -332,7 +332,7 @@ contract _onMessageReceive is EthPerTokenStoreTests {
 
         vm.expectEmit(true, true, true, true);
         emit EthPerTokenUpdated(token1, 3, 999 days);
-        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, msgBytes);
+        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, 1, msgBytes);
         vm.stopPrank();
     }
 
@@ -352,7 +352,7 @@ contract _onMessageReceive is EthPerTokenStoreTests {
         assertNotEq(prevLastSetTimestamp, 999 days, "prevLastSetTimestamp");
 
         vm.prank(receivingRouter);
-        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, msgBytes);
+        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, 1, msgBytes);
 
         (uint208 ethPerToken, uint48 lastSetTimestamp) = store.trackedTokens(token1);
 

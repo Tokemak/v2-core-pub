@@ -941,7 +941,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
             CCUtils.Message({
                 messageOrigin: origin,
                 version: messageVersionSource,
-                messageTimestamp: block.timestamp,
+                messageNonce: 0,
                 messageType: messageType,
                 message: message
             })
@@ -1006,7 +1006,7 @@ contract MockMessageReceiver is MessageReceiverBase, SystemComponent {
 
     constructor(ISystemRegistry _systemRegistry) SystemComponent(_systemRegistry) { }
 
-    function _onMessageReceive(bytes32, bytes memory) internal view override {
+    function _onMessageReceive(bytes32, uint256, bytes memory) internal view override {
         if (receiveFail) revert Fail();
     }
 

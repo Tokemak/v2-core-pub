@@ -139,6 +139,8 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     /// @param messageType bytes32 message type
     /// @param message Bytes message to send to receiver contract
     function sendMessage(bytes32 messageType, bytes memory message) external override {
+        messageNonce++;
+
         // Lookup message routes from _messageRoutes
         MessageRouteConfig[] memory configs = _messageRoutes[msg.sender][messageType];
         uint256 configsLength = configs.length;
@@ -157,8 +159,6 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
         lastMessageSent[msg.sender][messageType] = messageHash;
 
         emit MessageData(messageHash, currentMessageNonce, msg.sender, messageType, message);
-
-        messageNonce++;
 
         // Loop through configs, attempt to send message to each destination.
         for (uint256 i = 0; i < configsLength; ++i) {

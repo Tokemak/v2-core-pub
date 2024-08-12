@@ -31,13 +31,13 @@ contract MessageReceiverTests is Test, SystemRegistryMocks {
     function test_RevertIf_NotReceivingRouter() public {
         _mockSysRegReceivingRouter(systemRegistry, receivingRouter);
         vm.expectRevert(Errors.AccessDenied.selector);
-        receiverBase.onMessageReceive(keccak256("messageType"), abi.encode(1));
+        receiverBase.onMessageReceive(keccak256("messageType"), 1, abi.encode(1));
     }
 
     function test_RunsWhenReceivingRouterCall() public {
         _mockSysRegReceivingRouter(systemRegistry, receivingRouter);
         vm.prank(receivingRouter);
-        receiverBase.onMessageReceive(keccak256("messageType"), abi.encode(1));
+        receiverBase.onMessageReceive(keccak256("messageType"), 1, abi.encode(1));
         assertEq(receiverBase.check(), 1);
     }
 }
@@ -47,7 +47,7 @@ contract MockMessageReceiverBase is MessageReceiverBase, SystemComponent {
 
     constructor(ISystemRegistry _systemRegistry) SystemComponent(_systemRegistry) { }
 
-    function _onMessageReceive(bytes32, bytes memory) internal override {
+    function _onMessageReceive(bytes32, uint256, bytes memory) internal override {
         check++;
     }
 }

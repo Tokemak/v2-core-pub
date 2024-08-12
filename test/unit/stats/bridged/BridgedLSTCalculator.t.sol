@@ -149,7 +149,7 @@ contract BridgedLSTCalculatorTests is Test {
         emit BaseAprSnapshotTaken(
             startingEthPerShare, START_TIMESTAMP, endingEthPerShare, endingTimestamp, 0, expectedBaseApr
         );
-        testCalculator.onMessageReceive(msgId, message);
+        testCalculator.onMessageReceive(msgId, 2, message);
         vm.stopPrank();
 
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), endingTimestamp);
@@ -202,7 +202,7 @@ contract BridgedLSTCalculatorTests is Test {
             testCalculator.baseApr(),
             expectedBaseApr
         );
-        testCalculator.onMessageReceive(msgId, message);
+        testCalculator.onMessageReceive(msgId, 3, message);
         vm.stopPrank();
 
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), END_TIMESTAMP);
@@ -254,7 +254,7 @@ contract BridgedLSTCalculatorTests is Test {
         emit BaseAprSnapshotTaken(
             startingEthPerShare, START_TIMESTAMP, endingEthPerShare, endingTimestamp, 0, expectedBaseApr
         );
-        testCalculator.onMessageReceive(msgId, message);
+        testCalculator.onMessageReceive(msgId, 2, message);
         vm.stopPrank();
 
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), endingTimestamp);
@@ -296,7 +296,7 @@ contract BridgedLSTCalculatorTests is Test {
             })
         );
         vm.startPrank(receivingRouter);
-        testCalculator.onMessageReceive(msgId, message);
+        testCalculator.onMessageReceive(msgId, 3, message);
         vm.stopPrank();
 
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), END_TIMESTAMP);
@@ -451,7 +451,8 @@ contract BridgedLSTCalculatorTests is Test {
             })
         );
         vm.prank(receivingRouter);
-        testCalculator.onMessageReceive(keccak256("LST_SNAPSHOT"), message);
+        testCalculator.onMessageReceive(keccak256("LST_SNAPSHOT"), 1, message);
+
         stats = testCalculator.current();
         assertEq(stats.discountHistory[0], 5e5); // the discount when the contract was initalized() was 5%
         verifyDiscountTimestampByPercent(timestamps[0], stats.discountTimestampByPercent);
@@ -600,7 +601,7 @@ contract BridgedLSTCalculatorTests is Test {
         );
         vm.startPrank(receivingRouter);
         bytes32 msgId = keccak256("LST_SNAPSHOT");
-        testCalculator.onMessageReceive(msgId, message);
+        testCalculator.onMessageReceive(msgId, 1, message);
         vm.stopPrank();
 
         assertEq(testCalculator.shouldSnapshot(), false, "false2");
@@ -635,7 +636,7 @@ contract BridgedLSTCalculatorTests is Test {
         );
         vm.startPrank(receivingRouter);
         bytes32 msgId = keccak256("LST_SNAPSHOT");
-        testCalculator.onMessageReceive(msgId, message);
+        testCalculator.onMessageReceive(msgId, 1, message);
         vm.stopPrank();
 
         assertEq(testCalculator.baseApr(), 9, "endBaseApr");
@@ -671,7 +672,7 @@ contract BridgedLSTCalculatorTests is Test {
         );
         vm.startPrank(receivingRouter);
         bytes32 msgId = keccak256("LST_SNAPSHOT");
-        testCalculator.onMessageReceive(msgId, message);
+        testCalculator.onMessageReceive(msgId, 1, message);
         vm.stopPrank();
 
         assertEq(testCalculator.calculateEthPerToken(), storeValue - 1, "val");
@@ -705,7 +706,7 @@ contract BridgedLSTCalculatorTests is Test {
         );
         vm.startPrank(receivingRouter);
         bytes32 msgId = keccak256("LST_SNAPSHOT");
-        testCalculator.onMessageReceive(msgId, message);
+        testCalculator.onMessageReceive(msgId, 1, message);
         vm.stopPrank();
 
         assertEq(testCalculator.calculateEthPerToken(), storeValue, "val");
@@ -740,7 +741,7 @@ contract BridgedLSTCalculatorTests is Test {
         );
         vm.startPrank(receivingRouter);
         bytes32 msgId = keccak256("LST_SNAPSHOT");
-        testCalculator.onMessageReceive(msgId, message);
+        testCalculator.onMessageReceive(msgId, 1, message);
         vm.stopPrank();
 
         assertEq(testCalculator.calculateEthPerToken(), storeValue, "val");
@@ -753,7 +754,7 @@ contract BridgedLSTCalculatorTests is Test {
         vm.startPrank(receivingRouter);
         bytes32 msgId = keccak256("xxxxxx");
         vm.expectRevert(abi.encodeWithSelector(Errors.UnsupportedMessage.selector, msgId, message));
-        testCalculator.onMessageReceive(msgId, message);
+        testCalculator.onMessageReceive(msgId, 1, message);
         vm.stopPrank();
     }
 
@@ -764,7 +765,7 @@ contract BridgedLSTCalculatorTests is Test {
         vm.startPrank(makeAddr("X"));
         bytes32 msgId = keccak256("LST_SNAPSHOT");
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
-        testCalculator.onMessageReceive(msgId, message);
+        testCalculator.onMessageReceive(msgId, 1, message);
         vm.stopPrank();
     }
 
@@ -831,7 +832,7 @@ contract BridgedLSTCalculatorTests is Test {
             })
         );
         vm.prank(receivingRouter);
-        testCalculator.onMessageReceive(keccak256("LST_SNAPSHOT"), message);
+        testCalculator.onMessageReceive(keccak256("LST_SNAPSHOT"), 1, message);
     }
 
     function mockCalculateEthPerToken(uint256 amount) private {

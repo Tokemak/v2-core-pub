@@ -1389,8 +1389,8 @@ contract ResendLastMessage is MessageProxyTests {
         _mockRouterGetFeeAll(1e9);
         _mockRouterCcipSendAll(ccipMsgId);
 
-        uint256 timestamp = block.timestamp;
-        bytes32 messageHash = _getEncodedMsgHash(sender, timestamp, messageType, message);
+        uint256 nonce = _proxy.messageNonce() + 1;
+        bytes32 messageHash = _getEncodedMsgHash(sender, nonce, messageType, message);
 
         // Make sure we can pass the fee checks
         deal(address(_proxy), 100e9);
@@ -1409,7 +1409,7 @@ contract ResendLastMessage is MessageProxyTests {
         args[0] = MessageProxy.ResendArgsSendingChain({
             msgSender: sender,
             messageType: messageType,
-            messageRetryTimestamp: timestamp,
+            messageNonce: nonce,
             message: message,
             configs: routes
         });
@@ -1440,8 +1440,6 @@ contract ResendLastMessage is MessageProxyTests {
         _mockRouterGetFeeAll(1e9);
         _mockRouterCcipSendAll(ccipMsgId);
 
-        uint256 timestamp = block.timestamp;
-
         // Make sure we can pass the fee checks
         deal(address(_proxy), 100e9);
 
@@ -1459,7 +1457,7 @@ contract ResendLastMessage is MessageProxyTests {
         args[0] = MessageProxy.ResendArgsSendingChain({
             msgSender: sender,
             messageType: messageType,
-            messageRetryTimestamp: timestamp,
+            messageNonce: _proxy.messageNonce(),
             message: message,
             configs: routes
         });

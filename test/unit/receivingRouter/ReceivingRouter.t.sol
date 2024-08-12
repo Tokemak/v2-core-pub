@@ -785,7 +785,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         address origin = makeAddr("origin");
         bytes32 messageType = keccak256("messageType");
         bytes memory message = abi.encode("message");
-        bytes memory data = CCUtils.encodeMessage(origin, block.timestamp, messageType, message);
+        bytes memory data = CCUtils.encodeMessage(origin, 0, messageType, message);
 
         Client.Any2EVMMessage memory ccipMessage = _buildChainlinkCCIPMessage(messageId, chainId, sender, data);
         address[] memory receivers = new address[](1);
@@ -797,7 +797,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.expectEmit(true, true, true, true);
-        emit MessageData(block.timestamp, origin, messageType, messageId, chainId, message);
+        emit MessageData(0, origin, messageType, messageId, chainId, message);
         vm.expectEmit(true, true, true, true);
         emit MessageReceived(receiver1, message);
         vm.prank(address(_routerClient));
@@ -816,7 +816,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         address origin = makeAddr("origin");
         bytes32 messageType = keccak256("messageType");
         bytes memory message = abi.encode("message");
-        bytes memory data = CCUtils.encodeMessage(origin, block.timestamp, messageType, message);
+        bytes memory data = CCUtils.encodeMessage(origin, 0, messageType, message);
 
         Client.Any2EVMMessage memory ccipMessage = _buildChainlinkCCIPMessage(messageId, chainId, sender, data);
         address[] memory receivers = new address[](2);
@@ -829,7 +829,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.expectEmit(true, true, true, true);
-        emit MessageData(block.timestamp, origin, messageType, messageId, chainId, message);
+        emit MessageData(0, origin, messageType, messageId, chainId, message);
         vm.expectEmit(true, true, true, true);
         emit MessageReceived(receiver1, message);
         vm.expectEmit(true, true, true, true);
@@ -849,7 +849,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         address origin = makeAddr("origin");
         bytes32 messageType = keccak256("messageType");
         bytes memory message = abi.encode("message");
-        bytes memory data = CCUtils.encodeMessage(origin, block.timestamp, messageType, message);
+        bytes memory data = CCUtils.encodeMessage(origin, 0, messageType, message);
 
         Client.Any2EVMMessage memory ccipMessage = _buildChainlinkCCIPMessage(messageId, chainId, sender, data);
         address[] memory receivers = new address[](1);
@@ -862,7 +862,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         _router.setMessageReceivers(origin, messageType, chainId, receivers);
 
         vm.expectEmit(true, true, true, true);
-        emit MessageData(block.timestamp, origin, messageType, messageId, chainId, message);
+        emit MessageData(0, origin, messageType, messageId, chainId, message);
         vm.expectEmit(true, true, true, true);
         emit MessageReceived(receiver1, message);
         vm.prank(address(_routerClient));
@@ -880,7 +880,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         address origin = makeAddr("origin");
         bytes32 messageType = keccak256("messageType");
         bytes memory message = abi.encode("message");
-        bytes memory data = CCUtils.encodeMessage(origin, block.timestamp, messageType, message);
+        bytes memory data = CCUtils.encodeMessage(origin, 0, messageType, message);
 
         Client.Any2EVMMessage memory ccipMessage = _buildChainlinkCCIPMessage(messageId, chainId, sender, data);
         address[] memory receivers = new address[](1);
@@ -894,7 +894,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         MockMessageReceiver(receiver1).setFailure(true);
 
         vm.expectEmit(true, true, true, true);
-        emit MessageData(block.timestamp, origin, messageType, messageId, chainId, message);
+        emit MessageData(0, origin, messageType, messageId, chainId, message);
 
         vm.prank(address(_routerClient));
         vm.expectRevert(MockMessageReceiver.Fail.selector);
@@ -911,7 +911,7 @@ contract _ccipReceiverTests is ReceivingRouterTests {
         address origin = makeAddr("origin");
         bytes32 messageType = keccak256("messageType");
         bytes memory message = abi.encode("message");
-        bytes memory data = CCUtils.encodeMessage(origin, block.timestamp, messageType, message);
+        bytes memory data = CCUtils.encodeMessage(origin, 0, messageType, message);
 
         Client.Any2EVMMessage memory ccipMessage = _buildChainlinkCCIPMessage(messageId, chainId, sender, data);
 

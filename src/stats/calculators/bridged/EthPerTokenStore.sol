@@ -19,6 +19,9 @@ contract EthPerTokenStore is SystemComponent, SecurityBase, MessageReceiverBase 
     /// @notice Max age of a value before it starts to revert on read
     uint256 public maxAgeSeconds;
 
+    /// @notice Stored nonce sent from source chain
+    uint256 public lastStoredNonce;
+
     /// @notice Returns whether a token is registered with this contract
     mapping(address => bool) public registered;
 
@@ -35,12 +38,18 @@ contract EthPerTokenStore is SystemComponent, SecurityBase, MessageReceiverBase 
     event TokenUnregistered(address token);
 
     /// =====================================================
+    /// Failure Events
+    /// =====================================================
+
+    /// @notice Emitted when a stale nonce is sent from the source chain
+    event StaleNonce(address token, uint256 lastStoredNonce, uint256 newSourceChainNonce);
+
+    /// =====================================================
     /// Errors
     /// =====================================================
 
     error UnsupportedToken(address token);
     error ValueNotAvailable(address token);
-    error OnlyNewerValue(address token, uint256 currentSetTimestamp, uint256 newTimestamp);
 
     /// =====================================================
     /// Structs
@@ -123,25 +132,35 @@ contract EthPerTokenStore is SystemComponent, SecurityBase, MessageReceiverBase 
     /// =====================================================
 
     /// @inheritdoc MessageReceiverBase
-    function _onMessageReceive(bytes32 messageType, uint256, bytes memory message) internal virtual override {
+    function _onMessageReceive(
+        bytes32 messageType,
+        uint256 sourceChainNonce,
+        bytes memory message
+    ) internal virtual override {
         if (messageType == MessageTypes.LST_BACKING_MESSAGE_TYPE) {
             MessageTypes.LstBackingMessage memory info = abi.decode(message, (MessageTypes.LstBackingMessage));
-            _trackPerTokenOnMessageReceive(info.token, info.ethPerToken, info.timestamp);
+            _trackPerTokenOnMessageReceive(info.token, info.ethPerToken, info.timestamp, sourceChainNonce);
         } else {
             revert Errors.UnsupportedMessage(messageType, message);
         }
     }
 
     /// @dev Handles `LST_BACKING_MESSAGE_TYPE` messages
-    function _trackPerTokenOnMessageReceive(address token, uint208 amount, uint48 timestamp) internal {
+    function _trackPerTokenOnMessageReceive(
+        address token,
+        uint208 amount,
+        uint48 timestamp,
+        uint256 sourceChainNonce
+    ) internal {
         if (!registered[token]) {
             revert UnsupportedToken(token);
         }
 
         // Message may be retried but if the message is older than one we've already
         // processed we don't want to accept it
-        if (trackedTokens[token].lastSetTimestamp >= timestamp) {
-            revert OnlyNewerValue(token, trackedTokens[token].lastSetTimestamp, timestamp);
+        if (sourceChainNonce <= lastStoredNonce) {
+            emit StaleNonce(token, lastStoredNonce, sourceChainNonce);
+            return;
         }
 
         emit EthPerTokenUpdated(token, amount, timestamp);

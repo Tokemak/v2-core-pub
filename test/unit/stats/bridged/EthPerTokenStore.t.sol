@@ -33,6 +33,12 @@ contract EthPerTokenStoreTests is Test, SystemRegistryMocks, AccessControllerMoc
     event TokenRegistered(address token);
     event TokenUnregistered(address token);
 
+    /// =====================================================
+    /// Failure Events
+    /// =====================================================
+
+    event StaleNonce(address token, uint256 lastStoredNonce, uint256 newSourceChainNonce);
+
     constructor() SystemRegistryMocks(vm) AccessControllerMocks(vm) { }
 
     function setUp() public {
@@ -292,30 +298,30 @@ contract _onMessageReceive is EthPerTokenStoreTests {
         vm.stopPrank();
     }
 
-    function test_RevertIf_TimestampIsOlderThanCurrentlyStored() public {
-        vm.warp(1000 days);
-
+    // TODO: Checks for state not changing
+    function test_EmitFailureEvent_IfStaleNonce() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.STATS_GENERAL_MANAGER, true);
         store.registerToken(token1);
 
         MessageTypes.LstBackingMessage memory message =
-            MessageTypes.LstBackingMessage({ token: token1, ethPerToken: 3, timestamp: 999 days });
+            MessageTypes.LstBackingMessage({ token: token1, ethPerToken: 1, timestamp: uint48(block.timestamp) });
         bytes memory msgBytes = abi.encode(message);
 
+        (uint208 ethPerTokenBefore, uint48 lastSetTimestampBefore) = store.trackedTokens(token1);
+
+        uint256 currentNonce = store.lastStoredNonce();
+        vm.expectEmit(true, true, true, true);
+        emit StaleNonce(token1, currentNonce, currentNonce);
+
         vm.startPrank(receivingRouter);
-        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, 1, msgBytes);
+        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, currentNonce, msgBytes);
         vm.stopPrank();
 
-        message = MessageTypes.LstBackingMessage({ token: token1, ethPerToken: 3, timestamp: 999 days - 1 });
-        msgBytes = abi.encode(message);
+        (uint208 ethPerTokenAfter, uint48 lastSetTimestampAfter) = store.trackedTokens(token1);
 
-        vm.startPrank(receivingRouter);
-
-        vm.expectRevert(
-            abi.encodeWithSelector(EthPerTokenStore.OnlyNewerValue.selector, token1, 999 days, 999 days - 1)
-        );
-        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, 1, msgBytes);
-        vm.stopPrank();
+        // Make sure state did not change
+        assertEq(ethPerTokenBefore, ethPerTokenAfter);
+        assertEq(lastSetTimestampBefore, lastSetTimestampAfter);
     }
 
     function test_EmitsEvent() public {

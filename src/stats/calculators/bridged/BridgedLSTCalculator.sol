@@ -35,7 +35,7 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     /// @notice Address of corresponding token on source chain
     address public sourceTokenAddress;
 
-    /// @notice Storing nonce sent from source chain
+    /// @notice Stored nonce sent from source chain
     uint256 public lastStoredNonce;
 
     /// =====================================================

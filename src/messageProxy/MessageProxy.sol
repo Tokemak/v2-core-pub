@@ -221,12 +221,12 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
             ResendArgsSendingChain memory currentRetry = args[i];
             address msgSender = currentRetry.msgSender;
             bytes32 messageType = currentRetry.messageType;
-            uint256 originalMessageNonce = currentRetry.messageNonce;
             bytes memory message = currentRetry.message;
 
             // Get hash from data passed in, hash from last message, revert if they are not equal.
             // solhint-disable-next-line max-line-length
-            bytes memory encodedMessage = CCUtils.encodeMessage(msgSender, originalMessageNonce, messageType, message);
+            bytes memory encodedMessage =
+                CCUtils.encodeMessage(msgSender, currentRetry.messageNonce, messageType, message);
             bytes32 currentMessageHash = keccak256(encodedMessage);
             {
                 bytes32 storedMessageHash = lastMessageSent[msgSender][messageType];

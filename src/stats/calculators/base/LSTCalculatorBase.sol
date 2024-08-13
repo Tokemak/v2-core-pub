@@ -9,7 +9,6 @@ import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { Stats } from "src/stats/Stats.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
-import { IMessageProxy } from "src/interfaces/messageProxy/IMessageProxy.sol";
 import { Errors } from "src/utils/Errors.sol";
 import { MessageTypes } from "src/libs/MessageTypes.sol";
 
@@ -139,11 +138,9 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
                         currentEthPerToken: currentEthPerToken
                     })
                 );
-                IMessageProxy messageProxy = systemRegistry.messageProxy();
-                Errors.verifyNotZero(address(messageProxy), "messageProxy");
 
                 // slither-disable-start reentrancy-no-eth
-                messageProxy.sendMessage(MessageTypes.LST_SNAPSHOT_MESSAGE_TYPE, message);
+                systemRegistry.messageProxy().sendMessage(MessageTypes.LST_SNAPSHOT_MESSAGE_TYPE, message);
                 // slither-disable-end reentrancy-no-eth
             }
 
@@ -262,6 +259,8 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
 
     /// @notice Switches flag for sending messages to other chains.
     function setDestinationMessageSend() external virtual hasRole(Roles.STATS_GENERAL_MANAGER) {
+        Errors.verifyNotZero(address(systemRegistry.messageProxy()), "messageProxy");
+
         destinationMessageSend = !destinationMessageSend;
         emit DestinationMessageSendSet(destinationMessageSend);
     }

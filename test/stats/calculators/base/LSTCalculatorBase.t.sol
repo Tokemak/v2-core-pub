@@ -462,12 +462,26 @@ contract LSTCalculatorBaseTest is Test {
         testCalculator.setDestinationMessageSend();
     }
 
+    function test_setDestinationMessageSend_RevertIf_MessageProxyZeroAddress() public {
+        vm.mockCall(
+            address(accessController),
+            abi.encodeWithSignature("hasRole(bytes32,address)", Roles.STATS_GENERAL_MANAGER, address(this)),
+            abi.encode(true)
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "messageProxy"));
+
+        testCalculator.setDestinationMessageSend();
+    }
+
     function test_setDestinationMessageSend_UpdatesProperly() public {
         vm.mockCall(
             address(accessController),
             abi.encodeWithSignature("hasRole(bytes32,address)", Roles.STATS_GENERAL_MANAGER, address(this)),
             abi.encode(true)
         );
+
+        systemRegistry.setMessageProxy(address(messageProxy));
 
         // First time calling, false -> true
         vm.expectEmit(true, true, true, true);
@@ -480,24 +494,6 @@ contract LSTCalculatorBaseTest is Test {
         emit DestinationMessageSendSet(false);
         testCalculator.setDestinationMessageSend();
         assertEq(testCalculator.destinationMessageSend(), false);
-    }
-
-    function test_SendMessageToProxy_FailsZeroAddress() public {
-        mockCalculateEthPerToken(1);
-        mockIsRebasing(false);
-        initCalculator(1e18);
-
-        // Warp timestamp to time that allows branch needed for message send to other chain to run
-        vm.warp(block.timestamp + testCalculator.APR_FILTER_INIT_INTERVAL_IN_SEC() + 1);
-
-        // Mock all roles to return true
-        vm.mockCall(address(accessController), abi.encodeWithSignature("hasRole(bytes32,address)"), abi.encode(true));
-
-        // Set to true
-        testCalculator.setDestinationMessageSend();
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector, "messageProxy"));
-        testCalculator.snapshot();
     }
 
     function test_SendMessageToProxy_destinationMessageSend() public {

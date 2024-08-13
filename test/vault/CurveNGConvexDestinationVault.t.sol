@@ -234,6 +234,10 @@ contract StandardTests is CurveNGConvexDestinationVaultTests {
         assertEq(_destVault.exchangeName(), "curve");
     }
 
+    function test_underlyingTotalSupply_ReturnsCorrectValue() public {
+        assertEq(_destVault.underlyingTotalSupply(), 5_206_135_627_885_646_879_471);
+    }
+
     function testUnderlyingTokens() public {
         address[] memory tokens = _destVault.underlyingTokens();
 

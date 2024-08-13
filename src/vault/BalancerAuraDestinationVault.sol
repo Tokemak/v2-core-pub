@@ -151,6 +151,13 @@ contract BalancerAuraDestinationVault is DestinationVault {
     }
 
     /// @inheritdoc IDestinationVault
+    function underlyingTotalSupply() external view virtual override returns (uint256) {
+        return isComposable
+            ? IBalancerComposableStablePool(_underlying).getActualSupply()
+            : IERC20(_underlying).totalSupply();
+    }
+
+    /// @inheritdoc IDestinationVault
     function underlyingTokens() external view virtual override returns (address[] memory ret) {
         if (isComposable) {
             uint256 len = poolTokens.length;

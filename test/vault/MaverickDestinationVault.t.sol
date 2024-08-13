@@ -187,6 +187,10 @@ contract MaverickDestinationVaultTests is Test {
         assertEq(_destVault.poolType(), "maverick");
     }
 
+    function test_underlyingTotalSupply_ReturnsCorrectValue() public {
+        assertEq(_destVault.underlyingTotalSupply(), 20_075_609_907_047_742_150);
+    }
+
     // @dev Maverick destination vaults do not handle pool with ETH yet
     function test_poolDealInEth_ReturnsFalse() public {
         assertFalse(_destVault.poolDealInEth());

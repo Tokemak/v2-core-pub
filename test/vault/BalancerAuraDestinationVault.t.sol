@@ -193,6 +193,10 @@ contract BalancerAuraDestinationVaultTests is Test {
         assertEq(_destVault.exchangeName(), "balancer");
     }
 
+    function test_underlyingTotalSupply_ReturnsCorrectValue() public {
+        assertEq(_destVault.underlyingTotalSupply(), 50_180_410_952_857_663_703_844);
+    }
+
     function test_underlyingTokens_ReturnsForMetastable() public {
         address[] memory tokens = _destVault.underlyingTokens();
 

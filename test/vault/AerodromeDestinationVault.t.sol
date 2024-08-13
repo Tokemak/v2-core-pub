@@ -210,6 +210,10 @@ contract AerodromeDVViewFunctions is AerodromeDestinationVaultBaseTest {
         assertEq(_dv.poolType(), "vAMM");
     }
 
+    function test_underlyingTotalSupply_ReturnsCorrectValue() public {
+        assertEq(_dv.underlyingTotalSupply(), 1_191_816_904_802_567_026_970);
+    }
+
     function test_poolDealInEth() public {
         assertEq(_dv.poolDealInEth(), false);
     }

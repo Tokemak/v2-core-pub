@@ -22,7 +22,7 @@ contract BalancerGyroscopeDestinationVault is BalancerAuraDestinationVault {
     }
 
     /// @inheritdoc IDestinationVault
-    function underlyingTotalSupply() external view virtual override returns (uint256) {
+    function underlyingTotalSupply() external view override returns (uint256) {
         return IBalancerGyroPool(_underlying).getActualSupply();
     }
 

@@ -235,6 +235,10 @@ contract CurveConvexDestinationVaultTests is Test {
         assertEq(_destVault.exchangeName(), "curve");
     }
 
+    function test_underlyingTotalSupply_ReturnsCorrectValue() public {
+        assertEq(_destVault.underlyingTotalSupply(), 990_702_112_614_776_423_241_040);
+    }
+
     function testUnderlyingTokens() public {
         address[] memory tokens = _destVault.underlyingTokens();
 

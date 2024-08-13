@@ -222,6 +222,10 @@ contract BalancerDestinationVaultComposableTests is Test {
         assertEq(_destVault.exchangeName(), "balancer");
     }
 
+    function test_underlyingTotalSupply_ReturnsCorrectValue() public {
+        assertEq(_destVault.underlyingTotalSupply(), 23_955_542_978_639_386_953_281);
+    }
+
     function test_underlyingTokens_ReturnsForComposable() public {
         address[] memory tokens = _destVault.underlyingTokens();
 

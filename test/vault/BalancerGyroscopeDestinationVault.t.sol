@@ -205,6 +205,10 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
         assertEq(_destVault.poolType(), "balGyro");
     }
 
+    function test_underlyingTotalSupply_ReturnsCorrectValue() public {
+        assertEq(_destVault.underlyingTotalSupply(), 1_897_851_032_140_955_202_888);
+    }
+
     function test_underlyingTokens_ReturnsForMetastable() public {
         address[] memory tokens = _destVault.underlyingTokens();
 

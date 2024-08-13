@@ -133,9 +133,6 @@ contract MaverickDestinationVault is DestinationVault {
     }
 
     /// @inheritdoc IDestinationVault
-    function underlyingTotalSupply() external view override returns (uint256) { }
-
-    /// @inheritdoc IDestinationVault
     function underlyingTokens() external view override returns (address[] memory result) {
         result = new address[](2);
         for (uint256 i = 0; i < 2; ++i) {

@@ -88,7 +88,9 @@ contract TestDestinationVault is DestinationVault {
         return false;
     }
 
-    function underlyingTotalSupply() external pure override returns (uint256) { }
+    function underlyingTotalSupply() external pure override returns (uint256) {
+        return 0;
+    }
 
     function underlyingTokens() external view override returns (address[] memory tokens) {
         tokens = new address[](1);

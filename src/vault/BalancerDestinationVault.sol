@@ -11,6 +11,7 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { BalancerBeethovenAdapter } from "src/destinations/adapters/BalancerBeethovenAdapter.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 import { BalancerStablePoolCalculatorBase } from "src/stats/calculators/base/BalancerStablePoolCalculatorBase.sol";
 
 /// @title Destination Vault to proxy a Balancer Pool that holds the LP asset
@@ -117,7 +118,11 @@ contract BalancerDestinationVault is DestinationVault {
     }
 
     /// @inheritdoc IDestinationVault
-    function underlyingTotalSupply() external view override returns (uint256) { }
+    function underlyingTotalSupply() external view override returns (uint256) {
+        return isComposable
+            ? IBalancerComposableStablePool(_underlying).getActualSupply()
+            : IERC20(_underlying).totalSupply();
+    }
 
     /// @inheritdoc IDestinationVault
     function underlyingTokens() external view override returns (address[] memory ret) {

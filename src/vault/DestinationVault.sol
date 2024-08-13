@@ -179,6 +179,11 @@ abstract contract DestinationVault is
     }
 
     /// @inheritdoc IDestinationVault
+    function underlyingTotalSupply() external view virtual override returns (uint256) {
+        return IERC20(_underlying).totalSupply();
+    }
+
+    /// @inheritdoc IDestinationVault
     function balanceOfUnderlyingDebt() public view virtual override returns (uint256) {
         return internalDebtBalance() + externalDebtBalance();
     }

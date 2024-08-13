@@ -265,7 +265,9 @@ contract TestDestinationVault is DestinationVault, Numbers {
         return address(0);
     }
 
-    function underlyingTotalSupply() external pure override returns (uint256) { }
+    function underlyingTotalSupply() external pure override returns (uint256) {
+        return 0;
+    }
 
     function underlyingTokens() external pure override returns (address[] memory) {
         address[] memory x = new address[](0);

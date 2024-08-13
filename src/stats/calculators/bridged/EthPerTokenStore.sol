@@ -163,6 +163,8 @@ contract EthPerTokenStore is SystemComponent, SecurityBase, MessageReceiverBase 
             return;
         }
 
+        lastStoredNonce = sourceChainNonce;
+
         emit EthPerTokenUpdated(token, amount, timestamp);
 
         trackedTokens[token] = TokenTrack({ ethPerToken: amount, lastSetTimestamp: timestamp });

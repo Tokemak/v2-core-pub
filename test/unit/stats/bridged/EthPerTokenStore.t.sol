@@ -298,7 +298,6 @@ contract _onMessageReceive is EthPerTokenStoreTests {
         vm.stopPrank();
     }
 
-    // TODO: Checks for state not changing
     function test_EmitFailureEvent_IfStaleNonce() public {
         _mockAccessControllerHasRole(accessController, address(this), Roles.STATS_GENERAL_MANAGER, true);
         store.registerToken(token1);
@@ -334,12 +333,16 @@ contract _onMessageReceive is EthPerTokenStoreTests {
             MessageTypes.LstBackingMessage({ token: token1, ethPerToken: 3, timestamp: 999 days });
         bytes memory msgBytes = abi.encode(message);
 
+        uint256 nonce = 1;
+
         vm.startPrank(receivingRouter);
 
         vm.expectEmit(true, true, true, true);
         emit EthPerTokenUpdated(token1, 3, 999 days);
-        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, 1, msgBytes);
+        store.onMessageReceive(MessageTypes.LST_BACKING_MESSAGE_TYPE, nonce, msgBytes);
         vm.stopPrank();
+
+        assertEq(store.lastStoredNonce(), nonce);
     }
 
     function test_SavesNewValues() public {

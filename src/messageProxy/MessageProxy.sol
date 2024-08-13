@@ -24,7 +24,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     /// Public Vars
     /// =====================================================
 
-    /// @notice Nonce of message. Used for tracking on L2. Incremented once per message sent
+    /// @notice Nonce of message. Used for tracking on destination chain. Incremented once per message sent
     uint256 public messageNonce;
 
     /// @notice Receiver contracts on the destination chains
@@ -57,7 +57,7 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
     struct ResendArgsSendingChain {
         address msgSender;
         bytes32 messageType;
-        uint256 messageNonce; // Nonce of original message
+        uint256 messageNonce; // Nonce of original message, emitted in `MessageData` event
         bytes message;
         MessageRouteConfig[] configs;
     }

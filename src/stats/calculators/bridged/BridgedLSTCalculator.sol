@@ -45,10 +45,11 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     event EthPerTokenStoreSet(address store);
 
     /// =====================================================
-    /// Errors
+    /// Failure Events
     /// =====================================================
 
-    error OnlyNewerValue(uint256 lastStoredNonce, uint256 newSourceChainNonce);
+    /// @notice Emitted when a stale nonce is sent across from source chain
+    event StaleNonce(uint256 lastStoredNonce, uint256 newSourceChainNonce);
 
     /// =====================================================
     /// Structs
@@ -165,7 +166,8 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
         // processed we don't want to accept it. The send in the same block on the source chain
         // slither-disable-next-line timestamp
         if (sourceChainNonce <= lastStoredNonce) {
-            revert OnlyNewerValue(lastStoredNonce, sourceChainNonce);
+            emit StaleNonce(lastStoredNonce, sourceChainNonce);
+            return;
         }
 
         lastStoredNonce = sourceChainNonce;

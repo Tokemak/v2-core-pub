@@ -92,6 +92,8 @@ contract BridgedLSTCalculatorTests is Test {
 
     event EthPerTokenStoreSet(address store);
 
+    event StaleNonce(uint256 lastStoredNonce, uint256 newSourceChainNonce);
+
     function setUp() public {
         uint256 mainnetFork = vm.createFork(vm.envString("MAINNET_RPC_URL"), START_BLOCK);
         vm.selectFork(mainnetFork);
@@ -815,19 +817,27 @@ contract BridgedLSTCalculatorTests is Test {
         testCalculator.setEthPerTokenStore(EthPerTokenStore(address(1)));
     }
 
-    function test_RevertIf_InvalidNonceReceived() public {
+    function test_EmitFailureEvent_InvalidNonceReceived() public {
+        uint256 baseAprBefore = testCalculator.baseApr();
+        uint256 lastBaseAprEthPerTokenBefore = testCalculator.lastBaseAprEthPerToken();
+        uint256 lastBaseAprSnapshotTimestampBefore = testCalculator.lastBaseAprSnapshotTimestamp();
+
         bytes memory message = abi.encode(
             MessageTypes.LSTDestinationInfo({ snapshotTimestamp: block.timestamp, newBaseApr: 1, currentEthPerToken: 1 })
         );
 
         uint256 currentStoredNonce = testCalculator.lastStoredNonce();
 
+        vm.expectEmit(true, true, true, true);
+        emit StaleNonce(currentStoredNonce, currentStoredNonce);
         vm.startPrank(receivingRouter);
-        vm.expectRevert(
-            abi.encodeWithSelector(BridgedLSTCalculator.OnlyNewerValue.selector, currentStoredNonce, currentStoredNonce)
-        );
         testCalculator.onMessageReceive(MessageTypes.LST_SNAPSHOT_MESSAGE_TYPE, currentStoredNonce, message);
         vm.stopPrank();
+
+        // Check to make sure no state was updated
+        assertEq(testCalculator.baseApr(), baseAprBefore);
+        assertEq(testCalculator.lastBaseAprEthPerToken(), lastBaseAprEthPerTokenBefore);
+        assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), lastBaseAprSnapshotTimestampBefore);
     }
 
     // ############################## helper functions ########################################

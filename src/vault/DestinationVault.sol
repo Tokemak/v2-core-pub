@@ -180,7 +180,7 @@ abstract contract DestinationVault is
 
     /// @inheritdoc IDestinationVault
     function underlyingTotalSupply() external view virtual override returns (uint256) {
-        return IERC20(_underlying).totalSupply();
+        revert Errors.NotImplemented();
     }
 
     /// @inheritdoc IDestinationVault

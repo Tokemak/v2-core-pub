@@ -205,6 +205,11 @@ contract CurveConvexDestinationVault is DestinationVault {
     }
 
     /// @inheritdoc IDestinationVault
+    function underlyingTotalSupply() external view virtual override returns (uint256) {
+        return IERC20(_underlying).totalSupply();
+    }
+
+    /// @inheritdoc IDestinationVault
     function underlyingTokens() external view override returns (address[] memory result) {
         uint256 len = constituentTokens.length;
         result = new address[](len);

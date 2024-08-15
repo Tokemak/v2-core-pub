@@ -179,11 +179,6 @@ abstract contract DestinationVault is
     }
 
     /// @inheritdoc IDestinationVault
-    function underlyingTotalSupply() external view virtual override returns (uint256) {
-        revert Errors.NotImplemented();
-    }
-
-    /// @inheritdoc IDestinationVault
     function balanceOfUnderlyingDebt() public view virtual override returns (uint256) {
         return internalDebtBalance() + externalDebtBalance();
     }

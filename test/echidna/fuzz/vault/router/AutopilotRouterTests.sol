@@ -9,6 +9,7 @@ import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/ext
 import { SwapParams } from "src/interfaces/liquidation/IAsyncSwapper.sol";
 import { AutopilotRouter } from "src/vault/AutopilotRouter.sol";
 import { IAutopool } from "src/vault/AutopoolETH.sol";
+import { AutopoolMainRewarder } from "src/rewarders/AutopoolMainRewarder.sol";
 import { IRewards } from "src/interfaces/rewarders/IRewards.sol";
 import { Rewards } from "src/rewarders/Rewards.sol";
 import { ISystemRegistry } from "src/vault/AutopilotRouterBase.sol";
@@ -28,6 +29,16 @@ contract TestRouter is AutopilotRouter {
     /// @notice Intentionally vulnerable. Will filter out for normal runs but used to test checks are working
     function pullTokenFrom(IERC20 token, uint256 amount, address from, address recipient) public payable {
         token.safeTransferFrom(from, recipient, amount);
+    }
+
+    /// @notice Intentionally vulnerable. Will filter out for normal runs but used to test checks are working
+    function withdrawVaultTokenFrom(
+        AutopoolMainRewarder mainRewarder,
+        address from,
+        uint256 amount,
+        bool claim
+    ) public {
+        mainRewarder.withdraw(from, amount, claim);
     }
 }
 
@@ -417,6 +428,24 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
             abi.encodeWithSelector(
                 autoPoolRouter.withdrawToDeposit.selector, _pool, _pool, to, amount, maxSharesIn, minSharesOut
             )
+        );
+    }
+
+    /// @dev This is vulnerable and is filtered function. Use it verify checks are working
+    function withdrawVaultTokenFrom(uint256 fromSeed, uint256 amount, bool claim) public updateUser1Balance {
+        address from = _resolveUserFromSeed(fromSeed);
+
+        _startPrank(msg.sender);
+        autoPoolRouter.withdrawVaultTokenFrom(_mainRewarder, from, amount, claim);
+        _stopPrank();
+    }
+
+    /// @dev This is vulnerable and is filtered function. Use it verify checks are working
+    function queueWithdrawVaultTokenFrom(uint256 fromSeed, uint256 amount, bool claim) public updateUser1Balance {
+        address from = _resolveUserFromSeed(fromSeed);
+
+        queuedCalls.push(
+            abi.encodeWithSelector(autoPoolRouter.withdrawVaultTokenFrom.selector, _mainRewarder, from, amount, claim)
         );
     }
 

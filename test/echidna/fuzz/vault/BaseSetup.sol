@@ -19,16 +19,20 @@ import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 import { DestinationVault } from "src/vault/DestinationVault.sol";
 import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
 import { Numbers } from "test/echidna/fuzz/utils/Numbers.sol";
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 import { DestinationVaultRegistry } from "src/vault/DestinationVaultRegistry.sol";
 import { DestinationVaultFactory } from "src/vault/DestinationVaultFactory.sol";
 import { DestinationRegistry } from "src/destinations/DestinationRegistry.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { AutopoolDebt } from "src/vault/libs/AutopoolDebt.sol";
+import { AutopoolMainRewarder } from "src/rewarders/AutopoolMainRewarder.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { CryticIERC4626Internal } from "crytic/properties/contracts/ERC4626/util/IERC4626Internal.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
 
 contract BasePoolSetup {
+    using Clones for address;
+
     TestingStrategy internal _strategy;
     SystemRegistry internal _systemRegistry;
     SystemSecurityL1 internal _systemSecurity;
@@ -98,7 +102,22 @@ contract BasePoolSetup {
         TestingPool poolTemplate = new TestingPool(_systemRegistry, address(vaultAsset));
         _pool = TestingPool(Clones.clone(address(poolTemplate)));
 
-        _pool.setRewarder(address(vaultAsset));
+        {
+            // Avoiding stack too deep
+            bytes32 salt = keccak256("v1");
+            address template = address(new AutopoolETH(_systemRegistry, address(vaultAsset)));
+            address newToken = template.predictDeterministicAddress(salt);
+
+            AutopoolMainRewarder mainRewarder = new AutopoolMainRewarder{ salt: salt }(
+                _systemRegistry,
+                address(_systemRegistry.toke()),
+                800, // defaultRewardRatio
+                100, // defaultRewardBlockDuration
+                true, // allowExtraRewards
+                newToken
+            );
+            _pool.setRewarder(address(mainRewarder));
+        }
 
         DestinationVaultRegistry destVaultRegistry = new DestinationVaultRegistry(_systemRegistry);
         _systemRegistry.setDestinationVaultRegistry(address(destVaultRegistry));

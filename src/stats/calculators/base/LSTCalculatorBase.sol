@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 
 import { BaseStatsCalculator } from "src/stats/calculators/base/BaseStatsCalculator.sol";
 import { Roles } from "src/libs/Roles.sol";
+import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
@@ -182,7 +183,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
     function current() external returns (LSTStatsData memory) {
         // return the most recent snapshot timestamp
         // slither-disable-next-line timestamp
-        uint256 lastSnapshotTimestamp = lastBaseAprSnapshotTimestamp;
+        uint256 lastSnapshotTimestamp = Math.max(lastBaseAprSnapshotTimestamp, lastDiscountSnapshotTimestamp);
 
         return LSTStatsData({
             lastSnapshotTimestamp: lastSnapshotTimestamp,

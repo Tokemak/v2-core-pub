@@ -171,7 +171,7 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
             if (address(stats) != address(0)) {
                 ILSTStats.LSTStatsData memory statsData = stats.current();
 
-                statsData.baseApr = adjustForBalancerAdminFee(statsData.baseApr);
+                statsData.baseApr = adjustBaseAprForTaxOnYieldBearingTokens(statsData.baseApr);
                 lstStatsData[i] = statsData;
             }
         }
@@ -225,7 +225,7 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
 
         uint256 currentBaseApr = 0;
         if (totalReservesInEth > 0) {
-            currentBaseApr = adjustForBalancerAdminFee(weightedBaseApr / totalReservesInEth);
+            currentBaseApr = adjustBaseAprForTaxOnYieldBearingTokens(weightedBaseApr / totalReservesInEth);
         }
 
         uint256 currentFeeApr = Stats.calculateAnnualizedChangeMinZero(
@@ -280,11 +280,16 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
         return pricer.getPriceInEth(token) * balances[index] / divisor;
     }
 
-    function adjustForBalancerAdminFee(uint256 value) internal view returns (uint256) {
+    function adjustBaseAprForTaxOnYieldBearingTokens(uint256 unadjustedBaseApr)
+        internal
+        view
+        virtual
+        returns (uint256)
+    {
         // balancer admin fee is 18 decimals
-        // we want tot return a value that is the non-balancer amount
+        // we want to return a value that is the non-balancer amount
         uint256 adminFeeRate = 1e18 - balancerVault.getProtocolFeesCollector().getSwapFeePercentage();
-        return value * adminFeeRate / 1e18;
+        return unadjustedBaseApr * adminFeeRate / 1e18;
     }
 
     function getVirtualPrice() internal view virtual returns (uint256 virtualPrice);

@@ -7,6 +7,7 @@ import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 import { BalancerStablePoolCalculatorBase } from "src/stats/calculators/base/BalancerStablePoolCalculatorBase.sol";
+import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 
 contract BalancerComposableStablePoolCalculator is BalancerStablePoolCalculatorBase {
@@ -21,5 +22,20 @@ contract BalancerComposableStablePoolCalculator is BalancerStablePoolCalculatorB
 
     function getPoolTokens() internal view override returns (IERC20[] memory tokens, uint256[] memory balances) {
         (tokens, balances) = BalancerUtilities._getComposablePoolTokensSkipBpt(balancerVault, poolAddress);
+    }
+
+    function adjustBaseAprForTaxOnYieldBearingTokens(uint256 unadjustedBaseApr)
+        internal
+        view
+        override
+        returns (uint256)
+    {
+        // ComposableStablePools either tax all yield bearing tokens or none of them.
+        if (IBalancerComposableStablePool(poolAddress).isExemptFromYieldProtocolFee()) {
+            // if the yield bearing tokens are not taxed then the base APR is unchanged
+            return unadjustedBaseApr;
+        } else {
+            return super.adjustBaseAprForTaxOnYieldBearingTokens(unadjustedBaseApr);
+        }
     }
 }

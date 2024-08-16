@@ -58,11 +58,17 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
     /// @dev The user asset balance at the beginning of the operation
     uint256[] internal _userAssetsAtStarts;
 
+    /// @dev The user rewards balance at the beginning of the operation
+    uint256[] internal _userRewardsAtStarts;
+
     /// @dev The user shares balance at the end of the operation
     uint256[] internal _userSharesAtEnds;
 
     /// @dev The user asset balance at the end of the operation
     uint256[] internal _userAssetsAtEnds;
+
+    /// @dev The user rewards balance at the end of the operation
+    uint256[] internal _userRewardsAtEnds;
 
     /// @dev queued calls that will get executed in a single multicall
     bytes[] internal queuedCalls;
@@ -72,9 +78,11 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
         _msgSenders.push(msg.sender);
         _userSharesAtStarts.push(_pool.balanceOf(_user1));
         _userAssetsAtStarts.push(_vaultAsset.balanceOf(_user1));
+        _userRewardsAtStarts.push(_mainRewarder.balanceOf(_user1));
         _;
         _userSharesAtEnds.push(_pool.balanceOf(_user1));
         _userAssetsAtEnds.push(_vaultAsset.balanceOf(_user1));
+        _userRewardsAtEnds.push(_mainRewarder.balanceOf(_user1));
     }
 
     constructor() BasePoolSetup() {
@@ -665,6 +673,9 @@ contract AutopilotRouterTest is AutopilotRouterUsage {
                         return false;
                     }
                     if (_userAssetsAtEnds[i] < _userAssetsAtStarts[i]) {
+                        return false;
+                    }
+                    if (_userRewardsAtEnds[i] < _userRewardsAtStarts[i]) {
                         return false;
                     }
                 }

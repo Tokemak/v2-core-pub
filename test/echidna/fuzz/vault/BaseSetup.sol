@@ -53,6 +53,8 @@ contract BasePoolSetup {
     TestDestinationVault internal _destVault3;
     TestERC20 internal _destVault3Underlyer;
 
+    AutopoolMainRewarder internal _mainRewarder;
+
     TestSolver internal _solver;
 
     address[] internal _destinations;
@@ -108,7 +110,7 @@ contract BasePoolSetup {
             address template = address(new AutopoolETH(_systemRegistry, address(vaultAsset)));
             address newToken = template.predictDeterministicAddress(salt);
 
-            AutopoolMainRewarder mainRewarder = new AutopoolMainRewarder{ salt: salt }(
+            _mainRewarder = new AutopoolMainRewarder{ salt: salt }(
                 _systemRegistry,
                 address(_systemRegistry.toke()),
                 800, // defaultRewardRatio
@@ -116,7 +118,7 @@ contract BasePoolSetup {
                 true, // allowExtraRewards
                 newToken
             );
-            _pool.setRewarder(address(mainRewarder));
+            _pool.setRewarder(address(_mainRewarder));
         }
 
         DestinationVaultRegistry destVaultRegistry = new DestinationVaultRegistry(_systemRegistry);

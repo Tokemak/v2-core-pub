@@ -44,7 +44,7 @@ contract AerodromeStakingIncentiveCalculator is IDexLSTStats, BaseStatsCalculato
     uint8 public incentiveCredits;
 
     /// @dev Interval between two consecutive snapshot steps during the snapshot process.
-    uint256 public constant SNAPSHOT_INTERVAL = 3 hours;
+    uint256 public constant SNAPSHOT_INTERVAL = 1 hours;
 
     /// @dev Non-trivial annual rate set at 0.5% (in fixed point format 1e18 = 1).
     uint256 public constant NON_TRIVIAL_ANNUAL_RATE = 5e15;

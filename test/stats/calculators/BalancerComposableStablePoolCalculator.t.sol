@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
-// solhint-disable func-name-mixedcase
+// solhint-disable func-name-mixedcase,var-name-mixedcase
 pragma solidity 0.8.17;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
@@ -122,6 +122,23 @@ contract TestComposableStablePoolIsExemptFromYieldProtocolFee is Test {
         systemRegistry.setRootPriceOracle(address(rootPriceOracle));
     }
 
+    function test_isExemptFromYieldProtocolFee_FalseRecent() public {
+        /// @dev ComposableStablePools changed their interface slightly this makes sure it works with old and new pools
+        address swETH_WETH_bal_pool = 0x5aEe1e99fE86960377DE9f88689616916D5DcaBe;
+        calculator =
+            TestBalancerCalculator(Clones.clone(address(new TestBalancerCalculator(systemRegistry, BAL_VAULT))));
+
+        bytes32[] memory depAprIds = new bytes32[](3);
+        depAprIds[0] = Stats.NOOP_APR_ID; // the pool token
+        depAprIds[1] = Stats.NOOP_APR_ID;
+        depAprIds[2] = Stats.NOOP_APR_ID;
+
+        calculator.initialize(
+            depAprIds, abi.encode(BalancerStablePoolCalculatorBase.InitData({ poolAddress: swETH_WETH_bal_pool }))
+        );
+        assertFalse(calculator.isExemptFromYieldProtocolFee());
+    }
+
     function test_isExemptFromYieldProtocolFee_FalseOld() public {
         calculator =
             TestBalancerCalculator(Clones.clone(address(new TestBalancerCalculator(systemRegistry, BAL_VAULT))));
@@ -151,22 +168,6 @@ contract TestComposableStablePoolIsExemptFromYieldProtocolFee is Test {
             depAprIds, abi.encode(BalancerStablePoolCalculatorBase.InitData({ poolAddress: osETH_WETH_bal_pool }))
         );
         assertTrue(calculator.isExemptFromYieldProtocolFee());
-    }
-
-    function test_isExemptFromYieldProtocolFee_False() public {
-        address swETH_WETH_bal_pool = 0x5aEe1e99fE86960377DE9f88689616916D5DcaBe;
-        calculator =
-            TestBalancerCalculator(Clones.clone(address(new TestBalancerCalculator(systemRegistry, BAL_VAULT))));
-
-        bytes32[] memory depAprIds = new bytes32[](3);
-        depAprIds[0] = Stats.NOOP_APR_ID; // the pool token
-        depAprIds[1] = Stats.NOOP_APR_ID;
-        depAprIds[2] = Stats.NOOP_APR_ID;
-
-        calculator.initialize(
-            depAprIds, abi.encode(BalancerStablePoolCalculatorBase.InitData({ poolAddress: swETH_WETH_bal_pool }))
-        );
-        assertFalse(calculator.isExemptFromYieldProtocolFee());
     }
 }
 

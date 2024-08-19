@@ -5,8 +5,8 @@ pragma solidity 0.8.17;
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { BalancerStablePoolCalculatorBase } from "src/stats/calculators/base/BalancerStablePoolCalculatorBase.sol";
 import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
+import { BalancerStablePoolCalculatorBase } from "src/stats/calculators/base/BalancerStablePoolCalculatorBase.sol";
 import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
 
 contract BalancerComposableStablePoolCalculator is BalancerStablePoolCalculatorBase {
@@ -26,7 +26,7 @@ contract BalancerComposableStablePoolCalculator is BalancerStablePoolCalculatorB
     function _isExemptFromYieldProtocolFee() internal view override returns (bool) {
         for (uint256 i = 0; i < numTokens; ++i) {
             // for simplicity, if one token is exempt we treat it like all tokens are exempt. This is fine because
-            // the return will show up in either baseApr or feeApr. This just makes sure it goes to the right session
+            // the return will show up in either baseApr or feeApr. This just makes sure it goes to the right bucket
             if (IBalancerComposableStablePool(poolAddress).isTokenExemptFromYieldProtocolFee(reserveTokens[i])) {
                 return true;
             }

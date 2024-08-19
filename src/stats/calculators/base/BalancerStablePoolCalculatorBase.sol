@@ -54,7 +54,7 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
     /// @notice The ethPerShare for the reserve tokens
     uint256[] public lastEthPerShare;
 
-    /// @notice For most Balancer pools, Balancer takes a portion of the baseApr
+    /// @notice bool for if Balancer takes a portion of the baseApr of LSTs / LRTs
     bool public isExemptFromYieldProtocolFee;
 
     bytes32 internal _aprId;

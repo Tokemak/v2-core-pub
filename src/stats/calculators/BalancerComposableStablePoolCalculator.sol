@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
-import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 import { BalancerStablePoolCalculatorBase } from "src/stats/calculators/base/BalancerStablePoolCalculatorBase.sol";
 import { IBalancerComposableStablePool } from "src/interfaces/external/balancer/IBalancerComposableStablePool.sol";
 import { BalancerUtilities } from "src/libs/BalancerUtilities.sol";
@@ -24,18 +23,15 @@ contract BalancerComposableStablePoolCalculator is BalancerStablePoolCalculatorB
         (tokens, balances) = BalancerUtilities._getComposablePoolTokensSkipBpt(balancerVault, poolAddress);
     }
 
-    function adjustBaseAprForTaxOnYieldBearingTokens(uint256 unadjustedBaseApr)
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        // ComposableStablePools either tax all yield bearing tokens or none of them.
-        if (IBalancerComposableStablePool(poolAddress).isExemptFromYieldProtocolFee()) {
-            // if the yield bearing tokens are not taxed then the base APR is unchanged
-            return unadjustedBaseApr;
-        } else {
-            return super.adjustBaseAprForTaxOnYieldBearingTokens(unadjustedBaseApr);
+    function _isExemptFromYieldProtocolFee() internal view override returns (bool) {
+        for (uint256 i = 0; i < numTokens; ++i) {
+            // for simplicity, if one token is exempt we treat it like all tokens are exempt. This is fine because
+            // the return will show up in either baseApr or feeApr. This just makes sure it goes to the right session
+            if (IBalancerComposableStablePool(poolAddress).isTokenExemptFromYieldProtocolFee(reserveTokens[i])) {
+                return true;
+            }
         }
+        // if all are exempt, then return false
+        return false;
     }
 }

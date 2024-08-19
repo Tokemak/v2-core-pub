@@ -54,6 +54,9 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
     /// @notice The ethPerShare for the reserve tokens
     uint256[] public lastEthPerShare;
 
+    /// @notice For most Balancer pools, Balancer takes a portion of the baseApr
+    bool public isExemptFromYieldProtocolFee;
+
     bytes32 internal _aprId;
 
     struct InitData {
@@ -143,6 +146,7 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
         lastSnapshotTimestamp = block.timestamp;
         lastVirtualPrice = getVirtualPrice();
         feeAprFilterInitialized = false;
+        isExemptFromYieldProtocolFee = _isExemptFromYieldProtocolFee();
     }
 
     /// @inheritdoc IStatsCalculator
@@ -170,8 +174,9 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
             ILSTStats stats = lstStats[i];
             if (address(stats) != address(0)) {
                 ILSTStats.LSTStatsData memory statsData = stats.current();
-
-                statsData.baseApr = adjustBaseAprForTaxOnYieldBearingTokens(statsData.baseApr);
+                if (!isExemptFromYieldProtocolFee) {
+                    statsData.baseApr = adjustBaseAprForTaxOnYieldBearingTokens(statsData.baseApr);
+                }
                 lstStatsData[i] = statsData;
             }
         }
@@ -225,7 +230,11 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
 
         uint256 currentBaseApr = 0;
         if (totalReservesInEth > 0) {
-            currentBaseApr = adjustBaseAprForTaxOnYieldBearingTokens(weightedBaseApr / totalReservesInEth);
+            currentBaseApr = weightedBaseApr / totalReservesInEth;
+        }
+
+        if (!isExemptFromYieldProtocolFee) {
+            currentBaseApr = adjustBaseAprForTaxOnYieldBearingTokens(currentBaseApr);
         }
 
         uint256 currentFeeApr = Stats.calculateAnnualizedChangeMinZero(
@@ -296,4 +305,9 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
 
     /// @notice for composable pools the pool token is filtered out
     function getPoolTokens() internal view virtual returns (IERC20[] memory tokens, uint256[] memory balances);
+
+    /// @notice Returns true if Balancer does not tax any of the yield bearing tokens
+    function _isExemptFromYieldProtocolFee() internal virtual returns (bool) {
+        return false;
+    }
 }

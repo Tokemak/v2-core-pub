@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
+// solhint-disable func-name-mixedcase
 pragma solidity 0.8.17;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
@@ -95,6 +96,77 @@ contract BalancerComposableStablePoolCalculatorTest is Test {
             depAprIds,
             abi.encode(BalancerStablePoolCalculatorBase.InitData({ poolAddress: WSETH_RETH_SFRXETH_BAL_POOL }))
         );
+    }
+}
+
+contract TestComposableStablePoolIsExemptFromYieldProtocolFee is Test {
+    TestBalancerCalculator private calculator;
+    SystemRegistry private systemRegistry;
+
+    function setUp() public {
+        vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 20_565_365);
+
+        systemRegistry = new SystemRegistry(TOKE_MAINNET, WETH_MAINNET);
+        AccessController accessController = new AccessController(address(systemRegistry));
+
+        systemRegistry.setAccessController(address(accessController));
+        accessController.grantRole(Roles.STATS_SNAPSHOT_EXECUTOR, address(this));
+
+        StatsCalculatorRegistry statsRegistry = new StatsCalculatorRegistry(systemRegistry);
+        systemRegistry.setStatsCalculatorRegistry(address(statsRegistry));
+
+        StatsCalculatorFactory statsFactory = new StatsCalculatorFactory(systemRegistry);
+        statsRegistry.setCalculatorFactory(address(statsFactory));
+
+        RootPriceOracle rootPriceOracle = new RootPriceOracle(systemRegistry);
+        systemRegistry.setRootPriceOracle(address(rootPriceOracle));
+    }
+
+    function test_isExemptFromYieldProtocolFee_FalseOld() public {
+        calculator =
+            TestBalancerCalculator(Clones.clone(address(new TestBalancerCalculator(systemRegistry, BAL_VAULT))));
+
+        bytes32[] memory depAprIds = new bytes32[](3);
+        depAprIds[0] = Stats.NOOP_APR_ID;
+        depAprIds[1] = Stats.NOOP_APR_ID;
+        depAprIds[2] = Stats.NOOP_APR_ID;
+
+        calculator.initialize(
+            depAprIds,
+            abi.encode(BalancerStablePoolCalculatorBase.InitData({ poolAddress: WSETH_RETH_SFRXETH_BAL_POOL }))
+        );
+        assertFalse(calculator.isExemptFromYieldProtocolFee());
+    }
+
+    function test_isExemptFromYieldProtocolFee_TrueNew() public {
+        calculator =
+            TestBalancerCalculator(Clones.clone(address(new TestBalancerCalculator(systemRegistry, BAL_VAULT))));
+
+        address osETH_WETH_bal_pool = 0xDACf5Fa19b1f720111609043ac67A9818262850c;
+        bytes32[] memory depAprIds = new bytes32[](2);
+        depAprIds[0] = Stats.NOOP_APR_ID;
+        depAprIds[1] = Stats.NOOP_APR_ID;
+
+        calculator.initialize(
+            depAprIds, abi.encode(BalancerStablePoolCalculatorBase.InitData({ poolAddress: osETH_WETH_bal_pool }))
+        );
+        assertTrue(calculator.isExemptFromYieldProtocolFee());
+    }
+
+    function test_isExemptFromYieldProtocolFee_False() public {
+        address swETH_WETH_bal_pool = 0x5aEe1e99fE86960377DE9f88689616916D5DcaBe;
+        calculator =
+            TestBalancerCalculator(Clones.clone(address(new TestBalancerCalculator(systemRegistry, BAL_VAULT))));
+
+        bytes32[] memory depAprIds = new bytes32[](3);
+        depAprIds[0] = Stats.NOOP_APR_ID; // the pool token
+        depAprIds[1] = Stats.NOOP_APR_ID;
+        depAprIds[2] = Stats.NOOP_APR_ID;
+
+        calculator.initialize(
+            depAprIds, abi.encode(BalancerStablePoolCalculatorBase.InitData({ poolAddress: swETH_WETH_bal_pool }))
+        );
+        assertFalse(calculator.isExemptFromYieldProtocolFee());
     }
 }
 

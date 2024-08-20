@@ -289,11 +289,7 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
         return pricer.getPriceInEth(token) * balances[index] / divisor;
     }
 
-    function adjustBaseAprForBalancerYieldProtocolFee(uint256 unadjustedBaseApr)
-        internal
-        view
-        returns (uint256)
-    {
+    function adjustBaseAprForBalancerYieldProtocolFee(uint256 unadjustedBaseApr) internal view returns (uint256) {
         // balancer admin fee is 18 decimals
         // we want to return a value that is the non-balancer amount
         uint256 adminFeeRate = 1e18 - balancerVault.getProtocolFeesCollector().getSwapFeePercentage();

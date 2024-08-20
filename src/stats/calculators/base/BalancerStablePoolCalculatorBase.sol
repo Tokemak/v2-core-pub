@@ -175,7 +175,7 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
             if (address(stats) != address(0)) {
                 ILSTStats.LSTStatsData memory statsData = stats.current();
                 if (!isExemptFromYieldProtocolFee) {
-                    statsData.baseApr = adjustBaseAprForTaxOnYieldBearingTokens(statsData.baseApr);
+                    statsData.baseApr = adjustBaseAprForBalancerYieldProtocolFee(statsData.baseApr);
                 }
                 lstStatsData[i] = statsData;
             }
@@ -234,7 +234,7 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
         }
 
         if (!isExemptFromYieldProtocolFee) {
-            currentBaseApr = adjustBaseAprForTaxOnYieldBearingTokens(currentBaseApr);
+            currentBaseApr = adjustBaseAprForBalancerYieldProtocolFee(currentBaseApr);
         }
 
         uint256 currentFeeApr = Stats.calculateAnnualizedChangeMinZero(
@@ -289,10 +289,9 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
         return pricer.getPriceInEth(token) * balances[index] / divisor;
     }
 
-    function adjustBaseAprForTaxOnYieldBearingTokens(uint256 unadjustedBaseApr)
+    function adjustBaseAprForBalancerYieldProtocolFee(uint256 unadjustedBaseApr)
         internal
         view
-        virtual
         returns (uint256)
     {
         // balancer admin fee is 18 decimals

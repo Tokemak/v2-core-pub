@@ -290,7 +290,7 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
         address receiver = vm.addr(555);
         uint256 startingBalance = _asset.balanceOf(receiver);
 
-        uint256 received = _destVault.withdrawBaseAsset(10e18, receiver);
+        (uint256 received,,) = _destVault.withdrawBaseAsset(10e18, receiver);
 
         // Bal pool has a rough pool value of $48,618,767
         // Total Supply of 24059.127967424958374618
@@ -322,7 +322,7 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
         assertTrue(pool.inRecoveryMode());
 
         // Run withdrawal
-        uint256 received = _destVault.withdrawBaseAsset(10e18, receiver);
+        (uint256 received,,) = _destVault.withdrawBaseAsset(10e18, receiver);
 
         // Bal pool has a rough pool value of $48,618,767
         // Total Supply of 24059.127967424958374618

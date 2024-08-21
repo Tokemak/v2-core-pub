@@ -287,7 +287,7 @@ contract MaverickDestinationVaultTests is Test {
         address receiver = vm.addr(555);
         uint256 startingBalance = _asset.balanceOf(receiver);
 
-        uint256 received = _destVault.withdrawBaseAsset(5e17, receiver);
+        (uint256 received,,) = _destVault.withdrawBaseAsset(5e17, receiver);
 
         assertEq(_asset.balanceOf(receiver) - startingBalance, 637_692_400_777_456_012);
         assertEq(received, _asset.balanceOf(receiver) - startingBalance);

@@ -350,7 +350,7 @@ contract StandardTests is CurveNGConvexDestinationVaultTests {
         address receiver = makeAddr("receiver");
         uint256 startingBalance = _asset.balanceOf(receiver);
 
-        uint256 received = _destVault.withdrawBaseAsset(50e18, receiver);
+        (uint256 received,,) = _destVault.withdrawBaseAsset(50e18, receiver);
 
         assertEq(_asset.balanceOf(receiver) - startingBalance, 50.7654827053201272e18);
         assertEq(received, _asset.balanceOf(receiver) - startingBalance);

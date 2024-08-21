@@ -18,6 +18,8 @@ import { WithdrawalQueue } from "src/strategy/WithdrawalQueue.sol";
 import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { AutopoolToken } from "src/vault/libs/AutopoolToken.sol";
+import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
+import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 
 library AutopoolDebt {
     using Math for uint256;
@@ -39,6 +41,7 @@ library AutopoolDebt {
     error TooFewAssets(uint256 requested, uint256 actual);
     error SharesAndAssetsReceived(uint256 assets, uint256 shares);
     error AmountExceedsAllowance(uint256 shares, uint256 allowed);
+    error PositivePriceRecoupNotCovered(uint256 remaining);
 
     event DestinationDebtReporting(
         address destination, AutopoolDebt.IdleDebtUpdates debtInfo, uint256 claimed, uint256 claimGasUsed
@@ -105,6 +108,7 @@ library AutopoolDebt {
         uint256 destinationRound;
         uint256 lastRoundSlippage;
         uint256 expectedAssets;
+        uint256 remainingRecoup;
     }
 
     struct FlashRebalanceParams {
@@ -301,8 +305,6 @@ library AutopoolDebt {
         uint256 originalShares,
         uint256 currentShares
     ) private returns (IdleDebtUpdates memory result) {
-        // TODO: Trace the use of this fn and ensure that every is handling is pricesWereSafe
-
         // Figure out what to back out of our totalDebt number.
         // We could have had withdraws since the last snapshot which means our
         // cached currentDebt number should be decreased based on the remaining shares
@@ -319,7 +321,6 @@ library AutopoolDebt {
 
         // If we previously had shares, calculate how much of our cached numbers
         // still remain as this will be deducted from the overall debt numbers
-        // TODO: Evaluate whether to round these up so we don't accumulate small amounts
         // over time
         uint256 prevOwnedShares = destInfo.ownedShares;
         if (prevOwnedShares > 0) {
@@ -481,7 +482,8 @@ library AutopoolDebt {
             totalMinDebt: assetBreakdown.totalDebtMin,
             destinationRound: 0,
             lastRoundSlippage: 0,
-            expectedAssets: 0
+            expectedAssets: 0,
+            remainingRecoup: 0
         });
 
         info.totalAssetsToPull = assets - info.assetsFromIdle;
@@ -527,8 +529,9 @@ library AutopoolDebt {
         uint256 dvSharesToBurn;
         while (info.assetsToPull > 0) {
             IDestinationVault destVault = IDestinationVault(withdrawalQueue.peekHead());
+
+            // We've run out of destinations
             if (address(destVault) == address(0)) {
-                // TODO: This may be some NULL value too, check the underlying library
                 break;
             }
 
@@ -565,6 +568,15 @@ library AutopoolDebt {
 
                 if (dvSharesValue > info.assetsToPull) {
                     dvSharesToBurn = (dvShares * info.assetsToPull) / dvSharesValue;
+
+                    // On withdraw, we are trying to meet a specific number of assets without a limit
+                    // on the debt we can burn. Burning 0 due to the valuations here would be an automatic failure
+                    // as we still have assets to satisfy and debt to burn. We at least have to burn 1 even if it
+                    // results in a larger over pull
+                    if (dvSharesToBurn == 0) {
+                        dvSharesToBurn = 1;
+                    }
+
                     // Only need to set it here because the only time we'll use it is if
                     // we don't exhaust all shares and have to try the destination again
                     info.expectedAssets = info.assetsToPull;
@@ -573,27 +585,20 @@ library AutopoolDebt {
                 }
             }
 
-            // Destination Vaults always burn the exact amount we instruct them to
-            uint256 pulledAssets = destVault.withdrawBaseAsset(dvSharesToBurn, address(this));
+            uint256 pulledAssets;
+            uint256 debtValueBurned;
+            // Get the base asset back from the Destination. Also performs a check that we aren't receiving
+            // poor execution on our swaps based on safe prices
+            (info, pulledAssets, debtValueBurned) = _withdrawAssets(info, destinationInfo, destVault, dvSharesToBurn);
 
             info.assetsPulled += pulledAssets;
 
-            // Calculate the totalDebt we'll need to remove based on the shares we're burning
-            // We're rounding up here so take care when actually applying to totalDebt
-            // The assets we calculated to pull are from the minDebt number we track so
-            // we'll use that one to ensure we properly account for slippage (the `pulled` var below)
-            // The other two debt numbers we just need to keep up to date.
-            uint256 debtMinDecrease = destinationInfo[address(destVault)].cachedMinDebtValue.mulDiv(
-                dvSharesToBurn, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Up
-            );
-            info.debtMinDecrease += debtMinDecrease;
-
-            info.debtDecrease += destinationInfo[address(destVault)].cachedDebtValue.mulDiv(
-                dvSharesToBurn, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Up
-            );
-            info.debtMaxDecrease += destinationInfo[address(destVault)].cachedMaxDebtValue.mulDiv(
-                dvSharesToBurn, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Up
-            );
+            if (info.remainingRecoup > 0) {
+                // If the destination is so severely undervalued that it can't cover its own recoup then we have no
+                // recourse but to burn the entire destination and the user would to have to cover the full overage
+                // from the next destinations can get nothing from this one. Should not be allowed.
+                revert PositivePriceRecoupNotCovered(info.remainingRecoup);
+            }
 
             // If we've exhausted all shares we can remove the withdrawal from the queue
             // We need to leave it in the debt report queue though so that our destination specific
@@ -622,14 +627,12 @@ library AutopoolDebt {
             if (info.assetsPulled >= info.totalAssetsToPull) {
                 info.idleIncrease += info.assetsPulled - info.totalAssetsToPull;
                 info.assetsPulled = info.totalAssetsToPull;
+                info.assetsToPull = 0;
                 break;
             }
 
             info.assetsToPull -= pulledAssets;
         }
-
-        // info.assetsToPull isn't safe to use past this point.
-        // It may or may not be accurate from the previous loop
 
         // We didn't get enough assets from the debt pull
         // See if we can get the rest from idle
@@ -683,6 +686,117 @@ library AutopoolDebt {
         }
     }
 
+    function _withdrawAssets(
+        WithdrawInfo memory info,
+        mapping(address => AutopoolDebt.DestinationInfo) storage destinationInfo,
+        IDestinationVault destVault,
+        uint256 dvSharesToBurn
+    ) internal returns (WithdrawInfo memory, uint256 pulledAssets, uint256 debtValueBurned) {
+        if (dvSharesToBurn > 0) {
+            address[] memory tokensBurned;
+            uint256[] memory amountsBurned;
+
+            // Destination Vaults always burn the exact amount we instruct them to
+            (pulledAssets, tokensBurned, amountsBurned) = destVault.withdrawBaseAsset(dvSharesToBurn, address(this));
+
+            // Calculate the totalDebt we'll need to remove based on the shares we're burning
+            // We're rounding up here so take care when actually applying to totalDebt
+            debtValueBurned = destinationInfo[address(destVault)].cachedMinDebtValue.mulDiv(
+                dvSharesToBurn, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Up
+            );
+            info.debtMinDecrease += debtValueBurned;
+
+            info.debtDecrease += destinationInfo[address(destVault)].cachedDebtValue.mulDiv(
+                dvSharesToBurn, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Up
+            );
+
+            uint256 maxDebtBurned = destinationInfo[address(destVault)].cachedMaxDebtValue.mulDiv(
+                dvSharesToBurn, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Up
+            );
+            info.debtMaxDecrease += maxDebtBurned;
+
+            // See if we received a reasonable amount of the base asset back based on the value
+            // of the tokens that were burned.
+            uint256 totalValueBurned;
+            {
+                uint256 tokenLen = tokensBurned.length;
+                IRootPriceOracle rootPriceOracle = ISystemRegistry(destVault.getSystemRegistry()).rootPriceOracle();
+                for (uint256 i = 0; i < tokenLen;) {
+                    totalValueBurned += amountsBurned[i] * rootPriceOracle.getPriceInEth(tokensBurned[i])
+                        / (10 ** IERC20(tokensBurned[i]).decimals());
+                    unchecked {
+                        ++i;
+                    }
+                }
+            }
+
+            // How much, if any, should be dropping into idle?
+            // Anything pulled over debtValueBurned goes to idle, user can't get more than we think its worth.
+            // However, if we pulled less than the current value of the tokens we burned, so long as
+            // that value is greater than debt min, we need to recoup that as well and put it into idle
+
+            uint256 amountToRecoup;
+            if (totalValueBurned > debtValueBurned) {
+                // The shares we burned are worth more than we'll be recouping from the debt burn
+                // the difference we still need to get
+                amountToRecoup = totalValueBurned - debtValueBurned;
+
+                uint256 maxCreditBps = destVault.recoupMaxCredit();
+                uint256 gapCredit = maxDebtBurned - debtValueBurned;
+                uint256 credit = Math.min(gapCredit, debtValueBurned * maxCreditBps / 10_000);
+
+                if (credit > amountToRecoup) {
+                    amountToRecoup = 0;
+                } else {
+                    amountToRecoup -= credit;
+                }
+            }
+
+            // This is done regardless of whether we were under valued. User can still only
+            // get what we've valued it at.
+            if (pulledAssets > debtValueBurned) {
+                uint256 overDebtValue = pulledAssets - debtValueBurned;
+                info.idleIncrease += overDebtValue;
+                pulledAssets -= overDebtValue;
+
+                // Since this is going to idle it goes to satisfy the recoup as well
+                if (amountToRecoup > 0) {
+                    if (amountToRecoup > overDebtValue) {
+                        amountToRecoup -= overDebtValue;
+                    } else {
+                        amountToRecoup = 0;
+                    }
+                }
+            }
+
+            // If we still have a value we need to recoup it means that the debt range credit
+            // as well as what was pulled over the min debt value wasn't enough to cover
+            // the under valued burn. Now we have to try and take it from what is going back
+            // to the user
+            if (amountToRecoup > 0) {
+                if (amountToRecoup > pulledAssets) {
+                    // Recoup is more than we pulled so we'll have some recoup left over
+                    amountToRecoup -= pulledAssets;
+
+                    // Everything that was pulled goes to idle
+                    info.idleIncrease += pulledAssets;
+                    pulledAssets = 0;
+
+                    // We'll have to try and get the remaining amount from another destination
+                    info.remainingRecoup += amountToRecoup;
+                } else {
+                    // We pulled enough assets to cover the recoup
+                    pulledAssets -= amountToRecoup;
+
+                    // Ensure the recoup goes to idle
+                    info.idleIncrease += amountToRecoup;
+                }
+            }
+        }
+
+        return (info, pulledAssets, debtValueBurned);
+    }
+
     /// @notice Perform a removal of assets via the redeem path where the shares are the limiting factor.
     /// This means we break out whenever we reach either `assets` retrieved or debt value equivalent to `assets` burned
     function redeem(
@@ -722,75 +836,63 @@ library AutopoolDebt {
                 }
             }
 
-            // Destination Vaults always burn the exact amount we instruct them to
-            uint256 pulledAssets = destVault.withdrawBaseAsset(dvSharesToBurn, address(this));
+            uint256 pulledAssets;
+            uint256 debtValueBurned;
+            // Get the base asset back from the Destination. Also performs a check that we aren't receiving
+            // poor execution on our swaps based on safe prices
+            // slither-disable-next-line unused-return
+            (info, pulledAssets, debtValueBurned) = _withdrawAssets(info, destinationInfo, destVault, dvSharesToBurn);
 
-            info.assetsPulled += pulledAssets;
-
-            // Calculate the totalDebt we'll need to remove based on the shares we're burning
-            // We're rounding up here so take care when actually applying to totalDebt
-            // The assets we calculated to pull are from the minDebt number we track so
-            // we'll use that one to ensure we properly account for slippage (the `pulled` var below)
-            // The other two debt numbers we just need to keep up to date.
-            uint256 debtMinDecrease = destinationInfo[address(destVault)].cachedMinDebtValue.mulDiv(
-                dvSharesToBurn, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Up
-            );
-            info.debtMinDecrease += debtMinDecrease;
-
-            info.debtDecrease += destinationInfo[address(destVault)].cachedDebtValue.mulDiv(
-                dvSharesToBurn, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Up
-            );
-            info.debtMaxDecrease += destinationInfo[address(destVault)].cachedMaxDebtValue.mulDiv(
-                dvSharesToBurn, destinationInfo[address(destVault)].ownedShares, Math.Rounding.Up
-            );
-
-            // If we've exhausted all shares we can remove the withdrawal from the queue
+            // If we've exhausted all shares we can remove the destination from the withdrawal queue
             // We need to leave it in the debt report queue though so that our destination specific
             // debt tracking values can be updated
-
             if (dvShares == dvSharesToBurn) {
                 withdrawalQueue.popAddress(address(destVault));
             }
 
-            // It's possible we'll get back more assets than we anticipate from a swap
-            // so if we do, throw it in idle and stop processing. You don't get more than we've calculated
-            if (info.assetsPulled >= info.totalAssetsToPull) {
-                info.idleIncrease += info.assetsPulled - info.totalAssetsToPull;
-                info.assetsPulled = info.totalAssetsToPull;
-                break;
+            info.assetsPulled += pulledAssets;
+
+            // Any deficiency in the amount we received is slippage.
+            // There is a round up on debtValueBurned so just making sure it never under flows here
+            // _withdrawAssets ensures that pulledAssets is always lte debtValueBurned and we always
+            // want to debit the max so we just use debtValueBurned
+            if (debtValueBurned > info.assetsToPull) {
+                info.assetsToPull = 0;
+            } else {
+                info.assetsToPull -= debtValueBurned;
             }
 
-            // Any deficiency in the amount we received is slippage. debtDecrease is what we expected
-            // to receive. If we received any extra, that's great we'll roll it forward so we burn
-            // less on the next loop.
-            uint256 pulled = Math.max(debtMinDecrease, pulledAssets);
-            if (pulled >= info.assetsToPull) {
-                // We either have enough assets, or we've burned the max debt we're allowed
+            // We either have enough assets, or we've burned the max debt we're allowed
+            if (info.assetsToPull == 0) {
                 break;
-            } else {
-                info.assetsToPull -= pulled;
             }
 
             // If we didn't exhaust all of the shares from the destination it means we
             // assume we will get everything we need from there and everything else is slippage
             if (dvShares != dvSharesToBurn) {
+                info.assetsToPull = 0;
                 break;
             }
         }
 
-        // info.assetsToPull isn't safe to use past this point.
-        // It may or may not be accurate from the previous loop
+        // See if we can pull the remaining recoup from other destinations we may have pulled from
+        if (info.remainingRecoup > 0) {
+            if (info.remainingRecoup > info.assetsPulled) {
+                info.remainingRecoup -= info.assetsPulled;
+                info.idleIncrease += info.assetsPulled;
+                info.assetsPulled = 0;
+            } else {
+                info.assetsPulled -= info.remainingRecoup;
+                info.idleIncrease += info.remainingRecoup;
+                info.remainingRecoup = 0;
+            }
+        }
 
         // We didn't get enough assets from the debt pull
         // See if we can get the rest from idle
-        // Check the debt burned though to ensure that we don't try to make up
-        // slippage incurred out of idle
-        if (
-            info.assetsPulled < assets && info.debtMinDecrease < assets && info.currentIdle > 0 && exhaustedDestinations
-        ) {
-            uint256 remaining = assets - Math.max(info.assetsPulled, info.debtMinDecrease);
-            if (remaining < info.currentIdle) {
-                info.assetsFromIdle = remaining;
+        if (info.assetsToPull > 0 && info.currentIdle > 0 && exhaustedDestinations) {
+            if (info.assetsToPull < info.currentIdle) {
+                info.assetsFromIdle = info.assetsToPull;
             } else {
                 info.assetsFromIdle = info.currentIdle;
             }
@@ -798,6 +900,29 @@ library AutopoolDebt {
 
         debtBurned = info.assetsFromIdle + info.debtMinDecrease;
         actualAssets = info.assetsFromIdle + info.assetsPulled;
+
+        // If we took from idle, and we have remaining assets to recoup
+        // we need to put some back in idle
+        if (info.remainingRecoup > 0 && info.assetsFromIdle > 0) {
+            // We only need to do this if the idle assets can cover the remaining recoup fully because
+            // we'll be reverting otherwise
+            if (info.assetsFromIdle >= info.remainingRecoup) {
+                // We still need to charge for the recoup so we're going to leave it in debtBurned
+                // but we'll take it back out of actualAssets so it stays in idle. We need to lower
+                // assetsFromIdle as well so that the final numbers get updated too
+                actualAssets -= info.remainingRecoup;
+                info.assetsFromIdle -= info.remainingRecoup;
+                info.remainingRecoup = 0;
+            } else {
+                // Just updating this number so we get an accurate value in the revert below
+                info.remainingRecoup -= info.assetsFromIdle;
+            }
+        }
+
+        // We took everything we could and still can't cover, time to revert
+        if (info.remainingRecoup > 0) {
+            revert PositivePriceRecoupNotCovered(info.remainingRecoup);
+        }
 
         actualShares = IAutopool(address(this)).convertToShares(
             debtBurned, applicableTotalAssets, IAutopool(address(this)).totalSupply(), Math.Rounding.Up

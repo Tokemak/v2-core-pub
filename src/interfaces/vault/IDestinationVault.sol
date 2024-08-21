@@ -7,8 +7,9 @@ import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/ext
 import { IBaseAssetVault } from "src/interfaces/vault/IBaseAssetVault.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
+import { ISystemComponent } from "src/interfaces/ISystemComponent.sol";
 
-interface IDestinationVault is IBaseAssetVault, IERC20 {
+interface IDestinationVault is ISystemComponent, IBaseAssetVault, IERC20 {
     enum VaultShutdownStatus {
         Active,
         Deprecated,
@@ -39,7 +40,7 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     ///     extraneous amounts of underlyer that may have ended up in this contract.
     function internalDebtBalance() external view returns (uint256);
 
-    /// @notice Debt balance of underlyering asset staked externally.  This value only
+    /// @notice Debt balance of underlying asset staked externally.  This value only
     ///     includes assets known as debt to the rest of the system, and does not include
     ///     any assets staked on behalf of the DV in external contracts.
     function externalDebtBalance() external view returns (uint256);
@@ -144,7 +145,12 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @param shares amount of vault shares to burn
     /// @param to destination of the base asset
     /// @return amount base asset amount 'to' received
-    function withdrawBaseAsset(uint256 shares, address to) external returns (uint256 amount);
+    /// @return tokens the tokens burned to get the base asset
+    /// @return tokenAmounts the amount of the tokens burned to get the base asset
+    function withdrawBaseAsset(
+        uint256 shares,
+        address to
+    ) external returns (uint256 amount, address[] memory tokens, uint256[] memory tokenAmounts);
 
     /// @notice Mark this vault as shutdown so that autoPools can react
     function shutdown(VaultShutdownStatus reason) external;
@@ -188,7 +194,7 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     function getUnderlyerCeilingPrice() external returns (uint256 price);
 
     /// @notice Set or unset  a hash as a signed message
-    /// @dev Should be limited to DESTINATION_VAULTS_UPDATER. The set hash is used to vaildate a signature.
+    /// @dev Should be limited to DESTINATION_VAULTS_UPDATER. The set hash is used to validate a signature.
     /// This signature can be potentially used to claim offchain rewards earned by Destination Vaults.
     /// @param hash bytes32 hash of a payload
     /// @param flag boolean flag to indicate a validity of hash
@@ -209,4 +215,7 @@ interface IDestinationVault is IBaseAssetVault, IERC20 {
     /// @dev Special care should be taken to ensure that balances hasn't been manipulated
     /// @param data any data that the extension contract needs
     function executeExtension(bytes calldata data) external;
+
+    /// @notice Returns the max recoup credit given during the withdraw of an undervalued destination
+    function recoupMaxCredit() external view returns (uint256);
 }

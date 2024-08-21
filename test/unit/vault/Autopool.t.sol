@@ -37,6 +37,8 @@ import { VmSafe } from "forge-std/Vm.sol";
 import { TokenReturnSolver } from "test/mocks/TokenReturnSolver.sol";
 import { IDestinationVaultRegistry } from "src/interfaces/vault/IDestinationVaultRegistry.sol";
 import { Events } from "test/unit/vault/Autopool.Events.sol";
+import { IRootPriceOracle } from "src/interfaces/oracles/IRootPriceOracle.sol";
+import { RootPriceOracleMocks } from "test/unit/mocks/RootPriceOracleMocks.t.sol";
 
 contract AutopoolETHTests is
     Test,
@@ -45,7 +47,8 @@ contract AutopoolETHTests is
     SystemSecurityMocks,
     DestinationVaultMocks,
     AccessControllerMocks,
-    AutopoolStrategyMocks
+    AutopoolStrategyMocks,
+    RootPriceOracleMocks
 {
     address internal FEE_RECIPIENT = address(4335);
     uint256 public constant WETH_INIT_DEPOSIT = 100_000;
@@ -57,11 +60,13 @@ contract AutopoolETHTests is
         DestinationVaultMocks(vm)
         AccessControllerMocks(vm)
         AutopoolStrategyMocks(vm)
+        RootPriceOracleMocks(vm)
     { }
 
     ISystemRegistry internal systemRegistry;
     IAccessController internal accessController;
     ISystemSecurity internal systemSecurity;
+    IRootPriceOracle internal rootPriceOracle;
     address internal autoPoolStrategy;
 
     TestERC20 internal vaultAsset;
@@ -114,6 +119,9 @@ contract AutopoolETHTests is
         _mockSysRegSystemSecurity(systemRegistry, address(systemSecurity));
         _mockSysSecurityInit(systemSecurity);
 
+        rootPriceOracle = IRootPriceOracle(makeAddr("rootPriceOracle"));
+        _mockSysRegRootPriceOracle(systemRegistry, address(rootPriceOracle));
+
         vm.label(address(vaultAsset), "baseAsset");
 
         autoPoolStrategy = makeAddr("autoPoolStrategy");
@@ -123,6 +131,7 @@ contract AutopoolETHTests is
 
         vaultAsset = new TestERC20("mockWETH", "Mock WETH");
         vaultAsset.setDecimals(9);
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(vaultAsset), 1e9);
 
         FeeAndProfitTestVault tempVault = new FeeAndProfitTestVault(systemRegistry, address(vaultAsset));
         vault = FeeAndProfitTestVault(Clones.cloneDeterministic(address(tempVault), "salt1"));
@@ -173,7 +182,10 @@ contract AutopoolETHTests is
         // Create the destination vault
         TestERC20 dvToken = new TestERC20("DV", "DV");
         dvToken.setDecimals(tokenDecimals);
-        dv = new DestinationVaultFake(dvToken, TestERC20(setup.autoPool.asset()));
+        _mockRootPriceOracleGetPriceInEth(
+            rootPriceOracle, address(dvToken), 10 ** TestERC20(setup.autoPool.asset()).decimals()
+        );
+        dv = new DestinationVaultFake(address(systemRegistry), dvToken, TestERC20(setup.autoPool.asset()));
 
         // We have our debt reporting snapshot
         setup.autoPool.setDestinationInfo(
@@ -1955,13 +1967,13 @@ contract Withdraw is AutopoolETHTests {
         // We are going to try and pull 8e9 out. We'll value the shares initially at our min debt
         // valuation of .999e9 so we'll burn ~8.008e9 shares. We've set slippage to 5e9 on the first round so we
         // only get ~3 back. There's no slippage on the next round but given the reprice we burn all the shares
-        // and it still only nets 1.991991992.
+        // That's 1.992 shares @ .999 valuation so the user gets ~1.99 + 3 from the first destination
 
         dv1.setWithdrawBaseAssetSlippage(5e9);
 
         vm.startPrank(user);
 
-        vm.expectRevert(abi.encodeWithSelector(AutopoolDebt.TooFewAssets.selector, 8e9, 5e9));
+        vm.expectRevert(abi.encodeWithSelector(AutopoolDebt.TooFewAssets.selector, 8e9, 4.998008009e9));
         vault.withdraw(8e9, user, user);
 
         vm.stopPrank();
@@ -2212,13 +2224,17 @@ contract Withdraw is AutopoolETHTests {
         // We're going to ask for roughly 859.5 assets which is 900 shares currently.
         // 859.5 * 1000 / 955 == 900
 
-        // We think we can get 195 assets from DV1. We'll actually get 250 (200 value and 50 positive slippage) from
-        // means we have to get the remaining 609.5 from DV2. The amount we are trying to pull is more than DV1 is worth
-        // so we'll exhaust the whole thing. So again, the 250 we get from there. For DV2, we only need to use a
+        // We think we can get 195 assets from DV1. We'll actually get 250 (200 value and 50 positive slippage)
+        // The user can't take the positive slippage so for this round the user gets the 195 and idle gets 55.
+
+        // We have to get the remaining 664.5 from DV2. For DV2, we only need to use a
         // portion so we calculate how many shares we should burn based on the min value.
-        // Thats a total of 760e18 value over 800 shares so roughly ~641.578 shares
-        // Those shares are worth 1:1 plus the 100 positive slippage we get will get ~741.578 ETH.
-        // That covers the 609.5 we're trying to get and the difference of ~132 drops into idle
+        // Thats a total of 760e18 value over 800 shares so roughly ~699.473 shares
+        // Those shares are worth 1:1 plus the 100 positive slippage we get will get ~799.473 ETH.
+        // User can only take the min value of those shares so 664.5
+        // That covers the 609.5 we're trying to get and the difference of ~134.97 drops into idle
+
+        // So on the first round idle got 50, 134.97 on the second === ~189.97
 
         uint256 idleBefore = vault.totalIdle();
         uint256 assetBalBefore = vaultAsset.balanceOf(user);
@@ -2233,15 +2249,204 @@ contract Withdraw is AutopoolETHTests {
         assertEq(idleBefore, 0, "idleBefore");
 
         // Extra assets from dv2 drop into idle
-        assertEq(idleAfter, 132.078947368e9, "idleAfter");
+        assertEq(idleAfter, 189.97368421e9, "idleAfter");
         assertEq(sharesBurned, 900e9, "returned");
         assertEq(assetBalAfter - assetBalBefore, 859.5e9, "actual");
         assertEq(dv1ShareBalBefore, 100e9, "dv1ShareBalBefore");
         assertEq(destVault1.balanceOf(address(vault)), 0, "dv1ShareBalAfter");
         assertEq(dv2ShareBalBefore, 800e9, "dv2ShareBalBefore");
 
-        // 800 - ~641.578 shares we burned
-        assertEq(destVault2.balanceOf(address(vault)), 158.421052632e9, "dv2ShareBalAfter");
+        // 800 - ~699.473 shares we burned
+        assertEq(destVault2.balanceOf(address(vault)), 100.52631579e9, "dv2ShareBalAfter");
+    }
+
+    function test_UndervaluedDestinationsCannotCoverForOvervaluedOnes() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
+
+        address user = makeAddr("user");
+        uint256 amount = 130e9;
+        _depositFor(user, amount);
+
+        // Deployed 50 assets to DV1
+        DestinationVaultFake destVault1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 50e9,
+                valuePerShare: 1e9,
+                minDebtValue: 50e9,
+                maxDebtValue: 50e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Deployed 50 assets to DV1
+        DestinationVaultFake destVault2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 50e9,
+                valuePerShare: 1e9,
+                minDebtValue: 50e9,
+                maxDebtValue: 50e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(30e9);
+
+        // 30 Assets in Idle, 50 in DV1, 50 DV2
+        // We'll get 10 less when we pull from DV1
+        // And 10 more when we pull from DV2
+        destVault1.setWithdrawBaseAssetSlippage(10e9);
+        destVault2.setWithdrawBaseAssetSlippage(-10e9);
+
+        uint256 idleBefore = vault.totalIdle();
+        uint256 assetBalBefore = vaultAsset.balanceOf(user);
+        uint256 dv1ShareBalBefore = destVault1.balanceOf(address(vault));
+        uint256 dv2ShareBalBefore = destVault2.balanceOf(address(vault));
+
+        // The 30 in idle can't cover the 110 we're trying to pull so we'll go to the market first
+        // DV1 has 50 we think so we burn everything, we get 40 back.
+        // DV2 has 50 we think so we burn everything, we get 60 back.
+        // We don't get to take the extra, so get credit for 50, leave us trying to pull 20 (110 - 40 - 50)
+        // We can take 20 from idle.
+        // So we burned 100 worth of debt, and got 20 from idle
+        // That extra 10 we received from DV2 will drop into idle though so idle will sit at 20
+        vm.prank(user);
+        uint256 sharesBurned = vault.withdraw(110e9, user, user);
+        uint256 assetBalAfter = vaultAsset.balanceOf(user);
+        uint256 idleAfter = vault.totalIdle();
+
+        assertEq(idleBefore, 30e9, "idleBefore");
+
+        // Extra assets from dv2 drop into idle
+        assertEq(idleAfter, 20e9, "idleAfter");
+        assertEq(sharesBurned, 120e9, "sharesBurned");
+        assertEq(assetBalAfter - assetBalBefore, 110e9, "actual");
+        assertEq(dv1ShareBalBefore, 50e9, "dv1ShareBalBefore");
+        assertEq(destVault1.balanceOf(address(vault)), 0, "dv1ShareBalAfter");
+        assertEq(dv2ShareBalBefore, 50e9, "dv2ShareBalBefore");
+        assertEq(destVault2.balanceOf(address(vault)), 0, "dv2ShareBalAfter");
+    }
+
+    function test_UndervaluedDestinationsCannotCoverForOvervaluedOnesReversed() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
+
+        address user = makeAddr("user");
+        uint256 amount = 130e9;
+        _depositFor(user, amount);
+
+        // Deployed 50 assets to DV1
+        DestinationVaultFake destVault1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 50e9,
+                valuePerShare: 1e9,
+                minDebtValue: 50e9,
+                maxDebtValue: 50e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Deployed 50 assets to DV1
+        DestinationVaultFake destVault2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 50e9,
+                valuePerShare: 1e9,
+                minDebtValue: 50e9,
+                maxDebtValue: 50e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(30e9);
+
+        // 30 Assets in Idle, 50 in DV1, 50 DV2
+        // We'll get 10 less when we pull from DV1
+        // And 10 more when we pull from DV2
+        destVault1.setWithdrawBaseAssetSlippage(-10e9);
+        destVault2.setWithdrawBaseAssetSlippage(10e9);
+
+        uint256 idleBefore = vault.totalIdle();
+        uint256 assetBalBefore = vaultAsset.balanceOf(user);
+        uint256 dv1ShareBalBefore = destVault1.balanceOf(address(vault));
+        uint256 dv2ShareBalBefore = destVault2.balanceOf(address(vault));
+
+        vm.prank(user);
+        uint256 sharesBurned = vault.withdraw(110e9, user, user);
+        uint256 assetBalAfter = vaultAsset.balanceOf(user);
+        uint256 idleAfter = vault.totalIdle();
+
+        assertEq(idleBefore, 30e9, "idleBefore");
+
+        // Extra assets from dv2 drop into idle
+        assertEq(idleAfter, 20e9, "idleAfter");
+        assertEq(sharesBurned, 120e9, "sharesBurned");
+        assertEq(assetBalAfter - assetBalBefore, 110e9, "actual");
+        assertEq(dv1ShareBalBefore, 50e9, "dv1ShareBalBefore");
+        assertEq(destVault1.balanceOf(address(vault)), 0, "dv1ShareBalAfter");
+        assertEq(dv2ShareBalBefore, 50e9, "dv2ShareBalBefore");
+        assertEq(destVault2.balanceOf(address(vault)), 0, "dv2ShareBalAfter");
+    }
+
+    function test_SeverelyOvervaluedDestinationSharesStillResultsInPull() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
+
+        address user = makeAddr("user");
+        uint256 amount = 130e9;
+        _depositFor(user, amount);
+
+        // Deployed 50 assets to DV1
+        DestinationVaultFake destVault1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 50e9,
+                valuePerShare: 1e9,
+                minDebtValue: 50e9,
+                maxDebtValue: 50e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Deployed 50 assets to DV1
+        DestinationVaultFake destVault2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 1,
+                valuePerShare: 1e9,
+                minDebtValue: 50e9,
+                maxDebtValue: 50e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(30e9);
+
+        uint256 idleBefore = vault.totalIdle();
+        uint256 assetBalBefore = vaultAsset.balanceOf(user);
+        uint256 dv1ShareBalBefore = destVault1.balanceOf(address(vault));
+        uint256 dv2ShareBalBefore = destVault2.balanceOf(address(vault));
+
+        vm.prank(user);
+        uint256 sharesBurned = vault.withdraw(50e9 + 1, user, user);
+        uint256 assetBalAfter = vaultAsset.balanceOf(user);
+        uint256 idleAfter = vault.totalIdle();
+
+        // Nothing came from idle to cover the slippage
+        // The DV2 shares rounded down to 0, so we pulled just 1
+        // That 1 was worth 50 though so we ended up burning 100 shares all together
+
+        assertEq(idleBefore, 30e9, "idleBefore");
+        assertEq(idleAfter, 30e9, "idleAfter");
+        assertEq(sharesBurned, 100e9, "sharesBurned");
+        assertEq(assetBalAfter - assetBalBefore, 50e9 + 1, "actual");
+        assertEq(dv1ShareBalBefore, 50e9, "dv1ShareBalBefore");
+        assertEq(destVault1.balanceOf(address(vault)), 0, "dv1ShareBalAfter");
+        assertEq(dv2ShareBalBefore, 1, "dv2ShareBalBefore");
+        assertEq(destVault2.balanceOf(address(vault)), 0, "dv2ShareBalAfter");
     }
 
     function test_UserReceivesLessAssetsIfPricesDrops() public {
@@ -2526,6 +2731,519 @@ contract Withdraw is AutopoolETHTests {
         assertEq(sharesBurned, 13e9, "sharesBurned");
         assertEq(assets.totalIdle, 2e9, "newIdle");
         assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_NoPositivePriceRecoupWhenOverageIsLessThanCredit() public {
+        // credit covers value recoup
+        // gap credit
+
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        // Set the max debt value to 16e9 and then we will set the current value
+        // of the underlying token to be worth 17e9 total. The credit
+        // in this case would be 2e9
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(0);
+
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(17e9) * 1e9 / 15e9);
+
+        uint256 idleBefore = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        vm.prank(user);
+        uint256 sharesBurned = vault.withdraw(14e9, user, user);
+
+        uint256 idleAfter = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(sharesBurned, 15e9, "sharesBurned");
+        assertEq(assets.totalIdle, 1e9, "newIdle");
+        assertEq(idleAfter - idleBefore, 1e9, "newIdleBal");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_NoPositivePriceRecoupWhenOverageIsLessThanMaxCredit() public {
+        // credit covers value recoup
+        // max credit
+
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        // Set the underlying token to be worth 16e9 total at current value.
+        // We'll pull 15e9 and so gap of 1.
+        // Gap credit would be 2e9 and max is 1.4 so we go with 1.4
+        // 1.4 credit covers
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(0);
+
+        // Set the max credit to 10% of the min debt or 1.4
+        dv1.setRecoupMaxCredit(1000);
+
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(16e9) * 1e9 / 15e9);
+
+        uint256 idleBefore = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        vm.prank(user);
+        uint256 sharesBurned = vault.withdraw(14e9, user, user);
+
+        uint256 idleAfter = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(sharesBurned, 15e9, "sharesBurned");
+        assertEq(assets.totalIdle, 1e9, "newIdle");
+        assertEq(idleAfter - idleBefore, 1e9, "newIdleBal");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_PositivePriceRecoupWhenOverageIsGreaterThanCreditUserCovers() public {
+        // value recoup exceeds credit
+        // gap credit
+        // pull doesn't cover the recoup, user hit but user covers
+
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 20% of the min debt or 2.8 on first go around
+        dv1.setRecoupMaxCredit(2000);
+
+        vault.setTotalIdle(0);
+
+        // We are trying to pull 12 assets which equates to 12.857 shares of DV1
+        // Those shares are currently worth 16. Those are equal 12 of debt so we are trying to recover 4
+        // Max credit is 2.8, gap credit is 1.7 so credit is 1.7
+        // Of the 4 we are trying to recoup 2.285
+        // We pulled 12.857 worth of assets and the user can only get 12 so we
+        // apply the .857 to recoup and now we need 1.42
+        // So, of the 12 the user asked for he only gets 10.57 this round and idle gets 2.285
+
+        // Now we are trying to satisfy the remaining 1.428 assets
+        // Our recalculated exchange rate puts that we should burn 1.7398 shares which will
+        // give us 1.7398 assets. Max credit here is 20% of our min debt burned which is .324,
+        // gap is .231 so the credit is .231
+        // Those 1.73 shares had a debt value of 1.623 and current value of 2.165 so we are
+        // trying to recoup .5412. Minus the .231 credit we're left trying to get .309
+
+        // Again out debt value was 1.623 and we pulled 1.7398 so so we can credit the overage of .115
+        // to our recoup and we're left with .193 to get.
+        // So take the .193 from the 1.623 that the user was going to get we're left with 1.43 going to the
+        // user. That's still more the 1.428 on this round so the remainder goes to idle
+
+        // So the user burned 12 + 1.623, 13.623 of debt value which equates to 14.596 shares
+        // On the first destination we had to recoup 2.285, and .309 on the second
+        // That would be 2.593 going to idle + the .002 from the 1.43 - 1.428 overage
+        // and we get 2.595
+
+        _mockRootPriceOracleGetPriceInEth(
+            rootPriceOracle, address(dv1.underlyer()), uint256(16e9) * 1e9 / 12.857142857e9
+        );
+
+        uint256 idleBefore = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        vm.prank(user);
+        uint256 sharesBurned = vault.withdraw(12e9, user, user);
+
+        uint256 idleAfter = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(sharesBurned, 14.596945671e9, "sharesBurned");
+        assertEq(assets.totalIdle, 2.59694567e9, "newIdle");
+        assertEq(idleAfter - idleBefore, 2.59694567e9, "newIdle");
+
+        // We burned 13.623 of debt from the total of 14 or 97.307%
+        // Apply that to the midpoint debt value and we burned 14.59 leaving .403
+        assertEq(assets.totalDebt, 0.40305433e9, "newDebt");
+    }
+
+    function test_PositivePriceRecoupWhenOverageIsGreaterThanCreditMaxUserCovers() public {
+        // value recoup exceeds credit
+        // max credit
+        // pull doesn't cover the recoup, user hit but user covers
+
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 10% of the min debt or 1.1 on first go around
+        dv1.setRecoupMaxCredit(1000);
+
+        vault.setTotalIdle(0);
+
+        // We are trying to pull 11 assets which equates to 11.785 shares of DV1
+        // Those shares are currently worth 15. Those are equal 11 of debt so we are trying to recover 4
+        // Max credit is 1.1, gap credit is 1.5 so credit is 1.1
+        // Of the 4 we are trying to recoup 2.9
+        // We pulled 11.785 worth of assets and the user can only get 11 so we
+        // apply the .785 to recoup and now we need 2.115
+        // So, of the 11 the user asked for he only gets 8.885 this round and idle gets 2.9
+
+        // Now we are trying to satisfy the remaining 2.115 assets
+        // Our recalculated exchange rate puts that we should burn 2.811 shares which will
+        // give us 2.811 assets. Max credit here is 10% of our min debt burned which is .262,
+        // gap is .374 so the credit is .262
+        // Those 2.811 shares had a debt value of 2.623 and current value of 3.577 so we are
+        // trying to recoup .954. Minus the .231 credit we're left trying to get .692
+
+        // Again out debt value was 2.623 and we pulled 2.811 so so we can credit the overage of .1874
+        // to our recoup and we're left with .5047 to get.
+        // So take the .5047 from the 2.115 that the user was going to get we're left with 1.61 going to the
+        // user. That's still more the 1.428 on this round so the remainder goes to idle
+
+        // So the user burned 11 + 2.623, 13.623 of debt value which equates to 14.596 shares
+        // On the first destination we had to recoup 2.9, and .692 on the second
+        // That would be 3.592 going to idle + the .004 from the 1.43 - 1.428 overage
+        // and we get 3.596
+
+        _mockRootPriceOracleGetPriceInEth(
+            rootPriceOracle, address(dv1.underlyer()), uint256(15e9) * 1e9 / 11.785714285e9
+        );
+
+        uint256 idleBefore = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        vm.prank(user);
+        uint256 sharesBurned = vault.withdraw(11e9, user, user);
+
+        uint256 idleAfter = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(sharesBurned, 14.596720708e9, "sharesBurned");
+        assertEq(assets.totalIdle, 3.596720707e9, "newIdle");
+        assertEq(idleAfter - idleBefore, 3.596720707e9, "newIdle");
+
+        // We burned 13.623 of debt from the total of 14 or 97.307%
+        // Apply that to the midpoint debt value and we burned 14.59 leaving .403
+        assertEq(assets.totalDebt, 0.403279293e9, "newDebt");
+    }
+
+    function test_PositivePriceRecoupWhenOverageIsGreaterThanCreditUserNotHit() public {
+        // value recoup exceeds credit
+        // gap credit
+        // pull covers the recoup, no user hit
+
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 16e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 20% of the min debt or 2.8
+        dv1.setRecoupMaxCredit(2000);
+
+        vault.setTotalIdle(0);
+
+        // Requesting 14 assets is burning all 16 shares
+        // Total value of 16 shares is 18
+        // The gap credit would be the min of 2e9, 16e9 - 14e9
+        // and the max credit is 20% of min, or 2.8e9 so credit is 2
+        // Our min debt is 14 and the value we pulled was 18 so that means
+        // our recoup is 4, minus the credit of 2, recoup is 2
+        // We pulled 16e9, user only gets 14e9, so we have the 2 to cover
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(18e9) * 1e9 / 16e9);
+
+        uint256 idleBefore = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        vm.prank(user);
+        uint256 sharesBurned = vault.withdraw(14e9, user, user);
+
+        uint256 idleAfter = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        // We burned all of our debt shares. Those shares have a current value of 18
+        // We got 14 from the debt burn, and 2 from the pull itself. Plus the 2 credit == 18
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(sharesBurned, 15e9, "sharesBurned");
+        assertEq(assets.totalIdle, 2e9, "newIdle");
+        assertEq(idleAfter - idleBefore, 2e9, "newIdleBal");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_PositivePriceRecoupWhenOverageIsGreaterThanCreditMaxUserNotHit() public {
+        // value recoup exceeds credit
+        // max credit
+        // pull covers the recoup, no user hit
+
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: uint256(16.6e9) * 1e9 / 15e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 10% of the min debt or 1.4
+        dv1.setRecoupMaxCredit(1000);
+
+        vault.setTotalIdle(0);
+
+        // Pulling 14 assets with worth 15 shares
+        // Total value of 15 shares is 18
+        // The gap credit would be the min of 2e9, 16e9 - 14e9
+        // and the max credit is 10% of min, or 1.4e9 so credit is 1.4
+        // Our min debt is 14 and the value we pulled was 18.6 so that means
+        // our recoup is 4, minus the credit of 1.4, recoup is 2.6
+        // We pulled 16.6e9, user only gets 14e9, so we have the 2.6 to cover
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(18e9) * 1e9 / 16.6e9);
+
+        uint256 idleBefore = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        vm.prank(user);
+        uint256 sharesBurned = vault.withdraw(14e9, user, user);
+
+        uint256 idleAfter = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(sharesBurned, 15e9, "sharesBurned");
+        assertEq(assets.totalIdle, 2.6e9 - 10, /*rounding, totalValueBurned is really 17.999... not 18*/ "newIdle");
+        assertEq(
+            idleAfter - idleBefore, 2.6e9 - 10, /*rounding, totalValueBurned is really 17.999... not 18*/ "newIdleBal"
+        );
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_RevertIf_PositivePriceRecoupNotCoveredByDestWithCredit() public {
+        // value recoup exceeds credit
+        // gap credit
+        // pull doesn't cover the recoup, user doesn't cover
+        // can't cover, revert
+
+        address user = makeAddr("user1");
+        _depositFor(user, 30e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        DestinationVaultFake dv2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 20% of the min debt or 2.8
+        dv1.setRecoupMaxCredit(2000);
+
+        // Set the max credit to 20% of the min debt or 2.8
+        dv2.setRecoupMaxCredit(2000);
+
+        vault.setTotalIdle(0);
+
+        // We are trying to pull 11 assets
+        // DV1 has a min debt value of 14 over 15 shares so we will only burn a portion of the shares
+        // That means we'll burn 11.785 shares, 11*14/15, and get 11.785 assets
+        // The current value of those burned shares is currently 26 so we are trying to 15, 26 - 11
+        // The gap credit would be 1.57 and the max is 2.2, so credit is 1.57
+        // So trying to recoup 13.43. The user can only get 11 and we pulled 11.785 so the .785 goes
+        // towards the recoup. Now we're at 12.643. The last thing we can take is the 11 from the user
+
+        // This means we're left with a 1.64 not covered. Entire destination would have to be burned
+        // and the user would get nothing and end up owing assets. We revert
+
+        _mockRootPriceOracleGetPriceInEth(
+            rootPriceOracle, address(dv1.underlyer()), uint256(26e9) * 1e9 / 11.785714285e9
+        );
+        _mockRootPriceOracleGetPriceInEth(
+            rootPriceOracle, address(dv2.underlyer()), uint256(18e9) * 1e9 / 11.785714285e9
+        );
+
+        vm.startPrank(user);
+
+        vm.expectRevert(abi.encodeWithSelector(AutopoolDebt.PositivePriceRecoupNotCovered.selector, 1.642857141e9));
+        vault.withdraw(11e9, user, user);
+
+        vm.stopPrank();
+    }
+
+    function test_RevertIf_PositivePriceRecoupNotCoveredByDestWithMaxCredit() public {
+        // value recoup exceeds credit
+        // max credit
+        // pull doesn't cover the recoup, user doesn't cover
+        // can't cover, revert
+
+        address user = makeAddr("user1");
+        _depositFor(user, 30e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        DestinationVaultFake dv2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 10% of the min debt or 1.4
+        dv1.setRecoupMaxCredit(1000);
+
+        // Set the max credit to 10% of the min debt or 1.4
+        dv2.setRecoupMaxCredit(1000);
+
+        vault.setTotalIdle(0);
+
+        // We are trying to pull 11 assets
+        // DV1 has a min debt value of 14 over 15 shares so we will only burn a portion of the shares
+        // That means we'll burn 11.785 shares, 11*14/15, and get 11.785 assets
+        // The current value of those burned shares is currently 26 so we are trying to get 15, 26 - 11
+        // The gap credit would be 1.57 and the max is 1.1, so credit is 1.1
+        // So trying to recoup 13.9. The user can only get 11 and we pulled 11.785 so the .785 goes
+        // towards the recoup. Now we're at 13.114. The last thing we can take is the 11 from the user
+
+        // This means we're left with a 2.114 not covered. Entire destination would have to be burned
+        // and the user would get nothing and end up owing assets. We revert
+
+        _mockRootPriceOracleGetPriceInEth(
+            rootPriceOracle, address(dv1.underlyer()), uint256(26e9) * 1e9 / 11.785714285e9
+        );
+        _mockRootPriceOracleGetPriceInEth(
+            rootPriceOracle, address(dv2.underlyer()), uint256(18e9) * 1e9 / 11.785714285e9
+        );
+
+        vm.startPrank(user);
+
+        vm.expectRevert(abi.encodeWithSelector(AutopoolDebt.PositivePriceRecoupNotCovered.selector, 2.114285712e9));
+        vault.withdraw(11e9, user, user);
+
+        vm.stopPrank();
+    }
+
+    function test_IdleFromPositivePriceRecoupStillDropsToIdle() public {
+        // If we recoup and that drops into idle, we want to ensure that actually
+        // ends up there even if we satisfy part of the withdraw from idle
+
+        address user = makeAddr("user1");
+        _depositFor(user, 16e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 10% of the min debt or 1.1 on first go around
+        dv1.setRecoupMaxCredit(1000);
+
+        vault.setTotalIdle(1e9);
+
+        // We are trying to pull 12 assets which equates to 12.857 shares of DV1
+        // Those shares are currently worth ~16.363.
+        // We get back 12.857 of assets.
+        // Min debt value is 12 so we are trying to recover 4.363
+        // Max credit is 1.2, gap credit is 1.714 so credit is 1.2
+        // To the 4.363 we apply the 1.2 credit so now we need to get 3.163
+        // We pulled 12.857 worth of assets and the user can only get 12 so we
+        // apply the .857 and now we just need 2.306
+        // So, of the 12 the user could have gotten they only get 9.694
+
+        // Now we are trying to satisfy the remaining 2.306 assets
+        // Our recalculated exchange rate puts that we should burn our remaining 2.142 destination shares
+        // With the credit we end up needing to recoup .384. Overall we have 3.69 going to idle
+        // and we have .6909 still to pull
+
+        // We started with 1 in idle + 3.69 - .69 === 4 total, 3 new
+        // We took all the over pull, i.e. we got 15 assets, user got 12, so we kept 3
+        // We burned all 14 of the debt, plus got .69 from idle so we burned 14.69 debt which equals 15.67 shares
+
+        _mockRootPriceOracleGetPriceInEth(
+            rootPriceOracle, address(dv1.underlyer()), uint256(15e9) * 1e9 / 11.785714285e9
+        );
+
+        uint256 idleBefore = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        vm.prank(user);
+        uint256 sharesBurned = vault.withdraw(12e9, user, user);
+
+        uint256 idleAfter = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(sharesBurned, 15.670303018e9, "sharesBurned");
+        assertEq(assets.totalIdle, 4e9, "newIdle");
+        assertEq(idleAfter - idleBefore, 3e9, "newIdleBal");
+        assertEq(assets.totalDebt, 0, "newDebt");
     }
 
     function test_RevertIf_NavDecreases() public {
@@ -3031,14 +3749,14 @@ contract Redeem is AutopoolETHTests {
         DestinationVaultFake dv1 = _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutopool: 10e18,
-                valuePerShare: 1e18,
-                minDebtValue: 9.99e18,
-                maxDebtValue: 10.01e18,
+                dvSharesToAutopool: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 9.99e9,
+                maxDebtValue: 10.01e9,
                 lastDebtReportTimestamp: block.timestamp
             })
         );
-        uint256 userShares = _depositFor(user, 10e18);
+        uint256 userShares = _depositFor(user, 10e9);
 
         // Everything from idle was rebalanced out
         vault.setTotalIdle(0);
@@ -3056,24 +3774,24 @@ contract Redeem is AutopoolETHTests {
         _setupDestinationVault(
             DVSetup({
                 autoPool: vault,
-                dvSharesToAutopool: 10e18,
-                valuePerShare: 1e18,
-                minDebtValue: 10e18,
-                maxDebtValue: 10e18,
+                dvSharesToAutopool: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 10e9,
+                maxDebtValue: 10e9,
                 lastDebtReportTimestamp: block.timestamp
             })
         );
-        _depositFor(user, 10e18);
+        _depositFor(user, 10e9);
 
         // Everything from idle was rebalanced out
         vault.setTotalIdle(0);
 
-        assertEq(vault.getAssetBreakdown().totalDebt, 10e18, "beginningDebt");
+        assertEq(vault.getAssetBreakdown().totalDebt, 10e9, "beginningDebt");
 
         vm.prank(user);
-        vault.redeem(5e18, user, user);
+        vault.redeem(5e9, user, user);
 
-        assertEq(vault.getAssetBreakdown().totalDebt, 5e18, "endingDebt");
+        assertEq(vault.getAssetBreakdown().totalDebt, 5e9, "endingDebt");
     }
 
     function test_UserReceivesNoMoreThanCachedValueIfValueIncreases() public {
@@ -3119,13 +3837,18 @@ contract Redeem is AutopoolETHTests {
         // Cashing in 900 shares means we're entitled to at most
         // 900 (shares) * 955 (minTotalAssets) / 1000 (totalSupply) = 859.5 assets
 
-        // We can get 250 (200 value and 50 positive slippage) from DV1 which means we have to get the remaining 609.5
-        // from DV2. The amount we are trying to pull is more than DV1 is worth so we'll exhaust the whole thing.
-        // So again, the 250 we get from there. For DV2, we only need to use a
-        // portion so we calculate how many shares we should burn based on the min value.
-        // Thats a total of 760e18 value over 800 shares so roughly ~641.578 shares
-        // Those shares are worth 1:1 plus the 100 positive slippage we get will get ~741.578 ETH.
-        // That covers the 609.5 we're trying to get and the difference of ~132 drops into idle
+        // We can get at most 195 from DV1 because that's it min debt value.
+        // Our mock destination vault will give us 250 back though (100 shares at a value of 2 + the 50 slippage)
+        // That means 55 goes to idle and we are left trying to get 859.5 - 195 -> 664.5 assets from DV2
+        // For DV2, we only need to use a portion so we calculate how many shares we should burn based on the min value.
+        // Thats a total of 760e18 value over 800 shares, we need 664.5 assets, so 664.5 * 800 / 760 -> 699.473 shares
+        // Those shares are worth 1:1 to our mock destination vault plus the 100 positive slippage we get will get
+        // ~799.473 ETH.
+        // The max that can be returned though is 664.5, the min debt value of 699.473 shares so the remaining
+        // 799.473 - 664.5 -> 134.973 ETH drops into idle
+
+        // That's 55 + 134.973 -> 189.973 ETH into idle
+        // User gets 195 + 664.5 -> 859.5
 
         uint256 idleBefore = vault.totalIdle();
         uint256 assetBalBefore = vaultAsset.balanceOf(user);
@@ -3140,15 +3863,198 @@ contract Redeem is AutopoolETHTests {
         assertEq(idleBefore, 0, "idleBefore");
 
         // Extra assets from dv2 drop into idle
-        assertEq(idleAfter, 132.078947368e9, "idleAfter");
+        assertEq(idleAfter, 189.97368421e9, "idleAfter");
         assertEq(assetsReceived, 859.5e9, "returned");
         assertEq(assetBalAfter - assetBalBefore, 859.5e9, "actual");
         assertEq(dv1ShareBalBefore, 100e9, "dv1ShareBalBefore");
         assertEq(destVault1.balanceOf(address(vault)), 0, "dv1ShareBalAfter");
         assertEq(dv2ShareBalBefore, 800e9, "dv2ShareBalBefore");
 
-        // 800 - ~641.578 shares we burned
-        assertEq(destVault2.balanceOf(address(vault)), 158.421052632e9, "dv2ShareBalAfter");
+        // 800 - ~699.473 or ~100.527 shares we burned
+        assertEq(destVault2.balanceOf(address(vault)), 100.52631579e9, "dv2ShareBalAfter");
+    }
+
+    function test_UndervaluedDestinationsCannotCoverForOvervaluedOnes() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
+
+        address user = makeAddr("user");
+        uint256 amount = 130e9;
+        _depositFor(user, amount);
+
+        // Deployed 50 assets to DV1
+        DestinationVaultFake destVault1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 50e9,
+                valuePerShare: 1e9,
+                minDebtValue: 50e9,
+                maxDebtValue: 50e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Deployed 50 assets to DV1
+        DestinationVaultFake destVault2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 50e9,
+                valuePerShare: 1e9,
+                minDebtValue: 50e9,
+                maxDebtValue: 50e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(30e9);
+
+        // 30 Assets in Idle, 50 in DV1, 50 DV2
+        // We'll get 10 less when we pull from DV1
+        // And 10 more when we pull from DV2
+        destVault1.setWithdrawBaseAssetSlippage(10e9);
+        destVault2.setWithdrawBaseAssetSlippage(-10e9);
+
+        uint256 idleBefore = vault.totalIdle();
+        uint256 assetBalBefore = vaultAsset.balanceOf(user);
+        uint256 dv1ShareBalBefore = destVault1.balanceOf(address(vault));
+        uint256 dv2ShareBalBefore = destVault2.balanceOf(address(vault));
+
+        // The 30 in idle can't cover the 120 we're trying to pull so we'll go to the market first
+        // DV1 has 50 we think so we burn everything, we get 40 back.
+        // We're charged the 50 though so that leave us trying to pull 70.
+        // DV2 has 50 we think so we burn everything, we get 60 back.
+        // We don't get to take the extra, so get credit for 50, leave us trying to pull 20
+        // We can take 20 from idle.
+        // We got 40 from DV1, 50 from DV2, 20 from idle so 110 total and 10 extra in idle
+        // so while we started with 30 in idle and pulled 20 we'll put 10 back and end with 20
+        vm.prank(user);
+        uint256 assetsReceived = vault.redeem(120e9, user, user);
+        uint256 assetBalAfter = vaultAsset.balanceOf(user);
+        uint256 idleAfter = vault.totalIdle();
+
+        assertEq(idleBefore, 30e9, "idleBefore");
+
+        // Extra assets from dv2 drop into idle
+        assertEq(idleAfter, 20e9, "idleAfter");
+        assertEq(assetsReceived, 110e9, "returned");
+        assertEq(assetBalAfter - assetBalBefore, 110e9, "actual");
+        assertEq(dv1ShareBalBefore, 50e9, "dv1ShareBalBefore");
+        assertEq(destVault1.balanceOf(address(vault)), 0, "dv1ShareBalAfter");
+        assertEq(dv2ShareBalBefore, 50e9, "dv2ShareBalBefore");
+        assertEq(destVault2.balanceOf(address(vault)), 0, "dv2ShareBalAfter");
+    }
+
+    function test_UndervaluedDestinationsCannotCoverForOvervaluedOnesReversed() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
+
+        address user = makeAddr("user");
+        uint256 amount = 130e9;
+        _depositFor(user, amount);
+
+        // Deployed 50 assets to DV1
+        DestinationVaultFake destVault1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 50e9,
+                valuePerShare: 1e9,
+                minDebtValue: 50e9,
+                maxDebtValue: 50e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Deployed 50 assets to DV1
+        DestinationVaultFake destVault2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 50e9,
+                valuePerShare: 1e9,
+                minDebtValue: 50e9,
+                maxDebtValue: 50e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(30e9);
+
+        // 30 Assets in Idle, 50 in DV1, 50 DV2
+        // We'll get 10 less when we pull from DV1
+        // And 10 more when we pull from DV2
+        destVault1.setWithdrawBaseAssetSlippage(-10e9);
+        destVault2.setWithdrawBaseAssetSlippage(10e9);
+
+        uint256 idleBefore = vault.totalIdle();
+        uint256 assetBalBefore = vaultAsset.balanceOf(user);
+        uint256 dv1ShareBalBefore = destVault1.balanceOf(address(vault));
+        uint256 dv2ShareBalBefore = destVault2.balanceOf(address(vault));
+
+        vm.prank(user);
+        uint256 assetsReceived = vault.redeem(120e9, user, user);
+        uint256 assetBalAfter = vaultAsset.balanceOf(user);
+        uint256 idleAfter = vault.totalIdle();
+
+        assertEq(idleBefore, 30e9, "idleBefore");
+
+        // Extra assets from dv2 drop into idle
+        assertEq(idleAfter, 20e9, "idleAfter");
+        assertEq(assetsReceived, 110e9, "returned");
+        assertEq(assetBalAfter - assetBalBefore, 110e9, "actual");
+        assertEq(dv1ShareBalBefore, 50e9, "dv1ShareBalBefore");
+        assertEq(destVault1.balanceOf(address(vault)), 0, "dv1ShareBalAfter");
+        assertEq(dv2ShareBalBefore, 50e9, "dv2ShareBalBefore");
+        assertEq(destVault2.balanceOf(address(vault)), 0, "dv2ShareBalAfter");
+    }
+
+    function test_DestinationSharesRoundedZeroAreSlippage() public {
+        _mockAccessControllerHasRole(accessController, address(this), Roles.SOLVER, true);
+        _mockAccessControllerHasRole(accessController, address(this), Roles.AUTO_POOL_FEE_UPDATER, true);
+
+        address user = makeAddr("user");
+        uint256 amount = 130e9;
+        _depositFor(user, amount);
+
+        // Deployed 50 assets to DV1
+        DestinationVaultFake destVault1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 50e9,
+                valuePerShare: 1e9,
+                minDebtValue: 50e9,
+                maxDebtValue: 50e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        DestinationVaultFake destVault2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 1,
+                valuePerShare: 1e9,
+                minDebtValue: 50e9,
+                maxDebtValue: 50e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(30e9);
+
+        uint256 idleBefore = vault.totalIdle();
+        uint256 assetBalBefore = vaultAsset.balanceOf(user);
+
+        vm.prank(user);
+        uint256 assetsReceived = vault.redeem(50e9 + 1, user, user);
+        uint256 assetBalAfter = vaultAsset.balanceOf(user);
+        uint256 idleAfter = vault.totalIdle();
+
+        assertEq(idleBefore, 30e9, "idleBefore");
+
+        // // Extra assets from dv2 drop into idle
+        assertEq(idleAfter, 30e9, "idleAfter");
+        assertEq(assetsReceived, 50e9, "returned");
+        assertEq(assetBalAfter - assetBalBefore, 50e9, "actual");
+        assertEq(destVault1.balanceOf(address(vault)), 0, "dv1ShareBalAfter");
+        assertEq(destVault2.balanceOf(address(vault)), 1, "dv2ShareBalAfter");
     }
 
     function test_UserReceivesLessAssetsIfPricesDrops() public {
@@ -3412,6 +4318,757 @@ contract Redeem is AutopoolETHTests {
         assertEq(userRedeemed, 11e9, "userRedeemed");
         assertEq(assets.totalIdle, 3e9, "newIdle");
         assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_NoPositivePriceRecoupWhenOverageIsLessThanCredit() public {
+        // credit covers value recoup
+        // gap credit
+
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        // Set the max debt value to 16e9 and then we will set the current value
+        // of the underlying token to be worth 17e9 total. The credit
+        // in this case would be 2e9
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(0);
+
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(17e9) * 1e9 / 15e9);
+
+        vm.prank(user);
+        uint256 userRedeemed = vault.redeem(15e9, user, user);
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(userRedeemed, 14e9, "userRedeemed");
+        assertEq(assets.totalIdle, 1e9, "newIdle");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_NoPositivePriceRecoupWhenOverageIsLessThanCreditMax() public {
+        // credit covers value recoup
+        // max credit
+
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        // Set the underlying token to be worth 16e9 total at current value.
+        // We'll pull 15e9 and so gap of 1.
+        // Gap credit would be 2e9 and max is 1.4 so we go with 1.4
+        // 1.4 credit covers
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        vault.setTotalIdle(0);
+
+        // Set the max credit to 10% of the min debt or 1.4
+        dv1.setRecoupMaxCredit(1000);
+
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(16e9) * 1e9 / 15e9);
+
+        vm.prank(user);
+        uint256 userRedeemed = vault.redeem(15e9, user, user);
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(userRedeemed, 14e9, "userRedeemed");
+        assertEq(assets.totalIdle, 1e9, "newIdle");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_PositivePriceRecoupWhenOverageIsGreaterThanCreditUserCovers() public {
+        // value recoup exceeds credit
+        // gap credit
+        // pull doesn't cover the recoup, user hit but user covers
+
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 20% of the min debt or 2.8
+        dv1.setRecoupMaxCredit(2000);
+
+        vault.setTotalIdle(0);
+
+        // Total value of 15 shares is 18
+        // The gap credit would be the min of 2e9, 16e9 - 14e9
+        // and the max credit is 20% of min, or 2.8e9 so credit is 2
+        // Our min debt is 14 and the value we pulled was 18 so that means
+        // our recoup is 4, minus the credit of 2, recoup is 2
+        // We pulled 15e9, user only gets 14e9. That means we have 1 to go torwards
+        // the recoup and we take 1 from the user
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(18e9) * 1e9 / 15e9);
+
+        vm.prank(user);
+        uint256 userRedeemed = vault.redeem(15e9, user, user);
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(userRedeemed, 14e9 - 1e9, "userRedeemed");
+        assertEq(assets.totalIdle, 2e9, "newIdle");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_PositivePriceRecoupWhenOverageIsGreaterThanCreditMaxUserCovers() public {
+        // value recoup exceeds credit
+        // max credit
+        // pull doesn't cover the recoup, user hit but user covers
+
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 10% of the min debt or 1.4
+        dv1.setRecoupMaxCredit(1000);
+
+        vault.setTotalIdle(0);
+
+        // Total value of 15 shares is 17.1
+        // The gap credit would be the min of 2e9, 16e9 - 14e9
+        // and the max credit is 10% of min, or 1.4e9 so credit is 1.4
+        // Our min debt is 14 and the value we pulled was 17.1 so that means
+        // or our recoup is 3.1, minus the credit, 1.7e9
+        // We pulled 15e9, user only gets 14e9. That means we have 1 to go torwards
+        // the recoup and we take .7 from the user
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(17.1e9) * 1e9 / 15e9);
+
+        vm.prank(user);
+        uint256 userRedeemed = vault.redeem(15e9, user, user);
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(userRedeemed, 14e9 - 0.7e9, "userRedeemed");
+        assertEq(assets.totalIdle, 1.7e9, "newIdle");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_PositivePriceRecoupWhenOverageIsGreaterThanCreditUserNotHit() public {
+        // value recoup exceeds credit
+        // gap credit
+        // pull covers the recoup, no user hit
+
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 16e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 20% of the min debt or 2.8
+        dv1.setRecoupMaxCredit(2000);
+
+        vault.setTotalIdle(0);
+
+        // Total value of 15 shares is 18
+        // The gap credit would be the min of 2e9, 16e9 - 14e9
+        // and the max credit is 20% of min, or 2.8e9 so credit is 2
+        // Our min debt is 14 and the value we pulled was 18 so that means
+        // our recoup is 4, minus the credit of 2, recoup is 2
+        // We pulled 16e9, user only gets 14e9, so we have the 2 to cover
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(18e9) * 1e9 / 16e9);
+
+        vm.prank(user);
+        uint256 userRedeemed = vault.redeem(15e9, user, user);
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(userRedeemed, 14e9, "userRedeemed");
+        assertEq(assets.totalIdle, 2e9, "newIdle");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_PositivePriceRecoupWhenOverageIsGreaterThanCreditMaxUserNotHit() public {
+        // value recoup exceeds credit
+        // max credit
+        // pull covers the recoup, no user hit
+
+        address user = makeAddr("user1");
+        _depositFor(user, 15e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: uint256(16.6e9) * 1e9 / 15e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 10% of the min debt or 1.4
+        dv1.setRecoupMaxCredit(1000);
+
+        vault.setTotalIdle(0);
+
+        // Total value of 15 shares is 18
+        // The gap credit would be the min of 2e9, 16e9 - 14e9
+        // and the max credit is 10% of min, or 1.4e9 so credit is 1.4
+        // Our min debt is 14 and the value we pulled was 18.6 so that means
+        // our recoup is 4, minus the credit of 1.4, recoup is 2.6
+        // We pulled 16.6e9, user only gets 14e9, so we have the 2.6 to cover
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(18e9) * 1e9 / 16.6e9);
+
+        vm.prank(user);
+        uint256 userRedeemed = vault.redeem(15e9, user, user);
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(userRedeemed, 14e9, "userRedeemed");
+        assertEq(assets.totalIdle, 2.6e9 - 10, /*rounding, totalValueBurned is really 17.999... not 18*/ "newIdle");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_PositivePriceRecoupWhenOverageIsGreaterThanCreditNextDestCovers() public {
+        // value recoup exceeds credit
+        // gap credit
+        // pull doesn't cover the recoup, user doesn't cover
+        // next destination covers
+
+        address user = makeAddr("user1");
+        _depositFor(user, 30e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        DestinationVaultFake dv2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 20% of the min debt or 2.8
+        dv1.setRecoupMaxCredit(2000);
+
+        // Set the max credit to 20% of the min debt or 2.8
+        dv2.setRecoupMaxCredit(2000);
+
+        vault.setTotalIdle(0);
+
+        // Total value of 15 DV1 shares is 32.5
+        // The gap credit would be the min of 2e9, 16e9 - 14e9
+        // and the max credit is 20% of min, or 2.8e9 so credit is 2
+        // Our min debt is 14 and the value we pulled was 32.5 so that means
+        // our recoup is 18.5, minus the credit of 2, recoup is 16.5
+        // We pulled 15e9 which is less than the recoup so the user gets
+        // nothing. It can cover 15 so that goes to idle and we carry 1.5 to be covered
+        // by the next destination
+
+        // Total value of 15 DV2 shares is 18
+        // The gap credit would be the min of 2e9, 16e9 - 14e9
+        // and the max credit is 20% of min, or 2.8e9 so credit is 2
+        // Our min debt is 14 and the value we pulled was 18 so that means
+        // our recoup is 4, minus the credit of 2, recoup is 2
+        // We pulled 15, the user gets 14, so we already have 1
+        // That leaves us pulling 1 from the 14 the user got here so they end up
+        // with 13 and we get an extra 2 in idle
+
+        // 18.5 total idle (15 from DV1, 3.5 from DV2, 2 over pull and 1.5 recoup)
+        // 11.5 to the user (13 - the 1.5 carry over we had to cover)
+
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(32.5e9) * 1e9 / 15e9);
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv2.underlyer()), uint256(18e9) * 1e9 / 15e9);
+
+        uint256 idleBefore = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        vm.prank(user);
+        uint256 userRedeemed = vault.redeem(30e9, user, user);
+
+        uint256 idleAfter = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(userRedeemed, 11.5e9 + 10, /*rounding*/ "userRedeemed");
+        assertEq(assets.totalIdle, 18.5e9 - 10, "newIdle");
+        assertEq(idleAfter - idleBefore, 18.5e9 - 10, "newIdleBal");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_PositivePriceRecoupWhenOverageIsGreaterThanCreditPrevDestCovers() public {
+        // value recoup exceeds credit
+        // gap credit
+        // pull doesn't cover the recoup, user doesn't cover
+        // prev destination covers
+
+        address user = makeAddr("user1");
+        _depositFor(user, 30e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        DestinationVaultFake dv2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 20% of the min debt or 2.8
+        dv1.setRecoupMaxCredit(2000);
+
+        // Set the max credit to 20% of the min debt or 2.8
+        dv2.setRecoupMaxCredit(2000);
+
+        vault.setTotalIdle(0);
+
+        // Same scenario as test_PositivePriceRecoupWhenOverageIsGreaterThanCreditNextDestCovers
+        // The destination underlyer values are just switched
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(18e9) * 1e9 / 15e9);
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv2.underlyer()), uint256(32.5e9) * 1e9 / 15e9);
+
+        uint256 idleBefore = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        vm.prank(user);
+        uint256 userRedeemed = vault.redeem(30e9, user, user);
+
+        uint256 idleAfter = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(userRedeemed, 11.5e9 + 10, /*rounding*/ "userRedeemed");
+        assertEq(assets.totalIdle, 18.5e9 - 10, "newIdle");
+        assertEq(idleAfter - idleBefore, 18.5e9 - 10, "newIdleBal");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_RevertIf_PositivePriceRecoupNotCoveredGapCredit() public {
+        // value recoup exceeds credit
+        // gap credit
+        // pull doesn't cover the recoup, user doesn't cover
+        // all pulled assets cant cover
+
+        address user = makeAddr("user1");
+        _depositFor(user, 30e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        DestinationVaultFake dv2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 20% of the min debt or 2.8
+        dv1.setRecoupMaxCredit(2000);
+
+        // Set the max credit to 20% of the min debt or 2.8
+        dv2.setRecoupMaxCredit(2000);
+
+        vault.setTotalIdle(0);
+
+        // Max credit of 2.8 or a gap credit of 2, so credit is gap:2
+        // From DV1 we pull 15 but its valued at 33.
+        // Normally user gets 14, we get 1.
+        // From the 33 value we need to get, we get 14 from the debt burn,
+        // 2 from credit, 1 from over pull so we need to get 16
+        // User has to give us his 14, now we need 2
+
+        // Next destination has the same scenario, so end up
+        // with a total not recouped of 4
+
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(33e9) * 1e9 / 15e9);
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv2.underlyer()), uint256(33e9) * 1e9 / 15e9);
+
+        vm.startPrank(user);
+        vm.expectRevert(abi.encodeWithSelector(AutopoolDebt.PositivePriceRecoupNotCovered.selector, 4e9));
+        vault.redeem(30e9, user, user);
+        vm.stopPrank();
+    }
+
+    function test_PositivePriceRecoupWhenOverageIsGreaterThanMaxCreditNextDestCovers() public {
+        // value recoup exceeds credit
+        // max credit
+        // pull doesn't cover the recoup, user doesn't cover
+        // next destination covers
+
+        address user = makeAddr("user1");
+        _depositFor(user, 30e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        DestinationVaultFake dv2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 10% of the min debt or 1.4
+        dv1.setRecoupMaxCredit(1000);
+
+        // Set the max credit to 20% of the min debt or 2.8
+        dv2.setRecoupMaxCredit(2000);
+
+        vault.setTotalIdle(0);
+
+        // Total value of 15 DV1 shares is 32.5
+        // The gap credit would be the min of 2e9, 16e9 - 14e9
+        // and the max credit is 10% of min, or 1.4e9 so credit is 1.4
+        // Our min debt is 14 and the value we pulled was 32.5 so that means
+        // our recoup is 18.5, minus the credit of 1.4, recoup is 17.1
+        // We pulled 15e9 which is less than the recoup so the user gets
+        // nothing. It can cover 15 so that goes to idle and we carry 2.1 to be covered
+        // by the next destination
+
+        // Total value of 15 DV2 shares is 18
+        // The gap credit would be the min of 2e9, 16e9 - 14e9
+        // and the max credit is 20% of min, or 2.8e9 so credit is 2
+        // Our min debt is 14 and the value we pulled was 18 so that means
+        // our recoup is 4, minus the credit of 2, recoup is 2
+        // We pulled 15, the user gets 14, so we already have 1
+        // That leaves us pulling 1 from the 14 the user got here so they end up
+        // with 13 and we get an extra 2 in idle
+
+        // 19.1 total idle (15 from DV1, 4.1 from DV2, 2 over pull and 2.1 recoup)
+        // 10.9 to the user (13 - the 2.1 carry over we had to cover)
+
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(32.5e9) * 1e9 / 15e9);
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv2.underlyer()), uint256(18e9) * 1e9 / 15e9);
+
+        uint256 idleBefore = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        vm.prank(user);
+        uint256 userRedeemed = vault.redeem(30e9, user, user);
+
+        uint256 idleAfter = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(userRedeemed, 10.9e9 + 10, /*rounding*/ "userRedeemed");
+        assertEq(assets.totalIdle, 19.1e9 - 10, "newIdle");
+        assertEq(idleAfter - idleBefore, 19.1e9 - 10, "newIdleBal");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_PositivePriceRecoupWhenOverageIsGreaterThanMaxCreditPrevDestCovers() public {
+        // value recoup exceeds credit
+        // max credit
+        // pull doesn't cover the recoup, user doesn't cover
+        // prev destination covers
+
+        address user = makeAddr("user1");
+        _depositFor(user, 30e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        DestinationVaultFake dv2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 20% of the min debt or 2.8
+        dv1.setRecoupMaxCredit(2000);
+
+        // Set the max credit to 10% of the min debt or 1.4
+        dv2.setRecoupMaxCredit(1000);
+
+        vault.setTotalIdle(0);
+
+        // Same scenario as test_PositivePriceRecoupWhenOverageIsGreaterThanMaxCreditNextDestCovers
+        // The destination underlyer values are just switched
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(18e9) * 1e9 / 15e9);
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv2.underlyer()), uint256(32.5e9) * 1e9 / 15e9);
+
+        uint256 idleBefore = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        vm.prank(user);
+        uint256 userRedeemed = vault.redeem(30e9, user, user);
+
+        uint256 idleAfter = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(userRedeemed, 10.9e9 + 10, /*rounding*/ "userRedeemed");
+        assertEq(assets.totalIdle, 19.1e9 - 10, "newIdle");
+        assertEq(idleAfter - idleBefore, 19.1e9 - 10, "newIdleBal");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_PositivePriceRecoupCanBeCreditedAndChargedThroughIdle() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 30e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        DestinationVaultFake dv2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 9e9,
+                maxDebtValue: 11e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 10% of the min debt or 1.4
+        dv1.setRecoupMaxCredit(1000);
+
+        // Set the max credit to 10% of the min debt or 1.4
+        dv2.setRecoupMaxCredit(1000);
+        dv2.setWithdrawBaseAssetSlippage(9e9);
+
+        vault.setTotalIdle(5e9);
+
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(32e9) * 1e9 / 15e9);
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv2.underlyer()), uint256(9e9) * 1e9 / 10e9);
+
+        // DV1 has a current value of 32. That's 18 over our valuation.
+        // Minus our credit of 1.4, we need to recoup 16.6
+        // We take the users 14 so 2.6 left, and the 1 over pull so 1.6 left
+
+        // DV2 is worth 9, valued at 9, and we'll pull 1
+        // User gets 1
+
+        // We take the 1 they got from DV2 and apply to the recoup so 0.6 left
+
+        // We've burned 23 debt so far, and we're trying to get 26.13 so we can take 3.13 from idle
+        // However, we need to recoup that 0.6 so the user ultimately only gets 2.53 from idle
+        // bringing their total assets returned of
+        //      - DV1: 0
+        //      - DV2: 0
+        //      - Idle: 2.53
+
+        // We took the full 15 from dv1, the 1 dv2, and the .6 was already in idle
+        // Idle used to have 5, we're adding 16, and then 2.53 is leaving == 18.47
+
+        uint256 idleBefore = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        vm.prank(user);
+        uint256 userRedeemed = vault.redeem(28e9, user, user);
+
+        uint256 idleAfter = TestERC20(vault.asset()).balanceOf(address(vault));
+
+        IAutopool.AssetBreakdown memory assets = vault.getAssetBreakdown();
+        assertEq(userRedeemed, 2.533333338e9, "userRedeemed");
+        assertEq(assets.totalIdle, 18.466666662e9, "newIdle");
+        assertEq(idleAfter - idleBefore, 13.466666662e9, "newIdleBal");
+        assertEq(assets.totalDebt, 0e9, "newDebt");
+    }
+
+    function test_RevertIf_PositivePriceRecoupCantBeSatisfiedFromIdle() public {
+        address user = makeAddr("user1");
+        _depositFor(user, 30e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        DestinationVaultFake dv2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 10e9,
+                valuePerShare: 1e9,
+                minDebtValue: 9e9,
+                maxDebtValue: 11e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 10% of the min debt or 1.4
+        dv1.setRecoupMaxCredit(1000);
+
+        // Set the max credit to 10% of the min debt or 1.4
+        dv2.setRecoupMaxCredit(1000);
+        dv2.setWithdrawBaseAssetSlippage(9e9);
+
+        vault.setTotalIdle(5e9);
+
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(38e9) * 1e9 / 15e9);
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv2.underlyer()), uint256(9e9) * 1e9 / 10e9);
+
+        // DV1 has a current value of 38. That's 24 over our valuation.
+        // Minus our credit of 1.4, we need to recoup 22.6
+        // We take the users 14 so 8.6 left, and the 1 over pull so 7.6 left
+
+        // DV2 is worth 9, valued at 9, and we'll pull 1
+        // User gets 1
+
+        // We take the 1 they got from DV2 and apply to the recoup so 6.6 left
+
+        // We've burned 23 debt so far, and we're trying to get 26.13 so we can take 3.13 from idle
+        // However, we need to recoup that 6.6 so we're left with a deficit of 3.47
+
+        vm.expectRevert(abi.encodeWithSelector(AutopoolDebt.PositivePriceRecoupNotCovered.selector, 3.466666662e9));
+        vault.redeem(28e9, user, user);
+    }
+
+    function test_RevertIf_PositivePriceRecoupNotCoveredMaxCredit() public {
+        // value recoup exceeds credit
+        // max credit
+        // pull doesn't cover the recoup, user doesn't cover
+        // all pulled assets cant cover
+
+        address user = makeAddr("user1");
+        _depositFor(user, 30e9);
+
+        DestinationVaultFake dv1 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        DestinationVaultFake dv2 = _setupDestinationVault(
+            DVSetup({
+                autoPool: vault,
+                dvSharesToAutopool: 15e9,
+                valuePerShare: 1e9,
+                minDebtValue: 14e9,
+                maxDebtValue: 16e9,
+                lastDebtReportTimestamp: block.timestamp
+            })
+        );
+
+        // Set the max credit to 10% of the min debt or 1.4
+        dv1.setRecoupMaxCredit(1000);
+
+        // Set the max credit to 10% of the min debt or 1.4
+        dv2.setRecoupMaxCredit(1000);
+
+        vault.setTotalIdle(0);
+
+        // Max credit of 1.4 or a gap credit of 2, so credit is gap:1.4
+        // From DV1 we pull 15 but its valued at 33.
+        // Normally user gets 14, we get 1.
+        // From the 33 value we need to get, we get 14 from the debt burn,
+        // 1.4 from credit, 1 from over pull so we need to get 16.6
+        // User has to give us his 14, now we need 2.6
+
+        // Next destination has the same scenario, so end up
+        // with a total not recouped of 5.2
+
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv1.underlyer()), uint256(33e9) * 1e9 / 15e9);
+        _mockRootPriceOracleGetPriceInEth(rootPriceOracle, address(dv2.underlyer()), uint256(33e9) * 1e9 / 15e9);
+
+        vm.startPrank(user);
+        vm.expectRevert(abi.encodeWithSelector(AutopoolDebt.PositivePriceRecoupNotCovered.selector, 5.2e9));
+        vault.redeem(30e9, user, user);
+        vm.stopPrank();
     }
 
     function test_RevertIf_NavDecreases() public {
@@ -6569,16 +8226,18 @@ contract UpdateDebtReporting is AutopoolETHTests {
         // Total asset are currently worth 7.5 on withdraw (.75 + 6.75) and we burned 80% of the shares
         // so we tried to get 6 assets.
 
-        // We pull none from idle because the 6 can fully come from debt. Burned everything in dv1 and
-        // received 2.5. 3.5 left. DV2 min value is 4.5 so we have to burn 77.778% to cover.
-        // DV2 has 5 shares so we burn 3.889 of them. They're worth 1:1 so we pulled an
-        // extra 0.3889 which drops into idle. Cached values don't change, only totals
+        // We pull none from idle because it can't fully cover the 6. Burned everything in dv1 and
+        // user received 2.25 with .25 dropping to idle. 3.75 left. DV2 min value is 4.5 so we have to burn 83.33% to
+        // cover.
+        // DV2 has 5 shares so we burn 4.166 of them. They're worth 1:1 so we got 4.166 back
+        // but the max we can give is the min debt value so that's 3.7499 so the extra
+        // extra 0.416 which drops into idle. Cached values don't change, only totals
 
         IAutopool.AssetBreakdown memory s5 = vault.getAssetBreakdown();
-        assertEq(s5.totalIdle, 1.138888888e9, /* .75 + .3889*/ "stage5Idle");
-        assertEq(s5.totalDebt, 1.111111112e9, /* 1.11111111 shares left @ 1 */ "stage5Debt");
-        assertEq(s5.totalDebtMin, 1e9, /* 1.11111111 shares left @ .9 */ "stage5DebtMin");
-        assertEq(s5.totalDebtMax, 1.222222223e9, /* 1.11111111 shares left @ 1.1 */ "stage5DebtMax");
+        assertEq(s5.totalIdle, 1.416666666e9, /* .75 + 0.416 + .25 */ "stage5Idle");
+        assertEq(s5.totalDebt, 0.833333334e9, /* 5 - .4166 shares left @ 1 */ "stage5Debt");
+        assertEq(s5.totalDebtMin, 0.75e9, /* 5 - .4166 shares left @ .9 */ "stage5DebtMin");
+        assertEq(s5.totalDebtMax, 0.916666667e9, /* 5 - .4166 shares left @ 1.1 */ "stage5DebtMax");
         assertEq(vault.getDestinationInfo(address(dv1)).cachedDebtValue, 2.5e9, "stage5Dv1Debt");
         assertEq(vault.getDestinationInfo(address(dv1)).cachedMinDebtValue, 2.25e9, "stage5Dv1MinDebt");
         assertEq(vault.getDestinationInfo(address(dv1)).cachedMaxDebtValue, 2.75e9, "stage5Dv1MaxDebt");
@@ -6592,16 +8251,18 @@ contract UpdateDebtReporting is AutopoolETHTests {
 
         // Reflect exhausted DV1 and updated cached DV2
         IAutopool.AssetBreakdown memory s6 = vault.getAssetBreakdown();
-        assertEq(s6.totalIdle, 1.138888888e9, "stage6Idle");
-        assertEq(s6.totalDebt, 2.222222224e9, "stage6Debt");
-        assertEq(s6.totalDebtMin, 2.000000001e9, "stage6DebtMin");
-        assertEq(s6.totalDebtMax, 2.444444446e9, "stage6DebtMax");
+        assertEq(s6.totalIdle, 1.416666666e9, /* Same from stage 5 */ "stage6Idle");
+        assertEq(s6.totalDebt, 1.666666668e9, /* 5 - .4166 (.834 from s5) shares left @ 2 */ "stage6Debt");
+        assertEq(s6.totalDebtMin, 1.500000001e9, /* .834 * .9 * 2 */ "stage6DebtMin");
+        assertEq(s6.totalDebtMax, 1.833333334e9, /* .834 * 1.1 * 2 */ "stage6DebtMax");
+        // DV1 was exhausted so 0
+        // DV2 matches totals because its the only destination
         assertEq(vault.getDestinationInfo(address(dv1)).cachedDebtValue, 0, "stage6Dv1Debt");
         assertEq(vault.getDestinationInfo(address(dv1)).cachedMinDebtValue, 0, "stage6Dv1MinDebt");
         assertEq(vault.getDestinationInfo(address(dv1)).cachedMaxDebtValue, 0, "stage6Dv1MaxDebt");
-        assertEq(vault.getDestinationInfo(address(dv2)).cachedDebtValue, 2.222222224e9, "stage6Dv2Debt");
-        assertEq(vault.getDestinationInfo(address(dv2)).cachedMinDebtValue, 2.000000001e9, "stage6Dv2MinDebt");
-        assertEq(vault.getDestinationInfo(address(dv2)).cachedMaxDebtValue, 2.444444446e9, "stage6Dv2MaxDebt");
+        assertEq(vault.getDestinationInfo(address(dv2)).cachedDebtValue, 1.666666668e9, "stage6Dv2Debt");
+        assertEq(vault.getDestinationInfo(address(dv2)).cachedMinDebtValue, 1.500000001e9, "stage6Dv2MinDebt");
+        assertEq(vault.getDestinationInfo(address(dv2)).cachedMaxDebtValue, 1.833333334e9, "stage6Dv2MaxDebt");
 
         // Pull all shares and ensure we get our idle back
 
@@ -6619,9 +8280,9 @@ contract UpdateDebtReporting is AutopoolETHTests {
         assertEq(vault.getDestinationInfo(address(dv1)).cachedDebtValue, 0, "stage7Dv1Debt");
         assertEq(vault.getDestinationInfo(address(dv1)).cachedMinDebtValue, 0, "stage7Dv1MinDebt");
         assertEq(vault.getDestinationInfo(address(dv1)).cachedMaxDebtValue, 0, "stage7Dv1MaxDebt");
-        assertEq(vault.getDestinationInfo(address(dv2)).cachedDebtValue, 2.222222224e9, "stage7Dv2Debt");
-        assertEq(vault.getDestinationInfo(address(dv2)).cachedMinDebtValue, 2.000000001e9, "stage7Dv2MinDebt");
-        assertEq(vault.getDestinationInfo(address(dv2)).cachedMaxDebtValue, 2.444444446e9, "stage7Dv2MaxDebt");
+        assertEq(vault.getDestinationInfo(address(dv2)).cachedDebtValue, 1.666666668e9, "stage7Dv2Debt");
+        assertEq(vault.getDestinationInfo(address(dv2)).cachedMinDebtValue, 1.500000001e9, "stage7Dv2MinDebt");
+        assertEq(vault.getDestinationInfo(address(dv2)).cachedMaxDebtValue, 1.833333334e9, "stage7Dv2MaxDebt");
 
         // Final debt reporting that should clear out the remaining cached values
         vault.updateDebtReporting(4);
@@ -7522,10 +9183,15 @@ contract DestinationVaultFake {
     mapping(address => uint256) public balances;
     uint256 public valuePerShare;
     int256[] public baseAssetSlippages;
+    uint256 public totalSupply;
+    uint256 public recoupMaxCredit = 10_000;
 
-    constructor(TestERC20 _underlyer, TestERC20 _baseAsset) {
+    address public getSystemRegistry;
+
+    constructor(address _systemRegistry, TestERC20 _underlyer, TestERC20 _baseAsset) {
         underlyer = _underlyer;
         baseAsset = _baseAsset;
+        getSystemRegistry = _systemRegistry;
     }
 
     function underlying() external view returns (address) {
@@ -7550,6 +9216,7 @@ contract DestinationVaultFake {
 
     function mint(uint256 vaultShares, address receiver) external {
         balances[receiver] += vaultShares;
+        totalSupply += vaultShares;
     }
 
     function setWithdrawBaseAssetSlippage(int256 slippage) external {
@@ -7579,7 +9246,10 @@ contract DestinationVaultFake {
         baseAssetSlippages.push(slippage1);
     }
 
-    function withdrawBaseAsset(uint256 shares, address receiver) external returns (uint256 assets) {
+    function withdrawBaseAsset(
+        uint256 shares,
+        address receiver
+    ) external returns (uint256 assets, address[] memory tokens, uint256[] memory amounts) {
         int256 baseAssetSlippage = 0;
         if (baseAssetSlippages.length > 0) {
             baseAssetSlippage = baseAssetSlippages[baseAssetSlippages.length - 1];
@@ -7589,6 +9259,14 @@ contract DestinationVaultFake {
         baseAsset.mint(receiver, assets);
         baseAssetSlippage = 0;
         balances[msg.sender] -= shares;
+        totalSupply -= shares;
+
+        tokens = new address[](1);
+        amounts = new uint256[](1);
+
+        // This is to keep existing tests working
+        tokens[0] = address(underlyer);
+        amounts[0] = uint256(int256(assets) - baseAssetSlippage);
     }
 
     function balanceOf(address wallet) external view returns (uint256) {
@@ -7599,13 +9277,19 @@ contract DestinationVaultFake {
         underlyer.transferFrom(msg.sender, address(this), amount);
         balances[msg.sender] += amount;
         shares = amount;
+        totalSupply += amount;
     }
 
     function withdrawUnderlying(uint256 shares, address to) external returns (uint256 amount) {
         amount = shares;
         balances[msg.sender] -= shares;
         console.log("withdrawUnderlying after bal", balances[msg.sender]);
+        totalSupply -= amount;
         underlyer.transfer(to, amount);
+    }
+
+    function setRecoupMaxCredit(uint256 credit) external {
+        recoupMaxCredit = credit;
     }
 }
 

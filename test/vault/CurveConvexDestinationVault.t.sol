@@ -344,7 +344,7 @@ contract CurveConvexDestinationVaultTests is Test {
         address receiver = vm.addr(555);
         uint256 startingBalance = _asset.balanceOf(receiver);
 
-        uint256 received = _destVault.withdrawBaseAsset(50e18, receiver);
+        (uint256 received,,) = _destVault.withdrawBaseAsset(50e18, receiver);
 
         assertEq(_asset.balanceOf(receiver) - startingBalance, 53_285_100_736_620_025_561);
         assertEq(received, _asset.balanceOf(receiver) - startingBalance);

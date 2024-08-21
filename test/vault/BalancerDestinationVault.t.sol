@@ -275,7 +275,7 @@ contract BalancerDestinationVaultTests is Test {
         address receiver = vm.addr(555);
         uint256 startingBalance = _asset.balanceOf(receiver);
 
-        uint256 received = _destVault.withdrawBaseAsset(10e18, receiver);
+        (uint256 received,,) = _destVault.withdrawBaseAsset(10e18, receiver);
 
         // Bal pool has a rough pool value of $96,362,068
         // Total Supply of 50180.410952857663703844

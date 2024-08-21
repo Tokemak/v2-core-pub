@@ -41,6 +41,7 @@ abstract contract DestinationVault is
     event Shutdown(VaultShutdownStatus reason);
     event IncentiveCalculatorUpdated(address calculator);
     event ExtensionSet(address extension);
+    event MaxRecoupCreditSet(uint256 newCredit);
 
     error ArrayLengthMismatch();
     error PullingNonTrackedToken(address token);
@@ -85,12 +86,15 @@ abstract contract DestinationVault is
     mapping(bytes32 => bool) public signedMessages;
 
     /// @notice Address of the extension contract
-    /// @dev This is a contract that can be delegatecalled to perform additional actions
+    /// @dev This is a contract that can be delegate called to perform additional actions
     address public extension;
 
     /// @notice Time the extension was set
     /// @dev Used to ensure that the extension has been set for 7 days before it can be executed
     uint256 public extensionSetTime;
+
+    /// @inheritdoc IDestinationVault
+    uint256 public recoupMaxCredit;
 
     constructor(ISystemRegistry sysRegistry)
         SystemComponent(sysRegistry)
@@ -150,6 +154,8 @@ abstract contract DestinationVault is
         for (uint256 i = 0; i < attLen; ++i) {
             _addTrackedToken(additionalTrackedTokens_[i]);
         }
+
+        _setRecoupMaxCredit(150);
     }
 
     /// @inheritdoc ERC20
@@ -300,7 +306,10 @@ abstract contract DestinationVault is
     function _onDeposit(uint256 amount) internal virtual;
 
     /// @inheritdoc IDestinationVault
-    function withdrawBaseAsset(uint256 shares, address to) external returns (uint256 amount) {
+    function withdrawBaseAsset(
+        uint256 shares,
+        address to
+    ) external returns (uint256 amount, address[] memory tokens, uint256[] memory tokenAmounts) {
         return _withdrawBaseAsset(msg.sender, shares, to);
     }
 
@@ -433,7 +442,11 @@ abstract contract DestinationVault is
         }
     }
 
-    function _withdrawBaseAsset(address account, uint256 shares, address to) internal returns (uint256 amount) {
+    function _withdrawBaseAsset(
+        address account,
+        uint256 shares,
+        address to
+    ) internal returns (uint256 amount, address[] memory tokens, uint256[] memory amounts) {
         Errors.verifyNotZero(shares, "shares");
 
         emit BaseAssetWithdraw(shares, account, to);
@@ -444,7 +457,7 @@ abstract contract DestinationVault is
         // Accounts for shares that may be staked
         _ensureLocalUnderlyingBalance(shares);
 
-        (address[] memory tokens, uint256[] memory amounts) = _burnUnderlyer(shares);
+        (tokens, amounts) = _burnUnderlyer(shares);
 
         uint256 nTokens = tokens.length;
         Errors.verifyArrayLengths(nTokens, amounts.length, "token+amounts");
@@ -497,7 +510,6 @@ abstract contract DestinationVault is
         virtual
         returns (uint256[] memory rewardTokens, uint256[] memory rewardRates)
     {
-        // TODO Implement
         return (new uint256[](0), new uint256[](0));
     }
 
@@ -555,7 +567,7 @@ abstract contract DestinationVault is
             trackedTokensBalances[i] = IERC20(_trackedTokens.at(i)).balanceOf(address(this));
         }
 
-        // This could still set an approval that allows a later exfil
+        // This could still set an approval that allows a later transfer out
         // but that is acceptable for our use case
         // slither-disable-next-line unused-return
         extension.functionDelegateCall(abi.encodeCall(IDestinationVaultExtension.execute, (data)));
@@ -576,5 +588,27 @@ abstract contract DestinationVault is
         ) {
             revert ExtensionAmountMismatch();
         }
+    }
+
+    /// @notice Sets the max recoup credit given during the withdraw of an undervalued destination
+    /// @param newCredit New max recoup credit in bps
+    function setRecoupMaxCredit(uint256 newCredit)
+        external
+        hasRole(Roles.DESTINATION_VAULT_MANAGER)
+        returns (uint256)
+    {
+        _setRecoupMaxCredit(newCredit);
+    }
+
+    /// @notice Sets the max recoup credit given during the withdraw of an undervalued destination
+    /// @param newCredit New max recoup credit in bps
+    function _setRecoupMaxCredit(uint256 newCredit) private {
+        if (newCredit > 10_000) {
+            revert Errors.InvalidParam("newCredit");
+        }
+
+        recoupMaxCredit = newCredit;
+
+        emit MaxRecoupCreditSet(newCredit);
     }
 }

@@ -46,6 +46,14 @@ contract SystemRegistryMocks {
         );
     }
 
+    function _mockSysRegRootPriceOracle(ISystemRegistry systemRegistry, address rootPriceOracle) internal {
+        vm.mockCall(
+            address(systemRegistry),
+            abi.encodeWithSelector(ISystemRegistry.rootPriceOracle.selector),
+            abi.encode(rootPriceOracle)
+        );
+    }
+
     function _mockSysRegMessageProxy(ISystemRegistry systemRegistry, address messageProxy) internal {
         vm.mockCall(
             address(systemRegistry),

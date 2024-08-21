@@ -119,7 +119,7 @@ contract Lens is SystemComponent {
 
     /// @notice Returns all Autopools and their destinations
     /// @dev Makes no state changes. Not a view fn because of stats pricing
-    function getPoolsAndDestinations() public returns (Autopools memory retValues) {
+    function getPoolsAndDestinations() external returns (Autopools memory retValues) {
         retValues.autoPools = _getPools();
         retValues.destinations = new DestinationVault[][](retValues.autoPools.length);
 

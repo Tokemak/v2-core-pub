@@ -198,7 +198,7 @@ abstract contract DestinationVault is
     function externalQueriedBalance() public view virtual override returns (uint256);
 
     /// @inheritdoc IDestinationVault
-    function rewarder() public view virtual override returns (address) {
+    function rewarder() external view virtual override returns (address) {
         return address(_rewarder);
     }
 

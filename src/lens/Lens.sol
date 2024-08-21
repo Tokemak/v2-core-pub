@@ -9,6 +9,7 @@ import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
+import { IExtraRewarder } from "src/interfaces/rewarders/IExtraRewarder.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
@@ -138,38 +139,37 @@ contract Lens is SystemComponent {
     /// @notice Get the reward info for a user
     /// @param wallet Address of the wallet to query
     /// @return userInfo Array of AutopoolUserInfo structs containing reward tokens and amounts for each Autopool
-    function getUserRewardInfo(address wallet) public returns (AutopoolUserInfo[] memory userInfo) {
-        Autopools memory autoPoolsList = getPoolsAndDestinations();
-        userInfo = new AutopoolUserInfo[](autoPoolsList.autoPools.length);
+    function getUserRewardInfo(address wallet) public view returns (AutopoolUserInfo[] memory userInfo) {
+        Autopool[] memory autoPools = _getPools();
+        uint256 nAutoPools = autoPools.length;
+        userInfo = new AutopoolUserInfo[](nAutoPools);
 
         // Collect all reward tokens and amounts for each Autopool
-        for (uint256 i = 0; i < autoPoolsList.autoPools.length; i++) {
-            DestinationVault[] memory poolDestinations = autoPoolsList.destinations[i];
-            // Initialize arrays to store reward tokens and amounts from each destination
+        for (uint256 i = 0; i < nAutoPools; i++) {
             RewardToken[] memory rewardTokens = new RewardToken[](0);
             uint256 rewardTokenCount = 0;
             TokenAmount[] memory earnedAmounts = new TokenAmount[](0);
             uint256 earnedAmountCount = 0;
 
-            // Iterate through each destination in the Autopool
-            for (uint256 j = 0; j < poolDestinations.length; j++) {
-                address rewarder = IDestinationVault(poolDestinations[j].vaultAddress).rewarder();
+            // Add the Main Rewarder token and amount
+            IMainRewarder mainRewarder = IMainRewarder(autoPools[i].rewarder);
+            rewardTokens[rewardTokenCount] = RewardToken({ tokenAddress: mainRewarder.rewardToken() });
+            rewardTokenCount++;
+            earnedAmounts[earnedAmountCount] = TokenAmount({ amount: mainRewarder.earned(wallet) });
+            earnedAmountCount++;
 
-                // Check if the destination has a rewarder and collect reward tokens and earned amounts
-                if (rewarder != address(0)) {
-                    RewardToken[] memory destRewardTokens = poolDestinations[j].rewardsTokens;
-                    for (uint256 k = 0; k < destRewardTokens.length; k++) {
-                        rewardTokens[rewardTokenCount] = destRewardTokens[k];
-                        rewardTokenCount++;
-                    }
-                    earnedAmounts[earnedAmountCount] = _getEarnedAmount(rewarder, wallet);
-                    earnedAmountCount++;
-                }
+            // Add the Extra Rewarder tokens and amounts
+            for (uint256 k = 0; k < mainRewarder.extraRewardsLength(); k++) {
+                IExtraRewarder extraRewarder = IExtraRewarder(mainRewarder.getExtraRewarder(k));
+                rewardTokens[rewardTokenCount] = RewardToken({ tokenAddress: extraRewarder.rewardToken() });
+                rewardTokenCount++;
+                earnedAmounts[earnedAmountCount] = TokenAmount({ amount: extraRewarder.earned(wallet) });
+                earnedAmountCount++;
             }
 
             // Store the collected reward tokens and amounts for the Autopool
             userInfo[i] = AutopoolUserInfo({
-                autoPool: autoPoolsList.autoPools[i].poolAddress,
+                autoPool: autoPools[i].poolAddress,
                 rewardTokens: rewardTokens,
                 rewardTokenAmounts: earnedAmounts
             });
@@ -317,13 +317,5 @@ contract Lens is SystemComponent {
                 }
             }
         }
-    }
-
-    /// @dev TokenAmount struct wrapper for the Rewarder earned amount
-    function _getEarnedAmount(
-        address rewarder,
-        address wallet
-    ) private view returns (TokenAmount memory earnedAmount) {
-        return TokenAmount({ amount: IMainRewarder(rewarder).earned(wallet) });
     }
 }

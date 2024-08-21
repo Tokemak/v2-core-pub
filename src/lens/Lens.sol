@@ -136,6 +136,7 @@ contract Lens is SystemComponent {
         return IAutopool(poolAddress).getFeeSettings();
     }
 
+    // TODO: should be tested with integration tests in Lens.t.sol when we redeploy new Lens
     /// @notice Get the reward info for a user
     /// @param wallet Address of the wallet to query
     /// @return userInfo Array of AutopoolUserInfo structs containing reward tokens and amounts for each Autopool

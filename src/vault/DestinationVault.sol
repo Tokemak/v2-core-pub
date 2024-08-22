@@ -592,11 +592,7 @@ abstract contract DestinationVault is
 
     /// @notice Sets the max recoup credit given during the withdraw of an undervalued destination
     /// @param newCredit New max recoup credit in bps
-    function setRecoupMaxCredit(uint256 newCredit)
-        external
-        hasRole(Roles.DESTINATION_VAULT_MANAGER)
-        returns (uint256)
-    {
+    function setRecoupMaxCredit(uint256 newCredit) external hasRole(Roles.DESTINATION_VAULT_MANAGER) {
         _setRecoupMaxCredit(newCredit);
     }
 

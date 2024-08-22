@@ -232,7 +232,7 @@ library AutopoolETHStrategyConfig {
 
     // Checks to make sure that there are no zero address gaps in hooks array
     function _validateHooks(address[5] memory hooks) private pure {
-        bool zeroAddressReached = false;
+        bool zeroAddressReached;
         for (uint256 i = 0; i < 5; ++i) {
             address currentHook = hooks[i];
 

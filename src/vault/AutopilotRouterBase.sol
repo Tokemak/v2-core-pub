@@ -121,7 +121,8 @@ abstract contract AutopilotRouterBase is
     }
 
     /// @inheritdoc IAutopilotRouterBase
-    function expiration(uint256 timestamp) external view override {
+    function expiration(uint256 timestamp) external payable override {
+        // slither-disable-next-line timestamp
         if (timestamp < block.timestamp) {
             revert TimestampTooOld();
         }

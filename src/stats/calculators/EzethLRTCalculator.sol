@@ -61,10 +61,6 @@ contract EzethLRTCalculator is LSTCalculatorBase {
             return 1e18;
         }
 
-        if (totalTVL == 0) {
-            return 0;
-        }
-
         return (10 ** 18 * totalTVL) / totalSupply;
     }
 

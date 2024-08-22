@@ -1289,6 +1289,33 @@ contract AutopilotRouterTest is BaseTest {
         autoPoolRouter.expiration(block.timestamp + 100);
     }
 
+    function test_expiration_multicall() public {
+        AutopilotRouterWrapper router = new AutopilotRouterWrapper(systemRegistry);
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSelector(AutopilotRouterWrapper.doSomethingRight.selector);
+        data[1] = abi.encodeCall(autoPoolRouter.expiration, (block.timestamp + 100));
+
+        router.multicall(data);
+    }
+
+    function test_expiration_multicall_payable_ETH() public {
+        _changeVaultToWETH();
+
+        uint256 amount = depositAmount;
+        vm.deal(address(this), amount);
+
+        bytes[] memory calls = new bytes[](4);
+
+        calls[0] = abi.encodeWithSignature("wrapWETH9(uint256)", amount);
+        calls[1] = abi.encodeCall(autoPoolRouter.approve, (weth, address(autoPool), amount));
+        calls[2] = abi.encodeCall(autoPoolRouter.deposit, (autoPool, address(this), amount, 1));
+        calls[3] = abi.encodeCall(autoPoolRouter.expiration, (block.timestamp + 100));
+
+        // Should not revert
+        autoPoolRouter.multicall{ value: amount }(calls);
+    }
+
     /* **************************************************************************** */
     /* 				    	    	Helper methods									*/
 

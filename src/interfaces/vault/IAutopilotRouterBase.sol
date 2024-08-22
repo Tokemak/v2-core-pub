@@ -128,5 +128,5 @@ interface IAutopilotRouterBase {
 
     /// @notice Checks if timestamp is expired. Purpose is to check the execution deadline with the multicall.
     /// @param timestamp Timestamp to check.
-    function expiration(uint256 timestamp) external view;
+    function expiration(uint256 timestamp) external payable;
 }

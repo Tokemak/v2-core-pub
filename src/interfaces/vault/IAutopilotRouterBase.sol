@@ -34,6 +34,9 @@ interface IAutopilotRouterBase {
     /// @notice thrown when amount of shares received is above the max set by caller
     error MaxSharesError();
 
+    /// @notice thrown when timestamp is too old
+    error TimestampTooOld();
+
     /**
      * @notice mint `shares` from an ERC4626 vault.
      * @param vault The AutopoolETH to mint shares from.
@@ -122,4 +125,8 @@ interface IAutopilotRouterBase {
     /// @param rewarder Rewarder to claim rewards from.
     /// @param recipient Address to claim rewards for.
     function claimAutopoolRewards(IAutopool vault, IMainRewarder rewarder, address recipient) external payable;
+
+    /// @notice Checks if timestamp is expired. Purpose is to check the execution deadline with the multicall.
+    /// @param timestamp Timestamp to check.
+    function expiration(uint256 timestamp) external view;
 }

@@ -120,6 +120,13 @@ abstract contract AutopilotRouterBase is
         rewarder.getReward(msg.sender, recipient, true);
     }
 
+    /// @inheritdoc IAutopilotRouterBase
+    function expiration(uint256 timestamp) external view override {
+        if (timestamp < block.timestamp) {
+            revert TimestampTooOld();
+        }
+    }
+
     // Helper function for repeat functionalities.
     function _checkVault(address vault) internal view {
         if (!systemRegistry.autoPoolRegistry().isVault(vault)) {

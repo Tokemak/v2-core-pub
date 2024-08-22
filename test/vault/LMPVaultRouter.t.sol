@@ -1280,6 +1280,15 @@ contract AutopilotRouterTest is BaseTest {
         assertEq(autoPool.balanceOf(address(this)), shares);
     }
 
+    function test_expiration() public {
+        // Check that the expiration function works. Should revert for timestamps in the past.
+        vm.expectRevert(IAutopilotRouterBase.TimestampTooOld.selector);
+        autoPoolRouter.expiration(block.timestamp - 100);
+
+        // Check that the expiration function works. Should not revert for timestamps in the future.
+        autoPoolRouter.expiration(block.timestamp + 100);
+    }
+
     /* **************************************************************************** */
     /* 				    	    	Helper methods									*/
 

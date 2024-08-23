@@ -132,6 +132,17 @@ contract AerodromeDestinationVault is DestinationVault {
         _underlyingTokens[1] = constituentTokens[1];
     }
 
+    /// @inheritdoc IDestinationVault
+    function underlyingReserves() external view override returns (address[] memory tokens, uint256[] memory amounts) {
+        tokens = new address[](2);
+        tokens[0] = constituentTokens[0];
+        tokens[1] = constituentTokens[1];
+
+        amounts = new uint256[](2);
+        amounts[0] = IPool(_underlying).reserve0();
+        amounts[1] = IPool(_underlying).reserve1();
+    }
+
     /// @inheritdoc DestinationVault
     function _onDeposit(uint256 amount) internal virtual override {
         AerodromeStakingAdapter.stakeLPs(aerodromeGauge, amount);

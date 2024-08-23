@@ -140,6 +140,19 @@ contract MaverickDestinationVault is DestinationVault {
         }
     }
 
+    /// @inheritdoc IDestinationVault
+    function underlyingReserves() external view override returns (address[] memory tokens, uint256[] memory amounts) {
+        tokens = new address[](2);
+        tokens[0] = constituentTokens[0];
+        tokens[1] = constituentTokens[1];
+
+        (uint256 reserveTokenA, uint256 reserveTokenB) = maverickBoostedPosition.getReserves();
+
+        amounts = new uint256[](2);
+        amounts[0] = reserveTokenA;
+        amounts[1] = reserveTokenB;
+    }
+
     /// @notice Callback during a deposit after the sender has been minted shares (if applicable)
     /// @dev Should be used for staking tokens into protocols, etc
     /// @param amount underlying tokens received

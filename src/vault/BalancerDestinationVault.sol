@@ -127,6 +127,15 @@ contract BalancerDestinationVault is DestinationVault {
         }
     }
 
+    /// @inheritdoc IDestinationVault
+    function underlyingReserves() external view override returns (address[] memory tokens, uint256[] memory amounts) {
+        (IERC20[] memory queriedPoolTokens, uint256[] memory queriedBalances) =
+            BalancerUtilities._getPoolTokens(balancerVault, balancerPool);
+
+        tokens = BalancerUtilities._convertERC20sToAddresses(queriedPoolTokens);
+        amounts = queriedBalances;
+    }
+
     /// @inheritdoc DestinationVault
     function _onDeposit(uint256 amount) internal virtual override {
         // Accept LP tokens and do nothing

@@ -168,6 +168,15 @@ contract BalancerAuraDestinationVault is DestinationVault {
         }
     }
 
+    /// @inheritdoc IDestinationVault
+    function underlyingReserves() external view override returns (address[] memory tokens, uint256[] memory amounts) {
+        (IERC20[] memory queriedPoolTokens, uint256[] memory queriedBalances) =
+            BalancerUtilities._getPoolTokens(balancerVault, balancerPool);
+
+        tokens = BalancerUtilities._convertERC20sToAddresses(queriedPoolTokens);
+        amounts = queriedBalances;
+    }
+
     /// @inheritdoc DestinationVault
     function _onDeposit(uint256 amount) internal virtual override {
         // We should verify if pool tokens didn't change before staking to make sure we're staking for the same tokens

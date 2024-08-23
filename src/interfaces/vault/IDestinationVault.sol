@@ -71,6 +71,9 @@ interface IDestinationVault is ISystemComponent, IBaseAssetVault, IERC20 {
     /// @notice Tokens that base asset can be swapped into
     function underlyingTokens() external view returns (address[] memory);
 
+    /// @notice Gets the reserves of the underlying tokens
+    function underlyingReserves() external view returns (address[] memory tokens, uint256[] memory amounts);
+
     /* ******************************** */
     /* Events                           */
     /* ******************************** */

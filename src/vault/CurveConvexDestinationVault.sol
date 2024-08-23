@@ -212,6 +212,18 @@ contract CurveConvexDestinationVault is DestinationVault {
         }
     }
 
+    /// @inheritdoc IDestinationVault
+    function underlyingReserves() external view override returns (address[] memory tokens, uint256[] memory amounts) {
+        tokens = new address[](constituentTokens.length);
+        amounts = new uint256[](constituentTokens.length);
+
+        for (uint256 i = 0; i < constituentTokens.length; ++i) {
+            address token = constituentTokens[i];
+            tokens[i] = token;
+            amounts[i] = IERC20(token).balanceOf(address(this));
+        }
+    }
+
     /// @notice Callback during a deposit after the sender has been minted shares (if applicable)
     /// @dev Should be used for staking tokens into protocols, etc
     /// @param amount underlying tokens received

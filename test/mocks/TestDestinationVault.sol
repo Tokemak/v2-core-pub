@@ -93,6 +93,14 @@ contract TestDestinationVault is DestinationVault {
         tokens[0] = _underlying;
     }
 
+    function underlyingReserves() external view override returns (address[] memory tokens, uint256[] memory amounts) {
+        tokens = new address[](1);
+        tokens[0] = _underlying;
+
+        amounts = new uint256[](1);
+        amounts[0] = 0;
+    }
+
     function _burnUnderlyer(uint256)
         internal
         virtual

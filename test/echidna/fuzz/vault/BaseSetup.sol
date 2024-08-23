@@ -269,6 +269,11 @@ contract TestDestinationVault is DestinationVault, Numbers {
         address[] memory x = new address[](0);
         return x;
     }
+
+    function underlyingReserves() external view override returns (address[] memory tokens, uint256[] memory amounts) {
+        tokens = new address[](0);
+        amounts = new uint256[](0);
+    }
 }
 
 contract TestDestVaultRegistry {

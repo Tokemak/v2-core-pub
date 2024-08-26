@@ -220,7 +220,7 @@ contract CurveConvexDestinationVault is DestinationVault {
         for (uint256 i = 0; i < constituentTokens.length; ++i) {
             address token = constituentTokens[i];
             tokens[i] = token;
-            amounts[i] = IERC20(token).balanceOf(address(this));
+            amounts[i] = IERC20(token).balanceOf(msg.sender);
         }
     }
 

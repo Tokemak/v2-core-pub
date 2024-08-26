@@ -194,6 +194,18 @@ contract BalancerDestinationVaultTests is Test {
         assertEq(IERC20Metadata(tokens[1]).symbol(), "WETH");
     }
 
+    function test_underlyingReserves() public {
+        (address[] memory tokens, uint256[] memory reserves) = _destVault.underlyingReserves();
+        assertEq(tokens.length, 2);
+        assertEq(reserves.length, 2);
+
+        assertEq(tokens[0], WSTETH_MAINNET);
+        assertEq(tokens[1], WETH_MAINNET);
+
+        assertEq(reserves[0], 23_106_961_796_706_430_254_520);
+        assertEq(reserves[1], 25_873_243_645_538_968_128_829);
+    }
+
     function test_depositUnderlying_TokensStayInDestinationVault() public {
         // Get some tokens to play with
         vm.prank(LP_TOKEN_WHALE);

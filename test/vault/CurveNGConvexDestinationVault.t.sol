@@ -242,6 +242,18 @@ contract StandardTests is CurveNGConvexDestinationVaultTests {
         assertEq(IERC20(tokens[1]).symbol(), "rETH");
     }
 
+    function test_underlyingReserves() public {
+        (address[] memory tokens, uint256[] memory reserves) = _destVault.underlyingReserves();
+        assertEq(tokens.length, 2);
+        assertEq(reserves.length, 2);
+
+        assertEq(tokens[0], OSETH_MAINNET);
+        assertEq(tokens[1], RETH_MAINNET);
+
+        assertEq(reserves[0], 0);
+        assertEq(reserves[1], 0);
+    }
+
     function testDepositGoesToConvex() public {
         // Get some tokens to play with
         deal(OSETH_RETH_CURVE_NG_POOL, address(this), 200e18);

@@ -220,6 +220,18 @@ contract AerodromeDVViewFunctions is AerodromeDestinationVaultBaseTest {
         assertEq(tokens[1], _aeroPool.token1());
     }
 
+    function test_underlyingReserves() public {
+        (address[] memory tokens, uint256[] memory reserves) = _dv.underlyingReserves();
+        assertEq(tokens.length, 2);
+        assertEq(reserves.length, 2);
+
+        assertEq(tokens[0], _aeroPool.token0());
+        assertEq(tokens[1], _aeroPool.token1());
+
+        assertEq(reserves[0], 1_289_039_612_337_961_948_659);
+        assertEq(reserves[1], 1_102_107_135_470_321_867_774);
+    }
+
     function test_getPool() public {
         assertEq(_dv.getPool(), address(_underlyer));
     }

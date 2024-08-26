@@ -243,6 +243,18 @@ contract CurveConvexDestinationVaultTests is Test {
         assertEq(IERC20(tokens[1]).symbol(), "stETH");
     }
 
+    function test_underlyingReserves() public {
+        (address[] memory tokens, uint256[] memory reserves) = _destVault.underlyingReserves();
+        assertEq(tokens.length, 2);
+        assertEq(reserves.length, 2);
+
+        assertEq(tokens[0], WETH_MAINNET);
+        assertEq(tokens[1], STETH_MAINNET);
+
+        assertEq(reserves[0], 0);
+        assertEq(reserves[1], 0);
+    }
+
     function testDepositGoesToConvex() public {
         // Get some tokens to play with
         vm.prank(LP_TOKEN_WHALE);

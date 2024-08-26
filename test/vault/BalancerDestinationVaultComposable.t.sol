@@ -231,6 +231,22 @@ contract BalancerDestinationVaultComposableTests is Test {
         assertEq(IERC20(tokens[2]).symbol(), "rETH");
     }
 
+    function test_underlyingReserves() public {
+        (address[] memory tokens, uint256[] memory reserves) = _destVault.underlyingReserves();
+        assertEq(tokens.length, 4);
+        assertEq(reserves.length, 4);
+
+        assertEq(tokens[0], WSETH_RETH_SFRXETH_BAL_POOL);
+        assertEq(tokens[1], WSTETH_MAINNET);
+        assertEq(tokens[2], SFRXETH_MAINNET);
+        assertEq(tokens[3], RETH_MAINNET);
+
+        assertEq(reserves[0], 2_596_148_429_266_020_000_200_336_668_982_202);
+        assertEq(reserves[1], 7_170_154_258_867_111_363_607);
+        assertEq(reserves[2], 9_744_097_503_991_333_858_109);
+        assertEq(reserves[3], 5_525_635_239_701_618_321_526);
+    }
+
     function test_depositUnderlying_TokensStayInVault() public {
         // Get some tokens to play with
         vm.prank(LP_TOKEN_WHALE);

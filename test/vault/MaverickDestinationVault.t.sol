@@ -200,6 +200,18 @@ contract MaverickDestinationVaultTests is Test {
         assertEq(IERC20(tokens[1]).symbol(), "WETH");
     }
 
+    function test_underlyingReserves() public {
+        (address[] memory tokens, uint256[] memory reserves) = _destVault.underlyingReserves();
+        assertEq(tokens.length, 2);
+        assertEq(reserves.length, 2);
+
+        assertEq(tokens[0], WSTETH_MAINNET);
+        assertEq(tokens[1], WETH_MAINNET);
+
+        assertEq(reserves[0], 0);
+        assertEq(reserves[1], 25_604_127_757_393_910_704);
+    }
+
     function test_deposit_IsStakedIntoRewarder() public {
         // Get some tokens to play with
         deal(address(MAV_WSTETH_WETH_BOOSTED_POS), address(this), 100e18);

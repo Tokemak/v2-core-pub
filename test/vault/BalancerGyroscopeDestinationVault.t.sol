@@ -213,6 +213,18 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
         assertEq(IERC20Metadata(tokens[1]).symbol(), "WETH");
     }
 
+    function test_underlyingReserves() public {
+        (address[] memory tokens, uint256[] memory reserves) = _destVault.underlyingReserves();
+        assertEq(tokens.length, 2);
+        assertEq(reserves.length, 2);
+
+        assertEq(tokens[0], WSTETH_MAINNET);
+        assertEq(tokens[1], WETH_MAINNET);
+
+        assertEq(reserves[0], 1_652_533_650_840_616_473_656);
+        assertEq(reserves[1], 44_087_497_349_652_362);
+    }
+
     function test_depositUnderlying_TokensGoToAura() public {
         // Get some tokens to play with
         deal(address(_underlyer), address(this), 10e18);

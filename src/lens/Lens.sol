@@ -146,26 +146,22 @@ contract Lens is SystemComponent {
         userInfo = new AutopoolUserInfo[](nAutoPools);
 
         // Collect all reward tokens and amounts for each Autopool
-        for (uint256 i = 0; i < nAutoPools; i++) {
-            RewardToken[] memory rewardTokens = new RewardToken[](0);
-            uint256 rewardTokenCount = 0;
-            TokenAmount[] memory earnedAmounts = new TokenAmount[](0);
-            uint256 earnedAmountCount = 0;
-
+        for (uint256 i = 0; i < nAutoPools; ++i) {
             // Add the Main Rewarder token and amount
             IMainRewarder mainRewarder = IMainRewarder(autoPools[i].rewarder);
-            rewardTokens[rewardTokenCount] = RewardToken({ tokenAddress: mainRewarder.rewardToken() });
-            rewardTokenCount++;
-            earnedAmounts[earnedAmountCount] = TokenAmount({ amount: mainRewarder.earned(wallet) });
-            earnedAmountCount++;
+            uint256 totalLen = mainRewarder.extraRewardsLength() + 1;
+
+            RewardToken[] memory rewardTokens = new RewardToken[](totalLen);
+            TokenAmount[] memory earnedAmounts = new TokenAmount[](totalLen);
+
+            rewardTokens[0] = RewardToken({ tokenAddress: mainRewarder.rewardToken() });
+            earnedAmounts[0] = TokenAmount({ amount: mainRewarder.earned(wallet) });
 
             // Add the Extra Rewarder tokens and amounts
-            for (uint256 k = 0; k < mainRewarder.extraRewardsLength(); k++) {
+            for (uint256 k = 1; k < totalLen; ++k) {
                 IExtraRewarder extraRewarder = IExtraRewarder(mainRewarder.getExtraRewarder(k));
-                rewardTokens[rewardTokenCount] = RewardToken({ tokenAddress: extraRewarder.rewardToken() });
-                rewardTokenCount++;
-                earnedAmounts[earnedAmountCount] = TokenAmount({ amount: extraRewarder.earned(wallet) });
-                earnedAmountCount++;
+                rewardTokens[k] = RewardToken({ tokenAddress: extraRewarder.rewardToken() });
+                earnedAmounts[k] = TokenAmount({ amount: extraRewarder.earned(wallet) });
             }
 
             // Store the collected reward tokens and amounts for the Autopool

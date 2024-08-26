@@ -250,8 +250,8 @@ contract StandardTests is CurveNGConvexDestinationVaultTests {
         assertEq(tokens[0], OSETH_MAINNET);
         assertEq(tokens[1], RETH_MAINNET);
 
-        assertEq(reserves[0], 0);
-        assertEq(reserves[1], 0);
+        assertEq(reserves[0], 2_438_755_240_718_502_408_289);
+        assertEq(reserves[1], 2_537_989_364_793_970_497_498);
     }
 
     function testDepositGoesToConvex() public {

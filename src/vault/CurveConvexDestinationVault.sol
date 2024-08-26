@@ -5,6 +5,7 @@ pragma solidity 0.8.17;
 import { Errors } from "src/utils/Errors.sol";
 import { LibAdapter } from "src/libs/LibAdapter.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
+import { IPool } from "src/interfaces/external/curve/IPool.sol";
 import { DestinationVault, IDestinationVault } from "src/vault/DestinationVault.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { ICurveResolver } from "src/interfaces/utils/ICurveResolver.sol";
@@ -221,7 +222,7 @@ contract CurveConvexDestinationVault is DestinationVault {
         for (uint256 i = 0; i < len; ++i) {
             address token = constituentTokens[i];
             tokens[i] = token;
-            amounts[i] = IERC20(token).balanceOf(msg.sender);
+            amounts[i] = IPool(curvePool).balances(i);
         }
     }
 

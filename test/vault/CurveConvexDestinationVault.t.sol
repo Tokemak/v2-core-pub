@@ -251,8 +251,8 @@ contract CurveConvexDestinationVaultTests is Test {
         assertEq(tokens[0], WETH_MAINNET);
         assertEq(tokens[1], STETH_MAINNET);
 
-        assertEq(reserves[0], 0);
-        assertEq(reserves[1], 0);
+        assertEq(reserves[0], 524_392_204_076_160_738_097_514);
+        assertEq(reserves[1], 531_857_020_434_267_353_693_347);
     }
 
     function testDepositGoesToConvex() public {

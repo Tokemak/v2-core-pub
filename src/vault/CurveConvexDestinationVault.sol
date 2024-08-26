@@ -214,10 +214,11 @@ contract CurveConvexDestinationVault is DestinationVault {
 
     /// @inheritdoc IDestinationVault
     function underlyingReserves() external view override returns (address[] memory tokens, uint256[] memory amounts) {
-        tokens = new address[](constituentTokens.length);
-        amounts = new uint256[](constituentTokens.length);
+        uint256 len = constituentTokens.length;
+        tokens = new address[](len);
+        amounts = new uint256[](len);
 
-        for (uint256 i = 0; i < constituentTokens.length; ++i) {
+        for (uint256 i = 0; i < len; ++i) {
             address token = constituentTokens[i];
             tokens[i] = token;
             amounts[i] = IERC20(token).balanceOf(msg.sender);

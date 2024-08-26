@@ -146,6 +146,7 @@ contract MaverickDestinationVault is DestinationVault {
         tokens[0] = constituentTokens[0];
         tokens[1] = constituentTokens[1];
 
+        //slither-disable-next-line similar-names
         (uint256 reserveTokenA, uint256 reserveTokenB) = maverickBoostedPosition.getReserves();
 
         amounts = new uint256[](2);

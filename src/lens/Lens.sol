@@ -136,6 +136,15 @@ contract Lens is SystemComponent {
         return IAutopool(poolAddress).getFeeSettings();
     }
 
+    /// @notice Gets the stats for a Destination
+    /// @dev Structure this return struct has been updated a few times and will fail on the decode
+    function proxyGetStats(address destinationAddress)
+        public
+        returns (IDexLSTStats.DexLSTStatsData memory queriedStats)
+    {
+        return IDestinationVault(destinationAddress).getStats().current();
+    }
+
     // TODO: should be tested with integration tests in Lens.t.sol when we redeploy new Lens
     /// @notice Get the reward info for a user
     /// @param wallet Address of the wallet to query
@@ -228,7 +237,7 @@ contract Lens is SystemComponent {
         private
         returns (IDexLSTStats.DexLSTStatsData memory currentStats, bool incomplete)
     {
-        try IDestinationVault(destinationAddress).getStats().current() returns (
+        try Lens(address(this)).proxyGetStats(destinationAddress) returns (
             IDexLSTStats.DexLSTStatsData memory queriedStats
         ) {
             currentStats = queriedStats;

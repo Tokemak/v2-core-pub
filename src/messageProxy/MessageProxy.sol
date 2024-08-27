@@ -147,10 +147,8 @@ contract MessageProxy is IMessageProxy, SecurityBase, SystemComponent {
         // Routes act as our security
         if (configsLength == 0) return;
 
-        messageNonce++;
-
         // Store in memory, gas savings
-        uint256 currentMessageNonce = messageNonce;
+        uint256 currentMessageNonce = ++messageNonce;
 
         // Encode and hash message, set hash to last message for sender and messageType
         bytes memory encodedMessage = CCUtils.encodeMessage(msg.sender, currentMessageNonce, messageType, message);

@@ -3,18 +3,17 @@
 
 pragma solidity 0.8.17;
 
-//
-//                   ▓▓
-//                   ▓▓
-//                   ▓▓
-//                   ▓▓
-//                   ▓▓
-//       ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
-//                                 ▓▓
-//                                 ▓▓
-//                                 ▓▓
-//                                 ▓▓
-//                                 ▓▓
+//                   ██
+//                   ██
+//                   ██
+//                   ██
+//                   ██
+//      █████████████████████████████████████████
+//                                 ██
+//                                 ██
+//                                 ██
+//                                 ██
+//                                 ██
 
 import { Errors } from "src/utils/Errors.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";

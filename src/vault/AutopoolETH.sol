@@ -1,8 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
+
 pragma solidity 0.8.17;
 
-// solhint-disable max-states-count
+//                   ██
+//                   ██
+//                   ██
+//                   ██
+//                   ██
+//      █████████████████████████████████████████
+//                                 ██
+//                                 ██
+//                                 ██
+//                                 ██
+//                                 ██
 
 import { Roles } from "src/libs/Roles.sol";
 import { Errors } from "src/utils/Errors.sol";
@@ -29,6 +40,8 @@ import { Initializable } from "openzeppelin-contracts/proxy/utils/Initializable.
 import { EnumerableSet } from "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
+
+// solhint-disable max-states-count
 
 contract AutopoolETH is ISystemComponent, Initializable, IAutopool, IStrategy, SecurityBase, Pausable, NonReentrant {
     using EnumerableSet for EnumerableSet.AddressSet;

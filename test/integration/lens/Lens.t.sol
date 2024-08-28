@@ -318,3 +318,16 @@ contract LensIntTest6 is LensInt {
         assertEq(dv.lstStatsData.length, 0, "lstStatsDataLen");
     }
 }
+
+contract LensIntTest7 is LensInt {
+    function setUp() public {
+        uint256 forkId = vm.createFork(vm.envString("SEPOLIA_RPC_URL"), 6_589_364);
+        _setUp(forkId, SYSTEM_REGISTRY_SEPOLIA);
+    }
+
+    function test_ReturnsAutopoolUserInfo() external {
+        Lens.AutopoolUserInfo[] memory userInfo = lens.getUserRewardInfo(0x09618943342c016A85aC0F98Fd005479b3cec571);
+
+        assertEq(userInfo.length, 1, "userInfoLen");
+    }
+}

@@ -14,7 +14,8 @@ library Incentives {
     using Math for uint256;
 
     // when removing liquidity, rewards can be expired by this amount if the pool as incentive credits
-    uint256 public constant EXPIRED_REWARD_TOLERANCE = 7 days;
+    uint256 public constant OUT_EXPIRED_REWARD_TOLERANCE = 7 days;
+    uint256 public constant IN_EXPIRED_REWARD_TOLERANCE = 2 days;
 
     function calculateIncentiveApr(
         IIncentivesPricingStats pricing,
@@ -47,27 +48,19 @@ library Incentives {
                     // if the destination has credits then extend the periodFinish by the expiredTolerance
                     // this allows destinations that consistently had rewards some leniency
                     if (hasCredits) {
-                        periodFinish += EXPIRED_REWARD_TOLERANCE;
-                    }
-
-                    // slither-disable-next-line timestamp
-                    if (periodFinish > block.timestamp) {
-                        // tokenPrice is 1e18 and we want 1e18 out, so divide by the token decimals
-                        totalRewards += rewardRate * tokenPrice / rewardDivisor;
+                        periodFinish += OUT_EXPIRED_REWARD_TOLERANCE;
                     }
                 } else {
-                    // when adding to a destination, count incentives only when either of the following conditions are
-                    // met:
-                    // 1) the incentive lasts at least 7 days
-                    // 2) the incentive lasts >3 days and the destination has a positive incentive credit balance
-                    if (
-                        // slither-disable-next-line timestamp
-                        periodFinish >= block.timestamp + 7 days
-                            || (hasCredits && periodFinish > block.timestamp + 3 days)
-                    ) {
-                        // tokenPrice is 1e18 and we want 1e18 out, so divide by the token decimals
-                        totalRewards += rewardRate * tokenPrice / rewardDivisor;
+                    // if the destination has credits then extend the periodFinish by the expiredTolerance
+                    // this allows destinations that consistently had rewards some leniency
+                    if (hasCredits) {
+                        periodFinish += IN_EXPIRED_REWARD_TOLERANCE;
                     }
+                }
+                // slither-disable-next-line timestamp
+                if (periodFinish > block.timestamp) {
+                    // tokenPrice is 1e18 and we want 1e18 out, so divide by the token decimals
+                    totalRewards += rewardRate * tokenPrice / rewardDivisor;
                 }
             }
         }

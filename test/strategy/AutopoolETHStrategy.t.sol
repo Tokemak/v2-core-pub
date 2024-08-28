@@ -1446,7 +1446,8 @@ contract AutopoolETHStrategyTest is Test {
         stats.stakingIncentiveStats.periodFinishForRewards = new uint40[](1);
         stats.stakingIncentiveStats.rewardTokens[0] = rewardToken;
         stats.stakingIncentiveStats.annualizedRewardAmounts[0] = 5e18;
-        stats.stakingIncentiveStats.periodFinishForRewards[0] = 180 days;
+        // periodFinish is 3 days in the past so not counted even with > 0 credits
+        stats.stakingIncentiveStats.periodFinishForRewards[0] = 177 days;
 
         // LST #1
         stats.lstStatsData[0].lastSnapshotTimestamp = 180 days;
@@ -1823,7 +1824,7 @@ contract AutopoolETHStrategyTest is Test {
         uint40[] memory periodFinishes = new uint40[](1);
         rewardTokens[0] = rewardToken;
         annualizedRewards[0] = 5e18;
-        periodFinishes[0] = 180 days + 7 days; // when no credits, rewards must last at least 7 days
+        periodFinishes[0] = 180 days + 1 days; // when no credits, rewards must be active
 
         IDexLSTStats.StakingIncentiveStats memory stat;
         stat.rewardTokens = rewardTokens;
@@ -1841,8 +1842,8 @@ contract AutopoolETHStrategyTest is Test {
             defaultStrat._calculateIncentiveApr(stat, IAutopoolStrategy.RebalanceDirection.In, lpToken, amount, lpPrice);
         assertEq(actual, expected);
 
-        // test that it gets ignored if less than 7 days
-        periodFinishes[0] = 180 days + 7 days - 1;
+        // test that it gets ignored if periodFinish is in the past
+        periodFinishes[0] = 179 days;
         assertEq(
             defaultStrat._calculateIncentiveApr(stat, IAutopoolStrategy.RebalanceDirection.In, lpToken, amount, lpPrice),
             0

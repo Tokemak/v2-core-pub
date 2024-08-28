@@ -17,20 +17,24 @@ import { IAutopoolRegistry } from "src/interfaces/vault/IAutopoolRegistry.sol";
 
 contract LensInt is Test {
     address public constant SYSTEM_REGISTRY = 0xB20193f43C9a7184F3cbeD9bAD59154da01488b4;
+    address public constant SYSTEM_REGISTRY_SEPOLIA = 0x25F603C1a0Ce130c7F25321A7116379d3c270c23;
 
-    Lens internal _lens;
+    Lens internal lens;
 
-    IAutopoolRegistry autoPoolRegistry;
+    AccessController internal access;
 
-    function _setUp(uint256 blockNumber) internal {
-        uint256 forkId = vm.createFork(vm.envString("MAINNET_RPC_URL"), blockNumber);
-        vm.selectFork(forkId);
+    IAutopoolRegistry internal autoPoolRegistry;
 
-        ISystemRegistry systemRegistry = ISystemRegistry(SYSTEM_REGISTRY);
+    function _setUp(uint256 _forkId, address _systemRegistry) internal {
+        vm.selectFork(_forkId);
 
-        _lens = new Lens(systemRegistry);
+        ISystemRegistry systemRegistry = ISystemRegistry(_systemRegistry);
+
+        lens = new Lens(systemRegistry);
 
         autoPoolRegistry = IAutopoolRegistry(systemRegistry.autoPoolRegistry());
+
+        access = AccessController(address(systemRegistry.accessController()));
     }
 
     function _findIndexOfPool(Lens.Autopool[] memory pools, address toFind) internal returns (uint256) {
@@ -72,11 +76,12 @@ contract LensInt is Test {
 
 contract LensIntTest1 is LensInt {
     function setUp() public {
-        _setUp(20_620_939);
+        uint256 forkId = vm.createFork(vm.envString("MAINNET_RPC_URL"), 20_620_939);
+        _setUp(forkId, SYSTEM_REGISTRY);
     }
 
     function test_ReturnsVaults() public {
-        Lens.Autopool[] memory vaults = _lens.getPools();
+        Lens.Autopool[] memory vaults = lens.getPools();
 
         assertEq(vaults.length, 4, "len");
         assertEq(vaults[0].poolAddress, 0x94a2Fa8FD1864bE4f675D7617A400e87123b56AA, "addr0");
@@ -88,11 +93,12 @@ contract LensIntTest1 is LensInt {
 
 contract LensIntTest2 is LensInt {
     function setUp() public {
-        _setUp(20_620_939);
+        uint256 forkId = vm.createFork(vm.envString("MAINNET_RPC_URL"), 20_620_939);
+        _setUp(forkId, SYSTEM_REGISTRY);
     }
 
     function test_ReturnsDestinations() external {
-        Lens.Autopools memory retValues = _lens.getPoolsAndDestinations();
+        Lens.Autopools memory retValues = lens.getPoolsAndDestinations();
 
         assertEq(retValues.autoPools.length, 4, "vaultLen");
         assertEq(retValues.autoPools[2].poolAddress, 0x49C4719EaCc746b87703F964F09C22751F397BA0, "autoPoolAddr");
@@ -139,14 +145,15 @@ contract LensIntTest2 is LensInt {
 
 contract LensIntTest3 is LensInt {
     function setUp() public {
-        _setUp(20_620_939);
+        uint256 forkId = vm.createFork(vm.envString("MAINNET_RPC_URL"), 20_620_939);
+        _setUp(forkId, SYSTEM_REGISTRY);
     }
 
     function test_ReturnsUpdatedNavPerShare() public {
         // Have deployed the vault 4 time and the vault we're testing has had a debt reporting and claimed
         // rewards so has an increased nav/share
 
-        Lens.Autopool[] memory vaults = _lens.getPools();
+        Lens.Autopool[] memory vaults = lens.getPools();
 
         assertEq(vaults.length, 4, "len");
 
@@ -158,11 +165,12 @@ contract LensIntTest3 is LensInt {
 
 contract LensIntTest4 is LensInt {
     function setUp() public {
-        _setUp(20_620_939);
+        uint256 forkId = vm.createFork(vm.envString("MAINNET_RPC_URL"), 20_620_939);
+        _setUp(forkId, SYSTEM_REGISTRY);
     }
 
     function test_ReturnsDestinationsWhenPricingIsStale() external {
-        Lens.Autopools memory data = _lens.getPoolsAndDestinations();
+        Lens.Autopools memory data = lens.getPoolsAndDestinations();
         uint256 ix = _findIndexOfPool(data.autoPools, 0x49C4719EaCc746b87703F964F09C22751F397BA0);
 
         bool someDestStatsIncomplete = false;
@@ -176,7 +184,7 @@ contract LensIntTest4 is LensInt {
     }
 
     function test_ReturnsDestinationsQueuedForRemoval() external {
-        Lens.Autopools memory data = _lens.getPoolsAndDestinations();
+        Lens.Autopools memory data = lens.getPoolsAndDestinations();
         uint256 pix = _findIndexOfPool(data.autoPools, 0x49C4719EaCc746b87703F964F09C22751F397BA0);
         uint256 dix = _findIndexOfDestination(data, pix, 0x75FD0d0247fA088852417CD0F1bfa21D1d78aa14);
 
@@ -187,7 +195,8 @@ contract LensIntTest4 is LensInt {
 
 contract LensIntTest5 is LensInt {
     function setUp() public {
-        _setUp(20_620_939);
+        uint256 forkId = vm.createFork(vm.envString("MAINNET_RPC_URL"), 20_620_939);
+        _setUp(forkId, SYSTEM_REGISTRY);
     }
 
     function test_ReturnsVaultData() external {
@@ -196,8 +205,6 @@ contract LensIntTest5 is LensInt {
 
         uint256 streamingFee = 9;
         uint256 periodicFee = 10;
-
-        AccessController access = AccessController(address(ISystemRegistry(SYSTEM_REGISTRY).accessController()));
 
         vm.startPrank(admin);
         access.grantRole(Roles.AUTO_POOL_FEE_UPDATER, admin);
@@ -210,7 +217,7 @@ contract LensIntTest5 is LensInt {
         AutopoolETH(autoPool).shutdown(IAutopool.VaultShutdownStatus.Exploit);
         vm.stopPrank();
 
-        Lens.Autopool[] memory autoPools = _lens.getPools();
+        Lens.Autopool[] memory autoPools = lens.getPools();
         Lens.Autopool memory pool = autoPools[_findIndexOfPool(autoPools, autoPool)];
 
         assertEq(pool.poolAddress, autoPool, "poolAddress");
@@ -236,7 +243,8 @@ contract LensIntTest5 is LensInt {
 
 contract LensIntTest6 is LensInt {
     function setUp() public {
-        _setUp(20_620_939);
+        uint256 forkId = vm.createFork(vm.envString("MAINNET_RPC_URL"), 20_620_939);
+        _setUp(forkId, SYSTEM_REGISTRY);
     }
 
     // TODO: update with another setup that has more data, specifically rewards
@@ -246,14 +254,12 @@ contract LensIntTest6 is LensInt {
         address destVault = 0x1A73e18B2a677940Cf5d5eb8bC244854Dc07d551;
         address admin = 0xb9535f36be0792f5A381249a3099B08e046a3cD8;
 
-        AccessController access = AccessController(address(ISystemRegistry(SYSTEM_REGISTRY).accessController()));
-
         vm.startPrank(admin);
         access.grantRole(Roles.DESTINATION_VAULT_MANAGER, admin);
         IDestinationVault(destVault).shutdown(IDestinationVault.VaultShutdownStatus.Exploit);
         vm.stopPrank();
 
-        Lens.Autopools memory data = _lens.getPoolsAndDestinations();
+        Lens.Autopools memory data = lens.getPoolsAndDestinations();
         uint256 pix = _findIndexOfPool(data.autoPools, autoPool);
         uint256 dix = _findIndexOfDestination(data, pix, destVault);
         Lens.DestinationVault memory dv = data.destinations[pix][dix];

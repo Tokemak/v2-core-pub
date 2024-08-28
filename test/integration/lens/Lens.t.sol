@@ -326,8 +326,11 @@ contract LensIntTest7 is LensInt {
     }
 
     function test_ReturnsAutopoolUserInfo() external {
-        Lens.AutopoolUserInfo[] memory userInfo = lens.getUserRewardInfo(0x09618943342c016A85aC0F98Fd005479b3cec571);
+        {
+            Lens.UserAutopoolRewardInfo memory userInfo =
+                lens.getUserRewardInfo(0x09618943342c016A85aC0F98Fd005479b3cec571);
 
-        assertEq(userInfo.length, 1, "userInfoLen");
+            assertEq(userInfo.autopools.length, 2, "userInfoLen");
+        }
     }
 }

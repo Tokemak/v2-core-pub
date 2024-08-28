@@ -39,10 +39,10 @@ contract Lens is SystemComponent {
         uint256 navPerShare;
     }
 
-    struct AutopoolUserInfo {
-        address autoPool;
-        RewardToken[] rewardTokens;
-        TokenAmount[] rewardTokenAmounts;
+    struct UserAutopoolRewardInfo {
+        address[] autopools;
+        RewardToken[][] rewardTokens;
+        TokenAmount[][] rewardTokenAmounts;
     }
 
     struct RewardToken {
@@ -148,38 +148,41 @@ contract Lens is SystemComponent {
     // TODO: should be tested with integration tests in Lens.t.sol when we redeploy new Lens
     /// @notice Get the reward info for a user
     /// @param wallet Address of the wallet to query
-    /// @return userInfo Array of AutopoolUserInfo structs containing reward tokens and amounts for each Autopool
-    function getUserRewardInfo(address wallet) public view returns (AutopoolUserInfo[] memory userInfo) {
+    /// @return ret Array of AutopoolUserInfo structs containing reward tokens and amounts for each Autopool
+    function getUserRewardInfo(address wallet) public view returns (UserAutopoolRewardInfo memory) {
         Autopool[] memory autoPools = _getPools();
         uint256 nAutoPools = autoPools.length;
-        userInfo = new AutopoolUserInfo[](nAutoPools);
+        address[] memory autopoolAddresses = new address[](nAutoPools);
+        RewardToken[][] memory rewardTokens = new RewardToken[][](nAutoPools);
+        TokenAmount[][] memory earnedAmounts = new TokenAmount[][](nAutoPools);
 
         // Collect all reward tokens and amounts for each Autopool
         for (uint256 i = 0; i < nAutoPools; ++i) {
+            autopoolAddresses[i] = autoPools[i].poolAddress;
+
             // Add the Main Rewarder token and amount
             IMainRewarder mainRewarder = IMainRewarder(autoPools[i].rewarder);
             uint256 totalLen = mainRewarder.extraRewardsLength() + 1;
 
-            RewardToken[] memory rewardTokens = new RewardToken[](totalLen);
-            TokenAmount[] memory earnedAmounts = new TokenAmount[](totalLen);
+            rewardTokens[i] = new RewardToken[](totalLen);
+            earnedAmounts[i] = new TokenAmount[](totalLen);
 
-            rewardTokens[0] = RewardToken({ tokenAddress: mainRewarder.rewardToken() });
-            earnedAmounts[0] = TokenAmount({ amount: mainRewarder.earned(wallet) });
+            rewardTokens[i][0] = RewardToken({ tokenAddress: mainRewarder.rewardToken() });
+            earnedAmounts[i][0] = TokenAmount({ amount: mainRewarder.earned(wallet) });
 
             // Add the Extra Rewarder tokens and amounts
             for (uint256 k = 1; k < totalLen; ++k) {
                 IExtraRewarder extraRewarder = IExtraRewarder(mainRewarder.getExtraRewarder(k));
-                rewardTokens[k] = RewardToken({ tokenAddress: extraRewarder.rewardToken() });
-                earnedAmounts[k] = TokenAmount({ amount: extraRewarder.earned(wallet) });
+                rewardTokens[i][k] = RewardToken({ tokenAddress: extraRewarder.rewardToken() });
+                earnedAmounts[i][k] = TokenAmount({ amount: extraRewarder.earned(wallet) });
             }
-
-            // Store the collected reward tokens and amounts for the Autopool
-            userInfo[i] = AutopoolUserInfo({
-                autoPool: autoPools[i].poolAddress,
-                rewardTokens: rewardTokens,
-                rewardTokenAmounts: earnedAmounts
-            });
         }
+
+        return UserAutopoolRewardInfo({
+            autopools: autopoolAddresses,
+            rewardTokens: rewardTokens,
+            rewardTokenAmounts: earnedAmounts
+        });
     }
 
     /// =====================================================

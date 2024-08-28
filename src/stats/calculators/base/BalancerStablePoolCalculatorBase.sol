@@ -169,12 +169,15 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
 
         (, uint256[] memory balances) = getPoolTokens();
 
+        // only read from storage once
+        bool treatAsExemptFromYieldProtocolFee = isExemptFromYieldProtocolFee;
+
         for (uint256 i = 0; i < numTokens; i++) {
             reservesInEth[i] = calculateReserveInEthByIndex(pricer, balances, i, false);
             ILSTStats stats = lstStats[i];
             if (address(stats) != address(0)) {
                 ILSTStats.LSTStatsData memory statsData = stats.current();
-                if (!isExemptFromYieldProtocolFee) {
+                if (!treatAsExemptFromYieldProtocolFee) {
                     statsData.baseApr = adjustBaseAprForBalancerYieldProtocolFee(statsData.baseApr);
                 }
                 lstStatsData[i] = statsData;
@@ -302,7 +305,7 @@ abstract contract BalancerStablePoolCalculatorBase is IDexLSTStats, BaseStatsCal
     function getPoolTokens() internal view virtual returns (IERC20[] memory tokens, uint256[] memory balances);
 
     /// @notice Returns true if Balancer does not tax any of the yield bearing tokens
-    function _isExemptFromYieldProtocolFee() internal virtual returns (bool) {
+    function _isExemptFromYieldProtocolFee() internal view virtual returns (bool) {
         return false;
     }
 }

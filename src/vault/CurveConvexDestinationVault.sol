@@ -220,8 +220,7 @@ contract CurveConvexDestinationVault is DestinationVault {
         amounts = new uint256[](len);
 
         for (uint256 i = 0; i < len; ++i) {
-            address token = constituentTokens[i];
-            tokens[i] = token;
+            tokens[i] = constituentTokens[i];
             amounts[i] = IPool(curvePool).balances(i);
         }
     }

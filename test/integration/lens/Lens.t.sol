@@ -331,6 +331,14 @@ contract LensIntTest7 is LensInt {
                 lens.getUserRewardInfo(0x09618943342c016A85aC0F98Fd005479b3cec571);
 
             assertEq(userInfo.autopools.length, 2, "userInfoLen");
+            assertEq(userInfo.rewardTokens[0].length, 1, "rewardTokensLen");
+            assertEq(userInfo.rewardTokenAmounts[0].length, 1, "rewardTokenAmountsLen");
+            assertEq(
+                userInfo.rewardTokens[0][0].tokenAddress,
+                0xEec5970a763C0ae3Eb2a612721bD675DdE2561C2, // TOKE SEPOLIA
+                "rewardTokenAddress"
+            );
+            assertEq(userInfo.rewardTokenAmounts[0][0].amount, 1_197_530_864_197_530_864, "rewardTokenAmount");
         }
     }
 }

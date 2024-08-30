@@ -130,13 +130,13 @@ contract StatBridging is Script {
         bytes32 aprTemplateId,
         address lstTokenAddress,
         address sourceTokenAddress,
-        bool isRebasing,
+        bool usePriceAsBacking,
         address ethPerTokenStore
     ) internal returns (address) {
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: lstTokenAddress,
             sourceTokenAddress: sourceTokenAddress,
-            isRebasing: isRebasing,
+            usePriceAsBacking: usePriceAsBacking,
             ethPerTokenStore: ethPerTokenStore
         });
         bytes memory encodedInitData = abi.encode(initData);

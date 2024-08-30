@@ -14,7 +14,7 @@ contract RsethLRTCalculator is LSTCalculatorBase {
     constructor(ISystemRegistry _systemRegistry) LSTCalculatorBase(_systemRegistry) { }
 
     /// @inheritdoc LSTCalculatorBase
-    function isRebasing() public pure override returns (bool) {
+    function usePriceAsBacking() public pure override returns (bool) {
         return false;
     }
 

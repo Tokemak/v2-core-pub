@@ -63,11 +63,11 @@ contract ProxyLSTCalculatorTest is Test {
         ProxyLSTCalculator.InitData memory initData = ProxyLSTCalculator.InitData({
             lstTokenAddress: CBETH_MAINNET,
             statsCalculator: address(_calculator),
-            isRebasing: true
+            usePriceAsBacking: true
         });
         _proxyCalculator.initialize(dependantAprs, abi.encode(initData));
 
-        assertTrue(_proxyCalculator.isRebasing());
+        assertTrue(_proxyCalculator.usePriceAsBacking());
 
         ILSTStats.LSTStatsData memory res = _proxyCalculator.current();
         assertEq(res.baseApr, 10);
@@ -82,7 +82,7 @@ contract LSTCalculatorHarness is LSTCalculatorBase {
         return 0;
     }
 
-    function isRebasing() public pure override returns (bool) {
+    function usePriceAsBacking() public pure override returns (bool) {
         return false;
     }
 }

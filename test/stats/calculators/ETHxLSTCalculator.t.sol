@@ -41,10 +41,10 @@ contract ETHxLSTCalculatorTest is Test {
         assertEq(calculator.calculateEthPerToken(), 1e18, "ethPerToken");
     }
 
-    function test_IsRebasing_False() public {
+    function test_UsePriceAsBacking_False() public {
         ETHxLSTCalculator calculator = _setUp(19_570_655);
 
-        assertEq(calculator.isRebasing(), false, "isRebasing");
+        assertEq(calculator.usePriceAsBacking(), false, "usePriceAsBacking");
     }
 
     function _setUp(uint256 targetBlock) private returns (ETHxLSTCalculator) {

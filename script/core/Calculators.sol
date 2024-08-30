@@ -31,7 +31,7 @@ contract Calculators {
         bytes32 aprTemplateId;
         address lstTokenAddress;
         address statsCalculator;
-        bool isRebasing;
+        bool usePriceAsBacking;
     }
 
     struct IncentiveCalcBaseSetup {
@@ -205,7 +205,7 @@ contract Calculators {
         bytes32 aprTemplateId;
         address lstTokenAddress;
         address sourceTokenAddress;
-        bool isRebasing;
+        bool usePriceAsBacking;
         address ethPerTokenStore;
     }
 
@@ -216,7 +216,7 @@ contract Calculators {
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: args.lstTokenAddress,
             sourceTokenAddress: args.sourceTokenAddress,
-            isRebasing: args.isRebasing,
+            usePriceAsBacking: args.usePriceAsBacking,
             ethPerTokenStore: args.ethPerTokenStore
         });
         bytes memory encodedInitData = abi.encode(initData);
@@ -250,7 +250,7 @@ contract Calculators {
         ProxyLSTCalculator.InitData memory initData = ProxyLSTCalculator.InitData({
             lstTokenAddress: args.lstTokenAddress,
             statsCalculator: args.statsCalculator,
-            isRebasing: args.isRebasing
+            usePriceAsBacking: args.usePriceAsBacking
         });
         bytes memory encodedInitData = abi.encode(initData);
         bytes32[] memory e = new bytes32[](0);

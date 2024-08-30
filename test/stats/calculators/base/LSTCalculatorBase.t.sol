@@ -109,7 +109,7 @@ contract LSTCalculatorBaseTest is Test {
         // where eth backing increases
         uint256 startingEthPerShare = 1_126_467_900_855_209_627;
         mockCalculateEthPerToken(startingEthPerShare);
-        mockIsRebasing(false);
+        mockUsePriceAsBacking(false);
         initCalculator(1e18);
 
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), START_TIMESTAMP);
@@ -193,7 +193,7 @@ contract LSTCalculatorBaseTest is Test {
         // where eth backing decreases.
         uint256 startingEthPerShare = 1_126_467_900_855_209_627;
         mockCalculateEthPerToken(startingEthPerShare);
-        mockIsRebasing(false);
+        mockUsePriceAsBacking(false);
         initCalculator(1e18);
 
         assertEq(testCalculator.lastBaseAprSnapshotTimestamp(), START_TIMESTAMP);
@@ -264,7 +264,7 @@ contract LSTCalculatorBaseTest is Test {
     function testRevertNoSnapshot() public {
         uint256 startingEthPerShare = 1e18;
         mockCalculateEthPerToken(startingEthPerShare);
-        mockIsRebasing(false);
+        mockUsePriceAsBacking(false);
         initCalculator(1e18);
 
         // move each value forward so we can verify that a snapshot was not taken
@@ -279,7 +279,7 @@ contract LSTCalculatorBaseTest is Test {
 
     function testDiscountShouldCalculateCorrectly() public {
         mockCalculateEthPerToken(1e17); // starting value doesn't matter for these tests
-        mockIsRebasing(false); // just needs to be here for initialization
+        mockUsePriceAsBacking(false); // just needs to be here for initialization
         initCalculator(1e18);
 
         int256 expected;
@@ -287,7 +287,7 @@ contract LSTCalculatorBaseTest is Test {
         // test handling a premium with a non-rebasing token
         mockCalculateEthPerToken(1e18);
         mockTokenPrice(11e17);
-        mockIsRebasing(false);
+        mockUsePriceAsBacking(false);
 
         expected = 1e18 - int256(11e17 * 1e18) / 1e18;
         stats = testCalculator.current();
@@ -296,7 +296,7 @@ contract LSTCalculatorBaseTest is Test {
         // test handling a discount with a non-rebasing token
         mockCalculateEthPerToken(11e17);
         mockTokenPrice(1e18);
-        mockIsRebasing(false);
+        mockUsePriceAsBacking(false);
 
         expected = 1e18 - int256(1e18 * 1e18) / 11e17;
         stats = testCalculator.current();
@@ -305,7 +305,7 @@ contract LSTCalculatorBaseTest is Test {
         // test handling a premium for a rebasing token
         // do not mock ethPerToken
         mockTokenPrice(12e17);
-        mockIsRebasing(true);
+        mockUsePriceAsBacking(true);
 
         expected = 1e18 - int256(12e17);
         stats = testCalculator.current();
@@ -314,7 +314,7 @@ contract LSTCalculatorBaseTest is Test {
         // test handling a discount for a rebasing token
         // do not mock ethPerToken
         mockTokenPrice(9e17);
-        mockIsRebasing(true);
+        mockUsePriceAsBacking(true);
 
         expected = 1e18 - int256(9e17);
         stats = testCalculator.current();
@@ -325,7 +325,7 @@ contract LSTCalculatorBaseTest is Test {
 
     function testDiscountTimestampByPercentOnetimeHighestDiscount() public {
         mockCalculateEthPerToken(1);
-        mockIsRebasing(false);
+        mockUsePriceAsBacking(false);
         initCalculator(1e18);
         setBlockAndTimestamp(1);
         setDiscount(int256(50e15)); // 5%
@@ -336,7 +336,7 @@ contract LSTCalculatorBaseTest is Test {
 
     function testDiscountTimestampByPercentIncreasingDiscount() public {
         mockCalculateEthPerToken(1);
-        mockIsRebasing(false);
+        mockUsePriceAsBacking(false);
         initCalculator(1e18);
 
         setBlockAndTimestamp(1);
@@ -349,7 +349,7 @@ contract LSTCalculatorBaseTest is Test {
 
     function testDiscountTimestampByPercentDecreasingDiscount() public {
         mockCalculateEthPerToken(1);
-        mockIsRebasing(false);
+        mockUsePriceAsBacking(false);
         initCalculator(1e18);
 
         setBlockAndTimestamp(1);
@@ -362,7 +362,7 @@ contract LSTCalculatorBaseTest is Test {
 
     function testDiscountTimestampByPercentJitterHighToZeroToLow() public {
         mockCalculateEthPerToken(1);
-        mockIsRebasing(false);
+        mockUsePriceAsBacking(false);
         initCalculator(1e18);
 
         setBlockAndTimestamp(1);
@@ -389,7 +389,7 @@ contract LSTCalculatorBaseTest is Test {
     }
 
     function testDiscountTimestampByPercentStartingDiscount() public {
-        mockIsRebasing(false);
+        mockUsePriceAsBacking(false);
         bytes32[] memory dependantAprs = new bytes32[](0);
         LSTCalculatorBase.InitData memory initData = LSTCalculatorBase.InitData({ lstTokenAddress: mockToken });
         setDiscount(50e15);
@@ -404,7 +404,7 @@ contract LSTCalculatorBaseTest is Test {
 
     // solhint-disable-next-line func-name-mixedcase
     function testFuzz_DiscountHistoryExistingDiscountAtContractDeployment(bool rebase) public {
-        mockIsRebasing(rebase);
+        mockUsePriceAsBacking(rebase);
         setBlockAndTimestamp(1);
         mockCalculateEthPerToken(100e16);
         initCalculator(99e16);
@@ -416,7 +416,7 @@ contract LSTCalculatorBaseTest is Test {
     // solhint-disable-next-line func-name-mixedcase
     function testFuzz_DiscountHistoryPremiumRecordedAsZeroDiscount(bool rebase) public {
         mockCalculateEthPerToken(100e16);
-        mockIsRebasing(rebase);
+        mockUsePriceAsBacking(rebase);
         initCalculator(110e16);
         setBlockAndTimestamp(1);
         testCalculator.snapshot();
@@ -428,7 +428,7 @@ contract LSTCalculatorBaseTest is Test {
     // solhint-disable-next-line func-name-mixedcase
     function testFuzz_DiscountHistoryHighDiscount(bool rebase) public {
         mockCalculateEthPerToken(100e16);
-        mockIsRebasing(rebase);
+        mockUsePriceAsBacking(rebase);
         initCalculator(100e16);
 
         setBlockAndTimestamp(1);
@@ -443,7 +443,7 @@ contract LSTCalculatorBaseTest is Test {
     // solhint-disable-next-line func-name-mixedcase
     function testFuzz_DiscountHistoryWrapAround(bool rebase) public {
         mockCalculateEthPerToken(100e16);
-        mockIsRebasing(rebase);
+        mockUsePriceAsBacking(rebase);
         initCalculator(100e16);
         for (uint256 i = 1; i < 14; i += 1) {
             setBlockAndTimestamp(i);
@@ -503,7 +503,7 @@ contract LSTCalculatorBaseTest is Test {
         uint256 timestamp = block.timestamp + testCalculator.APR_FILTER_INIT_INTERVAL_IN_SEC() + 1;
 
         mockCalculateEthPerToken(1);
-        mockIsRebasing(false);
+        mockUsePriceAsBacking(false);
         initCalculator(1e18);
 
         // Warp timestamp to time that allows branch needed for message send to other chain to run
@@ -601,8 +601,8 @@ contract LSTCalculatorBaseTest is Test {
         vm.mockCall(mockToken, abi.encodeWithSelector(MockToken.getValue.selector), abi.encode(amount));
     }
 
-    function mockIsRebasing(bool value) private {
-        vm.mockCall(mockToken, abi.encodeWithSelector(MockToken.isRebasing.selector), abi.encode(value));
+    function mockUsePriceAsBacking(bool value) private {
+        vm.mockCall(mockToken, abi.encodeWithSelector(MockToken.usePriceAsBacking.selector), abi.encode(value));
     }
 
     function mockTokenPrice(uint256 price) internal {
@@ -616,7 +616,7 @@ contract LSTCalculatorBaseTest is Test {
 
 interface MockToken {
     function getValue() external view returns (uint256);
-    function isRebasing() external view returns (bool);
+    function usePriceAsBacking() external view returns (bool);
 }
 
 contract TestLSTCalculator is LSTCalculatorBase {
@@ -627,8 +627,8 @@ contract TestLSTCalculator is LSTCalculatorBase {
         return MockToken(lstTokenAddress).getValue();
     }
 
-    function isRebasing() public view override returns (bool) {
+    function usePriceAsBacking() public view override returns (bool) {
         // always mock the value
-        return MockToken(lstTokenAddress).isRebasing();
+        return MockToken(lstTokenAddress).usePriceAsBacking();
     }
 }

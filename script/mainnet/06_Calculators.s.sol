@@ -465,12 +465,12 @@ contract Calculators is Script {
         string memory name,
         address lstTokenAddress,
         address statsCalculator,
-        bool isRebasing
+        bool usePriceAsBacking
     ) internal returns (address) {
         ProxyLSTCalculator.InitData memory initData = ProxyLSTCalculator.InitData({
             lstTokenAddress: lstTokenAddress,
             statsCalculator: statsCalculator,
-            isRebasing: isRebasing
+            usePriceAsBacking: usePriceAsBacking
         });
         bytes memory encodedInitData = abi.encode(initData);
         bytes32[] memory e = new bytes32[](0);

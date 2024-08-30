@@ -65,8 +65,8 @@ contract EzethLRTCalculatorTests is Test {
         assertEq(ret, 1e18);
     }
 
-    function test_isRebasing_IsFalse() public {
-        assertEq(_calculator.isRebasing(), false, "isRebasing");
+    function test_usePriceAsBacking_IsFalse() public {
+        assertEq(_calculator.usePriceAsBacking(), false, "usePriceAsBacking");
     }
 
     function test_setRenzoRestakeManager_RevertIf_NotCalledByRole() public {

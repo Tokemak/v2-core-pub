@@ -33,8 +33,8 @@ contract PufEthLRTCalculatorTests is Test {
         assertApproxEqAbs(_calculator.calculateEthPerToken(), 1_013_185_872_370_260_061, 1e17, "ethPerToken");
     }
 
-    function test_isRebasing_IsFalse() public {
-        assertEq(_calculator.isRebasing(), false, "isRebasing");
+    function test_usePriceAsBacking_IsFalse() public {
+        assertEq(_calculator.usePriceAsBacking(), false, "usePriceAsBacking");
     }
 
     function test_setPufEthVault_RevertIf_NotCalledByRole() public {

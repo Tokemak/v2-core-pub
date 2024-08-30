@@ -337,7 +337,7 @@ contract BridgedLSTCalculatorTests is Test {
         // test handling a premium with a non-rebasing token
         mockCalculateEthPerToken(1e18);
         mockTokenPrice(11e17);
-        testCalculator.setIsRebasing(false);
+        testCalculator.setUsePriceAsBacking(false);
 
         expected = 1e18 - int256(11e17 * 1e18) / 1e18;
         stats = testCalculator.current();
@@ -346,7 +346,7 @@ contract BridgedLSTCalculatorTests is Test {
         // test handling a discount with a non-rebasing token
         mockCalculateEthPerToken(11e17);
         mockTokenPrice(1e18);
-        testCalculator.setIsRebasing(false);
+        testCalculator.setUsePriceAsBacking(false);
 
         expected = 1e18 - int256(1e18 * 1e18) / 11e17;
         stats = testCalculator.current();
@@ -355,7 +355,7 @@ contract BridgedLSTCalculatorTests is Test {
         // test handling a premium for a rebasing token
         // do not mock ethPerToken
         mockTokenPrice(12e17);
-        testCalculator.setIsRebasing(true);
+        testCalculator.setUsePriceAsBacking(true);
 
         expected = 1e18 - int256(12e17);
         stats = testCalculator.current();
@@ -364,7 +364,7 @@ contract BridgedLSTCalculatorTests is Test {
         // test handling a discount for a rebasing token
         // do not mock ethPerToken
         mockTokenPrice(9e17);
-        testCalculator.setIsRebasing(true);
+        testCalculator.setUsePriceAsBacking(true);
 
         expected = 1e18 - int256(9e17);
         stats = testCalculator.current();
@@ -439,7 +439,7 @@ contract BridgedLSTCalculatorTests is Test {
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
             sourceTokenAddress: mockToken,
-            isRebasing: false,
+            usePriceAsBacking: false,
             ethPerTokenStore: ethPerTokenStore
         });
         setDiscount(50e15);
@@ -552,20 +552,20 @@ contract BridgedLSTCalculatorTests is Test {
         testCalculator.setEthPerTokenStore(EthPerTokenStore(newValue));
     }
 
-    function test_IsRebasingBasedOnInitializationValue() public {
+    function test_UsePriceAsBackingBasedOnInitializationValue() public {
         uint256 snapshot = vm.snapshot();
 
         bytes32[] memory dependantAprs = new bytes32[](0);
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
             sourceTokenAddress: mockToken,
-            isRebasing: true,
+            usePriceAsBacking: true,
             ethPerTokenStore: ethPerTokenStore
         });
         mockTokenPrice(1);
         testCalculator.initialize(dependantAprs, abi.encode(initData));
 
-        assertEq(testCalculator.isRebasing(), true, "true");
+        assertEq(testCalculator.usePriceAsBacking(), true, "true");
 
         vm.revertTo(snapshot);
 
@@ -573,13 +573,13 @@ contract BridgedLSTCalculatorTests is Test {
         initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
             sourceTokenAddress: mockToken,
-            isRebasing: false,
+            usePriceAsBacking: false,
             ethPerTokenStore: ethPerTokenStore
         });
         mockTokenPrice(1);
         testCalculator.initialize(dependantAprs, abi.encode(initData));
 
-        assertEq(testCalculator.isRebasing(), false, "false");
+        assertEq(testCalculator.usePriceAsBacking(), false, "false");
     }
 
     function test_ShouldSnapshotIsFalseUntilFirstMessageReceived() public {
@@ -588,7 +588,7 @@ contract BridgedLSTCalculatorTests is Test {
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
             sourceTokenAddress: mockToken,
-            isRebasing: false,
+            usePriceAsBacking: false,
             ethPerTokenStore: ethPerTokenStore
         });
         mockTokenPrice(1e18);
@@ -619,7 +619,7 @@ contract BridgedLSTCalculatorTests is Test {
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
             sourceTokenAddress: mockToken,
-            isRebasing: false,
+            usePriceAsBacking: false,
             ethPerTokenStore: ethPerTokenStore
         });
         mockTokenPrice(1e18);
@@ -652,7 +652,7 @@ contract BridgedLSTCalculatorTests is Test {
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
             sourceTokenAddress: mockToken,
-            isRebasing: false,
+            usePriceAsBacking: false,
             ethPerTokenStore: ethPerTokenStore
         });
         mockTokenPrice(1e18);
@@ -686,7 +686,7 @@ contract BridgedLSTCalculatorTests is Test {
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
             sourceTokenAddress: mockToken,
-            isRebasing: false,
+            usePriceAsBacking: false,
             ethPerTokenStore: ethPerTokenStore
         });
         mockTokenPrice(1e18);
@@ -721,7 +721,7 @@ contract BridgedLSTCalculatorTests is Test {
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
             sourceTokenAddress: sourceToken,
-            isRebasing: false,
+            usePriceAsBacking: false,
             ethPerTokenStore: ethPerTokenStore
         });
         mockTokenPrice(1e18);
@@ -756,7 +756,7 @@ contract BridgedLSTCalculatorTests is Test {
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
             sourceTokenAddress: sourceToken,
-            isRebasing: false,
+            usePriceAsBacking: false,
             ethPerTokenStore: ethPerTokenStore
         });
         mockTokenPrice(1e18);
@@ -870,12 +870,12 @@ contract BridgedLSTCalculatorTests is Test {
         assertEq(foundDiscount, expectedDiscount);
     }
 
-    function initCalculator(uint256 initPrice, bool isRebasing, uint256 initialEthPerShare) private {
+    function initCalculator(uint256 initPrice, bool usePriceAsBacking, uint256 initialEthPerShare) private {
         bytes32[] memory dependantAprs = new bytes32[](0);
         BridgedLSTCalculator.L2InitData memory initData = BridgedLSTCalculator.L2InitData({
             lstTokenAddress: mockToken,
             sourceTokenAddress: mockToken,
-            isRebasing: isRebasing,
+            usePriceAsBacking: usePriceAsBacking,
             ethPerTokenStore: ethPerTokenStore
         });
         mockTokenPrice(initPrice);
@@ -915,14 +915,14 @@ contract BridgedLSTCalculatorTests is Test {
 
 interface MockToken {
     function getValue() external view returns (uint256);
-    function isRebasing() external view returns (bool);
+    function usePriceAsBacking() external view returns (bool);
 }
 
 contract TestCalculator is BridgedLSTCalculator {
     constructor(ISystemRegistry _systemRegistry) BridgedLSTCalculator(_systemRegistry) { }
 
-    function setIsRebasing(bool isRebasing) external {
-        _isRebasing = isRebasing;
+    function setUsePriceAsBacking(bool usePriceAsBacking) external {
+        _usePriceAsBacking = usePriceAsBacking;
     }
 }
 

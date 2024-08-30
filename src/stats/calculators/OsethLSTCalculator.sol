@@ -60,7 +60,7 @@ contract OsethLSTCalculator is LSTCalculatorBase {
     }
 
     /// @inheritdoc LSTCalculatorBase
-    function isRebasing() public pure override returns (bool) {
+    function usePriceAsBacking() public pure override returns (bool) {
         return false;
     }
 

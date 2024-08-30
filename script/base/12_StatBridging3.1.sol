@@ -55,7 +55,7 @@ contract StatBridging is Script, Calculators, Oracle {
                     aprTemplateId: bridgedLstTemplateId,
                     lstTokenAddress: constants.tokens.weEth,
                     sourceTokenAddress: mainnetTokens.weEth,
-                    usePriceAsBacking: false,
+                    usePriceAsDiscount: false,
                     ethPerTokenStore: address(constants.sys.ethPerTokenStore)
                 })
             )

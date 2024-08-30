@@ -164,7 +164,7 @@ contract CalculatorSet2 is Script, Oracle, Calculators {
                     aprTemplateId: proxyLstTemplateId,
                     lstTokenAddress: constants.tokens.weEth,
                     statsCalculator: address(eEthLstCalculator),
-                    usePriceAsBacking: false
+                    usePriceAsDiscount: false
                 })
             )
         );

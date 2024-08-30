@@ -12,12 +12,12 @@ contract ProxyLSTCalculator is ILSTStats, BaseStatsCalculator {
     address public lstTokenAddress;
 
     bytes32 private _aprId;
-    bool private _usePriceAsBacking;
+    bool private _usePriceAsDiscount;
 
     struct InitData {
         address lstTokenAddress;
         address statsCalculator;
-        bool usePriceAsBacking;
+        bool usePriceAsDiscount;
     }
 
     constructor(ISystemRegistry _systemRegistry) BaseStatsCalculator(_systemRegistry) { }
@@ -28,7 +28,7 @@ contract ProxyLSTCalculator is ILSTStats, BaseStatsCalculator {
         lstTokenAddress = decodedInitData.lstTokenAddress;
         statsCalculator = ILSTStats(decodedInitData.statsCalculator);
         _aprId = keccak256(abi.encode("lst", lstTokenAddress));
-        _usePriceAsBacking = decodedInitData.usePriceAsBacking;
+        _usePriceAsDiscount = decodedInitData.usePriceAsDiscount;
     }
 
     /// @inheritdoc ILSTStats
@@ -42,8 +42,8 @@ contract ProxyLSTCalculator is ILSTStats, BaseStatsCalculator {
     }
 
     /// @inheritdoc ILSTStats
-    function usePriceAsBacking() external view returns (bool) {
-        return _usePriceAsBacking;
+    function usePriceAsDiscount() external view returns (bool) {
+        return _usePriceAsDiscount;
     }
 
     /// @inheritdoc IStatsCalculator

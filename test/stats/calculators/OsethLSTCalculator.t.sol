@@ -30,8 +30,8 @@ contract OsethLSTCalculatorTests is Test {
         assertEq(_calculator.calculateEthPerToken(), 1_012_783_667_542_821_111, "ethPerToken");
     }
 
-    function test_usePriceAsBacking_IsFalse() public {
-        assertEq(_calculator.usePriceAsBacking(), false, "usePriceAsBacking");
+    function test_usePriceAsDiscount_IsFalse() public {
+        assertEq(_calculator.usePriceAsDiscount(), false, "usePriceAsDiscount");
     }
 
     function test_setOsEthPriceOracle_RevertIf_NotCalledByRole() public {

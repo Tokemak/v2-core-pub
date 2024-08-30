@@ -10,11 +10,12 @@ contract PxEthLSTCalculator is LSTCalculatorBase {
 
     /// @inheritdoc LSTCalculatorBase
     function calculateEthPerToken() public pure override returns (uint256) {
+        // This is to produce a 0% baseApr, not to peg the asset to 1 ETH
         return 1 ether;
     }
 
     /// @inheritdoc LSTCalculatorBase
-    function usePriceAsBacking() public pure override returns (bool) {
+    function usePriceAsDiscount() public pure override returns (bool) {
         return true;
     }
 }

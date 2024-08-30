@@ -15,7 +15,7 @@ contract SwethLSTCalculator is LSTCalculatorBase {
     }
 
     /// @inheritdoc LSTCalculatorBase
-    function usePriceAsBacking() public pure override returns (bool) {
+    function usePriceAsDiscount() public pure override returns (bool) {
         return false;
     }
 }

@@ -22,10 +22,10 @@ contract RsethLRTCalculatorTests is Test {
         assertEq(calculator.calculateEthPerToken(), 1_013_844_309_207_288_936, "ethPerToken");
     }
 
-    function test_UsePriceAsBacking_False() public {
+    function test_UsePriceAsDiscount_False() public {
         RsethLRTCalculator calculator = _setUp(20_019_782);
 
-        assertEq(calculator.usePriceAsBacking(), false, "usePriceAsBacking");
+        assertEq(calculator.usePriceAsDiscount(), false, "usePriceAsDiscount");
     }
 
     function _setUp(uint256 targetBlock) private returns (RsethLRTCalculator) {

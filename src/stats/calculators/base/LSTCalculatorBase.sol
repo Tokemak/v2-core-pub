@@ -202,7 +202,7 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
 
         // result is 1e18
         uint256 priceToBacking;
-        if (usePriceAsBacking()) {
+        if (usePriceAsDiscount()) {
             priceToBacking = price;
         } else {
             // price is always 1e18 and backing is in eth, which is 1e18
@@ -270,5 +270,5 @@ abstract contract LSTCalculatorBase is ILSTStats, BaseStatsCalculator {
     function calculateEthPerToken() public view virtual returns (uint256);
 
     /// @inheritdoc ILSTStats
-    function usePriceAsBacking() public view virtual returns (bool);
+    function usePriceAsDiscount() public view virtual returns (bool);
 }

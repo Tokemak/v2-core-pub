@@ -20,7 +20,7 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     /// =====================================================
 
     /// @notice Whether `lstTokenAddress` is a rebasing token
-    bool internal _usePriceAsBacking;
+    bool internal _usePriceAsDiscount;
 
     /// =====================================================
     /// Public Vars
@@ -58,7 +58,7 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     struct L2InitData {
         address lstTokenAddress;
         address sourceTokenAddress;
-        bool usePriceAsBacking;
+        bool usePriceAsDiscount;
         address ethPerTokenStore;
     }
 
@@ -77,7 +77,7 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
 
         lstTokenAddress = decodedInitData.lstTokenAddress;
         _aprId = Stats.generateRawTokenIdentifier(decodedInitData.lstTokenAddress);
-        _usePriceAsBacking = decodedInitData.usePriceAsBacking;
+        _usePriceAsDiscount = decodedInitData.usePriceAsDiscount;
         sourceTokenAddress = decodedInitData.sourceTokenAddress;
 
         _setEthPerTokenStore(EthPerTokenStore(decodedInitData.ethPerTokenStore));
@@ -129,8 +129,8 @@ contract BridgedLSTCalculator is LSTCalculatorBase, MessageReceiverBase {
     }
 
     /// @inheritdoc LSTCalculatorBase
-    function usePriceAsBacking() public view virtual override returns (bool) {
-        return _usePriceAsBacking;
+    function usePriceAsDiscount() public view virtual override returns (bool) {
+        return _usePriceAsDiscount;
     }
 
     /// =====================================================

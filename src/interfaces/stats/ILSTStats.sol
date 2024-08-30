@@ -21,7 +21,7 @@ interface ILSTStats {
     /// @return ethPerShare the backing eth for the LST
     function calculateEthPerToken() external view returns (uint256 ethPerShare);
 
-    /// @notice Returns whether to use the market price when calculating backing
+    /// @notice Returns whether to use the market price when calculating discount
     /// @dev Will be true for rebasing tokens and other non-standard tokens
-    function usePriceAsBacking() external view returns (bool rebasing);
+    function usePriceAsDiscount() external view returns (bool useAsDiscount);
 }

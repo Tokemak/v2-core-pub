@@ -619,6 +619,20 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
         );
     }
 
+    // Stake Vault Token
+    function stakeVaultToken(uint256 amount) public updateUser1Balance {
+        _startPrank(msg.sender);
+        autoPoolRouter.stakeVaultToken(IERC20(address(_pool)), amount);
+        _stopPrank();
+    }
+
+    function queueStakeVaultToken(uint256 amount) public updateUser1Balance {
+        queuedCalls.push(
+            abi.encodeWithSelector(autoPoolRouter.stakeVaultToken.selector, IERC20(address(_pool)), amount)
+        );
+    }
+
+    // Claim Rewards
     function claimRewards(
         uint256 userSeed,
         uint256 recipientSeed,

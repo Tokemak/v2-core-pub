@@ -107,8 +107,6 @@ contract BasePoolSetup {
         {
             // Avoiding stack too deep
             bytes32 salt = keccak256("v1");
-            address template = address(new AutopoolETH(_systemRegistry, address(vaultAsset)));
-            address newToken = template.predictDeterministicAddress(salt);
 
             _mainRewarder = new AutopoolMainRewarder{ salt: salt }(
                 _systemRegistry,
@@ -116,7 +114,7 @@ contract BasePoolSetup {
                 800, // defaultRewardRatio
                 100, // defaultRewardBlockDuration
                 true, // allowExtraRewards
-                newToken
+                address(_pool)
             );
             _pool.setRewarder(address(_mainRewarder));
         }

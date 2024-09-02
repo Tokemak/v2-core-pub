@@ -431,6 +431,19 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
         );
     }
 
+    // Withdraw Vault Token
+    function withdrawVaultToken(uint256 amount, bool claim) public updateUser1Balance {
+        _startPrank(msg.sender);
+        autoPoolRouter.withdrawVaultToken(_pool, _mainRewarder, amount, claim);
+        _stopPrank();
+    }
+
+    function queueWithdrawVaultToken(uint256 amount, bool claim) public updateUser1Balance {
+        queuedCalls.push(
+            abi.encodeWithSelector(autoPoolRouter.withdrawVaultToken.selector, _pool, _mainRewarder, amount, claim)
+        );
+    }
+
     /// @dev This is vulnerable and is filtered function. Use it verify checks are working
     function withdrawVaultTokenFrom(uint256 fromSeed, uint256 amount, bool claim) public updateUser1Balance {
         address from = _resolveUserFromSeed(fromSeed);

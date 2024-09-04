@@ -31,7 +31,7 @@ contract BalancerComposableStablePoolCalculator is BalancerStablePoolCalculatorB
                 return true;
             }
         }
-        // if all are exempt, then return false
+        // if all are non-exempt, then return false
         return false;
     }
 }

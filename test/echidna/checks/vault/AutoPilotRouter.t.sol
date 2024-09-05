@@ -191,6 +191,94 @@ contract AutopoolETHTests is Test {
         assertEq(IERC20(usage.weth()).balanceOf(usage.user1()), 0, "endSellTokenBal");
     }
 
+    function test_SwapToken() public {
+        uint256 amount = 100e18;
+        uint256 minSharesOut = amount; // imitating 1:1 swap
+
+        // Mint some sell asset
+        deal(usage.weth(), usage.router(), amount);
+
+        // Verify starting shares & balances
+        assertEq(usage.vaultAsset().balanceOf(usage.router()), 0, "buyTokenStartBal");
+        assertEq(IERC20(usage.weth()).balanceOf(usage.router()), amount, "sellTokenStartBal");
+
+        // Run swap
+        vm.startPrank(usage.user1());
+        usage.swapToken(amount, minSharesOut);
+        vm.stopPrank();
+
+        // Verify ending shares & balances
+        assertEq(usage.vaultAsset().balanceOf(usage.router()), amount, "endBuyTokenBal");
+        assertEq(IERC20(usage.weth()).balanceOf(usage.router()), 0, "endSellTokenBal");
+    }
+
+    function test_SwapToken_Multicall() public {
+        uint256 amount = 100e18;
+        uint256 minSharesOut = amount; // imitating 1:1 swap
+
+        // Mint some sell asset
+        deal(usage.weth(), usage.router(), amount);
+
+        // Verify starting shares & balances
+        assertEq(usage.vaultAsset().balanceOf(usage.router()), 0, "buyTokenStartBal");
+        assertEq(IERC20(usage.weth()).balanceOf(usage.router()), amount, "sellTokenStartBal");
+
+        // Enqueue swap
+        usage.queueSwapToken(amount, minSharesOut);
+
+        vm.startPrank(usage.user1());
+        usage.executeMulticall();
+        vm.stopPrank();
+
+        // Verify ending shares & balances
+        assertEq(usage.vaultAsset().balanceOf(usage.router()), amount, "endBuyTokenBal");
+        assertEq(IERC20(usage.weth()).balanceOf(usage.router()), 0, "endSellTokenBal");
+    }
+
+    function test_SwapTokenBalance() public {
+        uint256 amount = 100e18;
+        uint256 minSharesOut = amount; // imitating 1:1 swap
+
+        // Mint some sell asset
+        deal(usage.weth(), usage.router(), amount);
+
+        // Verify starting shares & balances
+        assertEq(usage.vaultAsset().balanceOf(usage.router()), 0, "buyTokenStartBal");
+        assertEq(IERC20(usage.weth()).balanceOf(usage.router()), amount, "sellTokenStartBal");
+
+        // Run swap
+        vm.startPrank(usage.user1());
+        usage.swapTokenBalance(amount, minSharesOut);
+        vm.stopPrank();
+
+        // Verify ending shares & balances
+        assertEq(usage.vaultAsset().balanceOf(usage.router()), amount, "endBuyTokenBal");
+        assertEq(IERC20(usage.weth()).balanceOf(usage.router()), 0, "endSellTokenBal");
+    }
+
+    function test_SwapTokenBalance_Multicall() public {
+        uint256 amount = 100e18;
+        uint256 minSharesOut = amount; // imitating 1:1 swap
+
+        // Mint some sell asset
+        deal(usage.weth(), usage.router(), amount);
+
+        // Verify starting shares & balances
+        assertEq(usage.vaultAsset().balanceOf(usage.router()), 0, "buyTokenStartBal");
+        assertEq(IERC20(usage.weth()).balanceOf(usage.router()), amount, "sellTokenStartBal");
+
+        // Enqueue swap
+        usage.queueSwapTokenBalance(amount, minSharesOut);
+
+        vm.startPrank(usage.user1());
+        usage.executeMulticall();
+        vm.stopPrank();
+
+        // Verify ending shares & balances
+        assertEq(usage.vaultAsset().balanceOf(usage.router()), amount, "endBuyTokenBal");
+        assertEq(IERC20(usage.weth()).balanceOf(usage.router()), 0, "endSellTokenBal");
+    }
+
     function test_Permit() public {
         usage.mintAssets(1, 100e18);
 
@@ -728,6 +816,162 @@ contract AutopoolETHTests is Test {
         assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 100e18, "endBalShare");
         assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "endBalAsset");
     }
+
+    function test_DepositBalance() public {
+        uint256 amount = 100e18;
+
+        deal(address(usage.vaultAsset()), address(usage.router()), amount);
+
+        assertEq(usage.vaultAsset().balanceOf(address(usage.router())), amount, "startBalAsset");
+
+        vm.startPrank(usage.user1());
+        usage.depositBalance(1, amount);
+        vm.stopPrank();
+
+        assertEq(usage.vaultAsset().balanceOf(address(usage.router())), 0, "endBalAsset");
+    }
+
+    function test_DepositBalanceMulticall() public {
+        uint256 amount = 100e18;
+
+        deal(address(usage.vaultAsset()), address(usage.router()), amount);
+
+        assertEq(usage.vaultAsset().balanceOf(address(usage.router())), amount, "startBalAsset");
+
+        usage.queueDepositBalance(1, amount);
+
+        vm.startPrank(usage.user1());
+        usage.executeMulticall();
+        vm.stopPrank();
+
+        assertEq(usage.vaultAsset().balanceOf(address(usage.router())), 0, "endBalAsset");
+    }
+
+    function test_StakeVaultToken() public {
+        uint256 amount = 100e18;
+
+        IERC20 poolErc = IERC20(address(usage.pool()));
+        address autoPoolRewarder = address(IAutopool(usage.pool()).rewarder());
+
+        deal(address(poolErc), address(usage.router()), amount);
+
+        assertEq(poolErc.balanceOf(address(usage.router())), amount, "startBalAsset");
+
+        vm.startPrank(address(usage.router()));
+        poolErc.approve(autoPoolRewarder, amount);
+        vm.stopPrank();
+
+        // User1 stakes the all the vault tokens
+        vm.startPrank(usage.user1());
+        usage.stakeVaultToken(amount);
+        vm.stopPrank();
+
+        assertEq(poolErc.balanceOf(address(usage.router())), 0, "endBalAsset");
+    }
+
+    function test_StakeVaultTokenMulticall() public {
+        uint256 amount = 100e18;
+
+        IERC20 poolErc = IERC20(address(usage.pool()));
+        address autoPoolRewarder = address(IAutopool(usage.pool()).rewarder());
+
+        deal(address(poolErc), address(usage.router()), amount);
+
+        assertEq(poolErc.balanceOf(address(usage.router())), amount, "startBalAsset");
+
+        vm.startPrank(address(usage.router()));
+        poolErc.approve(autoPoolRewarder, amount);
+        vm.stopPrank();
+
+        usage.queueStakeVaultToken(amount);
+
+        // User1 stakes the all the vault tokens
+        vm.startPrank(usage.user1());
+        usage.executeMulticall();
+        vm.stopPrank();
+
+        assertEq(poolErc.balanceOf(address(usage.router())), 0, "endBalAsset");
+    }
+
+    function test_WithdrawVaultToken() public {
+        uint256 amount = 100e18;
+
+        IERC20 poolErc = IERC20(address(usage.pool()));
+        address autoPoolRewarder = address(IAutopool(usage.pool()).rewarder());
+
+        deal(address(poolErc), address(usage.router()), amount);
+
+        assertEq(poolErc.balanceOf(address(usage.router())), amount, "startBalAsset");
+
+        vm.startPrank(address(usage.router()));
+        poolErc.approve(autoPoolRewarder, amount);
+        vm.stopPrank();
+
+        // Stake the vault tokens as a router
+        vm.startPrank(usage.router());
+        usage.stakeVaultToken(amount);
+        vm.stopPrank();
+
+        assertEq(poolErc.balanceOf(address(usage.router())), 0, "preUnstakeBalAsset");
+
+        // Unstake the vault tokens as a router
+        vm.startPrank(usage.router());
+        usage.withdrawVaultToken(amount, false);
+        vm.stopPrank();
+
+        assertEq(poolErc.balanceOf(address(usage.router())), amount, "postUnstakeBalAsset");
+    }
+
+    function test_WithdrawVaultTokenMulticall() public {
+        uint256 amount = 100e18;
+
+        IERC20 poolErc = IERC20(address(usage.pool()));
+        address autoPoolRewarder = address(IAutopool(usage.pool()).rewarder());
+
+        deal(address(poolErc), address(usage.router()), amount);
+
+        assertEq(poolErc.balanceOf(address(usage.router())), amount, "startBalAsset");
+
+        vm.startPrank(address(usage.router()));
+        poolErc.approve(autoPoolRewarder, amount);
+        vm.stopPrank();
+
+        usage.queueStakeVaultToken(amount);
+        usage.queueWithdrawVaultToken(amount, false);
+
+        vm.startPrank(usage.router());
+        usage.executeMulticall();
+        vm.stopPrank();
+
+        assertEq(poolErc.balanceOf(address(usage.router())), amount, "endBalAsset");
+    }
+
+    // function test_ClaimRewards() public {
+    //     uint256 amount = 100e18;
+    //     usage.mintAssets(1, amount);
+
+    //     vm.startPrank(usage.user1());
+    //     usage.approveAssetsToRouter(amount);
+    //     vm.stopPrank();
+
+    //     vm.startPrank(usage.user1());
+    //     usage.deposit(1, amount, 10_000_000);
+    //     vm.stopPrank();
+
+    //     vm.startPrank(usage.user1());
+    //     usage.approveSharesToRouter(amount);
+    //     vm.stopPrank();
+
+    //     assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), amount, "startBalShare");
+    //     assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "startBalAsset");
+
+    //     vm.startPrank(usage.router());
+    //     usage.claimRewards(1, 1, amount, 1);
+    //     vm.stopPrank();
+
+    //     assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0, "endBalShare");
+    //     assertEq(usage.vaultAsset().balanceOf(usage.user1()), amount, "endBalAsset");
+    // }
 
     function test_RedeemMax() public {
         usage.mintAssets(1, 100e18);

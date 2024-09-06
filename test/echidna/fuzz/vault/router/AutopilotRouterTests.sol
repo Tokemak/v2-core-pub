@@ -11,7 +11,6 @@ import { AutopilotRouter } from "src/vault/AutopilotRouter.sol";
 import { IAutopool } from "src/vault/AutopoolETH.sol";
 import { AutopoolMainRewarder } from "src/rewarders/AutopoolMainRewarder.sol";
 import { IRewards } from "src/interfaces/rewarders/IRewards.sol";
-import { Rewards } from "src/rewarders/Rewards.sol";
 import { ISystemRegistry } from "src/vault/AutopilotRouterBase.sol";
 import { BaseAsyncSwapper } from "src/liquidation/BaseAsyncSwapper.sol";
 import { AsyncSwapperRegistry } from "src/liquidation/AsyncSwapperRegistry.sol";
@@ -109,6 +108,7 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
         _pool.setCryticFnsEnabled(false);
 
         autoPoolRouter = new TestRouter(_systemRegistry);
+        _systemRegistry.setAutopilotRouter(address(autoPoolRouter));
 
         AsyncSwapperRegistry asyncSwapperRegistry = new AsyncSwapperRegistry(_systemRegistry);
         _systemRegistry.setAsyncSwapperRegistry(address(asyncSwapperRegistry));
@@ -646,50 +646,34 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
     }
 
     // Claim Rewards
-    function claimRewards(
-        uint256 userSeed,
-        uint256 recipientSeed,
-        uint256 amount,
-        uint256 cycle
-    ) public updateUser1Balance {
-        address recipientAddress = _resolveUserFromSeed(recipientSeed);
+    function claimRewards(uint256 amount, uint256 cycle) public updateUser1Balance {
+        // Ensure the rewarder has enough to satisfy the claim
+        _toke.mint(address(_rewards), amount);
 
         IRewards.Recipient memory recipient =
-            IRewards.Recipient({ chainId: block.chainid, cycle: cycle, wallet: recipientAddress, amount: amount });
+            IRewards.Recipient({ chainId: block.chainid, cycle: cycle, wallet: msg.sender, amount: amount });
 
-        address signer = _resolveUserFromSeed(userSeed);
+        bytes32 hashedRecipient = _rewards.genHash(recipient);
 
-        Rewards rewards = new Rewards(_systemRegistry, IERC20(address(_pool)), signer);
-        bytes32 hashedRecipient = rewards.genHash(recipient);
-
-        uint256 signerKey = _resolveUserPrivateKeyFromSeed(userSeed);
-        (uint8 v, bytes32 r, bytes32 s) = hevm.sign(signerKey, hashedRecipient);
+        (uint8 v, bytes32 r, bytes32 s) = hevm.sign(_rewardsSignerKey, hashedRecipient);
 
         _startPrank(msg.sender);
-        autoPoolRouter.claimRewards(rewards, recipient, v, r, s);
+        autoPoolRouter.claimRewards(_rewards, recipient, v, r, s);
         _stopPrank();
     }
 
-    function queueClaimRewards(
-        uint256 userSeed,
-        uint256 recipientSeed,
-        uint256 amount,
-        uint256 cycle
-    ) public updateUser1Balance {
-        address recipientAddress = _resolveUserFromSeed(recipientSeed);
+    function queueClaimRewards(uint256 amount, uint256 cycle) public updateUser1Balance {
+        // Ensure the rewarder has enough to satisfy the claim
+        _toke.mint(address(_rewards), amount);
 
         IRewards.Recipient memory recipient =
-            IRewards.Recipient({ chainId: block.chainid, cycle: cycle, wallet: recipientAddress, amount: amount });
+            IRewards.Recipient({ chainId: block.chainid, cycle: cycle, wallet: msg.sender, amount: amount });
 
-        address signer = _resolveUserFromSeed(userSeed);
+        bytes32 hashedRecipient = _rewards.genHash(recipient);
 
-        Rewards rewards = new Rewards(_systemRegistry, IERC20(address(_pool)), signer);
-        bytes32 hashedRecipient = rewards.genHash(recipient);
+        (uint8 v, bytes32 r, bytes32 s) = hevm.sign(_rewardsSignerKey, hashedRecipient);
 
-        uint256 signerKey = _resolveUserPrivateKeyFromSeed(userSeed);
-        (uint8 v, bytes32 r, bytes32 s) = hevm.sign(signerKey, hashedRecipient);
-
-        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.claimRewards.selector, rewards, recipient, v, r, s));
+        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.claimRewards.selector, _rewards, recipient, v, r, s));
     }
 
     // Utils
@@ -703,7 +687,7 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
         // a prank while one is already in process
     }
 
-    function _resolveUserFromSeed(uint256 userSeed) private returns (address) {
+    function _resolveUserFromSeed(uint256 userSeed) internal returns (address) {
         uint256 userClamped = clampBetween(userSeed, 1, 3);
         address to = userClamped == 1 ? _user1 : userClamped == 2 ? _user2 : _user3;
         return to;

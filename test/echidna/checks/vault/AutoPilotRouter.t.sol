@@ -9,6 +9,7 @@ import { AutopilotRouterUsage } from "test/echidna/fuzz/vault/router/AutopilotRo
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IAutopool } from "src/vault/AutopoolETH.sol";
 import { Vm } from "forge-std/Vm.sol";
+import { TestERC20 } from "test/mocks/TestERC20.sol";
 
 contract UsageTest is AutopilotRouterUsage {
     Vm private _vm;
@@ -47,6 +48,14 @@ contract UsageTest is AutopilotRouterUsage {
 
     function _stopPrank() internal override {
         _vm.stopPrank();
+    }
+
+    function toke() public view returns (TestERC20) {
+        return _toke;
+    }
+
+    function resolveUserFromSeed(uint256 userSeed) public returns (address) {
+        return _resolveUserFromSeed(userSeed);
     }
 }
 
@@ -946,32 +955,19 @@ contract AutopoolETHTests is Test {
         assertEq(poolErc.balanceOf(address(usage.router())), amount, "endBalAsset");
     }
 
-    // function test_ClaimRewards() public {
-    //     uint256 amount = 100e18;
-    //     usage.mintAssets(1, amount);
+    function test_ClaimRewards() public {
+        uint256 amount = 1.4e18;
 
-    //     vm.startPrank(usage.user1());
-    //     usage.approveAssetsToRouter(amount);
-    //     vm.stopPrank();
+        uint256 userStartBalance = usage.toke().balanceOf(usage.user1());
 
-    //     vm.startPrank(usage.user1());
-    //     usage.deposit(1, amount, 10_000_000);
-    //     vm.stopPrank();
+        vm.startPrank(usage.user1());
+        usage.claimRewards(amount, 1);
+        vm.stopPrank();
 
-    //     vm.startPrank(usage.user1());
-    //     usage.approveSharesToRouter(amount);
-    //     vm.stopPrank();
+        uint256 userEndBalance = usage.toke().balanceOf(usage.user1());
 
-    //     assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), amount, "startBalShare");
-    //     assertEq(usage.vaultAsset().balanceOf(usage.user1()), 0, "startBalAsset");
-
-    //     vm.startPrank(usage.router());
-    //     usage.claimRewards(1, 1, amount, 1);
-    //     vm.stopPrank();
-
-    //     assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0, "endBalShare");
-    //     assertEq(usage.vaultAsset().balanceOf(usage.user1()), amount, "endBalAsset");
-    // }
+        assertEq(userStartBalance + amount, userEndBalance, "balChange");
+    }
 
     function test_RedeemMax() public {
         usage.mintAssets(1, 100e18);

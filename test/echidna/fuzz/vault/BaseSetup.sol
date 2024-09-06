@@ -29,6 +29,8 @@ import { AutopoolMainRewarder } from "src/rewarders/AutopoolMainRewarder.sol";
 import { IERC3156FlashBorrower } from "openzeppelin-contracts/interfaces/IERC3156FlashBorrower.sol";
 import { CryticIERC4626Internal } from "crytic/properties/contracts/ERC4626/util/IERC4626Internal.sol";
 import { TestIncentiveCalculator } from "test/mocks/TestIncentiveCalculator.sol";
+import { Rewards } from "src/rewarders/Rewards.sol";
+import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 contract BasePoolSetup {
     using Clones for address;
@@ -68,6 +70,11 @@ contract BasePoolSetup {
 
     uint256 internal _user3PrivateKey = 0x986937dcc86261d55711604ed8600925a1d45224ad089c6cf3c3ab7ea1a3f362;
     address internal _user3 = address(0x73C689aa3121E38B15B0C9d46Fd9147214214c56);
+
+    uint256 internal _rewardsSignerKey = 0xb4b972134e76bd089b561e2a7e0f124901e55f3a5363e46b5c7dfc0ecfc4f38b;
+    address internal _rewardsSigner = 0x39BB41e448fDff5E699Ceab2eAD6E0b2cD55b95e;
+
+    Rewards internal _rewards;
 
     constructor() {
         _users = new address[](3);
@@ -202,6 +209,8 @@ contract BasePoolSetup {
         _rootPriceOracle.setPrice(address(_destVault3Underlyer), 1e18);
 
         _solver = new TestSolver();
+
+        _rewards = new Rewards(_systemRegistry, IERC20(address(_toke)), _rewardsSigner);
     }
 }
 

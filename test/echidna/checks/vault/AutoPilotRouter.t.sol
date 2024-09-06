@@ -4,12 +4,14 @@ pragma solidity >=0.8.7;
 
 // solhint-disable func-name-mixedcase, no-console
 
-import { Test } from "forge-std/Test.sol";
-import { AutopilotRouterUsage } from "test/echidna/fuzz/vault/router/AutopilotRouterTests.sol";
 import { IERC20Metadata as IERC20 } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { IAutopool } from "src/vault/AutopoolETH.sol";
+
 import { Vm } from "forge-std/Vm.sol";
+import { Test } from "forge-std/Test.sol";
 import { TestERC20 } from "test/mocks/TestERC20.sol";
+import { IAutopool } from "src/vault/AutopoolETH.sol";
+import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
+import { AutopilotRouterUsage } from "test/echidna/fuzz/vault/router/AutopilotRouterTests.sol";
 
 contract UsageTest is AutopilotRouterUsage {
     Vm private _vm;
@@ -831,12 +833,14 @@ contract AutopoolETHTests is Test {
 
         deal(address(usage.vaultAsset()), address(usage.router()), amount);
 
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), 0, "startBalShare");
         assertEq(usage.vaultAsset().balanceOf(address(usage.router())), amount, "startBalAsset");
 
         vm.startPrank(usage.user1());
         usage.depositBalance(1, amount);
         vm.stopPrank();
 
+        assertEq(IAutopool(usage.pool()).balanceOf(usage.user1()), amount, "endBalShare");
         assertEq(usage.vaultAsset().balanceOf(address(usage.router())), 0, "endBalAsset");
     }
 
@@ -865,6 +869,7 @@ contract AutopoolETHTests is Test {
         deal(address(poolErc), address(usage.router()), amount);
 
         assertEq(poolErc.balanceOf(address(usage.router())), amount, "startBalAsset");
+        assertEq(IMainRewarder(autoPoolRewarder).balanceOf(address(usage.user1())), 0, "startBalRewarder");
 
         vm.startPrank(address(usage.router()));
         poolErc.approve(autoPoolRewarder, amount);
@@ -876,6 +881,7 @@ contract AutopoolETHTests is Test {
         vm.stopPrank();
 
         assertEq(poolErc.balanceOf(address(usage.router())), 0, "endBalAsset");
+        assertEq(IMainRewarder(autoPoolRewarder).balanceOf(address(usage.user1())), amount, "endBalRewarder");
     }
 
     function test_StakeVaultTokenMulticall() public {
@@ -962,6 +968,21 @@ contract AutopoolETHTests is Test {
 
         vm.startPrank(usage.user1());
         usage.claimRewards(amount, 1);
+        vm.stopPrank();
+
+        uint256 userEndBalance = usage.toke().balanceOf(usage.user1());
+
+        assertEq(userStartBalance + amount, userEndBalance, "balChange");
+    }
+
+    function test_ClaimRewardsMulticall() public {
+        uint256 amount = 1.4e18;
+
+        uint256 userStartBalance = usage.toke().balanceOf(usage.user1());
+
+        vm.startPrank(usage.user1());
+        usage.queueClaimRewards(amount, 1);
+        usage.executeMulticall();
         vm.stopPrank();
 
         uint256 userEndBalance = usage.toke().balanceOf(usage.user1());

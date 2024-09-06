@@ -81,9 +81,9 @@ abstract contract AutopilotRouterBase is
         _checkVault(address(vault));
         IMainRewarder autoPoolRewarder = IAutopool(address(vault)).rewarder();
 
-        uint256 vaultBalance = vault.balanceOf(address(this));
-        if (vaultBalance < maxAmount) {
-            maxAmount = vaultBalance;
+        uint256 routerBalance = vault.balanceOf(address(this));
+        if (routerBalance < maxAmount) {
+            maxAmount = routerBalance;
         }
 
         autoPoolRewarder.stake(msg.sender, maxAmount);

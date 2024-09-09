@@ -14,8 +14,7 @@ library Incentives {
     using Math for uint256;
 
     // when removing liquidity, rewards can be expired by this amount if the pool as incentive credits
-    uint256 public constant OUT_EXPIRED_REWARD_TOLERANCE = 7 days;
-    uint256 public constant IN_EXPIRED_REWARD_TOLERANCE = 2 days;
+    uint256 public constant EXPIRED_REWARD_TOLERANCE = 7 days;
 
     function calculateIncentiveApr(
         IIncentivesPricingStats pricing,
@@ -43,28 +42,33 @@ library Incentives {
                 uint256 periodFinish = stats.periodFinishForRewards[i];
                 uint256 rewardRate = stats.annualizedRewardAmounts[i];
                 uint256 rewardDivisor = 10 ** IERC20Metadata(rewardToken).decimals();
-
                 if (direction == IAutopoolStrategy.RebalanceDirection.Out) {
                     // if the destination has credits then extend the periodFinish by the expiredTolerance
                     // this allows destinations that consistently had rewards some leniency
                     if (hasCredits) {
-                        periodFinish += OUT_EXPIRED_REWARD_TOLERANCE;
+                        periodFinish += EXPIRED_REWARD_TOLERANCE;
+                    }
+
+                    // slither-disable-next-line timestamp
+                    if (periodFinish > block.timestamp) {
+                        // tokenPrice is 1e18 and we want 1e18 out, so divide by the token decimals
+                        totalRewards += rewardRate * tokenPrice / rewardDivisor;
                     }
                 } else {
-                    // if the destination has credits then extend the periodFinish by the expiredTolerance
-                    // this allows destinations that consistently had rewards some leniency
-                    if (hasCredits) {
-                        periodFinish += IN_EXPIRED_REWARD_TOLERANCE;
-                    } else {
-                        // if the destination has no credits, require periodFinish to be 3 days in future
-                        periodFinish -= 3 days;
+                    // when adding to a destination, count incentives only when either of the following conditions are
+                    // met:
+                    // 1) the incentive lasts at least 3 days
+                    // 2) the incentive are allowed 2 expired days when dest has a positive incentive credit balance
+                    if (
+                        // slither-disable-next-line timestamp
+                        periodFinish >= block.timestamp + 3 days
+                            || (hasCredits && periodFinish + 2 days > block.timestamp)
+                    ) {
+                        // tokenPrice is 1e18 and we want 1e18 out, so divide by the token decimals
+                        totalRewards += rewardRate * tokenPrice / rewardDivisor;
                     }
                 }
-                // slither-disable-next-line timestamp
-                if (periodFinish > block.timestamp) {
-                    // tokenPrice is 1e18 and we want 1e18 out, so divide by the token decimals
-                    totalRewards += rewardRate * tokenPrice / rewardDivisor;
-                }
+
             }
         }
 

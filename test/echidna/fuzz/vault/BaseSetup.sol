@@ -302,7 +302,7 @@ contract TestDestinationVault is DestinationVault, Numbers {
         return x;
     }
 
-    function underlyingReserves() external view override returns (address[] memory tokens, uint256[] memory amounts) {
+    function underlyingReserves() external pure override returns (address[] memory tokens, uint256[] memory amounts) {
         tokens = new address[](0);
         amounts = new uint256[](0);
     }

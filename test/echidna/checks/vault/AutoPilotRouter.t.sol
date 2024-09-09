@@ -362,10 +362,24 @@ contract AutopoolETHTests is Test {
         assertEq(usage.vaultAsset().allowance(address(usage.router()), usage.user1()), 100e18, "endAllowance");
     }
 
+    function test_ApproveAssetsToRouter() public {
+        assertEq(usage.vaultAsset().allowance(usage.user1(), address(usage.router())), 0, "startAllowance");
+
+        vm.startPrank(usage.user1());
+        usage.approveAssetsToRouter(100e18);
+        vm.stopPrank();
+
+        assertEq(usage.vaultAsset().allowance(usage.user1(), address(usage.router())), 100e18, "endAllowance");
+    }
+
     function test_ApproveShares() public {
+        assertEq(IAutopool(usage.pool()).allowance(address(usage.router()), usage.user1()), 0, "startAllowance");
+
         vm.startPrank(usage.user1());
         usage.approveShare(1, 100e18);
         vm.stopPrank();
+
+        assertEq(IAutopool(usage.pool()).allowance(address(usage.router()), usage.user1()), 100e18, "endAllowance");
     }
 
     function test_ApproveSharesMulticall() public {
@@ -378,6 +392,42 @@ contract AutopoolETHTests is Test {
         vm.stopPrank();
 
         assertEq(IAutopool(usage.pool()).allowance(address(usage.router()), usage.user1()), 100e18, "endAllowance");
+    }
+
+    function test_ApproveSharesToRouter() public {
+        assertEq(IAutopool(usage.pool()).allowance(usage.user1(), address(usage.router())), 0, "startAllowance");
+
+        vm.startPrank(usage.user1());
+        usage.approveSharesToRouter(100e18);
+        vm.stopPrank();
+
+        assertEq(IAutopool(usage.pool()).allowance(usage.user1(), address(usage.router())), 100e18, "endAllowance");
+    }
+
+    function test_ApproveRewarder() public {
+        address autoPoolRewarder = address(IAutopool(usage.pool()).rewarder());
+
+        assertEq(IAutopool(usage.pool()).allowance(usage.router(), autoPoolRewarder), 0, "startAllowance");
+
+        vm.startPrank(usage.user1());
+        usage.approveRewarder(100e18);
+        vm.stopPrank();
+
+        assertEq(IAutopool(usage.pool()).allowance(usage.router(), autoPoolRewarder), 100e18, "endAllowance");
+    }
+
+    function test_ApproveRewarderMulticall() public {
+        address autoPoolRewarder = address(IAutopool(usage.pool()).rewarder());
+
+        assertEq(IAutopool(usage.pool()).allowance(usage.router(), autoPoolRewarder), 0, "startAllowance");
+
+        usage.queueApproveRewarder(100e18);
+
+        vm.startPrank(usage.user1());
+        usage.executeMulticall();
+        vm.stopPrank();
+
+        assertEq(IAutopool(usage.pool()).allowance(usage.router(), autoPoolRewarder), 100e18, "endAllowance");
     }
 
     function test_PullTokenFromAsset() public {
@@ -900,8 +950,8 @@ contract AutopoolETHTests is Test {
         assertEq(poolErc.balanceOf(address(usage.router())), amount, "startBalAsset");
         assertEq(IMainRewarder(autoPoolRewarder).balanceOf(address(usage.user1())), 0, "startBalRewarder");
 
-        vm.startPrank(address(usage.router()));
-        poolErc.approve(autoPoolRewarder, amount);
+        vm.startPrank(address(usage.user1()));
+        usage.approveRewarder(amount);
         vm.stopPrank();
 
         // User1 stakes the all the vault tokens
@@ -917,14 +967,12 @@ contract AutopoolETHTests is Test {
         uint256 amount = 100e18;
 
         IERC20 poolErc = IERC20(address(usage.pool()));
-        address autoPoolRewarder = address(IAutopool(usage.pool()).rewarder());
-
         deal(address(poolErc), address(usage.router()), amount);
 
         assertEq(poolErc.balanceOf(address(usage.router())), amount, "startBalAsset");
 
-        vm.startPrank(address(usage.router()));
-        poolErc.approve(autoPoolRewarder, amount);
+        vm.startPrank(address(usage.user1()));
+        usage.approveRewarder(amount);
         vm.stopPrank();
 
         usage.queueStakeVaultToken(amount);
@@ -941,14 +989,12 @@ contract AutopoolETHTests is Test {
         uint256 amount = 100e18;
 
         IERC20 poolErc = IERC20(address(usage.pool()));
-        address autoPoolRewarder = address(IAutopool(usage.pool()).rewarder());
-
         deal(address(poolErc), address(usage.router()), amount);
 
         assertEq(poolErc.balanceOf(address(usage.router())), amount, "startBalAsset");
 
-        vm.startPrank(address(usage.router()));
-        poolErc.approve(autoPoolRewarder, amount);
+        vm.startPrank(address(usage.user1()));
+        usage.approveRewarder(amount);
         vm.stopPrank();
 
         // Stake the vault tokens as a router
@@ -970,14 +1016,12 @@ contract AutopoolETHTests is Test {
         uint256 amount = 100e18;
 
         IERC20 poolErc = IERC20(address(usage.pool()));
-        address autoPoolRewarder = address(IAutopool(usage.pool()).rewarder());
-
         deal(address(poolErc), address(usage.router()), amount);
 
         assertEq(poolErc.balanceOf(address(usage.router())), amount, "startBalAsset");
 
-        vm.startPrank(address(usage.router()));
-        poolErc.approve(autoPoolRewarder, amount);
+        vm.startPrank(address(usage.user1()));
+        usage.approveRewarder(amount);
         vm.stopPrank();
 
         usage.queueStakeVaultToken(amount);

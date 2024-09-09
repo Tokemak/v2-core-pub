@@ -122,18 +122,6 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
     }
 
     // Approve
-    function approveAssetsToRouter(uint256 amount) public updateUser1Balance {
-        _startPrank(msg.sender);
-        _vaultAsset.approve(address(autoPoolRouter), amount);
-        _stopPrank();
-    }
-
-    function approveSharesToRouter(uint256 amount) public updateUser1Balance {
-        _startPrank(msg.sender);
-        _pool.approve(address(autoPoolRouter), amount);
-        _stopPrank();
-    }
-
     function approveAsset(uint256 toSeed, uint256 amount) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
 
@@ -156,9 +144,9 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
         _stopPrank();
     }
 
-    function approveRewarder(uint256 amount) public updateUser1Balance {
+    function approveAssetsToRouter(uint256 amount) public updateUser1Balance {
         _startPrank(msg.sender);
-        autoPoolRouter.approve(_pool, address(_mainRewarder), amount);
+        _vaultAsset.approve(address(autoPoolRouter), amount);
         _stopPrank();
     }
 
@@ -166,6 +154,22 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
         address to = _resolveUserFromSeed(toSeed);
 
         queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.approve.selector, _pool, to, amount));
+    }
+
+    function approveSharesToRouter(uint256 amount) public updateUser1Balance {
+        _startPrank(msg.sender);
+        _pool.approve(address(autoPoolRouter), amount);
+        _stopPrank();
+    }
+
+    function approveRewarder(uint256 amount) public updateUser1Balance {
+        _startPrank(msg.sender);
+        autoPoolRouter.approve(_pool, address(_mainRewarder), amount);
+        _stopPrank();
+    }
+
+    function queueApproveRewarder(uint256 amount) public updateUser1Balance {
+        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.approve.selector, _pool, _mainRewarder, amount));
     }
 
     // Mint

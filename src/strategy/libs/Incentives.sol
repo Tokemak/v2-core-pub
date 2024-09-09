@@ -42,6 +42,7 @@ library Incentives {
                 uint256 periodFinish = stats.periodFinishForRewards[i];
                 uint256 rewardRate = stats.annualizedRewardAmounts[i];
                 uint256 rewardDivisor = 10 ** IERC20Metadata(rewardToken).decimals();
+
                 if (direction == IAutopoolStrategy.RebalanceDirection.Out) {
                     // if the destination has credits then extend the periodFinish by the expiredTolerance
                     // this allows destinations that consistently had rewards some leniency
@@ -68,7 +69,6 @@ library Incentives {
                         totalRewards += rewardRate * tokenPrice / rewardDivisor;
                     }
                 }
-
             }
         }
 

@@ -55,6 +55,9 @@ library Incentives {
                     // this allows destinations that consistently had rewards some leniency
                     if (hasCredits) {
                         periodFinish += IN_EXPIRED_REWARD_TOLERANCE;
+                    } else {
+                        // if the destination has no credits, require periodFinish to be 3 days in future
+                        periodFinish -= 3 days;
                     }
                 }
                 // slither-disable-next-line timestamp

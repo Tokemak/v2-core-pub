@@ -1824,7 +1824,8 @@ contract AutopoolETHStrategyTest is Test {
         uint40[] memory periodFinishes = new uint40[](1);
         rewardTokens[0] = rewardToken;
         annualizedRewards[0] = 5e18;
-        periodFinishes[0] = 180 days + 1 days; // when no credits, rewards must be active
+        // when no credits, rewards must be active for at least 3 days
+        periodFinishes[0] = 180 days + 3 days + 1 hours;
 
         IDexLSTStats.StakingIncentiveStats memory stat;
         stat.rewardTokens = rewardTokens;

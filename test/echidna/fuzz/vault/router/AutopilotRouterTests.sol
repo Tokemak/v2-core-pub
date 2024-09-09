@@ -31,13 +31,8 @@ contract TestRouter is AutopilotRouter {
     }
 
     /// @notice Intentionally vulnerable. Will filter out for normal runs but used to test checks are working
-    function withdrawVaultTokenFrom(
-        AutopoolMainRewarder mainRewarder,
-        address from,
-        uint256 amount,
-        bool claim
-    ) public {
-        mainRewarder.withdraw(from, amount, claim);
+    function withdrawVaultTokenFrom(AutopoolMainRewarder mainRewarder, address from) public {
+        mainRewarder.withdraw(from, 1, false);
     }
 }
 
@@ -161,6 +156,12 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
         _stopPrank();
     }
 
+    function approveRewarder(uint256 amount) public updateUser1Balance {
+        _startPrank(msg.sender);
+        autoPoolRouter.approve(_pool, address(_mainRewarder), amount);
+        _stopPrank();
+    }
+
     function queueApproveShare(uint256 toSeed, uint256 amount) public updateUser1Balance {
         address to = _resolveUserFromSeed(toSeed);
 
@@ -181,7 +182,13 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
 
         _startPrank(msg.sender);
         autoPoolRouter.pullToken(baseAsset, shares, address(autoPoolRouter));
+        _stopPrank();
+
+        _startPrank(msg.sender);
         autoPoolRouter.approve(baseAsset, address(_pool), shares);
+        _stopPrank();
+
+        _startPrank(msg.sender);
         autoPoolRouter.mint(_pool, to, shares, maxAmountIn);
         _stopPrank();
     }
@@ -201,7 +208,13 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
 
         _startPrank(msg.sender);
         autoPoolRouter.pullToken(baseAsset, amount, address(autoPoolRouter));
+        _stopPrank();
+
+        _startPrank(msg.sender);
         autoPoolRouter.approve(baseAsset, address(_pool), amount);
+        _stopPrank();
+
+        _startPrank(msg.sender);
         autoPoolRouter.deposit(_pool, to, amount, minSharesOut);
         _stopPrank();
     }
@@ -445,21 +458,15 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
     }
 
     /// @dev This is vulnerable and is filtered function. Use it verify checks are working
-    function withdrawVaultTokenFrom(uint256 fromSeed, uint256 amount, bool claim) public updateUser1Balance {
-        address from = _resolveUserFromSeed(fromSeed);
-
+    function withdrawVaultTokenFrom() public updateUser1Balance {
         _startPrank(msg.sender);
-        autoPoolRouter.withdrawVaultTokenFrom(_mainRewarder, from, amount, claim);
+        autoPoolRouter.withdrawVaultTokenFrom(_mainRewarder, _user1);
         _stopPrank();
     }
 
     /// @dev This is vulnerable and is filtered function. Use it verify checks are working
-    function queueWithdrawVaultTokenFrom(uint256 fromSeed, uint256 amount, bool claim) public updateUser1Balance {
-        address from = _resolveUserFromSeed(fromSeed);
-
-        queuedCalls.push(
-            abi.encodeWithSelector(autoPoolRouter.withdrawVaultTokenFrom.selector, _mainRewarder, from, amount, claim)
-        );
+    function queueWithdrawVaultTokenFrom() public updateUser1Balance {
+        queuedCalls.push(abi.encodeWithSelector(autoPoolRouter.withdrawVaultTokenFrom.selector, _mainRewarder, _user1));
     }
 
     // Swap
@@ -478,7 +485,6 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
         address to = _resolveUserFromSeed(toSeed);
 
         // Mocked 1:1 swap
-        _startPrank(msg.sender);
 
         bytes[] memory calls = new bytes[](3);
 
@@ -486,6 +492,7 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
         calls[1] = abi.encodeCall(autoPoolRouter.swapToken, (address(swapperMock), swapParams));
         calls[2] = abi.encodeCall(autoPoolRouter.depositBalance, (_pool, to, minSharesOut));
 
+        _startPrank(msg.sender);
         autoPoolRouter.multicall(calls);
         _stopPrank();
     }
@@ -636,6 +643,26 @@ abstract contract AutopilotRouterUsage is BasePoolSetup, PropertiesAsserts {
     function stakeVaultToken(uint256 amount) public updateUser1Balance {
         _startPrank(msg.sender);
         autoPoolRouter.stakeVaultToken(IERC20(address(_pool)), amount);
+        _stopPrank();
+    }
+
+    function stakeVaultTokenFull(uint256 amount) public updateUser1Balance {
+        _vaultAsset.mint(address(autoPoolRouter), amount);
+
+        _startPrank(msg.sender);
+        autoPoolRouter.approve(IERC20(_vaultAsset), address(_pool), amount);
+        _stopPrank();
+
+        _startPrank(msg.sender);
+        autoPoolRouter.deposit(_pool, address(autoPoolRouter), amount, 1);
+        _stopPrank();
+
+        _startPrank(msg.sender);
+        autoPoolRouter.approve(IERC20(_pool), address(_mainRewarder), _pool.balanceOf(address(autoPoolRouter)));
+        _stopPrank();
+
+        _startPrank(msg.sender);
+        autoPoolRouter.stakeVaultToken(IERC20(address(_pool)), _pool.balanceOf(address(autoPoolRouter)));
         _stopPrank();
     }
 

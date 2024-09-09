@@ -860,6 +860,35 @@ contract AutopoolETHTests is Test {
         assertEq(usage.vaultAsset().balanceOf(address(usage.router())), 0, "endBalAsset");
     }
 
+    function test_StakeVaultTokenFull() public {
+        address autoPoolRewarder = address(IAutopool(usage.pool()).rewarder());
+
+        uint256 amount = 100e18;
+        assertEq(IMainRewarder(autoPoolRewarder).balanceOf(address(usage.user1())), 0, "startBalRewarder");
+
+        vm.startPrank(usage.user1());
+        usage.stakeVaultTokenFull(amount);
+        vm.stopPrank();
+
+        assertEq(IMainRewarder(autoPoolRewarder).balanceOf(address(usage.user1())), amount, "endBalRewarder");
+    }
+
+    function test_WithdrawVaultTokenFrom() public {
+        test_StakeVaultTokenFull();
+
+        address autoPoolRewarder = address(IAutopool(usage.pool()).rewarder());
+
+        uint256 startBal = IMainRewarder(autoPoolRewarder).balanceOf(address(usage.user1()));
+
+        vm.startPrank(usage.user2());
+        usage.withdrawVaultTokenFrom();
+        vm.stopPrank();
+
+        uint256 endBal = IMainRewarder(autoPoolRewarder).balanceOf(address(usage.user1()));
+
+        assertTrue(startBal > endBal, "balChange");
+    }
+
     function test_StakeVaultToken() public {
         uint256 amount = 100e18;
 

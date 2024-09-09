@@ -6,7 +6,7 @@ cryticArgs:
         "(AutopoolDebt,0x1f),(AutopoolDestinations,0x2f),(StructuredLinkedList,0x3f),(WithdrawalQueue,0x4f),(AutopoolToken,0x5f),(AutopoolFees,0x6f),(Autopool4626,0x7f),(ERC2612,0x8f)",
     ]
 workers: 10
-testLimit: 1000000
+testLimit: 100000000
 quiet: false
 codeSize: 0xffffff
 coverage: false
@@ -14,6 +14,8 @@ filterFunctions:
     [
         "AutopilotRouterTest.pullTokenFromAsset(uint256,uint256,uint256)",
         "AutopilotRouterTest.queuePullTokenFromAsset(uint256,uint256,uint256)",
+        "AutopilotRouterTest.withdrawVaultTokenFrom()",
+        "AutopilotRouterTest.queueWithdrawVaultTokenFrom()",
     ]
 filterBlacklist: true
 allowFFI: true

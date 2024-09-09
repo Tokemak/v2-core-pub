@@ -432,7 +432,7 @@ contract AutopoolETHStrategy is SystemComponent, Initializable, IAutopoolStrateg
         return (true, "");
     }
 
-    function ExpiredRewardTolerance() external pure returns (uint256) {
+    function expiredRewardTolerance() external pure returns (uint256) {
         return Incentives.EXPIRED_REWARD_TOLERANCE;
     }
 

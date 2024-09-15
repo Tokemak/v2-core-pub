@@ -7,6 +7,7 @@ pragma solidity 0.8.17;
 import { ERC4626Test } from "test/fuzz/vault/ERC4626Test.sol";
 import { BaseTest } from "test/BaseTest.t.sol";
 import { AutopoolETH } from "src/vault/AutopoolETH.sol";
+import { Roles } from "src/libs/Roles.sol";
 import { AutopoolETHStrategyTestHelpers as stratHelpers } from "test/strategy/AutopoolETHStrategyTestHelpers.sol";
 import { AutopoolETHStrategy } from "src/strategy/AutopoolETHStrategy.sol";
 
@@ -25,6 +26,7 @@ contract AutopoolETHTest is ERC4626Test, BaseTest {
         bytes memory initData = abi.encode("");
 
         AutopoolETHStrategy stratTemplate = new AutopoolETHStrategy(systemRegistry, stratHelpers.getDefaultConfig());
+        systemRegistry.accessController().grantRole(Roles.AUTO_POOL_FACTORY_MANAGER, address(this));
         autoPoolFactory.addStrategyTemplate(address(stratTemplate));
 
         AutopoolETH vault = AutopoolETH(

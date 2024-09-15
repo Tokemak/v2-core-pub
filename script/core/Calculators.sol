@@ -8,13 +8,15 @@ import { VmSafe } from "forge-std/Vm.sol";
 import { console } from "forge-std/console.sol";
 import { Constants } from "../utils/Constants.sol";
 
+import { EzethLRTCalculator } from "src/stats/calculators/EzethLRTCalculator.sol";
 import { BaseStatsCalculator } from "src/stats/calculators/base/BaseStatsCalculator.sol";
 import { LSTCalculatorBase } from "src/stats/calculators/base/LSTCalculatorBase.sol";
-
+import { ISpotPriceOracle } from "src/interfaces/oracles/ISpotPriceOracle.sol";
 import { CurvePoolRebasingCalculatorBase } from "src/stats/calculators/base/CurvePoolRebasingCalculatorBase.sol";
 import { CurvePoolNoRebasingCalculatorBase } from "src/stats/calculators/base/CurvePoolNoRebasingCalculatorBase.sol";
 import { BalancerStablePoolCalculatorBase } from "src/stats/calculators/base/BalancerStablePoolCalculatorBase.sol";
 
+import { OsethLSTCalculator } from "src/stats/calculators/OsethLSTCalculator.sol";
 import { ProxyLSTCalculator } from "src/stats/calculators/ProxyLSTCalculator.sol";
 
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -23,7 +25,9 @@ import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { IncentiveCalculatorBase } from "src/stats/calculators/base/IncentiveCalculatorBase.sol";
 import { BridgedLSTCalculator } from "src/stats/calculators/bridged/BridgedLSTCalculator.sol";
 
-contract Calculators {
+import { Oracle } from "script/core/Oracle.sol";
+
+contract Calculators is Oracle {
     VmSafe private vm;
 
     struct ProxyLstCalculatorSetup {
@@ -127,32 +131,12 @@ contract Calculators {
         address addr = constants.sys.statsCalcFactory.create(args.aprTemplateId, new bytes32[](0), encodedInitData);
 
         vm.stopBroadcast();
-        console.log("");
-        console.log(string.concat(args.name, " Incentive Calculator address: "), addr);
-        console.log(
-            string.concat(args.name, " Last Snapshot Timestamp: "), IDexLSTStats(addr).current().lastSnapshotTimestamp
-        );
-        console.log("");
+        console.log(string.concat(args.name, " Incentive Calculator: "), addr);
+        IDexLSTStats(addr).current();
         vm.startBroadcast();
 
         return addr;
     }
-
-    // function _setupAeroDexCalculator(
-    //     Constants.Values memory constants,
-    //     AeroDexSetup memory args
-    // ) internal returns (address) {
-    //     AerodromeStakingDexCalculator.InitData memory initData =
-    //         AerodromeStakingDexCalculator.InitData({ poolAddress: args.poolAddress });
-    //     bytes memory encodedInitData = abi.encode(initData);
-
-    //     address addr = constants.sys.statsCalcFactory.create(args.aprTemplateId, args.dependentAprIds,
-    // encodedInitData);
-
-    //     outputDexCalculator(args.name, addr);
-
-    //     return addr;
-    // }
 
     function _setupBalancerCalculator(
         Constants.Values memory constants,
@@ -164,7 +148,7 @@ contract Calculators {
 
         address addr = constants.sys.statsCalcFactory.create(args.aprTemplateId, args.dependentAprIds, encodedInitData);
 
-        outputDexCalculator(args.name, addr);
+        outputDexCalculator(string.concat("Balancer ", args.name), addr);
 
         return addr;
     }
@@ -201,12 +185,177 @@ contract Calculators {
         return addr;
     }
 
+    struct CurveRebasingConvexSetup {
+        string name;
+        bytes32[] dependentAprIds;
+        address poolAddress;
+        address lpToken;
+        uint256 rebasingTokenIdx;
+        address rewarder;
+    }
+
+    struct CurveNoRebasingConvexSetup {
+        string name;
+        bytes32[] dependentAprIds;
+        address poolAddress;
+        address lpToken;
+        address rewarder;
+    }
+
+    function _deployCurveNoRebasingConvexCalculators(
+        Constants.Values memory constants,
+        CurveNoRebasingConvexSetup memory args,
+        bytes32 dexTemplateId,
+        bytes32 incentiveTemplateId
+    ) internal {
+        IStatsCalculator poolCalc = IStatsCalculator(
+            _setupCurvePoolNoRebasingCalculatorBase(
+                constants,
+                CurveNoRebasingSetup({
+                    name: args.name,
+                    aprTemplateId: dexTemplateId,
+                    dependentAprIds: args.dependentAprIds,
+                    poolAddress: args.poolAddress
+                })
+            )
+        );
+
+        _registerPoolMapping(constants.sys.rootPriceOracle, constants.sys.subOracles.curveV1, args.poolAddress, false);
+
+        constants.sys.subOracles.curveV1.registerPool(args.poolAddress, args.lpToken);
+
+        _setupIncentiveCalculatorBase(
+            constants,
+            IncentiveCalcBaseSetup({
+                name: string.concat("Curve Convex ", args.name),
+                aprTemplateId: incentiveTemplateId,
+                poolCalculator: poolCalc,
+                platformToken: constants.tokens.cvx,
+                rewarder: args.rewarder,
+                lpToken: args.lpToken,
+                pool: args.poolAddress
+            })
+        );
+    }
+
+    function _deployCurveRebasingConvexCalculators(
+        Constants.Values memory constants,
+        CurveRebasingConvexSetup memory args,
+        bytes32 dexTemplateId,
+        bytes32 incentiveTemplateId
+    ) internal {
+        IStatsCalculator poolCalc = IStatsCalculator(
+            _setupCurvePoolRebasingCalculatorBase(
+                constants,
+                CurveRebasingSetup({
+                    name: args.name,
+                    aprTemplateId: dexTemplateId,
+                    dependentAprIds: args.dependentAprIds,
+                    poolAddress: args.poolAddress,
+                    rebasingTokenIdx: args.rebasingTokenIdx
+                })
+            )
+        );
+
+        _registerPoolMapping(constants.sys.rootPriceOracle, constants.sys.subOracles.curveV1, args.poolAddress, false);
+
+        constants.sys.subOracles.curveV1.registerPool(args.poolAddress, args.lpToken);
+
+        _setupIncentiveCalculatorBase(
+            constants,
+            IncentiveCalcBaseSetup({
+                name: string.concat("Curve Convex ", args.name),
+                aprTemplateId: incentiveTemplateId,
+                poolCalculator: poolCalc,
+                platformToken: constants.tokens.cvx,
+                rewarder: args.rewarder,
+                lpToken: args.lpToken,
+                pool: args.poolAddress
+            })
+        );
+    }
+
     struct BridgedLSTCalculatorSetup {
         bytes32 aprTemplateId;
         address lstTokenAddress;
         address sourceTokenAddress;
         bool usePriceAsDiscount;
         address ethPerTokenStore;
+    }
+
+    struct BalancerAuraDestCalcSetup {
+        string name;
+        address poolAddress;
+        bytes32[] dependentPoolCalculators;
+        address rewarderAddress;
+        uint256 poolId;
+    }
+
+    function _deployBalancerCompStableAuraCalculators(
+        Constants.Values memory constants,
+        BalancerAuraDestCalcSetup memory args,
+        bytes32 dexTemplateId,
+        bytes32 incentiveTemplateId
+    ) internal {
+        _deployBalancerAuraCalculators(
+            constants, args, dexTemplateId, incentiveTemplateId, constants.sys.subOracles.balancerComp
+        );
+    }
+
+    function _deployBalancerMetaStableAuraCalculators(
+        Constants.Values memory constants,
+        BalancerAuraDestCalcSetup memory args,
+        bytes32 dexTemplateId,
+        bytes32 incentiveTemplateId
+    ) internal {
+        _deployBalancerAuraCalculators(
+            constants, args, dexTemplateId, incentiveTemplateId, constants.sys.subOracles.balancerMeta
+        );
+    }
+
+    function _deployBalancerGyroAuraCalculators(
+        Constants.Values memory constants,
+        BalancerAuraDestCalcSetup memory args,
+        bytes32 dexTemplateId,
+        bytes32 incentiveTemplateId
+    ) internal {
+        _deployBalancerAuraCalculators(
+            constants, args, dexTemplateId, incentiveTemplateId, constants.sys.subOracles.balancerGyro
+        );
+    }
+
+    function _deployBalancerAuraCalculators(
+        Constants.Values memory constants,
+        BalancerAuraDestCalcSetup memory args,
+        bytes32 dexTemplateId,
+        bytes32 incentiveTemplateId,
+        ISpotPriceOracle subOracle
+    ) private {
+        IStatsCalculator poolCalc = IStatsCalculator(
+            _setupBalancerCalculator(
+                constants,
+                BalancerCalcSetup({
+                    name: args.name,
+                    aprTemplateId: dexTemplateId,
+                    dependentAprIds: args.dependentPoolCalculators,
+                    poolAddress: args.poolAddress
+                })
+            )
+        );
+        _registerPoolMapping(constants.sys.rootPriceOracle, subOracle, args.poolAddress, false);
+
+        _setupIncentiveCalculatorBase(
+            constants,
+            IncentiveCalcBaseSetup({
+                name: string.concat("Balancer Aura ", args.name),
+                aprTemplateId: incentiveTemplateId,
+                poolCalculator: poolCalc,
+                platformToken: constants.tokens.aura,
+                rewarder: args.rewarderAddress,
+                lpToken: args.poolAddress,
+                pool: args.poolAddress
+            })
+        );
     }
 
     function _setupBridgedLSTCalculatorBase(
@@ -260,25 +409,55 @@ contract Calculators {
         return addr;
     }
 
+    function _setupEzEthCalculator(
+        Constants.Values memory constants,
+        address restakeManager,
+        bytes32 ezEthTemplateId
+    ) internal returns (address) {
+        LSTCalculatorBase.InitData memory initData =
+            LSTCalculatorBase.InitData({ lstTokenAddress: constants.tokens.ezEth });
+        bytes32[] memory e = new bytes32[](0);
+
+        EzethLRTCalculator.EzEthInitData memory ezEthInitData =
+            EzethLRTCalculator.EzEthInitData({ restakeManager: restakeManager, baseInitData: abi.encode(initData) });
+
+        address addr = constants.sys.statsCalcFactory.create(ezEthTemplateId, e, abi.encode(ezEthInitData));
+
+        outputCalculator("ezETH", addr);
+
+        return addr;
+    }
+
+    function _setupOsEthLSTCalculator(
+        Constants.Values memory constants,
+        bytes32 osEthLstTemplateId
+    ) internal returns (address) {
+        // https://github.com/stakewise/v3-core/blob/5bf378de95c0f51430d6fc7f6b2fc8733a416d3a/deployments/mainnet.json#L13
+        address stakeWiseOsEthPriceOracle = 0x8023518b2192FB5384DAdc596765B3dD1cdFe471;
+
+        LSTCalculatorBase.InitData memory initData =
+            LSTCalculatorBase.InitData({ lstTokenAddress: constants.tokens.osEth });
+        OsethLSTCalculator.OsEthInitData memory osEthInitData = OsethLSTCalculator.OsEthInitData({
+            priceOracle: stakeWiseOsEthPriceOracle,
+            baseInitData: abi.encode(initData)
+        });
+        bytes memory encodedInitData = abi.encode(osEthInitData);
+        address addr = constants.sys.statsCalcFactory.create(osEthLstTemplateId, new bytes32[](0), encodedInitData);
+        outputCalculator("osETH", addr);
+        return addr;
+    }
+
     function outputCalculator(string memory name, address addr) private {
         vm.stopBroadcast();
-        console.log("");
-        console.log(string.concat(name, " LST Calculator address: "), addr);
-        console.log(
-            string.concat(name, " Last Snapshot Timestamp: "), ProxyLSTCalculator(addr).current().lastSnapshotTimestamp
-        );
-        console.log("");
+        console.log(string.concat(name, " Calculator: "), addr);
+        ProxyLSTCalculator(addr).current();
         vm.startBroadcast();
     }
 
     function outputDexCalculator(string memory name, address addr) private {
         vm.stopBroadcast();
-        console.log("");
-        console.log(string.concat(name, " DEX Calculator address: "), addr);
-        console.log(
-            string.concat(name, " Last Snapshot Timestamp: "), IDexLSTStats(addr).current().lastSnapshotTimestamp
-        );
-        console.log("");
+        console.log(string.concat(name, " Calculator: "), addr);
+        IDexLSTStats(addr).current();
         vm.startBroadcast();
     }
 

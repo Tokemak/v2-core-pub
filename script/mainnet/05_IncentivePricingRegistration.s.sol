@@ -28,6 +28,8 @@ contract IncentivePricingRegistration is Script {
         constants.sys.incentivePricing.setRegisteredToken(constants.tokens.swise);
         constants.sys.incentivePricing.setRegisteredToken(constants.tokens.rpl);
         constants.sys.incentivePricing.setRegisteredToken(constants.tokens.bal);
+        constants.sys.incentivePricing.setRegisteredToken(constants.tokens.usdc);
+        constants.sys.incentivePricing.setRegisteredToken(constants.tokens.toke);
 
         constants.sys.accessController.revokeRole(Roles.STATS_INCENTIVE_TOKEN_UPDATER, owner);
 

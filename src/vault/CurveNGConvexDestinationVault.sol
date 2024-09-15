@@ -34,7 +34,6 @@ contract CurveNGConvexDestinationVault is CurveConvexDestinationVault {
         override
         returns (address[] memory tokens, uint256[] memory amounts)
     {
-        // We withdraw everything in one coin to ease swapping
         // re: minAmount == 0, this call is only made during a user initiated withdraw where slippage is
         // controlled for at the router
 

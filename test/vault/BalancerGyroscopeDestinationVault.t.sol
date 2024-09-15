@@ -90,6 +90,8 @@ contract BalancerGyroscopeDestinationVaultTests is Test {
 
         // Setup swap router
 
+        _accessController.grantRole(Roles.SWAP_ROUTER_MANAGER, address(this));
+
         swapRouter = new SwapRouter(_systemRegistry);
         balSwapper = new BalancerV2Swap(address(swapRouter), BAL_VAULT);
         // setup input for Bal WSTETH -> WETH

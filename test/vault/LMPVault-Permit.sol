@@ -64,6 +64,7 @@ contract PermitTests is Test {
 
         _autoPoolFactory = new AutopoolFactory(_systemRegistry, address(template), 800, 100);
         _accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(_autoPoolFactory));
+        _accessController.grantRole(Roles.AUTO_POOL_FACTORY_MANAGER, address(this));
 
         bytes memory initData = abi.encode("");
 

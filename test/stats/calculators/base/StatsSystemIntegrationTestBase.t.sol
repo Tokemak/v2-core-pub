@@ -61,6 +61,7 @@ contract StatsSystemIntegrationTestBase is Test {
         _accessController.grantRole(Roles.STATS_SNAPSHOT_EXECUTOR, address(this));
         _accessController.grantRole(Roles.STATS_INCENTIVE_TOKEN_UPDATER, address(this));
         _accessController.grantRole(Roles.ORACLE_MANAGER, address(this));
+        _accessController.grantRole(Roles.STATS_CALC_REGISTRY_MANAGER, address(this));
 
         _systemSecurity = new SystemSecurityL1(_systemRegistry);
         vm.makePersistent(address(_systemSecurity));

@@ -62,6 +62,7 @@ contract BalancerMetaStablePoolCalculatorTest is Test {
 
         systemRegistry.setAccessController(address(accessController));
         accessController.grantRole(Roles.STATS_SNAPSHOT_EXECUTOR, address(this));
+        accessController.grantRole(Roles.STATS_CALC_REGISTRY_MANAGER, address(this));
 
         StatsCalculatorRegistry statsRegistry = new StatsCalculatorRegistry(systemRegistry);
         systemRegistry.setStatsCalculatorRegistry(address(statsRegistry));

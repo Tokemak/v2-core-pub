@@ -61,6 +61,7 @@ contract AutopoolETHBaseTest is BaseTest {
 
         accessController.grantRole(Roles.AUTO_POOL_DESTINATION_UPDATER, address(this));
         accessController.grantRole(Roles.AUTO_POOL_REWARD_MANAGER, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_FACTORY_MANAGER, address(this));
 
         // create test autoPool
         IAutopoolFactory vaultFactory = systemRegistry.getAutopoolFactoryByType(VaultTypes.LST);

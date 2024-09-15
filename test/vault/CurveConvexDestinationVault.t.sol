@@ -116,6 +116,7 @@ contract CurveConvexDestinationVaultTests is Test {
             swapper: curveSwapper,
             data: abi.encode(sellIndex, buyIndex)
         });
+        _accessController.grantRole(Roles.SWAP_ROUTER_MANAGER, address(this));
         swapRouter.setSwapRoute(STETH_MAINNET, stethSwapRoute);
         _systemRegistry.setSwapRouter(address(swapRouter));
         vm.label(address(swapRouter), "swapRouter");

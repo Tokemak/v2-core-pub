@@ -81,6 +81,7 @@ contract BalancerAuraDestinationVaultComposableTests is Test {
 
         _accessController.grantRole(Roles.DESTINATION_VAULT_FACTORY_MANAGER, address(this));
         _accessController.grantRole(Roles.DESTINATION_VAULT_REGISTRY_MANAGER, address(this));
+        _accessController.grantRole(Roles.SWAP_ROUTER_MANAGER, address(this));
 
         _asset = IWETH9(WETH_MAINNET);
 

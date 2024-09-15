@@ -13,6 +13,8 @@ import { BaseOracleDenominations } from "src/oracles/providers/base/BaseOracleDe
 import { IAggregatorV3Interface } from "src/interfaces/external/chainlink/IAggregatorV3Interface.sol";
 
 contract Oracle {
+    address public constant ETH_IN_USD = address(bytes20("ETH_IN_USD"));
+
     struct ChainlinkOracleSetup {
         address tokenAddress;
         address feedAddress;

@@ -95,6 +95,7 @@ contract AerodromeDestinationVaultBaseTest is Test {
             swapper: _aeroSwap,
             data: abi.encode(aeroRoute)
         });
+        _accessController.grantRole(Roles.SWAP_ROUTER_MANAGER, address(this));
         _swapRouter.setSwapRoute(WSTETH_BASE, route);
         _systemRegistry.setSwapRouter(address(_swapRouter));
 

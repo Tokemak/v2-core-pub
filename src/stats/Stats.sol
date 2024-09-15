@@ -49,6 +49,14 @@ library Stats {
         return keccak256(abi.encode("balancer", poolAddress));
     }
 
+    //slither-disable-start dead-code
+    /// @notice Generate an aprId for a proxy lst calc
+    /// @param tokenAddress address of token
+    function generateProxyIdentifier(address tokenAddress) internal pure returns (bytes32) {
+        return keccak256(abi.encode("proxy", tokenAddress));
+    }
+    //slither-disable-end dead-code
+
     function calculateAnnualizedChangeMinZero(
         uint256 startTimestamp,
         uint256 startValue,

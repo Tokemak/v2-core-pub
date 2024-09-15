@@ -282,7 +282,7 @@ contract LensIntTest5 is LensInt {
         assertEq(pool.streamingFeeBps, streamingFee, "streamingFeeBps");
         assertEq(pool.periodicFeeBps, periodicFee, "periodicFeeBps");
         assertEq(pool.feeHighMarkEnabled, true, "feeHighMarkEnabled");
-        assertEq(pool.feeSettingsIncomplete, true, "feeSettingsIncomplete");
+        assertEq(pool.feeSettingsIncomplete, false, "feeSettingsIncomplete");
         assertEq(pool.isShutdown, true, "isShutdown");
         assertEq(uint256(pool.shutdownStatus), uint256(IAutopool.VaultShutdownStatus.Exploit), "shutdownStatus");
         assertEq(pool.rewarder, 0x8D6556FBD44113A3D2d8fdd49EAF47e46aEfb9Be, "rewarder");
@@ -299,6 +299,17 @@ contract LensIntTest6 is LensInt {
     function setUp() public {
         uint256 forkId = vm.createFork(vm.envString("MAINNET_RPC_URL"), 20_620_939);
         _setUp(forkId, SYSTEM_REGISTRY);
+    }
+
+    function test_CompositeReturn() external {
+        address autoPool = 0x49C4719EaCc746b87703F964F09C22751F397BA0;
+        address destVault = 0x37e565f997c2b16d2542E906672E9c6281e77954;
+        Lens.Autopools memory data = lens.getPoolsAndDestinations();
+        uint256 pix = _findIndexOfPool(data.autoPools, autoPool);
+        uint256 dix = _findIndexOfDestination(data, pix, destVault);
+        Lens.DestinationVault memory dv = data.destinations[pix][dix];
+
+        assertTrue(dv.compositeReturn > 0, "compositeReturn");
     }
 
     // TODO: update with another setup that has more data, specifically rewards

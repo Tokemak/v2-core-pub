@@ -43,6 +43,27 @@ libraries = [
     "src/vault/strategy/libs/SummaryStats.sol:SummaryStats:0x88eA6A9B3d27Ee782f8c3e6bEE6392fabAD59796",
 ]
 
+[profile.mainnet-gen3]
+libraries = [
+    "src/destinations/adapters/BalancerBeethovenAdapter.sol:BalancerBeethovenAdapter:0x187d701805Be6f50A78d60CEfB3f49311d26557b",
+    "src/destinations/adapters/CurveV2FactoryCryptoAdapter.sol:CurveV2FactoryCryptoAdapter:0x0b1083C7Ef91aBBcEbD2A93c3487ab7DCEB63460",
+    "src/destinations/adapters/rewards/AuraRewardsAdapter.sol:AuraRewards:0x6Cd7EA27E6E99057C61FcF500fEDe6E3169b400d",
+    "src/destinations/adapters/rewards/ConvexRewardsAdapter.sol:ConvexRewards:0xa6e7eC872000D4d9dD1e32CFf5Bc42fF768dd099",
+    "src/destinations/adapters/staking/AuraAdapter.sol:AuraStaking:0xDC1F743e614DDA16d7967ECE82700Ff90427C572",
+    "src/destinations/adapters/staking/ConvexAdapter.sol:ConvexStaking:0x716160e19989b54FCb28f30e0c61094b59374553",
+    "src/libs/BalancerUtilities.sol:BalancerUtilities:0x4328F20fE42d4436C753DE7d1518F462b87170d1",
+    "src/strategy/StructuredLinkedList.sol:StructuredLinkedList:0xcd29A689Eb1fd7f333DBe6855dcDd38796f78567",
+    "src/strategy/WithdrawalQueue.sol:WithdrawalQueue:0xF19C66cb159246e00B5336B1Ce4B4E8E01e4E4b4",
+    "src/strategy/libs/Incentives.sol:Incentives:0x93313cF5189847d35083D20eBac7931039A9a360",
+    "src/strategy/libs/PriceReturn.sol:PriceReturn:0x247b4d9BCaEF5d2A630a16b981017796Eb87c1Db",
+    "src/strategy/libs/SummaryStats.sol:SummaryStats:0xD71Da6caBA81c7d5c3314A72A5387D9a66508A4A",
+    "src/vault/libs/Autopool4626.sol:Autopool4626:0x8709b88C5cBCa830d63f726A6f6f8c6573486223",
+    "src/vault/libs/AutopoolDebt.sol:AutopoolDebt:0xd18baC6d95119237B225Db48EC29155a8cd08743",
+    "src/vault/libs/AutopoolDestinations.sol:AutopoolDestinations:0xB8028F58e5dE9cB330C544dF41D9681cDf05062e",
+    "src/vault/libs/AutopoolFees.sol:AutopoolFees:0x8BB2b57aB1F110C5720d54e07d87A9f6B40d9FEA",
+    "src/vault/libs/AutopoolToken.sol:AutopoolToken:0x42699e483C5baA8E9aaD5f7d804127C034A0328F",
+]
+
 [fmt]
 bracket_spacing = true
 int_types = "long"

@@ -635,6 +635,12 @@ contract TestingStrategy is IAutopoolStrategy {
         returns (IStrategy.SummaryStats memory outSummary)
     { }
 
+    function getDestinationSummaryStats(
+        address destAddress,
+        IAutopoolStrategy.RebalanceDirection direction,
+        uint256 amount
+    ) external returns (IStrategy.SummaryStats memory) { }
+
     function getHooks() external pure returns (address[] memory) {
         address[] memory arr = new address[](0);
         return arr;

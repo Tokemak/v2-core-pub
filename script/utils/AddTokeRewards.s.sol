@@ -27,7 +27,7 @@ contract AddTokeRewards is Script {
 
         AutopoolMainRewarder rewarder = AutopoolMainRewarder(address(autoPool.rewarder()));
 
-        rewarder.addToWhitelist(owner);
+        //rewarder.addToWhitelist(owner);
 
         values.sys.systemRegistry.toke().approve(address(rewarder), amount);
         rewarder.queueNewRewards(amount);

@@ -110,6 +110,7 @@ contract AutopilotRouterTest is BaseTest {
 
         accessController.grantRole(Roles.AUTO_POOL_DESTINATION_UPDATER, address(this));
         accessController.grantRole(Roles.AUTO_POOL_MANAGER, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_FACTORY_MANAGER, address(this));
 
         // We use mock since this function is called not from owner and
         vm.mockCall(

@@ -12,10 +12,12 @@ import { IncentivePricingStats } from "src/stats/calculators/IncentivePricingSta
 import { IVault as IBalancerVault } from "src/interfaces/external/balancer/IVault.sol";
 
 import { WstETHEthOracle } from "src/oracles/providers/WstETHEthOracle.sol";
+import { EethOracle } from "src/oracles/providers/EethOracle.sol";
 import { EthPeggedOracle } from "src/oracles/providers/EthPeggedOracle.sol";
 import { ChainlinkOracle } from "src/oracles/providers/ChainlinkOracle.sol";
 import { BalancerLPMetaStableEthOracle } from "src/oracles/providers/BalancerLPMetaStableEthOracle.sol";
 import { BalancerLPComposableStableEthOracle } from "src/oracles/providers/BalancerLPComposableStableEthOracle.sol";
+import { BalancerGyroscopeEthOracle } from "src/oracles/providers/BalancerGyroscopeEthOracle.sol";
 import { CurveV2CryptoEthOracle } from "src/oracles/providers/CurveV2CryptoEthOracle.sol";
 import { CurveV1StableEthOracle } from "src/oracles/providers/CurveV1StableEthOracle.sol";
 import { RedstoneOracle } from "src/oracles/providers/RedstoneOracle.sol";
@@ -38,7 +40,8 @@ enum Systems {
     LST_GEN1_MAINNET,
     LST_GEN2_MAINNET,
     LST_GEN1_BASE,
-    LST_GEN1_SEPOLIA
+    LST_GEN1_SEPOLIA,
+    LST_ETH_MAINNET_GEN3
 }
 
 library Constants {
@@ -67,6 +70,12 @@ library Constants {
         address eEth;
         address weEth;
         address rswEth;
+        address usdc;
+        address dinero;
+        address apxEth;
+        address pxEth;
+        address oEth;
+        address frxEth;
     }
 
     struct System {
@@ -97,7 +106,9 @@ library Constants {
         CurveV2CryptoEthOracle curveV2;
         BalancerLPMetaStableEthOracle balancerMeta;
         BalancerLPComposableStableEthOracle balancerComp;
+        BalancerGyroscopeEthOracle balancerGyro;
         WstETHEthOracle wstEth;
+        EethOracle eEth;
         RedstoneOracle redStone;
         CustomSetOracle customSet;
     }
@@ -139,6 +150,8 @@ library Constants {
             return getLstGen1Base();
         } else if (system == Systems.NEW_SEPOLIA) {
             return getEmptySepolia();
+        } else if (system == Systems.LST_ETH_MAINNET_GEN3) {
+            return getLstEthMainnetGen3();
         } else if (system == Systems.LST_GEN1_SEPOLIA) {
             return getLstGen1Sepolia();
         } else {
@@ -185,6 +198,33 @@ library Constants {
         return Values({ tokens: getSepoliaTokens(), sys: sys, ext: getSepoliaExternal() });
     }
 
+    function getLstEthMainnetGen3() private view returns (Values memory) {
+        System memory sys =
+            getQueryableSystem(0x2218F90A98b0C070676f249EF44834686dAa4285, 0x6972eea1c99c8884B8569Ff8B447A5ea71cde442);
+
+        sys.subOracles = SystemOracles({
+            chainlink: ChainlinkOracle(0x701F115a4d58a44d9e4e437d136DD9fA7b1B6C3f),
+            ethPegged: EthPeggedOracle(0xDEb361BAbf4C8277f0B2ee30914fb155b1A67DE3),
+            curveV1: CurveV1StableEthOracle(0xaeD535d737e80597452d1f04D1b64b4f2Ab8A92b),
+            curveV2: CurveV2CryptoEthOracle(0xD460a37880C35AACF4f01ea6748F1195899aD160),
+            balancerMeta: BalancerLPMetaStableEthOracle(0x4D37d799a44515c25e43cA6ec9E4fF7a0a2a34d9),
+            balancerComp: BalancerLPComposableStableEthOracle(0x7C19e64904ABA791dD653ECF7F355d65d7665a8b),
+            wstEth: WstETHEthOracle(0x31fec5a6C6bBF907144e6F81f60292BA7a5af883),
+            redStone: RedstoneOracle(0xe1aDb6967e1dBD5332d499dFA2f42377d1DA5913),
+            customSet: CustomSetOracle(0x53ff9D648a8A1cf70c6B60ae26B93047cc24066f),
+            balancerGyro: BalancerGyroscopeEthOracle(0x4c70ef1DefFC14e8C0a3D5135EC8EbAfEFcC1c58),
+            eEth: EethOracle(0xAA573a9bf7560870a925Ea1704C061546486dF81)
+        });
+
+        sys.asyncSwappers = AsyncSwappers({
+            zeroEx: 0xBD9e1c43638590Ba64605483c761498EB7Dd6DB9,
+            propellerHead: 0x957243d1cB359A685d90332363a51BA6588F5192,
+            liFi: 0x2164005A8885cb60824F69c96C0f97a54d4AB9C5
+        });
+
+        return Values({ tokens: getMainnetTokens(), sys: sys, ext: getMainnetExternal() });
+    }
+
     function getLstGen2Mainnet() private view returns (Values memory) {
         System memory sys =
             getQueryableSystem(0xB20193f43C9a7184F3cbeD9bAD59154da01488b4, 0xFCC0F0D25E4c7c0DFB5D5a50869183C44429CF9D);
@@ -198,7 +238,9 @@ library Constants {
             balancerComp: BalancerLPComposableStableEthOracle(0xA1946dd8086e781685689F9c19733caa35771c79),
             wstEth: WstETHEthOracle(0xe383DBF350f6A8d0cE4b4654Acaa60E04FfA6c67),
             redStone: RedstoneOracle(0x23a7d7707f80a26495ac73B15Db6F4FA541164F7),
-            customSet: CustomSetOracle(0x107a0ffA06595A5A2491C974CB2C8541Fc7FBccA)
+            customSet: CustomSetOracle(0x107a0ffA06595A5A2491C974CB2C8541Fc7FBccA),
+            balancerGyro: BalancerGyroscopeEthOracle(address(0)),
+            eEth: EethOracle(address(0))
         });
 
         sys.asyncSwappers = AsyncSwappers({
@@ -238,7 +280,9 @@ library Constants {
                     balancerComp: BalancerLPComposableStableEthOracle(0x2BB64D96B0DCfaB7826D11707AAE3F55409d8E19),
                     wstEth: WstETHEthOracle(0xA93F316ef40848AeaFCd23485b6044E7027b5890),
                     redStone: RedstoneOracle(0x9E16879c6F4415Ce5EBE21816C51F476AEEc49bE),
-                    customSet: CustomSetOracle(0x58e161B002034f1F94858613Da0967EB985EB3D0)
+                    customSet: CustomSetOracle(0x58e161B002034f1F94858613Da0967EB985EB3D0),
+                    balancerGyro: BalancerGyroscopeEthOracle(address(0)),
+                    eEth: EethOracle(address(0))
                 }),
                 asyncSwappers: AsyncSwappers({ zeroEx: address(0), propellerHead: address(0), liFi: address(0) }),
                 autopilotRouter: AutopilotRouter(payable(address(0))),
@@ -312,7 +356,13 @@ library Constants {
             ethX: 0xA35b1B31Ce002FBF2058D22F30f95D405200A15b,
             eEth: 0x35fA164735182de50811E8e2E824cFb9B6118ac2,
             weEth: 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee,
-            rswEth: 0xFAe103DC9cf190eD75350761e95403b7b8aFa6c0
+            rswEth: 0xFAe103DC9cf190eD75350761e95403b7b8aFa6c0,
+            usdc: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
+            dinero: 0x6DF0E641FC9847c0c6Fde39bE6253045440c14d3,
+            apxEth: 0x9Ba021B0a9b958B5E75cE9f6dff97C7eE52cb3E6,
+            pxEth: 0x04C154b66CB340F3Ae24111CC767e0184Ed00Cc6,
+            frxEth: 0x5E8422345238F34275888049021821E8E08CAa1f,
+            oEth: 0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3
         });
     }
 
@@ -341,7 +391,13 @@ library Constants {
             ethX: address(0),
             eEth: address(0),
             weEth: 0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A,
-            rswEth: address(0)
+            rswEth: address(0),
+            usdc: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913,
+            dinero: address(0),
+            apxEth: address(0),
+            pxEth: address(0),
+            frxEth: address(0),
+            oEth: address(0)
         });
     }
 
@@ -398,7 +454,13 @@ library Constants {
             ethX: address(0),
             eEth: address(0),
             weEth: address(0),
-            rswEth: address(0)
+            rswEth: address(0),
+            usdc: address(0),
+            dinero: address(0),
+            apxEth: address(0),
+            pxEth: address(0),
+            frxEth: address(0),
+            oEth: address(0)
         });
     }
 }

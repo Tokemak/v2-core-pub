@@ -3,19 +3,6 @@
 
 pragma solidity 0.8.17;
 
-//
-//                   ▓▓
-//                   ▓▓
-//                   ▓▓
-//                   ▓▓
-//                   ▓▓
-//       ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
-//                                 ▓▓
-//                                 ▓▓
-//                                 ▓▓
-//                                 ▓▓
-//                                 ▓▓
-
 import { Errors } from "src/utils/Errors.sol";
 import { IWETH9 } from "src/interfaces/utils/IWETH9.sol";
 import { Ownable2Step } from "src/access/Ownable2Step.sol";

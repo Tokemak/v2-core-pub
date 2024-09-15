@@ -1,18 +1,34 @@
 // SPDX-License-Identifier: UNLICENSED
 // Copyright (c) 2023 Tokemak Foundation. All rights reserved.
+
 pragma solidity 0.8.17;
 
-import { AutopoolDebt } from "src/vault/libs/AutopoolDebt.sol";
+//                   ██
+//                   ██
+//                   ██
+//                   ██
+//                   ██
+//      █████████████████████████████████████████
+//                                 ██
+//                                 ██
+//                                 ██
+//                                 ██
+//                                 ██
+
 import { SystemComponent } from "src/SystemComponent.sol";
+import { AutopoolDebt } from "src/vault/libs/AutopoolDebt.sol";
 import { IAutopool } from "src/interfaces/vault/IAutopool.sol";
 import { ILSTStats } from "src/interfaces/stats/ILSTStats.sol";
+import { IStrategy } from "src/interfaces/strategy/IStrategy.sol";
 import { ISystemRegistry } from "src/interfaces/ISystemRegistry.sol";
 import { IDexLSTStats } from "src/interfaces/stats/IDexLSTStats.sol";
 import { IMainRewarder } from "src/interfaces/rewarders/IMainRewarder.sol";
 import { IExtraRewarder } from "src/interfaces/rewarders/IExtraRewarder.sol";
 import { IDestinationVault } from "src/interfaces/vault/IDestinationVault.sol";
+import { IAutopoolStrategy } from "src/interfaces/strategy/IAutopoolStrategy.sol";
 import { IERC20Metadata } from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
+/// @notice View of currently Autopool and Destinations. Off-chain use only.
 contract Lens is SystemComponent {
     /// =====================================================
     /// Structs
@@ -87,6 +103,7 @@ contract Lens is SystemComponent {
         string lpTokenName;
         uint256 statsSafeLPTotalSupply;
         uint8 statsIncentiveCredits;
+        int256 compositeReturn;
         RewardToken[] rewardsTokens;
         UnderlyingTokenAddress[] underlyingTokens;
         UnderlyingTokenSymbol[] underlyingTokenSymbols;
@@ -128,27 +145,10 @@ contract Lens is SystemComponent {
         }
     }
 
-    /// @notice Get the fee settings for an Autopool
-    /// @dev Structure of this return struct has been updated a few times and will fail on the decode. This is paired
-    /// with the _fillInFeeSettings call to ensure the failure doesn't bubble up
-    /// @param poolAddress Address of the Autopool to query
-    function proxyGetFeeSettings(address poolAddress) public view returns (IAutopool.AutopoolFeeSettings memory) {
-        return IAutopool(poolAddress).getFeeSettings();
-    }
-
-    /// @notice Gets the stats for a Destination
-    /// @dev Structure this return struct has been updated a few times and will fail on the decode
-    function proxyGetStats(address destinationAddress)
-        public
-        returns (IDexLSTStats.DexLSTStatsData memory queriedStats)
-    {
-        return IDestinationVault(destinationAddress).getStats().current();
-    }
-
     /// @notice Get the reward info for a user
     /// @param wallet Address of the wallet to query
     /// @return ret Array of AutopoolUserInfo structs containing reward tokens and amounts for each Autopool
-    function getUserRewardInfo(address wallet) public view returns (UserAutopoolRewardInfo memory) {
+    function getUserRewardInfo(address wallet) external view returns (UserAutopoolRewardInfo memory) {
         Autopool[] memory autoPools = _getPools();
         uint256 nAutoPools = autoPools.length;
         address[] memory autopoolAddresses = new address[](nAutoPools);
@@ -184,6 +184,38 @@ contract Lens is SystemComponent {
         });
     }
 
+    /// @notice Get the fee settings for an Autopool
+    /// @dev Structure of this return struct has been updated a few times and will fail on the decode. This is paired
+    /// with the _fillInFeeSettings call to ensure the failure doesn't bubble up
+    /// @param poolAddress Address of the Autopool to query
+    function proxyGetFeeSettings(address poolAddress) public view returns (IAutopool.AutopoolFeeSettings memory) {
+        return IAutopool(poolAddress).getFeeSettings();
+    }
+
+    /// @notice Gets the stats for a Destination
+    /// @dev Structure this return struct has been updated a few times and will fail on the decode
+    function proxyGetStats(address destinationAddress)
+        public
+        returns (IDexLSTStats.DexLSTStatsData memory queriedStats)
+    {
+        return IDestinationVault(destinationAddress).getStats().current();
+    }
+
+    /// @dev Returns a destinations summary stats. Can revert and there can be abi decode errors temporarily
+    /// @param autopoolStrategy Strategy to query
+    /// @param destinationAddress Address of the destination to query stats for
+    /// @param direction Direction to calculate the stats for
+    /// @param amount Amount to use when looking at dilution effects
+    /// @return stats The Destinations summary stats from the Strategy
+    function proxyGetDestinationSummaryStats(
+        IAutopoolStrategy autopoolStrategy,
+        address destinationAddress,
+        IAutopoolStrategy.RebalanceDirection direction,
+        uint256 amount
+    ) public returns (IStrategy.SummaryStats memory) {
+        return autopoolStrategy.getDestinationSummaryStats(destinationAddress, direction, amount);
+    }
+
     /// =====================================================
     /// Private Helpers
     /// =====================================================
@@ -217,34 +249,6 @@ contract Lens is SystemComponent {
                 navPerShare: vault.convertToAssets(10 ** vault.decimals())
             });
             _fillInFeeSettings(autoPools[i]);
-        }
-    }
-
-    /// @dev Sets the fee settings with a call that loops back to this contract to ensure the struct can be decoded
-    /// @param pool Autopool to fill in fees far
-    function _fillInFeeSettings(Autopool memory pool) private view {
-        try Lens(address(this)).proxyGetFeeSettings(pool.poolAddress) returns (
-            IAutopool.AutopoolFeeSettings memory settings
-        ) {
-            pool.streamingFeeBps = settings.streamingFeeBps;
-            pool.periodicFeeBps = settings.periodicFeeBps;
-            pool.feeHighMarkEnabled = settings.rebalanceFeeHighWaterMarkEnabled;
-            pool.feeSettingsIncomplete = true;
-        } catch { }
-    }
-
-    /// @dev Returns a destinations current stats. Can fail when prices are stale we capture that here
-    /// @param destinationAddress Address of the destination to query stats for
-    function _safeDestinationGetStats(address destinationAddress)
-        private
-        returns (IDexLSTStats.DexLSTStatsData memory currentStats, bool incomplete)
-    {
-        try Lens(address(this)).proxyGetStats(destinationAddress) returns (
-            IDexLSTStats.DexLSTStatsData memory queriedStats
-        ) {
-            currentStats = queriedStats;
-        } catch {
-            incomplete = true;
         }
     }
 
@@ -289,7 +293,7 @@ contract Lens is SystemComponent {
                 shutdownStatus: IDestinationVault(destinationAddress).shutdownStatus(),
                 statsIncomplete: statsIncomplete,
                 autoPoolOwnsShares: vaultBalOfDest,
-                actualLPTotalSupply: IDestinationVault(destinationAddress).underlyingTotalSupply(),
+                actualLPTotalSupply: _safeGetDestinationUnderlying(destinationAddress),
                 dexPool: IDestinationVault(destinationAddress).getPool(),
                 lpTokenAddress: IDestinationVault(destinationAddress).underlying(),
                 lpTokenSymbol: IERC20Metadata(IDestinationVault(destinationAddress).underlying()).symbol(),
@@ -297,6 +301,12 @@ contract Lens is SystemComponent {
                 statsSafeLPTotalSupply: currentStats.stakingIncentiveStats.safeTotalSupply,
                 statsIncentiveCredits: currentStats.stakingIncentiveStats.incentiveCredits,
                 reservesInEth: currentStats.reservesInEth,
+                compositeReturn: _safeGetSummaryStats(
+                    IAutopool(autoPool).autoPoolStrategy(),
+                    destinationAddress,
+                    IAutopoolStrategy.RebalanceDirection.Out,
+                    10 ** IDestinationVault(destinationAddress).decimals()
+                ).compositeReturn,
                 statsPeriodFinishForRewards: currentStats.stakingIncentiveStats.periodFinishForRewards,
                 statsAnnualizedRewardAmounts: currentStats.stakingIncentiveStats.annualizedRewardAmounts,
                 rewardsTokens: new RewardToken[](currentStats.stakingIncentiveStats.rewardTokens.length),
@@ -325,5 +335,62 @@ contract Lens is SystemComponent {
                 }
             }
         }
+    }
+
+    /// @dev Sets the fee settings with a call that loops back to this contract to ensure the struct can be decoded
+    /// @param pool Autopool to fill in fees far
+    function _fillInFeeSettings(Autopool memory pool) private view {
+        try Lens(address(this)).proxyGetFeeSettings(pool.poolAddress) returns (
+            IAutopool.AutopoolFeeSettings memory settings
+        ) {
+            pool.streamingFeeBps = settings.streamingFeeBps;
+            pool.periodicFeeBps = settings.periodicFeeBps;
+            pool.feeHighMarkEnabled = settings.rebalanceFeeHighWaterMarkEnabled;
+            pool.feeSettingsIncomplete = false;
+        } catch { }
+    }
+
+    /// @dev Temporary use while we are transitioning between Gen2 and Gen3 systems where this call didn't exist
+    /// @dev Won't be accurate in all cases but that's OK
+    function _safeGetDestinationUnderlying(address destinationAddress) private view returns (uint256) {
+        try IDestinationVault(destinationAddress).underlyingTotalSupply() returns (uint256 val) {
+            return val;
+        } catch {
+            return IERC20Metadata(IDestinationVault(destinationAddress).underlying()).totalSupply();
+        }
+    }
+
+    /// @dev Returns a destinations current stats. Can fail when prices are stale we capture that here
+    /// @param destinationAddress Address of the destination to query stats for
+    function _safeDestinationGetStats(address destinationAddress)
+        private
+        returns (IDexLSTStats.DexLSTStatsData memory currentStats, bool incomplete)
+    {
+        try Lens(address(this)).proxyGetStats(destinationAddress) returns (
+            IDexLSTStats.DexLSTStatsData memory queriedStats
+        ) {
+            currentStats = queriedStats;
+        } catch {
+            incomplete = true;
+        }
+    }
+
+    /// @dev Returns a destinations summary stats. Double wrapped as it can revert and there can be abi decode errors
+    /// temporarily
+    /// @param autopoolStrategy Strategy to query
+    /// @param destinationAddress Address of the destination to query stats for
+    /// @param direction Direction to calculate the stats for
+    /// @param amount Amount to use when looking at dilution effects
+    /// @return stats The Destinations summary stats from the Strategy
+    function _safeGetSummaryStats(
+        IAutopoolStrategy autopoolStrategy,
+        address destinationAddress,
+        IAutopoolStrategy.RebalanceDirection direction,
+        uint256 amount
+    ) private returns (IStrategy.SummaryStats memory stats) {
+        try Lens(address(this)).proxyGetDestinationSummaryStats(autopoolStrategy, destinationAddress, direction, amount)
+        returns (IStrategy.SummaryStats memory queriedStats) {
+            stats = queriedStats;
+        } catch { }
     }
 }

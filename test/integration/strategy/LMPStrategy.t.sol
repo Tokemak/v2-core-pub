@@ -185,6 +185,7 @@ contract AutopoolETHStrategyInt is Test {
         _accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(_autoPoolFactory));
         _accessController.grantRole(Roles.AUTO_POOL_FACTORY_VAULT_CREATOR, address(this));
         _accessController.grantRole(Roles.AUTO_POOL_DESTINATION_UPDATER, V2_DEPLOYER);
+        _accessController.grantRole(Roles.AUTO_POOL_FACTORY_MANAGER, V2_DEPLOYER);
         _accessController.grantRole(Roles.SOLVER, address(this));
 
         bytes32 autoPoolSalt = keccak256(abi.encode("autoPool1"));

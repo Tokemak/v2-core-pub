@@ -9,14 +9,13 @@ import { console } from "forge-std/console.sol";
 import { Constants } from "../utils/Constants.sol";
 
 import { Calculators } from "script/core/Calculators.sol";
-import { Oracle } from "script/core/Oracle.sol";
 import { Stats } from "src/stats/Stats.sol";
 import { CurveConvexDestinationVault } from "src/vault/CurveConvexDestinationVault.sol";
 import { BalancerAuraDestinationVault } from "src/vault/BalancerAuraDestinationVault.sol";
 import { BalancerDestinationVault } from "src/vault/BalancerDestinationVault.sol";
 import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 
-contract Destinations is Calculators, Oracle {
+contract Destinations is Calculators {
     bytes32 internal auraTemplateId = keccak256("incentive-aura");
     bytes32 internal convexTemplateId = keccak256("incentive-convex");
     bytes32 internal balCompTemplateId = keccak256("dex-balComp");
@@ -44,14 +43,6 @@ contract Destinations is Calculators, Oracle {
         address balancerPool;
     }
 
-    struct BalancerAuraDestCalcSetup {
-        string name;
-        address poolAddress;
-        bytes32[] dependentPoolCalculators;
-        address rewarderAddress;
-        uint256 poolId;
-    }
-
     struct BalancerDestCalcSetup {
         string name;
         address poolAddress;
@@ -64,7 +55,7 @@ contract Destinations is Calculators, Oracle {
         Constants.Values memory constants,
         BalancerAuraSetup memory args
     ) internal returns (address) {
-        return _setupBalancerAuraDestinationVault(constants, args, "bal-aura-gyro-v1");
+        return _setupBalancerAuraDestinationVault(constants, args, "bal-gyro-aura-v1");
     }
 
     function setupBalancerAuraDestinationVault(
@@ -138,7 +129,7 @@ contract Destinations is Calculators, Oracle {
         Constants.Values memory constants,
         CurveConvexSetup memory args
     ) internal {
-        setupCurveConvexBaseDestinationVault(constants, args.name, "crv-cvx-ng-v1", args);
+        setupCurveConvexBaseDestinationVault(constants, args.name, "crv-ng-cvx-v1", args);
     }
 
     function setupCurveConvexDestinationVault(
@@ -168,7 +159,7 @@ contract Destinations is Calculators, Oracle {
                 args.curveLpToken,
                 address(
                     constants.sys.statsCalcRegistry.getCalculator(
-                        keccak256(abi.encode("incentive-v5-", constants.tokens.cvx, args.convexStaking))
+                        keccak256(abi.encode("incentive-v4-", constants.tokens.cvx, args.convexStaking))
                     )
                 ),
                 new address[](0), // additionalTrackedTokens

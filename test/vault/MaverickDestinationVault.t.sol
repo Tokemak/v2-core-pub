@@ -88,6 +88,7 @@ contract MaverickDestinationVaultTests is Test {
             swapper: balSwapper,
             data: abi.encode(0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080) // wstETH/WETH pool
          });
+        _accessController.grantRole(Roles.SWAP_ROUTER_MANAGER, address(this));
         swapRouter.setSwapRoute(WSTETH_MAINNET, wstethSwapRoute);
         _systemRegistry.setSwapRouter(address(swapRouter));
         vm.label(address(swapRouter), "swapRouter");

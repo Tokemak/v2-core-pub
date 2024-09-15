@@ -12,10 +12,9 @@ import { IStatsCalculator } from "src/interfaces/stats/IStatsCalculator.sol";
 import { ReceivingRouter } from "src/receivingRouter/ReceivingRouter.sol";
 import { MessageTypes } from "src/libs/MessageTypes.sol";
 import { Calculators } from "script/core/Calculators.sol";
-import { Oracle } from "script/core/Oracle.sol";
 import { BaseOracleDenominations } from "src/oracles/providers/base/BaseOracleDenominations.sol";
 
-contract StatBridging is Script, Calculators, Oracle {
+contract StatBridging is Script, Calculators {
     Constants.Values public constants;
 
     bytes32 internal bridgedLstTemplateId = keccak256("lst-bridged");

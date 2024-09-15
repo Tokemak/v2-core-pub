@@ -105,6 +105,8 @@ contract CurveNGConvexDestinationVaultTests is Test {
 
         // Setup swap router
 
+        _accessController.grantRole(Roles.SWAP_ROUTER_MANAGER, address(this));
+
         swapRouter = new SwapRouter(_systemRegistry);
         _systemRegistry.setSwapRouter(address(swapRouter));
 

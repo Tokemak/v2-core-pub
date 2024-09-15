@@ -4,16 +4,10 @@
 pragma solidity 0.8.17;
 
 library Roles {
-    // --------------------------------------------------------------------
-    // Central roles list used by all contracts that call AccessController
-    // --------------------------------------------------------------------
-    // TODO: Update the hash values to match the variable names for new deployments.
-
     // Naming Conventions:
     // - Use MANAGER, CREATOR, UPDATER, ..., for roles primarily managing on-chain activities.
     // - Use EXECUTOR for roles that trigger off-chain initiated actions.
     // - Group roles by functional area for clarity.
-    // --------------------------------------------------------------------
 
     // Destination Vault Management
     bytes32 public constant DESTINATION_VAULT_FACTORY_MANAGER = keccak256("CREATE_DESTINATION_VAULT_ROLE");
@@ -22,7 +16,7 @@ library Roles {
 
     // Auto Pool Factory and Registry Management
     bytes32 public constant AUTO_POOL_REGISTRY_UPDATER = keccak256("REGISTRY_UPDATER");
-    bytes32 public constant AUTO_POOL_FACTORY_MANAGER = 0x00; // keccak256("LMP_VAULT_FACTORY_MANAGER");
+    bytes32 public constant AUTO_POOL_FACTORY_MANAGER = keccak256("AUTO_POOL_FACTORY_MANAGER");
     bytes32 public constant AUTO_POOL_FACTORY_VAULT_CREATOR = keccak256("CREATE_POOL_ROLE");
 
     // Auto Pool Management
@@ -42,7 +36,7 @@ library Roles {
     bytes32 public constant REWARD_LIQUIDATION_EXECUTOR = keccak256("REWARD_LIQUIDATION_EXECUTOR");
 
     // Statistics and Reporting
-    bytes32 public constant STATS_CALC_REGISTRY_MANAGER = 0x00; // keccak256("STATS_CALC_REGISTRY_MANAGER");
+    bytes32 public constant STATS_CALC_REGISTRY_MANAGER = keccak256("STATS_CALC_REGISTRY_MANAGER");
     bytes32 public constant STATS_CALC_FACTORY_MANAGER = keccak256("CREATE_STATS_CALC_ROLE");
     bytes32 public constant STATS_CALC_FACTORY_TEMPLATE_MANAGER = keccak256("STATS_CALC_TEMPLATE_MGMT_ROLE");
 
@@ -60,7 +54,7 @@ library Roles {
     bytes32 public constant AUTO_POOL_REPORTING_EXECUTOR = keccak256("AUTO_POOL_UPDATE_DEBT_REPORTING_ROLE");
 
     // Swapper Roles
-    bytes32 public constant SWAP_ROUTER_MANAGER = 0x00; // keccak256("SWAP_ROUTER_MANAGER");
+    bytes32 public constant SWAP_ROUTER_MANAGER = keccak256("SWAP_ROUTER_MANAGER");
 
     // Price Oracles Roles
     bytes32 public constant ORACLE_MANAGER = keccak256("ORACLE_MANAGER_ROLE");

@@ -27,6 +27,7 @@ contract AutopoolRegistryTest is BaseTest {
 
         autoPoolRegistry = new AutopoolRegistry(systemRegistry);
         accessController.grantRole(Roles.AUTO_POOL_REGISTRY_UPDATER, address(this));
+        accessController.grantRole(Roles.AUTO_POOL_FACTORY_MANAGER, address(this));
 
         bytes memory initData = abi.encode("");
 

@@ -27,7 +27,7 @@ contract ProxyLSTCalculator is ILSTStats, BaseStatsCalculator {
         InitData memory decodedInitData = abi.decode(initData, (InitData));
         lstTokenAddress = decodedInitData.lstTokenAddress;
         statsCalculator = ILSTStats(decodedInitData.statsCalculator);
-        _aprId = keccak256(abi.encode("lst", lstTokenAddress));
+        _aprId = keccak256(abi.encode("proxy", lstTokenAddress));
         _usePriceAsDiscount = decodedInitData.usePriceAsDiscount;
     }
 

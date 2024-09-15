@@ -33,6 +33,17 @@ interface IAutopoolStrategy {
         external
         returns (IStrategy.SummaryStats memory outSummary);
 
+    /// @notice Returns stats for a given destination
+    /// @dev Used to evaluate the current state of the destinations and decide best action
+    /// @param destAddress Destination address. Can be a DestinationVault or the AutoPool
+    /// @param direction Direction to evaluate the stats at
+    /// @param amount Amount to evaluate the stats at
+    function getDestinationSummaryStats(
+        address destAddress,
+        IAutopoolStrategy.RebalanceDirection direction,
+        uint256 amount
+    ) external returns (IStrategy.SummaryStats memory);
+
     /// @notice Returns all hooks registered on strategy
     /// @dev Will return zero addresses for unregistered hooks
     /// @return hooks Array of hook addresses

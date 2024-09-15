@@ -38,6 +38,7 @@ contract AerodromeStakingDexCalculatorTest is Test {
         accessController = new AccessController(address(systemRegistry));
         systemRegistry.setAccessController(address(accessController));
         accessController.grantRole(Roles.STATS_SNAPSHOT_EXECUTOR, address(this));
+        accessController.grantRole(Roles.STATS_CALC_REGISTRY_MANAGER, address(this));
 
         statsRegistry = new StatsCalculatorRegistry(systemRegistry);
         systemRegistry.setStatsCalculatorRegistry(address(statsRegistry));

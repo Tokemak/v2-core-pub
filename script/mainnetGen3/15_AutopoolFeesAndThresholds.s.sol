@@ -49,7 +49,7 @@ contract AutopoolFeesAndThresholds is Script {
         autopool.setStreamingFeeBps(2000);
         autopool.setPeriodicFeeBps(85);
 
-        AutopoolETHStrategy(address(autopool.autoPoolStrategy())).setIdleThresholds(0.0025e18, 0.005e18);
+        AutopoolETHStrategy(address(autopool.autoPoolStrategy())).setIdleThresholds(0.002e18, 0.005e18);
 
         AutopoolMainRewarder(address(autopool.rewarder())).addToWhitelist(TREASURY);
     }

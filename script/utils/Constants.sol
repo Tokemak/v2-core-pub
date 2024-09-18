@@ -28,6 +28,7 @@ import { MessageProxy } from "src/messageProxy/MessageProxy.sol";
 import { AutopilotRouter } from "src/vault/AutopilotRouter.sol";
 import { EthPerTokenStore } from "src/stats/calculators/bridged/EthPerTokenStore.sol";
 import { EthPerTokenSender } from "src/stats/calculators/bridged/EthPerTokenSender.sol";
+import { PxETHEthOracle } from "src/oracles/providers/PxETHEthOracle.sol";
 
 /* solhint-disable gas-custom-errors */
 
@@ -111,6 +112,7 @@ library Constants {
         EethOracle eEth;
         RedstoneOracle redStone;
         CustomSetOracle customSet;
+        PxETHEthOracle pxEth;
     }
 
     struct AsyncSwappers {
@@ -213,7 +215,8 @@ library Constants {
             redStone: RedstoneOracle(0xe1aDb6967e1dBD5332d499dFA2f42377d1DA5913),
             customSet: CustomSetOracle(0x53ff9D648a8A1cf70c6B60ae26B93047cc24066f),
             balancerGyro: BalancerGyroscopeEthOracle(0x4c70ef1DefFC14e8C0a3D5135EC8EbAfEFcC1c58),
-            eEth: EethOracle(0xAA573a9bf7560870a925Ea1704C061546486dF81)
+            eEth: EethOracle(0xAA573a9bf7560870a925Ea1704C061546486dF81),
+            pxEth: PxETHEthOracle(0x3cC52170fDEA5C485db6d412b78ea40F27FFC629)
         });
 
         sys.asyncSwappers = AsyncSwappers({
@@ -240,7 +243,8 @@ library Constants {
             redStone: RedstoneOracle(0x23a7d7707f80a26495ac73B15Db6F4FA541164F7),
             customSet: CustomSetOracle(0x107a0ffA06595A5A2491C974CB2C8541Fc7FBccA),
             balancerGyro: BalancerGyroscopeEthOracle(address(0)),
-            eEth: EethOracle(address(0))
+            eEth: EethOracle(address(0)),
+            pxEth: PxETHEthOracle(address(0))
         });
 
         sys.asyncSwappers = AsyncSwappers({
@@ -282,7 +286,8 @@ library Constants {
                     redStone: RedstoneOracle(0x9E16879c6F4415Ce5EBE21816C51F476AEEc49bE),
                     customSet: CustomSetOracle(0x58e161B002034f1F94858613Da0967EB985EB3D0),
                     balancerGyro: BalancerGyroscopeEthOracle(address(0)),
-                    eEth: EethOracle(address(0))
+                    eEth: EethOracle(address(0)),
+                    pxEth: PxETHEthOracle(address(0))
                 }),
                 asyncSwappers: AsyncSwappers({ zeroEx: address(0), propellerHead: address(0), liFi: address(0) }),
                 autopilotRouter: AutopilotRouter(payable(address(0))),

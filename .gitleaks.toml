@@ -24,6 +24,7 @@ paths = [
     '''test/oracles/providers/TellorOracle.t.sol''',
     '''test/pricing/TellorValueProvider.t.sol''',
     '''test/utils/ReadPlan.sol''',
+    '''test/fork/scenario/DestinationVaultMigration.t.sol''',
     '''src/solver/VM.sol''',
     '''solver/test/Adapters.test.ts''',
     '''solver/test/payloads/adapters/(.*?)''',

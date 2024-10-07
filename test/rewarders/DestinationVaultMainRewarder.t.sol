@@ -152,11 +152,65 @@ contract DVRewarderGetRewardTest is DestinationVaultRewarderTest {
         vm.roll(durationInBlock + 1);
         vm.stopPrank();
 
+        address recipient = makeAddr("user2");
+
         vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
         rewarder.getReward(user, user, false);
 
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        rewarder.getReward(user, user, true);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        rewarder.getReward(user, address(this), false);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        rewarder.getReward(user, address(this), true);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        rewarder.getReward(user, recipient, false);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.AccessDenied.selector));
+        rewarder.getReward(user, recipient, true);
+
+        uint256 snapshotId = vm.snapshot();
+
+        vm.startPrank(user);
+        rewarder.getReward(user, recipient, false);
+        vm.stopPrank();
+
+        vm.revertTo(snapshotId);
+        snapshotId = vm.snapshot();
+
         vm.startPrank(user);
         rewarder.getReward(user, user, false);
+        vm.stopPrank();
+
+        vm.revertTo(snapshotId);
+        snapshotId = vm.snapshot();
+
+        vm.startPrank(user);
+        rewarder.getReward(user, address(this), false);
+        vm.stopPrank();
+
+        vm.revertTo(snapshotId);
+        snapshotId = vm.snapshot();
+
+        vm.startPrank(user);
+        rewarder.getReward(user, recipient, true);
+        vm.stopPrank();
+
+        vm.revertTo(snapshotId);
+        snapshotId = vm.snapshot();
+
+        vm.startPrank(user);
+        rewarder.getReward(user, user, true);
+        vm.stopPrank();
+
+        vm.revertTo(snapshotId);
+        snapshotId = vm.snapshot();
+
+        vm.startPrank(user);
+        rewarder.getReward(user, address(this), true);
         vm.stopPrank();
     }
 }

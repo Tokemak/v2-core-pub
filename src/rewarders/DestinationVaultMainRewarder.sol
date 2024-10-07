@@ -72,7 +72,7 @@ contract DestinationVaultMainRewarder is MainRewarder {
      * @param claimExtras Whether or not to claim extra rewards.
      */
     function getReward(address account, address recipient, bool claimExtras) public {
-        if (msg.sender != account && msg.sender != recipient) {
+        if (msg.sender != account) {
             revert Errors.AccessDenied();
         }
 
